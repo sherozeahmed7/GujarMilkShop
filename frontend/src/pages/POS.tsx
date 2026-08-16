@@ -149,7 +149,7 @@ export const POS: React.FC = () => {
                     value={milkCustomAmount}
                     onChange={(e) => setMilkCustomAmount(e.target.value)}
                     placeholder="Amount"
-                    className="w-16 px-2 py-1 text-sm border-none bg-slate-50 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-24 px-2 py-1 text-sm border-none bg-slate-50 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd('milk')}
                   />
                   <button 
@@ -195,7 +195,7 @@ export const POS: React.FC = () => {
                     value={yogurtCustomAmount}
                     onChange={(e) => setYogurtCustomAmount(e.target.value)}
                     placeholder="Amount"
-                    className="w-16 px-2 py-1 text-sm border-none bg-slate-50 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-24 px-2 py-1 text-sm border-none bg-slate-50 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd('yogurt')}
                   />
                   <button 
