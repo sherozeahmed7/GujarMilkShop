@@ -1,0 +1,61 @@
+import { ShiftRecord } from '../types';
+
+export const mockShifts: ShiftRecord[] = [
+  // A previous shift that is still open (requires closing)
+  {
+    id: 'SHIFT-2026-08-16',
+    date: '2026-08-16',
+    openedBy: 'System Admin',
+    openedAt: '2026-08-16T06:00:00+05:00',
+    openingCash: 5000,
+    expectedCash: 35000,
+    status: 'Open',
+    openingNotes: 'Started day with 5000 in register.',
+  },
+  // History of closed shifts
+  {
+    id: 'SHIFT-2026-08-15',
+    date: '2026-08-15',
+    openedBy: 'System Admin',
+    openedAt: '2026-08-15T06:05:00+05:00',
+    closedBy: 'System Admin',
+    closedAt: '2026-08-15T22:30:00+05:00',
+    openingCash: 4000,
+    expectedCash: 45000,
+    countedCash: 45000,
+    difference: 0,
+    differenceStatus: 'Balanced',
+    status: 'Closed',
+    closingNotes: 'All good.',
+  },
+  {
+    id: 'SHIFT-2026-08-14',
+    date: '2026-08-14',
+    openedBy: 'System Admin',
+    openedAt: '2026-08-14T05:55:00+05:00',
+    closedBy: 'System Admin',
+    closedAt: '2026-08-14T22:45:00+05:00',
+    openingCash: 4500,
+    expectedCash: 32000,
+    countedCash: 31800,
+    difference: -200,
+    differenceStatus: 'Short',
+    status: 'Closed',
+    closingNotes: 'Short by 200, checking with delivery staff.',
+  },
+  {
+    id: 'SHIFT-2026-08-13',
+    date: '2026-08-13',
+    openedBy: 'System Admin',
+    openedAt: '2026-08-13T06:10:00+05:00',
+    closedBy: 'System Admin',
+    closedAt: '2026-08-13T22:15:00+05:00',
+    openingCash: 5000,
+    expectedCash: 38000,
+    countedCash: 38500,
+    difference: 500,
+    differenceStatus: 'Over',
+    status: 'Closed',
+    closingNotes: 'Extra 500 in drawer, could be a tip not punched.',
+  }
+];

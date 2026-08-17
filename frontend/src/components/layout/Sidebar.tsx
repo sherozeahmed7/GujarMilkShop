@@ -1,19 +1,24 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Package, Truck, Users, UserSquare2, BookOpen, Banknote, Undo2, Receipt, LogOut, Moon } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Truck, UserSquare2, BookOpen, Banknote, Undo2, Receipt, LogOut, Moon, Clock, Monitor, Database, Wallet, FileText, LineChart, Settings } from 'lucide-react';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Point of Sale', path: '/pos', icon: ShoppingCart },
   { name: 'Inventory', path: '/inventory', icon: Package },
   { name: 'Suppliers', path: '/suppliers', icon: Truck },
-  { name: 'Employees', path: '/employees', icon: Users },
-  { name: 'Deliveries', path: '/deliveries', icon: Truck },
   { name: 'Customers', path: '/customers', icon: UserSquare2 },
   { name: 'Khata / Ledger', path: '/ledger', icon: BookOpen },
   { name: 'Global Cash', path: '/global-cash', icon: Banknote },
   { name: 'Returns', path: '/returns', icon: Undo2 },
   { name: 'Receipt Audit', path: '/audit', icon: Receipt },
+  { name: 'Shifts', path: '/shifts', icon: Clock },
+  { name: 'Cash Register', path: '/register', icon: Monitor },
+  { name: 'Backup', path: '/backup', icon: Database },
+  { name: 'Expenses', path: '/expenses', icon: Wallet },
+  { name: 'Reports', path: '/reports', icon: FileText },
+  { name: 'Analytics', path: '/analytics', icon: LineChart },
+  { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
 export const Sidebar: React.FC = () => {
