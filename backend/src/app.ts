@@ -5,6 +5,9 @@ import apiRoutes from './routes';
 
 const app: Application = express();
 
+// Disable ETags to prevent 304 caching during development
+app.set('etag', false);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
