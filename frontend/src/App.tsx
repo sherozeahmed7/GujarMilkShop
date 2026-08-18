@@ -16,6 +16,18 @@ import { Shifts } from './pages/Shifts';
 import { CashRegister } from './pages/CashRegister';
 import { ZReport } from './pages/ZReport';
 import { Backup } from './pages/Backup';
+import { Expenses } from './pages/Expenses';
+import { SalesReport } from './pages/reports/SalesReport';
+import { ProfitLossReport } from './pages/reports/ProfitLossReport';
+import { SupplierReport } from './pages/reports/SupplierReport';
+import { CustomerReport } from './pages/reports/CustomerReport';
+import { InventoryReport } from './pages/reports/InventoryReport';
+import { ReturnsReport } from './pages/reports/ReturnsReport';
+import { CashRegisterReport } from './pages/reports/CashRegisterReport';
+import { ShiftsReport } from './pages/reports/ShiftsReport';
+import { ExpensesReport } from './pages/reports/ExpensesReport';
+import { BackupReport } from './pages/reports/BackupReport';
+import { ActivityLogs } from './pages/reports/ActivityLogs';
 
 function App() {
   return (
@@ -37,6 +49,23 @@ function App() {
           <Route path="backup" element={<Backup />} />
           <Route path="sales" element={<Sales />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="expenses" element={<Expenses />} />
+          
+          {/* Reports Routes */}
+          <Route path="reports">
+            <Route path="sales" element={<SalesReport />} />
+            <Route path="profit-loss" element={<ProfitLossReport />} />
+            <Route path="suppliers" element={<SupplierReport />} />
+            <Route path="customers" element={<CustomerReport />} />
+            <Route path="inventory" element={<InventoryReport />} />
+            <Route path="returns" element={<ReturnsReport />} />
+            <Route path="cash-register" element={<CashRegisterReport />} />
+            <Route path="shifts" element={<ShiftsReport />} />
+            <Route path="expenses" element={<ExpensesReport />} />
+            <Route path="backups" element={<BackupReport />} />
+            <Route path="logs" element={<ActivityLogs />} />
+          </Route>
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
