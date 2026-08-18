@@ -1,6 +1,8 @@
-
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
+import { apiClient } from './services/apiClient';
 import { Dashboard } from './pages/Dashboard';
 import { POS } from './pages/POS';
 import { Products } from './pages/Products';
@@ -30,6 +32,18 @@ import { BackupReport } from './pages/reports/BackupReport';
 import { ActivityLogs } from './pages/reports/ActivityLogs';
 
 function App() {
+  // Use TanStack React Query to fetch connection status
+  const { data } = useQuery({
+    queryKey: ['connectionTest'],
+    queryFn: () => apiClient.get('/connection-test'),
+  });
+
+  useEffect(() => {
+    if (data && data.status === 'success' && data.data?.message) {
+      alert(data.data.message);
+    }
+  }, [data]);
+
   return (
     <BrowserRouter>
       <Routes>
