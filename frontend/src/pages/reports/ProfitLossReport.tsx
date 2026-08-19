@@ -155,11 +155,11 @@ export const ProfitLossReport: React.FC = () => {
                   <BarChart data={data.charts.revVsCost}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
-                    <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v / 1000}k`} />
+                    <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                     <Legend />
-                    <Bar dataKey="revenue" name="Revenue" fill="#3B82F6" radius={[4,4,0,0]} />
-                    <Bar dataKey="cost" name="COGS" fill="#F59E0B" radius={[4,4,0,0]} />
+                    <Bar dataKey="revenue" name="Revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cost" name="COGS" fill="#F59E0B" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -176,9 +176,9 @@ export const ProfitLossReport: React.FC = () => {
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
+                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v / 1000}k`} />
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                    <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                     <Area type="monotone" dataKey="value" name="Gross Profit" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#plGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -192,7 +192,7 @@ export const ProfitLossReport: React.FC = () => {
                     <Pie data={data.charts.expBreakdown} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={4} dataKey="value">
                       {data.charts.expBreakdown.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
-                    <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                    <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                     <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
