@@ -38,28 +38,25 @@ const ALL_SCREENS = [
 async function seedSuperAdmin() {
   try {
     const adminEmail = 'admin@gujarmilkshop.com';
-    
-    // Check if super_admin user already exists in SQLite DB
-    const existingAdmin = await prisma.user.findUnique({
-      where: { email: adminEmail }
+    const hashedPassword = await hashPassword('admin123');
+
+    // Upsert super_admin user to guarantee account exists with valid bcrypt password
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {
+        password: hashedPassword,
+        role: 'super_admin',
+        assignedScreens: JSON.stringify(ALL_SCREENS)
+      },
+      create: {
+        email: adminEmail,
+        password: hashedPassword,
+        role: 'super_admin',
+        assignedScreens: JSON.stringify(ALL_SCREENS)
+      }
     });
 
-    if (!existingAdmin) {
-      // Hash the plain-text password using bcrypt before saving to DB
-      const hashedPassword = await hashPassword('admin123');
-
-      // Create super_admin record
-      await prisma.user.create({
-        data: {
-          email: adminEmail,
-          password: hashedPassword,
-          role: 'super_admin',
-          assignedScreens: JSON.stringify(ALL_SCREENS) // Stored as JSON string array
-        }
-      });
-
-      console.log('👤 Default super_admin created: admin@gujarmilkshop.com / admin123');
-    }
+    console.log('👤 Super Admin ready: admin@gujarmilkshop.com / admin123');
   } catch (error) {
     console.error('⚠️ Error seeding super_admin user:', error);
   }

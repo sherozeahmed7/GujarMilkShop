@@ -9,9 +9,11 @@ export class AuthService {
    * @returns Object containing JWT access token and user profile details
    */
   static async login(email: string, password: string) {
+    const normalizedEmail = (email || '').toLowerCase().trim();
+
     // 1. Fetch user from database by unique email address
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     // 2. Return error signal if user is not found
