@@ -7,9 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Simple test model to enable prisma client generation and testing
+// User model for authentication and role-based access control
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id              Int      @id @default(autoincrement())
+  name            String?  // Optional display name of the user
+  email           String   @unique
+  password        String   // Hashed password string using bcrypt
+  role            String   @default("user") // User role (e.g. "admin", "cashier", "manager")
+  
+  // We store assigned screen names as a JSON array string (e.g. '["POS", "Dashboard"]').
+  assignedScreens String   @default("[]") 
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

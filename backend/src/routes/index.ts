@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import connectionTestRoutes from './connectionTest.routes';
+import authRoutes from './auth.routes';
+import userRoutes from './user.routes';
 
 const router = Router();
 
@@ -10,5 +12,11 @@ router.get('/status', (req, res) => {
 
 // Connection test route
 router.use('/connection-test', connectionTestRoutes);
+
+// Auth routes (POST /api/auth/login, POST /api/auth/logout)
+router.use('/auth', authRoutes);
+
+// User management routes (POST /api/users)
+router.use('/users', userRoutes);
 
 export default router;
