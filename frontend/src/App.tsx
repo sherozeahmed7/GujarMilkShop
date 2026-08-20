@@ -11,7 +11,14 @@ import { POS } from './pages/POS';
 import { Products } from './pages/Products';
 import { Inventory } from './pages/Inventory';
 import { Sales } from './pages/Sales';
-import { Settings } from './pages/Settings';
+import { DailyRates } from './pages/settings/DailyRates';
+import { ShopInfo } from './pages/settings/ShopInfo';
+import { POSConfig } from './pages/settings/POSConfig';
+import { UsersRoles } from './pages/settings/UsersRoles';
+import { AuditLog } from './pages/settings/AuditLog';
+import { CloudSync } from './pages/settings/CloudSync';
+import { CustomerDisplay } from './pages/settings/CustomerDisplay';
+import { LocalBackup } from './pages/settings/LocalBackup';
 import { Suppliers } from './pages/Suppliers';
 import { Customers } from './pages/Customers';
 import { KhataLedger } from './pages/KhataLedger';
@@ -94,7 +101,20 @@ function App() {
             <Route path="zreport" element={<ZReport />} />
             <Route path="backup" element={<Backup />} />
             <Route path="sales" element={<Sales />} />
-            <Route path="settings" element={<Settings />} />
+            
+            {/* Settings Routes */}
+            <Route path="settings">
+              <Route index element={<Navigate to="daily-rates" replace />} />
+              <Route path="daily-rates" element={<DailyRates />} />
+              <Route path="shop-info" element={<ShopInfo />} />
+              <Route path="pos-config" element={<POSConfig />} />
+              <Route path="users-roles" element={<UsersRoles />} />
+              <Route path="audit-log" element={<AuditLog />} />
+              <Route path="cloud-sync" element={<CloudSync />} />
+              <Route path="customer-display" element={<CustomerDisplay />} />
+              <Route path="local-backup" element={<LocalBackup />} />
+            </Route>
+
             <Route path="expenses" element={<Expenses />} />
             
             {/* Reports Routes */}
