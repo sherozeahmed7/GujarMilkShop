@@ -11,3 +11,6 @@ export * from './shift';
 export * from './register';
 export * from './backup';
 export * from './expense';
+export * from './user';
+export * from './role';
+
