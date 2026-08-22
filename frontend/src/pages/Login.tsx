@@ -44,6 +44,7 @@ export const Login: React.FC = () => {
 
         // 4. Save authentication state to localStorage
         localStorage.setItem('token', accessToken);
+        localStorage.setItem('userId', String(user.id));
         localStorage.setItem('role', user.role);
         localStorage.setItem('assignedScreens', JSON.stringify(user.assignedScreens));
 

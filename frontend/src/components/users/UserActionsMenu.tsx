@@ -124,15 +124,15 @@ export const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
             : 'text-slate-700 hover:bg-slate-50'
         }`}
       >
-        {user.status === 'Active' ? (
+        {user.status === 'active' || user.status === 'Active' ? (
           <>
             <UserX className="w-4 h-4 text-orange-600" />
-            Disable User
+            Inactive
           </>
         ) : (
           <>
             <UserCheck className="w-4 h-4 text-emerald-600" />
-            Enable User
+            Active
           </>
         )}
       </button>

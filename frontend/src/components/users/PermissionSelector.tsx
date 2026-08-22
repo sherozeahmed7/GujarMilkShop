@@ -34,13 +34,12 @@ export const PermissionSelector: React.FC<PermissionSelectorProps> = ({
       <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{title}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {screens.map(screen => (
-          <label 
-            key={screen} 
-            className={`flex items-center gap-2 p-2 rounded-lg border ${
-              selectedScreens.includes(screen) 
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+          <label
+            key={screen}
+            className={`flex items-center gap-2 p-2 rounded-lg border ${selectedScreens.includes(screen)
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-            } ${disabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer transition-colors'}`}
+              } ${disabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer transition-colors'}`}
           >
             <input
               type="checkbox"

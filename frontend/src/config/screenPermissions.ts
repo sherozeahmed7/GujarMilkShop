@@ -6,7 +6,6 @@ export const SCREEN_PERMISSIONS = {
     'Suppliers',
     'Customers',
     'Khata / Ledger',
-    'Global Cash',
     'Returns',
     'Receipt Audit',
     'Shifts',
@@ -28,14 +27,14 @@ export const SCREEN_PERMISSIONS = {
     'Sales Report',
     'Supplier Report',
     'Customer Report',
-    'Return Report',
+    'Inventory Report',
+    'Returns Report',
     'Cash Register Report',
     'Shifts Report',
-    'Expense Report',
-    'Inventory Report',
+    'Expenses Report',
     'Backup Report',
-    'Logs',
     'Profit & Loss',
+    'Activity Logs',
   ]
 };
 

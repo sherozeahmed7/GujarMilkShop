@@ -60,6 +60,14 @@ export const Sidebar: React.FC = () => {
   const isReportActive = location.pathname.startsWith('/reports');
   const isSettingsActive = location.pathname.startsWith('/settings');
 
+  const assignedScreensStr = localStorage.getItem('assignedScreens');
+  const allowedScreens = assignedScreensStr ? JSON.parse(assignedScreensStr) : [];
+
+  const visibleMainItems = mainNavItems.filter(item => allowedScreens.includes(item.name));
+  const visibleReportItems = reportItems.filter(item => allowedScreens.includes(item.name));
+  const visibleSettingsItems = settingsItems.filter(item => allowedScreens.includes(item.name));
+  const visibleBottomItems = bottomNavItems.filter(item => allowedScreens.includes(item.name));
+
   // Triggered when user confirms logout inside the modal
   const handleConfirmLogout = async () => {
     setIsLoggingOut(true);
@@ -72,6 +80,7 @@ export const Sidebar: React.FC = () => {
     } finally {
       // 2. Clear authentication state from localStorage
       localStorage.removeItem('token');
+      localStorage.removeItem('userId');
       localStorage.removeItem('role');
       localStorage.removeItem('assignedScreens');
       setIsLoggingOut(false);
@@ -93,7 +102,7 @@ export const Sidebar: React.FC = () => {
         <nav className="flex-1 overflow-y-auto py-2 px-3 custom-scrollbar">
           <ul className="space-y-1">
             {/* Main Items */}
-            {mainNavItems.map((item) => (
+            {visibleMainItems.map((item) => (
               <li key={item.path}>
                 <NavLink
                   to={item.path}
@@ -112,25 +121,67 @@ export const Sidebar: React.FC = () => {
             ))}
 
             {/* Reports Collapsible */}
+            {visibleReportItems.length > 0 && (
+              <li>
+                <button
+                  onClick={() => setReportsOpen(!reportsOpen)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${
+                    isReportActive && !reportsOpen
+                      ? 'bg-slate-200/70 text-slate-900 font-medium shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-4 h-4" />
+                    <span>Reports</span>
+                  </div>
+                  {reportsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+                
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${reportsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                  <ul className="pl-9 space-y-1">
+                    {visibleReportItems.map((item) => (
+                      <li key={item.path}>
+                        <NavLink
+                          to={item.path}
+                          className={({ isActive }) =>
+                            `flex items-center px-3 py-2 rounded-lg text-sm transition-all ${
+                              isActive 
+                                ? 'bg-blue-50 text-blue-700 font-medium shadow-sm' 
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                            }`
+                          }
+                        >
+                          {item.name}
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            )}
+
+          {/* Settings Collapsible */}
+          {visibleSettingsItems.length > 0 && (
             <li>
               <button
-                onClick={() => setReportsOpen(!reportsOpen)}
+                onClick={() => setSettingsOpen(!settingsOpen)}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${
-                  isReportActive && !reportsOpen
+                  isSettingsActive && !settingsOpen
                     ? 'bg-slate-200/70 text-slate-900 font-medium shadow-sm'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <FileText className="w-4 h-4" />
-                  <span>Reports</span>
+                  <Settings className="w-4 h-4" />
+                  <span>Settings</span>
                 </div>
-                {reportsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                {settingsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
               
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${reportsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${settingsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
                 <ul className="pl-9 space-y-1">
-                  {reportItems.map((item) => (
+                  {visibleSettingsItems.map((item) => (
                     <li key={item.path}>
                       <NavLink
                         to={item.path}
@@ -149,48 +200,10 @@ export const Sidebar: React.FC = () => {
                 </ul>
               </div>
             </li>
-
-          {/* Settings Collapsible */}
-          <li>
-            <button
-              onClick={() => setSettingsOpen(!settingsOpen)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all ${
-                isSettingsActive && !settingsOpen
-                  ? 'bg-slate-200/70 text-slate-900 font-medium shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Settings className="w-4 h-4" />
-                <span>Settings</span>
-              </div>
-              {settingsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </button>
-            
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${settingsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-              <ul className="pl-9 space-y-1">
-                {settingsItems.map((item) => (
-                  <li key={item.path}>
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        `flex items-center px-3 py-2 rounded-lg text-sm transition-all ${
-                          isActive 
-                            ? 'bg-blue-50 text-blue-700 font-medium shadow-sm' 
-                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                        }`
-                      }
-                    >
-                      {item.name}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </li>
+          )}
 
             {/* Bottom Items */}
-            {bottomNavItems.map((item) => (
+            {visibleBottomItems.map((item) => (
               <li key={item.path}>
                 <NavLink
                   to={item.path}

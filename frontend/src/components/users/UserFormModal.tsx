@@ -3,6 +3,7 @@ import { X, Eye, EyeOff } from 'lucide-react';
 import { User, CreateUserPayload } from '../../types/user';
 import { PermissionSelector } from './PermissionSelector';
 import { useUserStore } from '../../store/userStore';
+import toast from 'react-hot-toast';
 
 interface UserFormModalProps {
   user?: User;
@@ -26,6 +27,9 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const adminScreensStr = localStorage.getItem('assignedScreens');
+  const allowedScreens = adminScreensStr ? JSON.parse(adminScreensStr) : [];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -42,6 +46,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
     }
 
     if (assignedScreens.length === 0) return setError('At least one screen must be assigned');
+    const invalidScreens = assignedScreens.filter(s => !allowedScreens.includes(s));
+    if (invalidScreens.length > 0) return setError('Selected screens include unauthorized permissions');
 
     setIsSubmitting(true);
     try {
@@ -53,6 +59,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
           assignedRole: role,
           assignedScreens
         });
+        toast.success('User updated successfully.');
       } else {
         await createUser({
           name,
@@ -62,6 +69,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
           assignedRole: role,
           assignedScreens
         });
+        toast.success('User created successfully.');
       }
       onClose();
     } catch (err: any) {
@@ -186,6 +194,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
                 selectedScreens={assignedScreens}
                 onChange={setAssignedScreens}
                 disabled={user?.isPrimaryAdmin} // Primary admin has all permissions
+                allowedScreens={allowedScreens}
               />
             </div>
 

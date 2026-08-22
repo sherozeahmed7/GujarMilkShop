@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { apiClient } from './services/apiClient';
+import { SessionExpiredModal } from './components/SessionExpiredModal';
 
 // Page Imports
 import { Login } from './pages/Login';
@@ -78,6 +79,8 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* Global session-expired modal — shown whenever apiClient receives a 401 */}
+      <SessionExpiredModal />
       <Routes>
         {/* Public Routes (Accessible only when NOT logged in) */}
         <Route element={<PublicOnlyRoute />}>

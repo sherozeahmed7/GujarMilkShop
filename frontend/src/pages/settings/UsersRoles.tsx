@@ -6,72 +6,61 @@ import { UserFormModal } from '../../components/users/UserFormModal';
 import { UserPermissionsModal } from '../../components/users/UserPermissionsModal';
 import { ChangePasswordModal } from '../../components/users/ChangePasswordModal';
 import { DeleteUserModal } from '../../components/users/DeleteUserModal';
+import { ToggleStatusModal } from '../../components/users/ToggleStatusModal';
 import { User } from '../../types/user';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export const UsersRoles: React.FC = () => {
   const { users, roles, isLoading, error, fetchUsers, fetchRoles, changeStatus } = useUserStore();
-
-  useEffect(() => {
-    fetchUsers();
-    fetchRoles();
-  }, [fetchUsers, fetchRoles]);
 
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
 
   const [viewingPermissionsUser, setViewingPermissionsUser] = useState<User | null>(null);
-  const [passwordUser, setPasswordUser] = useState<User | null>(null); // null means own password if another state is set, wait, let's use a separate state or just pass undefined to mean 'own'
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
   const [isChangingOwnPassword, setIsChangingOwnPassword] = useState(false);
 
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [togglingStatusUser, setTogglingStatusUser] = useState<User | null>(null);
 
-  // Filters
+  // Filters (raw input values)
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'active' | 'inactive'>('All');
   const [roleFilter, setRoleFilter] = useState<string>('All');
 
-  // Dynamic role list based on actual users and existing roles
+  // Debounce search so we don't hammer the API on every keystroke
+  const debouncedSearch = useDebounce(searchQuery, 400);
+
+  // Fetch users from backend whenever debounced search or filters change
+  useEffect(() => {
+    const filters: { name?: string; role?: string; status?: string } = {};
+    if (debouncedSearch.trim()) filters.name = debouncedSearch.trim();
+    if (roleFilter !== 'All')   filters.role = roleFilter;
+    if (statusFilter !== 'All') filters.status = statusFilter;
+    fetchUsers(filters);
+  }, [debouncedSearch, roleFilter, statusFilter, fetchUsers]);
+
+  // Fetch roles once on mount (still used for the role dropdown)
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
+
+  // Dynamic role list — backend roles + any additional roles seen on loaded users
   const availableRoles = useMemo(() => {
-    const roleNames = new Set<string>();
-    roles.forEach(r => roleNames.add(r.name));
-    users.forEach(u => roleNames.add(u.role));
+    const roleNames = new Set<string>(roles);
+    users.forEach(u => { if (u.role) roleNames.add(u.role); });
     return Array.from(roleNames).sort();
   }, [roles, users]);
-
-  // Filtered users
-  const filteredUsers = useMemo(() => {
-    return users.filter(u => {
-      // Status
-      if (statusFilter !== 'All' && u.status !== statusFilter) return false;
-      // Role
-      if (roleFilter !== 'All' && u.role !== roleFilter) return false;
-      // Search
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        return (
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.role.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [users, statusFilter, roleFilter, searchQuery]);
 
   const handleAddClick = () => {
     setEditingUser(undefined);
     setIsFormModalOpen(true);
   };
 
-  const handleToggleStatus = async (user: User) => {
+  const handleToggleStatus = (user: User) => {
     if (user.isPrimaryAdmin) return;
-    const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
-    // Ideally use confirmation for disable
-    if (newStatus === 'Inactive') {
-      if (!window.confirm(`Are you sure you want to disable ${user.name}?`)) return;
-    }
-    await changeStatus(user.id, newStatus);
+    setTogglingStatusUser(user);
   };
 
   return (
@@ -79,7 +68,7 @@ export const UsersRoles: React.FC = () => {
       {/* Header */}
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Users & Roles</h1>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Users &amp; Roles</h1>
           <p className="text-slate-500 text-sm mt-1">Manage users, roles, and screen permissions.</p>
         </div>
         <div className="flex gap-3">
@@ -136,8 +125,8 @@ export const UsersRoles: React.FC = () => {
               className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2"
             >
               <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
         </div>
@@ -156,7 +145,7 @@ export const UsersRoles: React.FC = () => {
             </div>
           ) : (
             <UsersTable
-              users={filteredUsers}
+              users={users}
               onViewPermissions={setViewingPermissionsUser}
               onEdit={(u) => { setEditingUser(u); setIsFormModalOpen(true); }}
               onChangePassword={setPasswordUser}
@@ -196,6 +185,13 @@ export const UsersRoles: React.FC = () => {
         <DeleteUserModal
           user={deletingUser}
           onClose={() => setDeletingUser(null)}
+        />
+      )}
+
+      {togglingStatusUser && (
+        <ToggleStatusModal
+          user={togglingStatusUser}
+          onClose={() => setTogglingStatusUser(null)}
         />
       )}
     </div>
