@@ -1,35 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../utils/auth';
+import { SUPER_ADMIN_ROLE } from './constants';
 
 // Instantiate PrismaClient to interact with SQLite database
 export const prisma = new PrismaClient();
 
-// List of all frontend screen names extracted from the Sidebar component
-const ALL_SCREENS = [
-  'Dashboard',
-  'Point of Sale',
-  'Inventory',
-  'Suppliers',
-  'Customers',
-  'Khata / Ledger',
-  'Returns',
-  'Receipt Audit',
-  'Shifts',
-  'Cash Register',
-  'Backup',
-  'Expenses',
-  'Settings',
-  'Sales Report',
-  'Supplier Report',
-  'Customer Report',
-  'Inventory Report',
-  'Returns Report',
-  'Cash Register Report',
-  'Shifts Report',
-  'Expenses Report',
-  'Backup Report',
-  'Profit & Loss',
-  'Activity Logs'
+/**
+ * Pre-defined list of all available application screens/modules
+ * Used to initialize the super_admin with full access.
+ */
+export const ALL_SCREENS = [
+  // Dashboard & Core Operations
+  'Dashboard', 'Point of Sale', 'Inventory', 'Suppliers', 'Customers',
+  'Khata / Ledger', 'Returns', 'Receipt Audit', 'Shifts', 'Cash Register', 'Backup', 'Expenses',
+
+  // Reports
+  'Sales Report', 'Supplier Report', 'Customer Report', 'Inventory Report',
+  'Returns Report', 'Cash Register Report', 'Shifts Report', 'Expenses Report',
+  'Backup Report', 'Profit & Loss', 'Activity Logs',
+
+  // Settings
+  'Daily Rates', 'Shop Info', 'POS Config', 'Users & Roles', 'Audit Log',
+  'Cloud & Sync', 'Customer Display', 'Local Backup'
 ];
 
 /**
@@ -44,19 +36,23 @@ async function seedSuperAdmin() {
     await prisma.user.upsert({
       where: { email: adminEmail },
       update: {
+        name: 'Shehroz',
         password: hashedPassword,
-        role: 'super_admin',
+        role: SUPER_ADMIN_ROLE,
+        status: 'active',
         assignedScreens: JSON.stringify(ALL_SCREENS)
       },
       create: {
+        name: 'Shehroz',
         email: adminEmail,
         password: hashedPassword,
-        role: 'super_admin',
+        role: SUPER_ADMIN_ROLE,
+        status: 'active',
         assignedScreens: JSON.stringify(ALL_SCREENS)
       }
     });
 
-    console.log('👤 Super Admin ready: admin@gujarmilkshop.com / admin123');
+    console.log(`👤 Super Admin ready: Shehroz (admin@gujarmilkshop.com / admin123) Role: ${SUPER_ADMIN_ROLE}`);
   } catch (error) {
     console.error('⚠️ Error seeding super_admin user:', error);
   }

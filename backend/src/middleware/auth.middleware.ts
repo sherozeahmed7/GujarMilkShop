@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, JwtPayload } from '../utils/auth';
 import { ApiResponse } from '../utils/apiResponse';
+import { SUPER_ADMIN_ROLE } from '../config/constants';
 
 /**
  * Custom Express Request interface extending standard Request to include authenticated user data.
@@ -60,4 +61,33 @@ export const authenticateJWT = (
     
     return ApiResponse.error(res, 'Invalid authorization token.', 401);
   }
+};
+
+/**
+ * Utility function to check if the authenticated user is a super_admin.
+ * Returns true if super_admin, false otherwise.
+ */
+export const isSuperAdmin = (req: AuthenticatedRequest): boolean => {
+  return req.user?.role === SUPER_ADMIN_ROLE;
+};
+
+/**
+ * Role-based Authorization Middleware
+ * 
+ * Ensures the authenticated user has the 'super_admin' role.
+ * Must be used AFTER authenticateJWT middleware.
+ */
+export const requireSuperAdmin = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isSuperAdmin(req)) {
+    return ApiResponse.error(
+      res,
+      'Forbidden: Only super_admin can perform this action.',
+      403
+    );
+  }
+  next();
 };

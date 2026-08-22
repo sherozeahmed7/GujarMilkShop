@@ -89,7 +89,7 @@ export const CashRegisterReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Legend />
                   <Bar dataKey="cashIn" name="Cash In (Total)" fill="#10B981" radius={[4,4,0,0]} />
                   <Bar dataKey="cashOut" name="Cash Out (Total)" fill="#F59E0B" radius={[4,4,0,0]} />
@@ -104,7 +104,7 @@ export const CashRegisterReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Legend />
                   <Line type="monotone" dataKey="expected" name="Expected" stroke="#3B82F6" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="actual" name="Actual" stroke="#10B981" strokeWidth={2} dot={false} strokeDasharray="5 3" />

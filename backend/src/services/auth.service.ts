@@ -27,7 +27,16 @@ export class AuthService {
       return { success: false, statusCode: 401, message: 'Invalid email or password' };
     }
 
-    // 4. Parse assignedScreens JSON string back into a JavaScript array
+    // 4. Check user account status (must be active to log in)
+    if (user.status && user.status.toLowerCase() !== 'active') {
+      return {
+        success: false,
+        statusCode: 403,
+        message: 'Your account is inactive. You are not allowed to login, please contact admin.'
+      };
+    }
+
+    // 5. Parse assignedScreens JSON string back into a JavaScript array
     let assignedScreens: string[] = [];
     try {
       assignedScreens = JSON.parse(user.assignedScreens || '[]');
@@ -35,22 +44,24 @@ export class AuthService {
       assignedScreens = [];
     }
 
-    // 5. Generate 1-hour JWT access token embedding userId, email, and role
+    // 6. Generate 1-hour JWT access token embedding userId, email, and role
     const accessToken = generateAccessToken({
       userId: user.id,
       email: user.email,
       role: user.role
     });
 
-    // 6. Return success result payload
+    // 7. Return success result payload
     return {
       success: true,
       data: {
         accessToken,
         user: {
           id: user.id,
+          name: user.name || null,
           email: user.email,
           role: user.role,
+          status: user.status || 'active',
           assignedScreens
         }
       }

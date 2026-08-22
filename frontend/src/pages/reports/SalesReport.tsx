@@ -82,7 +82,7 @@ export const SalesReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Line type="monotone" dataKey="value" name="Net Sales" stroke="#3B82F6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -95,7 +95,7 @@ export const SalesReport: React.FC = () => {
                   <Pie data={data.paymentMethodData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                     {data.paymentMethodData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(v: number) => `${v}%`} />
+                  <RechartsTooltip formatter={(v: any) => `${v}%`} />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
@@ -108,7 +108,7 @@ export const SalesReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
-                  <RechartsTooltip formatter={(v: number) => `${v}%`} />
+                  <RechartsTooltip formatter={(v: any) => `${v}%`} />
                   <Bar dataKey="value" name="Percentage" fill="#10B981" radius={[4, 4, 0, 0]}>
                     {data.productCategoryData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Bar>

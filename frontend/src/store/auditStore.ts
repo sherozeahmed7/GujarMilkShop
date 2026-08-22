@@ -8,7 +8,7 @@ interface AuditStore {
   saveAudit: (record: AuditRecord) => void;
 }
 
-export const useAuditStore = create<AuditStore>((set, get) => ({
+export const useAuditStore = create<AuditStore>((set) => ({
   pastAudits: initialPastAudits,
 
   getPosBillsForDate: (dateStr: string) => {

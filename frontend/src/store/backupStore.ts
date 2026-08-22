@@ -10,7 +10,7 @@ interface BackupStore {
   addBackup: (record: BackupRecord) => void;
 }
 
-export const useBackupStore = create<BackupStore>((set, get) => ({
+export const useBackupStore = create<BackupStore>((set) => ({
   backups: initialMockBackups,
   isCreating: false,
 

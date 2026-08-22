@@ -84,7 +84,7 @@ export const ShiftsReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Bar dataKey="value" name="Cash Sales" radius={[4,4,0,0]}>
                     {data.salesByShift.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Bar>
@@ -99,7 +99,7 @@ export const ShiftsReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                   <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
                   <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={80} />
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Bar dataKey="value" name="Cash Sales" fill="#8B5CF6" radius={[0,4,4,0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -112,7 +112,7 @@ export const ShiftsReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Bar dataKey="value" name="Variance" fill="#F59E0B" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>

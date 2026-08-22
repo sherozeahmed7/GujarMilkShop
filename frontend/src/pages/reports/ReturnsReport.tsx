@@ -89,7 +89,7 @@ export const ReturnsReport: React.FC = () => {
                   <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Area type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorReturns)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -102,7 +102,7 @@ export const ReturnsReport: React.FC = () => {
                   <Pie data={data.byCategory} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                     {data.byCategory.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(v: number) => `Rs. ${v.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
