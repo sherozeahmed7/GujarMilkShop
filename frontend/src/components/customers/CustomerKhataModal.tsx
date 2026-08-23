@@ -105,10 +105,10 @@ export const CustomerKhataModal: React.FC<CustomerKhataModalProps> = ({ customer
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-rose-600">
-                        {tx.type !== 'Payment' ? `Rs. ${tx.amount.toLocaleString()}` : '-'}
+                        {tx.type !== 'Payment' ? `Rs. ${tx.amount.toLocaleString()}` : 'Not Available'}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-emerald-600">
-                        {tx.type === 'Payment' ? `Rs. ${tx.amount.toLocaleString()}` : '-'}
+                        {tx.type === 'Payment' ? `Rs. ${tx.amount.toLocaleString()}` : 'Not Available'}
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-slate-700">
                         Rs. {tx.runningBalance.toLocaleString()}

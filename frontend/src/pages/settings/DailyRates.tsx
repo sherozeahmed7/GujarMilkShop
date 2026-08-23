@@ -1,13 +1,250 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { rateService, RateHistoryEntry } from '../../services/rate.service';
+
+function formatDisplayDate(value: string | null | undefined): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatRoleLabel(role: string | null | undefined): string {
+  if (!role) return '—';
+  return role
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function todayDateString(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export const DailyRates: React.FC = () => {
+  const [milkRate, setMilkRate] = useState('');
+  const [yogurtRate, setYogurtRate] = useState('');
+  const [savedMilkRate, setSavedMilkRate] = useState('');
+  const [savedYogurtRate, setSavedYogurtRate] = useState('');
+  const [history, setHistory] = useState<RateHistoryEntry[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [lastUpdatedBy, setLastUpdatedBy] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const hasChanges =
+    milkRate !== savedMilkRate || yogurtRate !== savedYogurtRate;
+
+  const loadRates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await rateService.getRates();
+      const milk = String(data.currentMilkRate || '');
+      const yogurt = String(data.currentYogurtRate || '');
+      setMilkRate(milk);
+      setYogurtRate(yogurt);
+      setSavedMilkRate(milk);
+      setSavedYogurtRate(yogurt);
+      setHistory(data.history || []);
+      setLastUpdated(data.lastUpdated);
+      setLastUpdatedBy(data.history?.[0]?.updatedByRole ?? null);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load rates');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRates();
+  }, [loadRates]);
+
+  const handleUpdate = async () => {
+    setSuccessMsg(null);
+    setError(null);
+
+    const milk = parseFloat(milkRate);
+    const yogurt = parseFloat(yogurtRate);
+
+    if (Number.isNaN(milk) || milk <= 0 || Number.isNaN(yogurt) || yogurt <= 0) {
+      setError('Milk and yogurt rates must be numbers greater than 0.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await rateService.updateRates({
+        milkRate: milk,
+        yogurtRate: yogurt,
+        date: todayDateString(),
+      });
+      setSuccessMsg('Rates updated successfully.');
+      await loadRates();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update rates');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Daily Rates</h1>
+    <div className="flex flex-col h-full gap-6 min-h-0">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Daily Rates Configuration</h1>
+          <p className="text-slate-500 text-sm mt-1">Set milk &amp; yogurt rates per kg. POS boxes update from these rates.</p>
+        </div>
+        <button
+          onClick={loadRates}
+          disabled={loading}
+          className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
-      <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col items-center justify-center text-slate-500">
-        <p className="text-lg">This is the placeholder for the Daily Rates configuration page.</p>
+
+      {error && (
+        <div className="flex-shrink-0 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm font-medium">
+          {error}
+        </div>
+      )}
+      {successMsg && (
+        <div className="flex-shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-4 py-3 text-sm font-medium">
+          {successMsg}
+        </div>
+      )}
+
+      {/* Current rates card — inspired by dark rates panel */}
+      <div className="flex-shrink-0 rounded-2xl bg-slate-900 text-white p-6 md:p-8 shadow-lg border border-slate-800">
+        {loading && history.length === 0 ? (
+          <div className="py-10 text-center text-slate-400 text-sm">Loading rates…</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+              {/* Milk */}
+              <div>
+                <div className="text-lg font-bold text-white mb-1">Milk</div>
+                <div className="text-sm text-slate-400 mb-3">Milk Rate (Rs/kg)</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={milkRate}
+                  onChange={(e) => {
+                    setMilkRate(e.target.value);
+                    setSuccessMsg(null);
+                  }}
+                  disabled={saving}
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-4 text-3xl md:text-4xl font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-70 tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+
+              {/* Yogurt */}
+              <div>
+                <div className="text-lg font-bold text-white mb-1">Yogurt</div>
+                <div className="text-sm text-slate-400 mb-3">Yogurt Rate (Rs/kg)</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={yogurtRate}
+                  onChange={(e) => {
+                    setYogurtRate(e.target.value);
+                    setSuccessMsg(null);
+                  }}
+                  disabled={saving}
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-4 text-3xl md:text-4xl font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-70 tabular-nums"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p className="text-sm text-slate-400">
+                Last updated:{' '}
+                <span className="text-slate-200 font-medium">
+                  {formatDisplayDate(lastUpdated)}
+                  {lastUpdatedBy ? ` by ${formatRoleLabel(lastUpdatedBy)}` : ''}
+                </span>
+              </p>
+
+              <button
+                onClick={handleUpdate}
+                disabled={!hasChanges || saving || loading}
+                className="bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold px-6 py-3 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-amber-400 shadow-sm"
+              >
+                {saving ? 'Updating…' : 'Update Rates'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Rate History */}
+      <div className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 flex-shrink-0">
+          <h2 className="text-lg font-bold text-slate-800">Rate History</h2>
+        </div>
+
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-slate-50 border-b border-slate-100">
+              <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                <th className="px-5 py-3">Date &amp; Time</th>
+                <th className="px-5 py-3">Milk Rate</th>
+                <th className="px-5 py-3">Yogurt Rate</th>
+                <th className="px-5 py-3">Updated By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && history.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">
+                    Loading history…
+                  </td>
+                </tr>
+              ) : history.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">
+                    No rate history yet. Update rates to create the first entry.
+                  </td>
+                </tr>
+              ) : (
+                history.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                    <td className="px-5 py-3.5 text-slate-700 font-medium">
+                      {formatDisplayDate(row.date)}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                      {row.milkRate}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                      {row.yogurtRate}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600">
+                      {formatRoleLabel(row.updatedByRole)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

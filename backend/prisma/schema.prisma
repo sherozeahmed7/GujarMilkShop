@@ -22,3 +22,67 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+
+// DailyRate model for tracking historical and current prices
+model DailyRate {
+  id            Int      @id @default(autoincrement())
+  milkRate      Float
+  yogurtRate    Float
+  updatedByRole String   // Role of the user who made the update (e.g., "super_admin")
+  date          DateTime // The effective date of the rate
+  createdAt     DateTime @default(now())
+}
+
+// Registered ledger customers only (walk-in/split do NOT create a Customer row)
+model Customer {
+  id           Int      @id @default(autoincrement())
+  name         String
+  phone        String?
+  address      String?
+  customerType String   // "daily_ledger" | "monthly_ledger"
+  status       String   @default("active") // "active" | "inactive"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sales        Sale[]
+}
+
+// Master transaction record
+model Sale {
+  id               Int        @id @default(autoincrement())
+  saleType         String     // "walk_in" | "split" | "ledger_daily" | "ledger_monthly"
+  customerId       Int?       // NULL for walk-in/split; REQUIRED for ledger
+  customer         Customer?  @relation(fields: [customerId], references: [id])
+  customerName     String?    // optional — walk-in/split only
+  customerPhone    String?    // optional — walk-in/split only
+  totalAmount      Float
+  paidAmount       Float
+  remainingBalance Float      // totalAmount - paidAmount
+  status           String     // "paid" | "partial" | "pending"
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  items            SaleItem[]
+  payments         Payment[]
+}
+
+// Line items per sale (unitPrice locked at sale time)
+model SaleItem {
+  id         Int      @id @default(autoincrement())
+  saleId     Int
+  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  itemName   String   // "milk" | "yogurt"
+  quantity   Float    // weight in kg
+  unitPrice  Float    // price per kg at time of sale
+  totalPrice Float    // quantity × unitPrice
+  createdAt  DateTime @default(now())
+}
+
+// Payment records per sale
+model Payment {
+  id        Int      @id @default(autoincrement())
+  saleId    Int
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  method    String   // "cash" | "online"
+  amount    Float
+  status    String   // "completed" | "partial" | "pending"
+  createdAt DateTime @default(now())
+}
