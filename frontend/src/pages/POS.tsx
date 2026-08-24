@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, X, Search, UserRound, ChevronLeft } from 'lucide-react';
 import { rateService, StandardPrices } from '../services/rate.service';
 import { saleService, CreateSalePayload, SaleItemPayload } from '../services/sale.service';
 import { customerService } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
-import { useDebounce } from '../hooks/useDebounce';
 
 interface CartItem {
   id: string;
@@ -76,19 +75,15 @@ export const POS: React.FC = () => {
   const [splitPaidAmount, setSplitPaidAmount] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [khataLedgerType, setKhataLedgerType] = useState<'daily_ledger' | 'monthly_ledger'>(
-    'daily_ledger'
-  );
   const [selectedKhataCustomer, setSelectedKhataCustomer] = useState<ApiCustomer | null>(null);
-  const [khataSearchResults, setKhataSearchResults] = useState<ApiCustomer[]>([]);
-  const [khataSearching, setKhataSearching] = useState(false);
-  const [khataSearchDone, setKhataSearchDone] = useState(false);
+  const [khataCustomers, setKhataCustomers] = useState<ApiCustomer[]>([]);
+  const [khataLoading, setKhataLoading] = useState(false);
+  const [khataLoadError, setKhataLoadError] = useState<string | null>(null);
+  const [khataFilter, setKhataFilter] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState<string | null>(null);
-
-  const debouncedKhataName = useDebounce(customerName, 400);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,61 +105,46 @@ export const POS: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  // Live search registered ledger customers when typing name on Khata tab
+  // Load registered ledger customers when Khata is selected
   useEffect(() => {
     if (paymentMethod !== 'khata') return;
 
-    const q = debouncedKhataName.trim();
-    if (q.length < 2) {
-      setKhataSearchResults([]);
-      setKhataSearchDone(false);
-      setKhataSearching(false);
-      return;
-    }
-
-    // If already selected and name matches selection, skip re-search noise
-    if (
-      selectedKhataCustomer &&
-      selectedKhataCustomer.name.toLowerCase() === q.toLowerCase()
-    ) {
-      return;
-    }
-
     let cancelled = false;
-    setKhataSearching(true);
-    setKhataSearchDone(false);
+    setKhataLoading(true);
+    setKhataLoadError(null);
 
     customerService
-      .getCustomers({
-        search: q,
-        customerType: khataLedgerType,
-        status: 'active',
-      })
+      .getCustomers({ status: 'active' })
       .then((list) => {
         if (cancelled) return;
-        setKhataSearchResults(list);
-        setKhataSearchDone(true);
-        // Clear selection if it no longer matches search / type
-        if (
-          selectedKhataCustomer &&
-          !list.some((c) => c.id === selectedKhataCustomer.id)
-        ) {
-          setSelectedKhataCustomer(null);
-        }
+        const ledgerOnly = list.filter(
+          (c) => c.customerType === 'daily_ledger' || c.customerType === 'monthly_ledger'
+        );
+        setKhataCustomers(ledgerOnly);
       })
-      .catch(() => {
+      .catch((err: any) => {
         if (cancelled) return;
-        setKhataSearchResults([]);
-        setKhataSearchDone(true);
+        setKhataCustomers([]);
+        setKhataLoadError(err?.message || 'Failed to load registered customers');
       })
       .finally(() => {
-        if (!cancelled) setKhataSearching(false);
+        if (!cancelled) setKhataLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [debouncedKhataName, khataLedgerType, paymentMethod]);
+  }, [paymentMethod]);
+
+  const filteredKhataCustomers = useMemo(() => {
+    const q = khataFilter.trim().toLowerCase();
+    if (!q) return khataCustomers;
+    return khataCustomers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q)
+    );
+  }, [khataCustomers, khataFilter]);
 
   const milkRatePerKg = prices?.milkRatePerKg ?? 0;
   const yogurtRatePerKg = prices?.yogurtRatePerKg ?? 0;
@@ -232,8 +212,7 @@ export const POS: React.FC = () => {
     setCustomerName('');
     setCustomerPhone('');
     setSelectedKhataCustomer(null);
-    setKhataSearchResults([]);
-    setKhataSearchDone(false);
+    setKhataFilter('');
   };
 
   const handleCheckout = async () => {
@@ -305,23 +284,19 @@ export const POS: React.FC = () => {
         customerPhone: customerPhone.trim(),
       };
     } else {
-      // khata / ledger
+      // khata / ledger — must pick a registered customer
       if (!selectedKhataCustomer) {
         setCheckoutError(
-          'Select a registered customer. If they are not registered yet, add them first on the Customers screen.'
-        );
-        return;
-      }
-      if (selectedKhataCustomer.customerType !== khataLedgerType) {
-        setCheckoutError(
-          `This customer is "${selectedKhataCustomer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily'}" ledger. Switch the Daily/Monthly toggle to match, or pick another customer.`
+          'Select a registered customer from the list. Register them first on the Customers screen if needed.'
         );
         return;
       }
 
       payload = {
         saleType:
-          khataLedgerType === 'daily_ledger' ? 'ledger_daily' : 'ledger_monthly',
+          selectedKhataCustomer.customerType === 'monthly_ledger'
+            ? 'ledger_monthly'
+            : 'ledger_daily',
         items,
         totalAmount,
         customerId: selectedKhataCustomer.id,
@@ -356,6 +331,8 @@ export const POS: React.FC = () => {
         : paymentMethod === 'khata'
           ? 'KHATA OK'
           : 'CASH OK';
+
+  const showKhataPicker = paymentMethod === 'khata' && !selectedKhataCustomer;
 
   return (
     <div className="h-full flex flex-col md:flex-row gap-6">
@@ -498,14 +475,119 @@ export const POS: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Panel - Current Bill */}
+      {/* Right Panel - Current Bill / Khata customer picker */}
       <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-4 min-h-0">
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
-          <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
+        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden min-h-[520px] md:min-h-0">
+
+          {showKhataPicker ? (
+            <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">
+              <div className="p-4 bg-blue-700 text-white flex-shrink-0">
+                <h2 className="font-bold text-sm tracking-wide uppercase">Select Customer</h2>
+                <p className="text-[11px] text-blue-100 mt-1">
+                  Choose a registered customer to add this bill to their khata.
+                </p>
+              </div>
+
+              <div className="p-4 border-b border-slate-100 flex-shrink-0 bg-slate-50">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={khataFilter}
+                    onChange={(e) => setKhataFilter(e.target.value)}
+                    placeholder="Filter by name or phone…"
+                    className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar bg-white min-h-0">
+                {khataLoading && (
+                  <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                    Loading customers…
+                  </div>
+                )}
+
+                {khataLoadError && (
+                  <div className="p-4">
+                    <p className="text-sm font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
+                      {khataLoadError}
+                    </p>
+                  </div>
+                )}
+
+                {!khataLoading && !khataLoadError && filteredKhataCustomers.length === 0 && (
+                  <div className="h-full flex items-center justify-center p-6 text-center">
+                    <p className="text-sm font-medium text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
+                      {khataCustomers.length === 0
+                        ? 'No registered customers yet. Add Daily or Monthly ledger customers on the Customers screen first.'
+                        : 'No customers match your filter.'}
+                    </p>
+                  </div>
+                )}
+
+                {!khataLoading && filteredKhataCustomers.length > 0 && (
+                  <div className="divide-y divide-slate-100">
+                    {filteredKhataCustomers.map((c) => {
+                      const isMonthly = c.customerType === 'monthly_ledger';
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedKhataCustomer(c);
+                            setCheckoutError(null);
+                          }}
+                          className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-blue-50 active:bg-blue-100 transition-colors"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
+                            <UserRound className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-bold text-slate-800 truncate">{c.name}</div>
+                            <div className="text-xs text-slate-500 truncate mt-0.5">
+                              {c.phone?.trim() ? c.phone : 'Not Available'}
+                            </div>
+                          </div>
+                          <span
+                            className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide ${
+                              isMonthly
+                                ? 'bg-violet-100 text-violet-700'
+                                : 'bg-sky-100 text-sky-700'
+                            }`}
+                          >
+                            {isMonthly ? 'Monthly' : 'Daily'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod('cash');
+                    setKhataFilter('');
+                    setCheckoutError(null);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-sm font-bold transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Back to Cash
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">
+          <div className="p-4 bg-slate-800 text-white flex justify-between items-center flex-shrink-0">
             <h2 className="font-bold text-sm tracking-wide">CURRENT BILL ({cart.length})</h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-50">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-50 min-h-0">
             {cart.length === 0 ? (
               <div className="h-full flex items-center justify-center text-slate-400 text-sm">
                 No items added yet
@@ -583,8 +665,11 @@ export const POS: React.FC = () => {
                     setCheckoutError(null);
                     setCheckoutSuccess(null);
                     setSelectedKhataCustomer(null);
-                    setKhataSearchResults([]);
-                    setKhataSearchDone(false);
+                    setKhataFilter('');
+                    if (method === 'khata') {
+                      setCustomerName('');
+                      setCustomerPhone('');
+                    }
                   }}
                   className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
                     paymentMethod === method
@@ -645,119 +730,26 @@ export const POS: React.FC = () => {
               </div>
             )}
 
-            {/* Khata / ledger fields */}
-            {paymentMethod === 'khata' && (
-              <div className="mb-4 space-y-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                <div>
-                  <label className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">
-                    Ledger type *
-                  </label>
-                  <div className="mt-2 flex gap-2 p-1 bg-white/80 rounded-xl border border-blue-100">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setKhataLedgerType('daily_ledger');
-                        setSelectedKhataCustomer(null);
-                        setKhataSearchResults([]);
-                        setKhataSearchDone(false);
-                      }}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                        khataLedgerType === 'daily_ledger'
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-slate-500'
-                      }`}
-                    >
-                      Daily
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setKhataLedgerType('monthly_ledger');
-                        setSelectedKhataCustomer(null);
-                        setKhataSearchResults([]);
-                        setKhataSearchDone(false);
-                      }}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                        khataLedgerType === 'monthly_ledger'
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-slate-500'
-                      }`}
-                    >
-                      Monthly
-                    </button>
+            {paymentMethod === 'khata' && selectedKhataCustomer && (
+              <div className="mb-4 flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
+                  <UserRound className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-blue-900 truncate">{selectedKhataCustomer.name}</div>
+                  <div className="text-[10px] text-blue-700 truncate">
+                    {selectedKhataCustomer.phone?.trim() || 'Not Available'}
+                    {' · '}
+                    {selectedKhataCustomer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily'}
                   </div>
                 </div>
-
-                <div className="relative">
-                  <label className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">
-                    Customer name * (search registered)
-                  </label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => {
-                      setCustomerName(e.target.value);
-                      setSelectedKhataCustomer(null);
-                      setCheckoutError(null);
-                    }}
-                    placeholder="Type at least 2 letters…"
-                    className="mt-1 w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-
-                  {khataSearching && (
-                    <p className="mt-1 text-[11px] text-blue-600 font-medium">Searching…</p>
-                  )}
-
-                  {!khataSearching &&
-                    khataSearchDone &&
-                    customerName.trim().length >= 2 &&
-                    !selectedKhataCustomer &&
-                    khataSearchResults.length === 0 && (
-                      <p className="mt-2 text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1.5">
-                        This person is not registered yet. First register them on the
-                        Customers screen as{' '}
-                        {khataLedgerType === 'daily_ledger' ? 'Daily' : 'Monthly'} ledger.
-                      </p>
-                    )}
-
-                  {!selectedKhataCustomer && khataSearchResults.length > 0 && (
-                    <div className="absolute z-20 left-0 right-0 mt-1 max-h-40 overflow-auto bg-white border border-blue-200 rounded-xl shadow-lg">
-                      {khataSearchResults.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedKhataCustomer(c);
-                            setCustomerName(c.name);
-                            setCustomerPhone(c.phone || '');
-                            setKhataSearchResults([]);
-                            setCheckoutError(null);
-                          }}
-                          className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-slate-50 last:border-0"
-                        >
-                          <div className="text-sm font-bold text-slate-800">{c.name}</div>
-                          <div className="text-[10px] text-slate-500">
-                            {c.phone || 'No phone'} ·{' '}
-                            {c.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily'}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {selectedKhataCustomer && (
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-800 font-medium">
-                    Selected: <strong>{selectedKhataCustomer.name}</strong>
-                    {selectedKhataCustomer.phone
-                      ? ` · ${selectedKhataCustomer.phone}`
-                      : ''}{' '}
-                    ·{' '}
-                    {selectedKhataCustomer.customerType === 'monthly_ledger'
-                      ? 'Monthly Ledger'
-                      : 'Daily Ledger'}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedKhataCustomer(null)}
+                  className="text-[10px] font-bold text-blue-700 hover:text-blue-900 uppercase flex-shrink-0"
+                >
+                  Change
+                </button>
               </div>
             )}
 
@@ -832,6 +824,8 @@ export const POS: React.FC = () => {
               </div>
             </div>
           </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
