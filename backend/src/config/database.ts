@@ -15,12 +15,12 @@ export const ALL_SCREENS = [
   'Khata / Ledger', 'Returns', 'Receipt Audit', 'Shifts', 'Cash Register', 'Backup', 'Expenses',
 
   // Reports
-  'Sales Report', 'Supplier Report', 'Customer Report', 'Inventory Report',
+  'Sales Report', 'F2 Sales Report', 'Supplier Report', 'Customer Report', 'Inventory Report',
   'Returns Report', 'Cash Register Report', 'Shifts Report', 'Expenses Report',
   'Backup Report', 'Profit & Loss', 'Activity Logs',
 
   // Settings
-  'Daily Rates', 'Shop Info', 'POS Config', 'Users & Roles', 'Audit Log',
+  'Daily Rates', 'Shop Info', 'POS Config', 'Users & Roles',
   'Cloud & Sync', 'Customer Display', 'Local Backup'
 ];
 
@@ -66,7 +66,7 @@ export async function connectDB() {
     // Attempt database connection
     await prisma.$connect();
     console.log('Database connected successfully');
-    
+
     // Auto-seed default super_admin user
     await seedSuperAdmin();
   } catch (error) {

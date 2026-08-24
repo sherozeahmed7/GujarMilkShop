@@ -1,13 +1,354 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { posConfigService, POSConfigData } from '../../services/posConfig.service';
 
 export const POSConfig: React.FC = () => {
+  const [config, setConfig] = useState<POSConfigData>({
+    shopName: '',
+    taxRate: 0,
+    currencySymbol: '',
+    lowStockAlertThreshold: 10,
+    printReceiptAutomatically: false,
+    showLogoOnReceipt: false,
+    receiptFooterText: '',
+    receiptWidth: '58mm',
+    requireCustomerName: false,
+    allowDiscount: false,
+    maxDiscountPercent: 0,
+    defaultPaymentMethod: 'cash',
+    showDailyRateOnPOS: false,
+    showCartSubtotal: false,
+    confirmBeforeSale: false,
+    autoClearCartAfterSale: false,
+  });
+
+  const [savedConfig, setSavedConfig] = useState<POSConfigData | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const hasChanges = JSON.stringify(config) !== JSON.stringify(savedConfig);
+
+  const loadConfig = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await posConfigService.getPOSConfig();
+      setConfig(data);
+      setSavedConfig(data);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load POS Configuration');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const handleUpdate = async () => {
+    setSuccessMsg(null);
+    setError(null);
+
+    setSaving(true);
+    try {
+      const updated = await posConfigService.updatePOSConfig(config);
+      setConfig(updated);
+      setSavedConfig(updated);
+      setSuccessMsg('POS Configuration updated successfully.');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update POS Configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (savedConfig) {
+      setConfig(savedConfig);
+      setSuccessMsg(null);
+      setError(null);
+    }
+  };
+
+  const handleChange = (field: keyof POSConfigData, value: any) => {
+    setConfig(prev => ({ ...prev, [field]: value }));
+    setSuccessMsg(null);
+  };
+
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">POS Config</h1>
+    <div className="flex flex-col h-full gap-6 min-h-0">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">POS Configuration</h1>
+          <p className="text-slate-500 text-sm mt-1">Configure general point of sale behaviour, receipts, and display settings.</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={loadConfig}
+            disabled={loading || saving}
+            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          
+          <button
+            onClick={handleReset}
+            disabled={!hasChanges || loading || saving}
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+          >
+            Reset
+          </button>
+
+          <button
+            onClick={handleUpdate}
+            disabled={!hasChanges || loading || saving}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
       </div>
-      <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col items-center justify-center text-slate-500">
-        <p className="text-lg">This is the placeholder for the POS Config page.</p>
+
+      {error && (
+        <div className="flex-shrink-0 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm font-medium">
+          {error}
+        </div>
+      )}
+      {successMsg && (
+        <div className="flex-shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-4 py-3 text-sm font-medium">
+          {successMsg}
+        </div>
+      )}
+
+      {/* Main Content Areas */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+        
+        {loading && !savedConfig ? (
+          <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading configuration...</div>
+        ) : (
+          <>
+            {/* Section 1 - General POS Settings */}
+            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800">General POS Settings</h2>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Shop Name</label>
+                    <input
+                      type="text"
+                      value={config.shopName}
+                      onChange={(e) => handleChange('shopName', e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Currency Symbol</label>
+                    <input
+                      type="text"
+                      value={config.currencySymbol}
+                      onChange={(e) => handleChange('currencySymbol', e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={config.taxRate}
+                      onChange={(e) => handleChange('taxRate', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Low Stock Alert Threshold</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={config.lowStockAlertThreshold}
+                      onChange={(e) => handleChange('lowStockAlertThreshold', parseInt(e.target.value, 10) || 0)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2 - Receipt Settings */}
+            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800">Receipt Settings</h2>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-4 justify-center">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.printReceiptAutomatically}
+                        onChange={(e) => handleChange('printReceiptAutomatically', e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                      />
+                      <span className="text-sm font-medium text-slate-700">Print Receipt Automatically</span>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.showLogoOnReceipt}
+                        onChange={(e) => handleChange('showLogoOnReceipt', e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                      />
+                      <span className="text-sm font-medium text-slate-700">Show Logo on Receipt</span>
+                    </label>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Receipt Width</label>
+                    <select
+                      value={config.receiptWidth}
+                      onChange={(e) => handleChange('receiptWidth', e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    >
+                      <option value="58mm">58mm</option>
+                      <option value="80mm">80mm</option>
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Receipt Footer Text</label>
+                    <textarea
+                      rows={3}
+                      value={config.receiptFooterText}
+                      onChange={(e) => handleChange('receiptFooterText', e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3 - Sale Behaviour */}
+            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800">Sale Behaviour</h2>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-4 justify-center">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.requireCustomerName}
+                        onChange={(e) => handleChange('requireCustomerName', e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                      />
+                      <span className="text-sm font-medium text-slate-700">Require Customer Name on Walk-in Sales</span>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.allowDiscount}
+                        onChange={(e) => handleChange('allowDiscount', e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                      />
+                      <span className="text-sm font-medium text-slate-700">Allow Discounts</span>
+                    </label>
+                  </div>
+                  
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Max Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        disabled={!config.allowDiscount}
+                        value={config.maxDiscountPercent}
+                        onChange={(e) => handleChange('maxDiscountPercent', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Default Payment Method</label>
+                      <select
+                        value={config.defaultPaymentMethod}
+                        onChange={(e) => handleChange('defaultPaymentMethod', e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="online">Online</option>
+                        <option value="split">Split</option>
+                        <option value="khata">Khata</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4 - Display Preferences */}
+            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800">Display Preferences</h2>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.showDailyRateOnPOS}
+                      onChange={(e) => handleChange('showDailyRateOnPOS', e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Show Daily Rate on POS Screen</span>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.showCartSubtotal}
+                      onChange={(e) => handleChange('showCartSubtotal', e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Show Cart Subtotal</span>
+                  </label>
+                  
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.confirmBeforeSale}
+                      onChange={(e) => handleChange('confirmBeforeSale', e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Confirm Before Sale</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.autoClearCartAfterSale}
+                      onChange={(e) => handleChange('autoClearCartAfterSale', e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Auto-Clear Cart After Sale</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+          </>
+        )}
       </div>
     </div>
   );

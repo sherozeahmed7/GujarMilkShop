@@ -6,13 +6,20 @@ import { ReportHeader } from '../../components/reports/ReportHeader';
 import { ReportFilters } from '../../components/reports/ReportFilters';
 import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, EmptyState, ErrorState } from '../../components/reports/ReportStates';
-import { Users, Banknote, CreditCard, AlertCircle, TrendingUp, Undo2 } from 'lucide-react';
+import { Users, Banknote, CreditCard, AlertCircle, TrendingUp, Undo2, ClipboardList } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, LineChart, Line, Legend
 } from 'recharts';
+import { CustomerMonthlyStatement } from '../../components/reports/CustomerMonthlyStatement';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
+
+interface SelectedCustomer {
+  id: number;
+  name: string;
+  phone: string | null;
+}
 
 export const CustomerReport: React.FC = () => {
   const [filter, setFilter] = useState<DateFilterType>({
@@ -24,6 +31,7 @@ export const CustomerReport: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -46,11 +54,25 @@ export const CustomerReport: React.FC = () => {
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone.includes(searchTerm)
   );
 
+  // ── Drill-down: show monthly statement for selected customer ──
+  if (selectedCustomer) {
+    return (
+      <ReportLayout>
+        <CustomerMonthlyStatement
+          customerId={selectedCustomer.id}
+          customerName={selectedCustomer.name}
+          customerPhone={selectedCustomer.phone}
+          onBack={() => setSelectedCustomer(null)}
+        />
+      </ReportLayout>
+    );
+  }
+
   return (
     <ReportLayout>
       <ReportHeader
         title="Customer Report"
-        description="Analysis of customer sales, payments, and outstanding credit."
+        description="Analysis of customer sales, payments, and outstanding credit. Click a customer to view their Monthly Milk Statement."
         exportData={filtered}
         exportColumns={[
           { header: 'Customer', dataKey: 'name' }, { header: 'Phone', dataKey: 'phone' },
@@ -119,6 +141,10 @@ export const CustomerReport: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center">
               <h3 className="font-bold text-slate-800">Customer Directory</h3>
+              <span className="text-xs text-slate-500 flex items-center gap-1">
+                <ClipboardList className="w-3.5 h-3.5" />
+                Click a customer to view Monthly Milk Statement
+              </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[900px]">
@@ -134,8 +160,18 @@ export const CustomerReport: React.FC = () => {
                     <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">No customers found.</td></tr>
                   )}
                   {filtered.map((c: any) => (
-                    <tr key={c.id} className="hover:bg-slate-50 transition-colors cursor-pointer">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-800">{c.name}</td>
+                    <tr
+                      key={c.id}
+                      className="hover:bg-blue-50 transition-colors cursor-pointer group"
+                      onClick={() => setSelectedCustomer({ id: c.id, name: c.name, phone: c.phone })}
+                      title="Click to view Monthly Milk Statement"
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-slate-800 group-hover:text-blue-700">
+                        <span className="flex items-center gap-1.5">
+                          {c.name}
+                          <ClipboardList className="w-3 h-3 text-slate-300 group-hover:text-blue-400 transition-colors" />
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-600">{c.phone}</td>
                       <td className="px-4 py-3 text-sm font-medium text-blue-600">{fmt(c.totalSales)}</td>
                       <td className="px-4 py-3 text-sm text-emerald-600">{fmt(c.paid)}</td>

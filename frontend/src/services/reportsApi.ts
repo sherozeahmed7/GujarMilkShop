@@ -296,35 +296,59 @@ export const getSupplierReport = async (_filter: DateFilterType) => {
 };
 
 // ─── Customer Report API ──────────────────────────────────────────────────────
-export const getCustomerReport = async (filter: DateFilterType) => {
-  await new Promise(r => setTimeout(r, 200));
-  const { sales } = getMockDataStore();
-  const s = filterByDateRange(sales, filter.startDate, filter.endDate).filter(x => x.status === 'Completed');
+// Mock customers matching milk-shop context.
+// Replace the function body with real API calls when backend is ready.
+const MOCK_CUSTOMERS = [
+  {
+    id: 1, name: 'Abdul Malik', phone: '0300-1234567',
+    totalSales: 52000, paid: 37000, credit: 15000, outstanding: 15000,
+    lastPurchase: new Date().toISOString(), isActive: true,
+  },
+  {
+    id: 2, name: 'Rehman Ghee Store', phone: '0321-9876543',
+    totalSales: 78000, paid: 60000, credit: 18000, outstanding: 18000,
+    lastPurchase: new Date().toISOString(), isActive: true,
+  },
+  {
+    id: 3, name: 'Sana Bakery', phone: '0333-5556677',
+    totalSales: 34500, paid: 30000, credit: 4500, outstanding: 4500,
+    lastPurchase: new Date().toISOString(), isActive: true,
+  },
+  {
+    id: 4, name: 'Al-Hamza Hotel', phone: '0311-4445566',
+    totalSales: 95000, paid: 95000, credit: 0, outstanding: 0,
+    lastPurchase: new Date().toISOString(), isActive: true,
+  },
+  {
+    id: 5, name: 'Gulshan Canteen', phone: '0345-7778899',
+    totalSales: 28000, paid: 20000, credit: 8000, outstanding: 8000,
+    lastPurchase: new Date().toISOString(), isActive: true,
+  },
+  {
+    id: 6, name: 'Farrukh Dairy', phone: '0322-1112233',
+    totalSales: 61000, paid: 61000, credit: 0, outstanding: 0,
+    lastPurchase: new Date().toISOString(), isActive: false,
+  },
+];
 
-  // Aggregate per customer from actual sales
-  const custMap: Record<string, { name: string; totalSales: number; credit: number; cash: number }> = {};
-  s.forEach(sale => {
-    if (!custMap[sale.customerId]) custMap[sale.customerId] = { name: sale.customer, totalSales: 0, credit: 0, cash: 0 };
-    custMap[sale.customerId].totalSales += sale.net;
-    if (sale.paymentMethod === 'Credit') custMap[sale.customerId].credit += sale.net;
-    if (sale.paymentMethod === 'Cash') custMap[sale.customerId].cash += sale.net;
+export const getCustomerReport = async (_filter: DateFilterType) => {
+  await new Promise(r => setTimeout(r, 250));
+
+  const customers = MOCK_CUSTOMERS;
+
+  const trendData = Array.from({ length: 8 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (7 - i));
+    return {
+      label: d.toLocaleDateString('en-PK', { weekday: 'short' }),
+      value: Math.round(Math.random() * 25000 + 8000),
+    };
   });
-
-  const customers = Object.entries(custMap).map(([id, c]) => ({
-    id, name: c.name, phone: '0300-0000000',
-    totalSales: c.totalSales, paid: c.cash,
-    credit: c.credit, returns: 0,
-    outstanding: c.credit * 0.4,
-    lastPurchase: new Date().toISOString(),
-    isActive: true,
-  })).sort((a, b) => b.totalSales - a.totalSales);
-
-  const trendData = toDailyTrend(s.map(x => ({ date: x.date, value: x.net })));
 
   return {
     summary: {
       totalCustomers: customers.length,
-      activeCustomers: customers.length,
+      activeCustomers: customers.filter(c => c.isActive).length,
       totalCustomerSales: customers.reduce((s, c) => s + c.totalSales, 0),
       totalCollected: customers.reduce((s, c) => s + c.paid, 0),
       totalOutstanding: customers.reduce((s, c) => s + c.outstanding, 0),
@@ -332,11 +356,17 @@ export const getCustomerReport = async (filter: DateFilterType) => {
       customerReturns: 0,
     },
     customers,
-    topCustomers: customers.slice(0, 5).map(c => ({ label: c.name.split(' ')[0], value: c.totalSales })),
-    outstandingChart: customers.filter(c => c.outstanding > 0).map(c => ({ label: c.name.split(' ')[0], value: c.outstanding })),
+    topCustomers: [...customers]
+      .sort((a, b) => b.totalSales - a.totalSales)
+      .slice(0, 5)
+      .map(c => ({ label: c.name.split(' ')[0], value: c.totalSales })),
+    outstandingChart: customers
+      .filter(c => c.outstanding > 0)
+      .map(c => ({ label: c.name.split(' ')[0], value: c.outstanding })),
     trendData,
   };
 };
+
 
 // ─── Inventory Report API ─────────────────────────────────────────────────────
 export const getInventoryReport = async () => {

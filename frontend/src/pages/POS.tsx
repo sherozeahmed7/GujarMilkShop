@@ -5,6 +5,8 @@ import { saleService, CreateSalePayload, SaleItemPayload } from '../services/sal
 import { customerService } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
 import { useDebounce } from '../hooks/useDebounce';
+import { MilkProducts } from './inventory/MilkProducts';
+import { ConfirmSaleModal } from '../components/pos/ConfirmSaleModal';
 
 interface CartItem {
   id: string;
@@ -67,6 +69,8 @@ export const POS: React.FC = () => {
 
   const [milkCustomAmount, setMilkCustomAmount] = useState('');
   const [yogurtCustomAmount, setYogurtCustomAmount] = useState('');
+
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   const [prices, setPrices] = useState<StandardPrices | null>(null);
   const [pricesLoading, setPricesLoading] = useState(true);
@@ -234,6 +238,21 @@ export const POS: React.FC = () => {
     setSelectedKhataCustomer(null);
     setKhataSearchResults([]);
     setKhataSearchDone(false);
+    setIsConfirmModalOpen(false);
+  };
+
+  const handleCheckoutClick = () => {
+    if (cart.length === 0 || finalTotal <= 0) {
+      setCheckoutError('Add items to the cart before completing the sale.');
+      return;
+    }
+    
+    const hasF2 = cart.some(item => ['Lassi', 'Butter', 'Ghee'].includes(item.name));
+    if (hasF2) {
+      setIsConfirmModalOpen(true);
+    } else {
+      handleCheckout();
+    }
   };
 
   const handleCheckout = async () => {
@@ -363,21 +382,19 @@ export const POS: React.FC = () => {
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex gap-2 mb-4">
           <button
-            className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors ${
-              activeTab === 'milk-yogurt'
+            className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors ${activeTab === 'milk-yogurt'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
-            }`}
+              }`}
             onClick={() => setActiveTab('milk-yogurt')}
           >
             Milk & Yogurt
           </button>
           <button
-            className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2 ${
-              activeTab === 'items'
+            className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2 ${activeTab === 'items'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
-            }`}
+              }`}
             onClick={() => setActiveTab('items')}
           >
             <Plus className="w-4 h-4" /> Items F2
@@ -385,7 +402,9 @@ export const POS: React.FC = () => {
         </div>
 
         <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
-          {pricesLoading ? (
+          {activeTab === 'items' ? (
+            <MilkProducts />
+          ) : pricesLoading ? (
             <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
               Loading standard prices…
             </div>
@@ -499,6 +518,7 @@ export const POS: React.FC = () => {
       </div>
 
       {/* Right Panel - Current Bill */}
+      {activeTab !== 'items' && (
       <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-4 min-h-0">
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
           <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
@@ -586,11 +606,10 @@ export const POS: React.FC = () => {
                     setKhataSearchResults([]);
                     setKhataSearchDone(false);
                   }}
-                  className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                    paymentMethod === method
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${paymentMethod === method
                       ? 'bg-white text-slate-800 shadow-sm'
                       : 'text-slate-500 hover:text-slate-700'
-                  }`}
+                    }`}
                 >
                   {method}
                 </button>
@@ -661,11 +680,10 @@ export const POS: React.FC = () => {
                         setKhataSearchResults([]);
                         setKhataSearchDone(false);
                       }}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                        khataLedgerType === 'daily_ledger'
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${khataLedgerType === 'daily_ledger'
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'text-slate-500'
-                      }`}
+                        }`}
                     >
                       Daily
                     </button>
@@ -677,11 +695,10 @@ export const POS: React.FC = () => {
                         setKhataSearchResults([]);
                         setKhataSearchDone(false);
                       }}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                        khataLedgerType === 'monthly_ledger'
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${khataLedgerType === 'monthly_ledger'
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'text-slate-500'
-                      }`}
+                        }`}
                     >
                       Monthly
                     </button>
@@ -795,7 +812,7 @@ export const POS: React.FC = () => {
               {paymentMethod === 'cash' && (
                 <button
                   type="button"
-                  onClick={handleCheckout}
+                  onClick={handleCheckoutClick}
                   disabled={submitting}
                   className="w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl p-4 flex justify-between items-center transition-colors disabled:opacity-50"
                 >
@@ -815,7 +832,7 @@ export const POS: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={handleCheckout}
+                  onClick={handleCheckoutClick}
                   disabled={submitting}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-4 font-bold tracking-wide transition-colors shadow-sm shadow-blue-600/20 disabled:opacity-50"
                 >
@@ -834,6 +851,22 @@ export const POS: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
+
+      {isConfirmModalOpen && (
+        <ConfirmSaleModal 
+          cart={cart}
+          discount={discount || 0}
+          finalTotal={finalTotal}
+          paymentMethod={paymentMethod}
+          customerName={customerName}
+          customerPhone={customerPhone}
+          selectedKhataCustomer={selectedKhataCustomer}
+          onConfirm={handleCheckout}
+          onCancel={() => setIsConfirmModalOpen(false)}
+          isProcessing={submitting}
+        />
+      )}
     </div>
   );
 };

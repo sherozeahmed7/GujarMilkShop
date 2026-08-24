@@ -5,20 +5,24 @@ export const ExpectedCashCard: React.FC = () => {
   const { currentRegister } = useRegisterStore();
 
   return (
-    <div className="bg-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-lg relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-emerald-400 to-emerald-500"></div>
-      <div className="absolute -left-16 -top-16 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl"></div>
-      <div className="absolute -right-16 -bottom-16 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl"></div>
-
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">
-        Current Expected Cash
-      </p>
-      <div className="flex items-baseline gap-2 relative z-10">
-        <span className="text-2xl font-bold text-emerald-400">Rs.</span>
-        <span className="text-5xl font-black text-white tracking-tight">
-          {currentRegister.expectedCash.toLocaleString()}
-        </span>
+    <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+      {/* Subtle decorative background pattern */}
+      <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #e2e8f0 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+      
+      <div className="relative z-10">
+        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">
+          Current Expected Cash
+        </p>
+        <div className="flex items-baseline justify-center gap-2">
+          <span className="text-2xl font-bold text-slate-400">Rs.</span>
+          <span className="text-5xl font-black text-slate-800 tracking-tight">
+            {currentRegister.expectedCash.toLocaleString()}
+          </span>
+        </div>
+        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-100">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Live Calculation
+        </div>
       </div>
     </div>
   );
