@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { UserService } from '../services/user.service';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest, isSuperAdmin } from '../middleware/auth.middleware';
+import { ALL_SCREENS } from '../config/database';
 
 export class UserController {
   /**
@@ -31,15 +32,7 @@ export class UserController {
       }
 
       // 4. Validate assignedScreens contains at least one valid screen
-      const validScreens = [
-        'Dashboard', 'Point of Sale', 'Inventory', 'Suppliers', 'Customers',
-        'Khata / Ledger', 'Returns', 'Receipt Audit', 'Shifts', 'Cash Register',
-        'Backup', 'Expenses', 'Sales Report', 'Supplier Report', 'Customer Report',
-        'Inventory Report', 'Returns Report', 'Cash Register Report', 'Shifts Report',
-        'Expenses Report', 'Backup Report', 'Profit & Loss', 'Activity Logs',
-        'Daily Rates', 'Shop Info', 'POS Config', 'Users & Roles', 'Audit Log',
-        'Cloud & Sync', 'Customer Display', 'Local Backup'
-      ];
+      const validScreens = ALL_SCREENS;
 
       if (!assignedScreens || !Array.isArray(assignedScreens) || assignedScreens.length === 0) {
         return ApiResponse.error(res, 'At least one assigned screen is required.', 400);
@@ -164,15 +157,7 @@ export class UserController {
       }
 
       // Validate assignedScreens contains at least one valid screen
-      const validScreens = [
-        'Dashboard', 'Point of Sale', 'Inventory', 'Suppliers', 'Customers',
-        'Khata / Ledger', 'Returns', 'Receipt Audit', 'Shifts', 'Cash Register',
-        'Backup', 'Expenses', 'Sales Report', 'Supplier Report', 'Customer Report',
-        'Inventory Report', 'Returns Report', 'Cash Register Report', 'Shifts Report',
-        'Expenses Report', 'Backup Report', 'Profit & Loss', 'Activity Logs',
-        'Daily Rates', 'Shop Info', 'POS Config', 'Users & Roles', 'Audit Log',
-        'Cloud & Sync', 'Customer Display', 'Local Backup'
-      ];
+      const validScreens = ALL_SCREENS;
 
       if (!assignedScreens || !Array.isArray(assignedScreens) || assignedScreens.length === 0) {
         return ApiResponse.error(res, 'At least one assigned screen is required.', 400);

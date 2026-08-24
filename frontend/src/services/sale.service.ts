@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 
 export interface SaleItemPayload {
-  itemName: 'milk' | 'yogurt';
+  itemName: 'milk' | 'yogurt' | 'lassi' | 'butter' | 'ghee';
   quantity: number;
   unitPrice: number;
 }
@@ -298,9 +298,13 @@ export const saleService = {
    */
   settleSale: async (
     id: number,
-    paymentMethod: 'cash' | 'online'
+    paymentMethod: 'cash' | 'online',
+    amount?: number
   ): Promise<SaleRecord> => {
-    const response = await apiClient.post(`/sales/${id}/settle`, { paymentMethod });
+    const response = await apiClient.post(`/sales/${id}/settle`, {
+      paymentMethod,
+      ...(amount !== undefined ? { amount } : {}),
+    });
     return response.data as SaleRecord;
   },
 };

@@ -5,6 +5,8 @@ import userRoutes from './user.routes';
 import rateRoutes from './rate.routes';
 import saleRoutes from './sale.routes';
 import customerRoutes from './customer.routes';
+import milkProductsRoutes from './milkProducts.routes';
+import heldCartRoutes from './heldCart.routes';
 
 const router = Router();
 
@@ -30,5 +32,11 @@ router.use('/sales', saleRoutes);
 
 // Customer (ledger) routes
 router.use('/customers', customerRoutes);
+
+// F2 Milk Products routes (stock, transactions, conversions)
+router.use('/milk-products', milkProductsRoutes);
+
+// Temporary POS bills (hold/resume)
+router.use('/held-carts', heldCartRoutes);
 
 export default router;

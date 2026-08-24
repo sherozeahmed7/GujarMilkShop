@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, X, Search, UserRound, ChevronLeft } from 'lucide-react';
+import { Plus, X, Search, UserRound, ChevronLeft, PauseCircle, RotateCcw, Trash2 } from 'lucide-react';
 import { rateService, StandardPrices } from '../services/rate.service';
 import { saleService, CreateSalePayload, SaleItemPayload } from '../services/sale.service';
+import { heldCartService, HeldCartRecord } from '../services/heldCart.service';
 import { customerService } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
 import { MilkProducts } from './inventory/MilkProducts';
@@ -21,13 +22,21 @@ function money(n: number): number {
 }
 
 function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number): SaleItemPayload[] {
+  const NAME_MAP: Record<string, 'milk' | 'yogurt' | 'lassi' | 'butter' | 'ghee'> = {
+    Milk: 'milk',
+    Yogurt: 'yogurt',
+    Lassi: 'lassi',
+    Butter: 'butter',
+    Ghee: 'ghee',
+  };
+
   const raw = cart
     .filter((c) => c.quantity > 0 && c.total > 0)
-    .map((c) => ({
-      itemName: (c.name.toLowerCase().includes('yogurt') ? 'yogurt' : 'milk') as 'milk' | 'yogurt',
-      quantity: c.quantity,
-      lineTotal: money(c.total),
-    }));
+    .map((c) => {
+      const itemName = NAME_MAP[c.name];
+      if (!itemName) throw new Error(`Unrecognised cart item name: "${c.name}"`);
+      return { itemName, quantity: c.quantity, lineTotal: money(c.total) };
+    });
 
   if (raw.length === 0) return [];
 
@@ -46,16 +55,11 @@ function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number):
     });
   }
 
-  // Derive unitPrice from line total so API sum(qty * unitPrice) matches totalAmount
   return raw.map((r, idx) => {
     const qty = money(r.quantity);
     const line = lineTotals[idx];
     const unitPrice = qty > 0 ? money(line / qty) : 0;
-    return {
-      itemName: r.itemName,
-      quantity: qty,
-      unitPrice,
-    };
+    return { itemName: r.itemName, quantity: qty, unitPrice };
   });
 }
 
@@ -69,6 +73,9 @@ export const POS: React.FC = () => {
   const [milkCustomAmount, setMilkCustomAmount] = useState('');
   const [yogurtCustomAmount, setYogurtCustomAmount] = useState('');
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  // Ref to trigger F2 stock refresh after a successful sale
+  const refreshF2StockRef = React.useRef<(() => void) | null>(null);
 
   const [prices, setPrices] = useState<StandardPrices | null>(null);
   const [pricesLoading, setPricesLoading] = useState(true);
@@ -87,6 +94,8 @@ export const POS: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState<string | null>(null);
+  const [heldCarts, setHeldCarts] = useState<HeldCartRecord[]>([]);
+  const [heldCartsLoading, setHeldCartsLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +115,21 @@ export const POS: React.FC = () => {
 
     loadPrices();
     return () => { cancelled = true; };
+  }, []);
+
+  const loadHeldCarts = async () => {
+    setHeldCartsLoading(true);
+    try {
+      setHeldCarts(await heldCartService.list());
+    } catch (err: any) {
+      setCheckoutError(err?.message || 'Failed to load held bills');
+    } finally {
+      setHeldCartsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHeldCarts();
   }, []);
 
   // Load registered ledger customers when Khata is selected
@@ -217,6 +241,74 @@ export const POS: React.FC = () => {
     setSelectedKhataCustomer(null);
     setKhataFilter('');
     setIsConfirmModalOpen(false);
+  };
+
+  const holdCurrentBill = async () => {
+    if (cart.length === 0) {
+      setCheckoutError('Add items to the cart before holding the bill.');
+      return;
+    }
+
+    setSubmitting(true);
+    setCheckoutError(null);
+    try {
+      await heldCartService.create({
+        cart,
+        discount,
+        paymentMethod,
+        splitPaidAmount,
+        customerName,
+        customerPhone,
+        selectedKhataCustomer,
+      });
+      resetAfterSale();
+      setCheckoutSuccess('Bill held successfully.');
+      await loadHeldCarts();
+    } catch (err: any) {
+      setCheckoutError(err?.message || 'Failed to hold bill');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resumeHeldBill = async (id: number) => {
+    if (cart.length > 0 && !window.confirm('Replace the current bill with this held bill?')) return;
+
+    setSubmitting(true);
+    setCheckoutError(null);
+    try {
+      const { snapshot } = await heldCartService.resume(id);
+      setCart(snapshot.cart);
+      setDiscount(snapshot.discount);
+      setPaymentMethod(snapshot.paymentMethod);
+      setSplitPaidAmount(snapshot.splitPaidAmount);
+      setCustomerName(snapshot.customerName);
+      setCustomerPhone(snapshot.customerPhone);
+      setSelectedKhataCustomer(snapshot.selectedKhataCustomer);
+      setIsDiscountOpen(snapshot.discount > 0);
+      setCheckoutSuccess('Held bill loaded into the cart.');
+      await loadHeldCarts();
+    } catch (err: any) {
+      setCheckoutError(err?.message || 'Failed to resume held bill');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const removeHeldBill = async (id: number) => {
+    if (!window.confirm('Delete this held bill permanently?')) return;
+
+    setSubmitting(true);
+    setCheckoutError(null);
+    try {
+      await heldCartService.remove(id);
+      setCheckoutSuccess('Held bill deleted successfully.');
+      await loadHeldCarts();
+    } catch (err: any) {
+      setCheckoutError(err?.message || 'Failed to delete held bill');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCheckoutClick = () => {
@@ -334,7 +426,12 @@ export const POS: React.FC = () => {
       }
       setCheckoutSuccess(label);
       resetAfterSale();
+      // Refresh F2 stock display if the sale contained F2 items
+      const hadF2 = cart.some((item) => ['Lassi', 'Butter', 'Ghee'].includes(item.name));
+      if (hadF2) refreshF2StockRef.current?.();
     } catch (err: any) {
+      // Close confirm modal so the error message is visible to the user
+      setIsConfirmModalOpen(false);
       setCheckoutError(err?.message || 'Failed to save sale');
     } finally {
       setSubmitting(false);
@@ -381,7 +478,10 @@ export const POS: React.FC = () => {
 
         <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
           {activeTab === 'items' ? (
-            <MilkProducts />
+            <MilkProducts
+              onAddToCart={(name, qty, unitPrice) => addToCart(name, qty, 'kg', qty * unitPrice, unitPrice)}
+              onRegisterRefresh={(fn) => { refreshF2StockRef.current = fn; }}
+            />
           ) : pricesLoading ? (
             <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
               Loading standard prices…
@@ -496,7 +596,6 @@ export const POS: React.FC = () => {
       </div>
 
       {/* Right Panel - Current Bill / Khata customer picker */}
-      {activeTab !== 'items' && (
       <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-4 min-h-0">
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden min-h-[520px] md:min-h-0">
 
@@ -606,6 +705,22 @@ export const POS: React.FC = () => {
             <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">
           <div className="p-4 bg-slate-800 text-white flex justify-between items-center flex-shrink-0">
             <h2 className="font-bold text-sm tracking-wide">CURRENT BILL ({cart.length})</h2>
+            <div className="flex items-center gap-2">
+              {heldCarts.length > 0 && (
+                <span className="text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                  {heldCarts.length} held
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={holdCurrentBill}
+                disabled={submitting || cart.length === 0}
+                title="Hold current bill"
+                className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <PauseCircle className="w-3.5 h-3.5" /> Hold
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-50 min-h-0">
@@ -642,6 +757,47 @@ export const POS: React.FC = () => {
           </div>
 
           <div className="p-5 border-t border-slate-100 bg-white">
+            {heldCarts.length > 0 && (
+              <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Held bills</span>
+                  {heldCartsLoading && <span className="text-[10px] text-amber-700">Loading...</span>}
+                </div>
+                <div className="max-h-24 space-y-1.5 overflow-y-auto">
+                  {heldCarts.map((heldCart) => (
+                    <div
+                      key={heldCart.id}
+                      className="flex w-full items-center justify-between rounded-lg border border-amber-100 bg-white px-2.5 py-2 hover:border-amber-300"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => resumeHeldBill(heldCart.id)}
+                        disabled={submitting}
+                        className="flex flex-1 items-center justify-between text-left disabled:opacity-50"
+                      >
+                        <span className="text-xs font-semibold text-slate-700">
+                          {heldCart.snapshot.cart.length} item{heldCart.snapshot.cart.length === 1 ? '' : 's'} · Rs. {heldCart.snapshot.cart.reduce((sum, item) => sum + item.total, 0).toFixed(0)}
+                        </span>
+                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-amber-700">
+                          <RotateCcw className="h-3 w-3" /> Load
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => removeHeldBill(heldCart.id)}
+                        disabled={submitting}
+                        className="ml-2 rounded-md border border-rose-200 bg-rose-50 p-1 text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                        title="Delete held bill"
+                        aria-label={`Delete held bill ${heldCart.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex justify-between items-center mb-2">
               <div className="text-sm font-medium text-slate-600">Subtotal:</div>
               <div className="text-sm font-bold text-slate-800">Rs. {subtotal.toFixed(0)}</div>
@@ -836,20 +992,20 @@ export const POS: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  disabled
-                  title="Hold coming soon"
-                  className="px-6 bg-slate-800 text-white rounded-xl py-4 font-bold tracking-wide opacity-40 cursor-not-allowed"
+                  onClick={holdCurrentBill}
+                  disabled={submitting || cart.length === 0}
+                  title="Hold current bill"
+                  className="px-6 bg-slate-800 text-white rounded-xl py-4 font-bold tracking-wide hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   HOLD
                 </button>
               </div>
             </div>
           </div>
-            </div>
+          </div>
           )}
         </div>
       </div>
-      )}
 
       {isConfirmModalOpen && (
         <ConfirmSaleModal

@@ -5,13 +5,15 @@ import { Plus } from 'lucide-react';
 interface Props {
   stock: MilkProductsDailyStock;
   onAddProduction: (qty: number) => void;
-  onAddSale: (qty: number) => void;
   onOpenDayEnd: () => void;
+  onAddToCart?: (name: string, qty: number, unitPrice: number) => void;
 }
 
-export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onAddSale, onOpenDayEnd }) => {
+export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onOpenDayEnd, onAddToCart }) => {
   const [prodInput, setProdInput] = useState('');
-  const [saleInput, setSaleInput] = useState('');
+  const [saleQty, setSaleQty] = useState('');
+  const [salePrice, setSalePrice] = useState('');
+  const [saleError, setSaleError] = useState('');
 
   const handleProd = () => {
     const q = parseFloat(prodInput);
@@ -19,10 +21,17 @@ export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onAddSal
     setProdInput('');
   };
 
-  const handleSale = () => {
-    const q = parseFloat(saleInput);
-    if (q > 0) onAddSale(q);
-    setSaleInput('');
+  const handleAddToCart = () => {
+    const qty = parseFloat(saleQty);
+    const price = parseFloat(salePrice);
+    if (!qty || qty <= 0 || !price || price <= 0) {
+      setSaleError('Enter a valid quantity and price > 0.');
+      return;
+    }
+    setSaleError('');
+    onAddToCart?.('Lassi', qty, price);
+    setSaleQty('');
+    setSalePrice('');
   };
 
   return (
@@ -62,16 +71,35 @@ export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onAddSal
             />
             <button onClick={handleProd} className="bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg border border-cyan-200 text-sm font-medium transition-colors"><Plus className="w-4 h-4"/></button>
           </div>
-          <div className="flex items-center gap-2">
-            <input 
-              type="number" 
-              placeholder="Quick Sale (kg)"
-              className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
-              value={saleInput}
-              onChange={e => setSaleInput(e.target.value)}
-            />
-            <button onClick={handleSale} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Sell</button>
-          </div>
+
+          {onAddToCart && (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sell → Add to Cart</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder="Qty (kg)"
+                  className={`flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500 ${saleError ? 'border-red-400' : 'border-slate-200'}`}
+                  value={saleQty}
+                  onChange={e => { setSaleQty(e.target.value); setSaleError(''); }}
+                />
+                <input
+                  type="number"
+                  placeholder="Rs/kg"
+                  className={`w-24 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500 ${saleError ? 'border-red-400' : 'border-slate-200'}`}
+                  value={salePrice}
+                  onChange={e => { setSalePrice(e.target.value); setSaleError(''); }}
+                />
+                <button
+                  onClick={handleAddToCart}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
+                >
+                  + Cart
+                </button>
+              </div>
+              {saleError && <p className="text-xs text-red-500">{saleError}</p>}
+            </div>
+          )}
           
           <button 
             onClick={onOpenDayEnd}

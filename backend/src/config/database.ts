@@ -5,23 +5,49 @@ import { SUPER_ADMIN_ROLE } from './constants';
 // Instantiate PrismaClient to interact with SQLite database
 export const prisma = new PrismaClient();
 
+if (!('heldCart' in prisma)) {
+  throw new Error('Prisma client is out of sync. Run "npx prisma generate" and restart the backend.');
+}
+
 /**
  * Pre-defined list of all available application screens/modules
  * Used to initialize the super_admin with full access.
  */
 export const ALL_SCREENS = [
   // Dashboard & Core Operations
-  'Dashboard', 'Point of Sale', 'Inventory', 'Suppliers', 'Customers',
-  'Khata / Ledger', 'Returns', 'Receipt Audit', 'Shifts', 'Cash Register', 'Backup', 'Expenses',
+  'Dashboard',
+  'Point of Sale',
+  'Inventory',
+  'Suppliers',
+  'Customers',
+  'Khata / Ledger',
+  'Returns',
+  'Receipt Audit',
+  'Shifts',
+  'Cash Register',
+  'Expenses',
 
   // Reports
-  'Sales Report', 'F2 Sales Report', 'Supplier Report', 'Customer Report', 'Inventory Report',
-  'Returns Report', 'Cash Register Report', 'Shifts Report', 'Expenses Report',
-  'Backup Report', 'Profit & Loss', 'Activity Logs',
+  'Sales Report',
+  'F2 Sales Report',
+  'Supplier Report',
+  'Customer Report',
+  'Inventory Report',
+  'Returns Report',
+  'Cash Register Report',
+  'Shifts Report',
+  'Expenses Report',
+  'Backup Report',
+  'Profit & Loss',
+  'Activity Logs',
 
   // Settings
-  'Daily Rates', 'Shop Info', 'POS Config', 'Users & Roles',
-  'Cloud & Sync', 'Customer Display', 'Local Backup'
+  'Daily Rates',
+  'Shop Info',
+  'POS Config',
+  'Users & Roles',
+  'Cloud & Sync',
+  'Local Backup',
 ];
 
 /**

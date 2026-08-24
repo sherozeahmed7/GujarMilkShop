@@ -283,11 +283,11 @@ export const Customers: React.FC = () => {
     }
   };
 
-  const handleCollectConfirm = async (paymentMethod: 'cash' | 'online') => {
+  const handleCollectConfirm = async (paymentMethod: 'cash' | 'online', amount?: number) => {
     if (!collectRow) return;
 
     if (collectRow.kind === 'ledger') {
-      await customerService.settleAll(collectRow.id, paymentMethod);
+      await customerService.settleAll(collectRow.id, paymentMethod, amount);
     } else if (collectRow.kind === 'split') {
       const key = normalizePhone(collectRow.phone) || `sale-${collectRow.id}`;
       const list = splitSalesByPhone[key] || [];
@@ -299,14 +299,21 @@ export const Customers: React.FC = () => {
         // Fallback: settle by sale ids on the row
         for (const saleId of collectRow.saleIds) {
           try {
-            await saleService.settleSale(saleId, paymentMethod);
+            await saleService.settleSale(saleId, paymentMethod, amount);
           } catch {
             // skip already settled
           }
         }
       } else {
+        const totalOutstanding = openSales.reduce((sum, sale) => sum + sale.remainingBalance, 0);
+        let remainingToCollect = amount ?? totalOutstanding;
+
         for (const sale of openSales) {
-          await saleService.settleSale(sale.id, paymentMethod);
+          if (remainingToCollect <= 0) break;
+          const saleDue = sale.remainingBalance;
+          const thisPayment = Math.min(saleDue, remainingToCollect);
+          await saleService.settleSale(sale.id, paymentMethod, thisPayment);
+          remainingToCollect -= thisPayment;
         }
       }
     } else {

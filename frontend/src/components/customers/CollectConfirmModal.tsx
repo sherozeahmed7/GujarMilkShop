@@ -5,7 +5,7 @@ import { CustomerTableRow } from '../../types/customer';
 interface CollectConfirmModalProps {
   row: CustomerTableRow;
   onClose: () => void;
-  onConfirm: (paymentMethod: 'cash' | 'online') => Promise<void>;
+  onConfirm: (paymentMethod: 'cash' | 'online', amount?: number) => Promise<void>;
 }
 
 export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
@@ -16,14 +16,29 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online'>('cash');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState<string>('');
 
-  const amount = row.balance ?? 0;
+  const totalAmount = row.balance ?? 0;
+  const effectiveAmount = customAmount.trim() === '' ? totalAmount : Number(customAmount);
 
   const handleConfirm = async () => {
     setError(null);
+
+    if (customAmount.trim() !== '') {
+      const parsed = Number(customAmount);
+      if (Number.isNaN(parsed) || parsed <= 0) {
+        setError('Please enter a valid amount greater than zero.');
+        return;
+      }
+      if (parsed > totalAmount) {
+        setError(`Amount cannot exceed the outstanding balance of Rs. ${totalAmount}.`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
-      await onConfirm(paymentMethod);
+      await onConfirm(paymentMethod, customAmount.trim() === '' ? undefined : Number(customAmount));
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to collect payment');
@@ -70,8 +85,26 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
           <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 flex justify-between items-center">
             <span className="text-sm font-medium text-slate-600">Total to collect</span>
             <span className="text-xl font-black text-rose-600">
-              Rs. {amount.toLocaleString()}
+              Rs. {totalAmount.toLocaleString()}
             </span>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Optional amount to collect now
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              placeholder={`Full amount: ${totalAmount}`}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+            />
+            <p className="text-[11px] text-slate-500">
+              Leave blank to collect the full outstanding balance. Any unpaid amount stays on khata.
+            </p>
           </div>
 
           {row.phone && (
@@ -131,10 +164,10 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={submitting || amount <= 0}
+            disabled={submitting || totalAmount <= 0 || (customAmount.trim() !== '' && Number(customAmount) > totalAmount)}
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50"
           >
-            {submitting ? 'Collecting…' : 'Yes, Clear All Bills'}
+            {submitting ? 'Collecting…' : customAmount.trim() === '' ? 'Yes, Clear All Bills' : 'Collect Partial'}
           </button>
         </div>
       </div>

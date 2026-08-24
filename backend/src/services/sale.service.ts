@@ -2,7 +2,8 @@ import { prisma } from '../config/database';
 
 const SALE_TYPES = ['walk_in', 'split', 'ledger_daily', 'ledger_monthly'] as const;
 const LEDGER_TYPES = ['ledger_daily', 'ledger_monthly'] as const;
-const ITEM_NAMES = ['milk', 'yogurt'] as const;
+const ITEM_NAMES = ['milk', 'yogurt', 'lassi', 'butter', 'ghee'] as const;
+const F2_ITEMS = ['lassi', 'butter', 'ghee'] as const;
 const PAYMENT_METHODS = ['cash', 'online'] as const;
 
 type SaleType = (typeof SALE_TYPES)[number];
@@ -231,25 +232,29 @@ function buildSalesAnalytics(
       value: netSales > 0 ? Math.round((amount / netSales) * 100) : 0
     }));
 
-  const categoryAmounts: Record<string, number> = { milk: 0, yogurt: 0 };
+  const categoryAmounts: Record<string, number> = { milk: 0, yogurt: 0, lassi: 0, butter: 0, ghee: 0 };
 
   for (const sale of sales) {
     for (const item of sale.items || []) {
-      const key = item.itemName === 'yogurt' ? 'yogurt' : 'milk';
+      const key = item.itemName in categoryAmounts ? item.itemName : 'milk';
       categoryAmounts[key] = money(categoryAmounts[key] + item.totalPrice);
     }
   }
 
-  const categoryTotal = money(categoryAmounts.milk + categoryAmounts.yogurt);
-  const categoryBreakdown = [
-    { label: 'Milk', amount: categoryAmounts.milk },
-    { label: 'Yogurt', amount: categoryAmounts.yogurt }
-  ]
-    .filter((c) => c.amount > 0)
-    .map((c) => ({
-      label: c.label,
-      amount: c.amount,
-      value: categoryTotal > 0 ? Math.round((c.amount / categoryTotal) * 100) : 0
+  const categoryTotal = money(
+    Object.values(categoryAmounts).reduce((s, v) => s + v, 0)
+  );
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    milk: 'Milk', yogurt: 'Yogurt', lassi: 'Lassi', butter: 'Butter', ghee: 'Ghee'
+  };
+
+  const categoryBreakdown = Object.entries(categoryAmounts)
+    .filter(([, amount]) => amount > 0)
+    .map(([key, amount]) => ({
+      label: CATEGORY_LABELS[key] || key,
+      amount,
+      value: categoryTotal > 0 ? Math.round((amount / categoryTotal) * 100) : 0
     }));
 
   return { summary, trend, paymentMethods, categoryBreakdown };
@@ -257,6 +262,51 @@ function buildSalesAnalytics(
 
 function isLedgerType(saleType: string): boolean {
   return (LEDGER_TYPES as readonly string[]).includes(saleType);
+}
+
+/**
+ * Called inside a Prisma transaction after a sale is created.
+ * If the sale contains F2 items (lassi, butter, ghee), deducts sold
+ * quantities from today's MilkProductDailyStock record.
+ */
+async function deductF2Stock(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  payload: CreateSalePayload
+): Promise<void> {
+  const f2Items = payload.items.filter((i) => (F2_ITEMS as readonly string[]).includes(i.itemName));
+  if (f2Items.length === 0) return;
+
+  const today = new Date();
+  const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+  const dayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+  const stock = await tx.milkProductDailyStock.findFirst({
+    where: { date: { gte: dayStart, lte: dayEnd } }
+  });
+
+  if (!stock) return; // Already checked earlier; this is a safety guard
+
+  let lassiSoldDelta = 0;
+  let butterSoldDelta = 0;
+  let gheeSoldDelta = 0;
+
+  for (const item of f2Items) {
+    if (item.itemName === 'lassi') lassiSoldDelta = money(lassiSoldDelta + item.quantity);
+    if (item.itemName === 'butter') butterSoldDelta = money(butterSoldDelta + item.quantity);
+    if (item.itemName === 'ghee') gheeSoldDelta = money(gheeSoldDelta + item.quantity);
+  }
+
+  await tx.milkProductDailyStock.update({
+    where: { id: stock.id },
+    data: {
+      lassiSold: money(stock.lassiSold + lassiSoldDelta),
+      lassiRemaining: money(stock.lassiRemaining - lassiSoldDelta),
+      butterSold: money(stock.butterSold + butterSoldDelta),
+      butterClosing: money(stock.butterClosing - butterSoldDelta),
+      gheeSold: money(stock.gheeSold + gheeSoldDelta),
+      gheeClosing: money(stock.gheeClosing - gheeSoldDelta),
+    }
+  });
 }
 
 export class SaleService {
@@ -356,6 +406,60 @@ export class SaleService {
       };
     }
 
+    // ========== F2 STOCK CHECK ==========
+    const hasF2 = normalizedItems.some((i) => (F2_ITEMS as readonly string[]).includes(i.itemName));
+
+    if (hasF2) {
+      // Get today's date range in local time
+      const today = new Date();
+      const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      const dayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+      const stock = await prisma.milkProductDailyStock.findFirst({
+        where: { date: { gte: dayStart, lte: dayEnd } }
+      });
+
+      if (!stock) {
+        return {
+          success: false,
+          statusCode: 422,
+          message: 'No F2 stock record found for today. Please initialise today\'s stock on the Items F2 page before selling Lassi, Butter, or Ghee.'
+        };
+      }
+
+      // Aggregate quantities per F2 product
+      const f2Qty: Record<string, number> = { lassi: 0, butter: 0, ghee: 0 };
+      for (const item of normalizedItems) {
+        if (item.itemName === 'lassi') f2Qty.lassi = money(f2Qty.lassi + item.quantity);
+        if (item.itemName === 'butter') f2Qty.butter = money(f2Qty.butter + item.quantity);
+        if (item.itemName === 'ghee') f2Qty.ghee = money(f2Qty.ghee + item.quantity);
+      }
+
+      if (f2Qty.lassi > 0 && f2Qty.lassi > stock.lassiRemaining) {
+        return {
+          success: false,
+          statusCode: 422,
+          message: `Insufficient Lassi stock. Requested: ${f2Qty.lassi} kg, Available: ${stock.lassiRemaining} kg.`
+        };
+      }
+      if (f2Qty.butter > 0 && f2Qty.butter > stock.butterClosing) {
+        return {
+          success: false,
+          statusCode: 422,
+          message: `Insufficient Butter stock. Requested: ${f2Qty.butter} kg, Available: ${stock.butterClosing} kg.`
+        };
+      }
+      if (f2Qty.ghee > 0 && f2Qty.ghee > stock.gheeClosing) {
+        return {
+          success: false,
+          statusCode: 422,
+          message: `Insufficient Ghee stock. Requested: ${f2Qty.ghee} kg, Available: ${stock.gheeClosing} kg.`
+        };
+      }
+
+      // Stock OK — deduct will happen atomically inside each sale-type branch via deductF2Stock()
+    }
+
     // ========== WALK-IN ==========
     if (saleType === 'walk_in') {
       const paid = money(Number(paidAmount));
@@ -394,36 +498,29 @@ export class SaleService {
         };
       }
 
-      const sale = await prisma.sale.create({
-        data: {
-          saleType,
-          customerId: null,
-          customerName: customerName?.trim() || null,
-          customerPhone: customerPhone?.trim() || null,
-          totalAmount: total,
-          paidAmount: paid,
-          remainingBalance: 0,
-          status: 'paid',
-          items: {
-            create: normalizedItems
-          },
-          payments: {
-            create: {
-              method: paymentMethod as PaymentMethod,
-              amount: paid,
-              status: 'completed'
+      const sale = await prisma.$transaction(async (tx) => {
+        const created = await tx.sale.create({
+          data: {
+            saleType,
+            customerId: null,
+            customerName: customerName?.trim() || null,
+            customerPhone: customerPhone?.trim() || null,
+            totalAmount: total,
+            paidAmount: paid,
+            remainingBalance: 0,
+            status: 'paid',
+            items: { create: normalizedItems },
+            payments: {
+              create: { method: paymentMethod as PaymentMethod, amount: paid, status: 'completed' }
             }
-          }
-        },
-        include: { items: true, payments: true }
+          },
+          include: { items: true, payments: true }
+        });
+        await deductF2Stock(tx, payload);
+        return created;
       });
 
-      return {
-        success: true,
-        statusCode: 201,
-        message: 'Walk-in sale created successfully.',
-        data: sale
-      };
+      return { success: true, statusCode: 201, message: 'Walk-in sale created successfully.', data: sale };
     }
 
     // ========== SPLIT ==========
@@ -475,36 +572,29 @@ export class SaleService {
 
       const remaining = money(total - paid);
 
-      const sale = await prisma.sale.create({
-        data: {
-          saleType,
-          customerId: null,
-          customerName: customerName?.trim() || null,
-          customerPhone: customerPhone?.trim() || null,
-          totalAmount: total,
-          paidAmount: paid,
-          remainingBalance: remaining,
-          status: 'partial',
-          items: {
-            create: normalizedItems
-          },
-          payments: {
-            create: {
-              method: paymentMethod as PaymentMethod,
-              amount: paid,
-              status: 'partial'
+      const sale = await prisma.$transaction(async (tx) => {
+        const created = await tx.sale.create({
+          data: {
+            saleType,
+            customerId: null,
+            customerName: customerName?.trim() || null,
+            customerPhone: customerPhone?.trim() || null,
+            totalAmount: total,
+            paidAmount: paid,
+            remainingBalance: remaining,
+            status: 'partial',
+            items: { create: normalizedItems },
+            payments: {
+              create: { method: paymentMethod as PaymentMethod, amount: paid, status: 'partial' }
             }
-          }
-        },
-        include: { items: true, payments: true }
+          },
+          include: { items: true, payments: true }
+        });
+        await deductF2Stock(tx, payload);
+        return created;
       });
 
-      return {
-        success: true,
-        statusCode: 201,
-        message: 'Split sale created successfully.',
-        data: sale
-      };
+      return { success: true, statusCode: 201, message: 'Split sale created successfully.', data: sale };
     }
 
     // ========== LEDGER (daily / monthly) ==========
@@ -549,36 +639,29 @@ export class SaleService {
       }
 
       // Ledger: paidAmount forced to 0; no payment method needed yet
-      const sale = await prisma.sale.create({
-        data: {
-          saleType: saleType as SaleType,
-          customerId: customer.id,
-          customerName: null,
-          customerPhone: null,
-          totalAmount: total,
-          paidAmount: 0,
-          remainingBalance: total,
-          status: 'pending',
-          items: {
-            create: normalizedItems
-          },
-          payments: {
-            create: {
-              method: 'cash', // placeholder until settlement; amount 0
-              amount: 0,
-              status: 'pending'
+      const sale = await prisma.$transaction(async (tx) => {
+        const created = await tx.sale.create({
+          data: {
+            saleType: saleType as SaleType,
+            customerId: customer.id,
+            customerName: null,
+            customerPhone: null,
+            totalAmount: total,
+            paidAmount: 0,
+            remainingBalance: total,
+            status: 'pending',
+            items: { create: normalizedItems },
+            payments: {
+              create: { method: 'cash', amount: 0, status: 'pending' }
             }
-          }
-        },
-        include: { items: true, payments: true, customer: true }
+          },
+          include: { items: true, payments: true, customer: true }
+        });
+        await deductF2Stock(tx, payload);
+        return created;
       });
 
-      return {
-        success: true,
-        statusCode: 201,
-        message: 'Ledger sale created successfully.',
-        data: sale
-      };
+      return { success: true, statusCode: 201, message: 'Ledger sale created successfully.', data: sale };
     }
 
     return {
@@ -687,7 +770,7 @@ export class SaleService {
    * - Not split / not partial → reject
    * - Double settlement protection
    */
-  static async settleSplitSale(saleId: number, paymentMethod: string) {
+  static async settleSplitSale(saleId: number, paymentMethod: string, amount?: number) {
     if (!paymentMethod || !(PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
       return {
         success: false,
@@ -735,6 +818,31 @@ export class SaleService {
     }
 
     const remaining = money(sale.remainingBalance);
+    const settleAmount = amount === undefined || amount === null ? remaining : money(Number(amount));
+
+    if (Number.isNaN(settleAmount)) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'Amount must be a valid number.'
+      };
+    }
+
+    if (settleAmount <= 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'Settlement amount must be greater than zero.'
+      };
+    }
+
+    if (settleAmount > remaining) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: `Amount cannot exceed the remaining balance of Rs. ${remaining}.`
+      };
+    }
 
     const updated = await prisma.$transaction(async (tx) => {
       // Mark existing partial payments as completed
@@ -743,22 +851,24 @@ export class SaleService {
         data: { status: 'completed' }
       });
 
-      // Record settlement payment for remaining due
       await tx.payment.create({
         data: {
           saleId: sale.id,
           method: paymentMethod as PaymentMethod,
-          amount: remaining,
+          amount: settleAmount,
           status: 'completed'
         }
       });
 
+      const newRemaining = money(remaining - settleAmount);
+      const newPaidAmount = money(sale.paidAmount + settleAmount);
+
       return tx.sale.update({
         where: { id: sale.id },
         data: {
-          paidAmount: money(sale.totalAmount),
-          remainingBalance: 0,
-          status: 'paid'
+          paidAmount: newPaidAmount,
+          remainingBalance: newRemaining,
+          status: newRemaining <= 0 ? 'paid' : 'partial'
         },
         include: { items: true, payments: true }
       });
@@ -767,7 +877,9 @@ export class SaleService {
     return {
       success: true,
       statusCode: 200,
-      message: 'Split sale settled successfully.',
+      message: settleAmount === remaining
+        ? 'Split sale settled successfully.'
+        : `Partial payment of Rs. ${settleAmount} recorded successfully.`,
       data: updated
     };
   }

@@ -69,16 +69,18 @@ export class CustomerService {
    * List registered ledger customers.
    * Query params:
    * - search: matches name or phone (case-insensitive contains)
-   * - dues: true → only customers with pending/partial remaining balance
+   * - dues: true → only customers with pending/partial remaining balance (legacy)
+   * - duesStatus: pending | paid (Paid/Pending filter; preferred over dues)
    * - customerType: daily_ledger | monthly_ledger
    * - status: active | inactive (default: active)
-   * Each row includes totalDue (sum of remainingBalance on open sales).
+   * Each row includes totalDue and lastSaleDate.
    */
   static async listCustomers(filters?: {
     status?: string;
     customerType?: string;
     search?: string;
     dues?: boolean;
+    duesStatus?: string;
   }) {
     const where: any = {};
 
@@ -104,12 +106,29 @@ export class CustomerService {
       ];
     }
 
-    if (filters?.dues) {
-      where.sales = {
-        some: {
-          status: { in: ['pending', 'partial'] },
-          remainingBalance: { gt: 0 }
-        }
+    const duesStatus = filters?.duesStatus?.trim()?.toLowerCase();
+    const openDuesFilter = {
+      some: {
+        status: { in: ['pending', 'partial'] },
+        remainingBalance: { gt: 0 }
+      }
+    };
+    const noOpenDuesFilter = {
+      none: {
+        status: { in: ['pending', 'partial'] },
+        remainingBalance: { gt: 0 }
+      }
+    };
+
+    if (duesStatus === 'pending' || filters?.dues) {
+      where.sales = openDuesFilter;
+    } else if (duesStatus === 'paid') {
+      where.sales = noOpenDuesFilter;
+    } else if (duesStatus && duesStatus !== 'all') {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'Invalid duesStatus. Allowed: pending, paid, all.'
       };
     }
 
@@ -118,25 +137,31 @@ export class CustomerService {
       orderBy: { id: 'desc' },
       include: {
         sales: {
-          where: {
-            status: { in: ['pending', 'partial'] },
-            remainingBalance: { gt: 0 }
-          },
-          select: { remainingBalance: true, createdAt: true }
+          orderBy: { createdAt: 'desc' },
+          select: {
+            remainingBalance: true,
+            createdAt: true,
+            status: true
+          }
         }
       }
     });
 
     const data = customers.map((c) => {
-      const totalDue = money(
-        c.sales.reduce((sum, s) => sum + s.remainingBalance, 0)
+      const openSales = c.sales.filter(
+        (s) =>
+          (s.status === 'pending' || s.status === 'partial') && s.remainingBalance > 0
       );
+      const totalDue = money(
+        openSales.reduce((sum, s) => sum + s.remainingBalance, 0)
+      );
+      const lastSale = c.sales[0];
 
       const { sales: _sales, ...rest } = c;
       return {
         ...rest,
         totalDue,
-        lastSaleDate: null as string | null
+        lastSaleDate: lastSale ? lastSale.createdAt.toISOString() : null
       };
     });
 
@@ -148,12 +173,15 @@ export class CustomerService {
   }
 
   /**
-   * Dashboard summary for Customers screen (global, unfiltered).
-   * - totalRows: active ledger customers + all walk-in + all split sales
-   * - totalOutstanding: open ledger dues + open split remaining balances
-   * - withDues: ledger accounts with dues + split sales still partial
+   * Dashboard summary.
+   * Default (no scope): Customers screen — mixes ledger + walk-in + split.
+   * scope=ledger: Khata Ledger cards only — accounts, outstanding, collectedToday.
    */
-  static async getCustomersSummary() {
+  static async getCustomersSummary(scope?: string) {
+    if (scope === 'ledger') {
+      return CustomerService.getLedgerSummary();
+    }
+
     const [activeLedgerCount, walkInCount, splitCount] = await Promise.all([
       prisma.customer.count({ where: { status: 'active' } }),
       prisma.sale.count({ where: { saleType: 'walk_in' } }),
@@ -224,6 +252,76 @@ export class CustomerService {
           ledgerWithDues,
           splitWithDues
         }
+      }
+    };
+  }
+
+  /**
+   * Khata Ledger summary cards (ledger customers only).
+   */
+  static async getLedgerSummary() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const [khataAccounts, outstandingAgg, collectedAgg, pendingCount, paidCount] =
+      await Promise.all([
+        prisma.customer.count({ where: { status: 'active' } }),
+        prisma.sale.aggregate({
+          where: {
+            saleType: { in: ['ledger_daily', 'ledger_monthly'] },
+            status: { in: ['pending', 'partial'] },
+            remainingBalance: { gt: 0 },
+            customer: { status: 'active' }
+          },
+          _sum: { remainingBalance: true }
+        }),
+        prisma.payment.aggregate({
+          where: {
+            amount: { gt: 0 },
+            status: 'completed',
+            createdAt: { gte: startOfToday, lte: endOfToday },
+            sale: {
+              saleType: { in: ['ledger_daily', 'ledger_monthly'] },
+              customer: { status: 'active' }
+            }
+          },
+          _sum: { amount: true }
+        }),
+        prisma.customer.count({
+          where: {
+            status: 'active',
+            sales: {
+              some: {
+                status: { in: ['pending', 'partial'] },
+                remainingBalance: { gt: 0 }
+              }
+            }
+          }
+        }),
+        prisma.customer.count({
+          where: {
+            status: 'active',
+            sales: {
+              none: {
+                status: { in: ['pending', 'partial'] },
+                remainingBalance: { gt: 0 }
+              }
+            }
+          }
+        })
+      ]);
+
+    return {
+      success: true,
+      statusCode: 200,
+      data: {
+        khataAccounts,
+        totalOutstanding: money(outstandingAgg._sum.remainingBalance || 0),
+        collectedToday: money(collectedAgg._sum.amount || 0),
+        pendingCount,
+        paidCount
       }
     };
   }
@@ -413,7 +511,7 @@ export class CustomerService {
    * - Double settlement → individual sales already paid are skipped by query
    * - Requires paymentMethod for the lump-sum settlement
    */
-  static async settleAllDues(customerId: number, paymentMethod: string) {
+  static async settleAllDues(customerId: number, paymentMethod: string, amount?: number) {
     if (!paymentMethod || !(PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
       return {
         success: false,
@@ -454,22 +552,50 @@ export class CustomerService {
       };
     }
 
-    const totalSettled = money(
+    const totalOutstanding = money(
       pendingSales.reduce((sum, s) => sum + s.remainingBalance, 0)
     );
 
+    const requestedAmount = amount === undefined || amount === null ? totalOutstanding : money(Number(amount));
+
+    if (Number.isNaN(requestedAmount)) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'Amount must be a valid number.'
+      };
+    }
+
+    if (requestedAmount <= 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'Collection amount must be greater than zero.'
+      };
+    }
+
+    if (requestedAmount > totalOutstanding) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: `Amount cannot exceed the customer outstanding balance of Rs. ${totalOutstanding}.`
+      };
+    }
+
     const settledSales = await prisma.$transaction(async (tx) => {
       const results = [];
+      let remainingToApply = requestedAmount;
 
       for (const sale of pendingSales) {
-        // Extra safety: skip if somehow already paid (double-settlement race)
-        if (sale.status === 'paid' || sale.remainingBalance <= 0) {
+        if (sale.status === 'paid' || sale.remainingBalance <= 0 || remainingToApply <= 0) {
           continue;
         }
 
-        const remaining = money(sale.remainingBalance);
+        const currentRemaining = money(sale.remainingBalance);
+        const applied = money(Math.min(currentRemaining, remainingToApply));
 
-        // Mark existing pending/partial payments as completed
+        if (applied <= 0) continue;
+
         await tx.payment.updateMany({
           where: {
             saleId: sale.id,
@@ -478,29 +604,28 @@ export class CustomerService {
           data: { status: 'completed' }
         });
 
-        // Record settlement payment for remaining due
-        if (remaining > 0) {
-          await tx.payment.create({
-            data: {
-              saleId: sale.id,
-              method: paymentMethod as PaymentMethod,
-              amount: remaining,
-              status: 'completed'
-            }
-          });
-        }
+        await tx.payment.create({
+          data: {
+            saleId: sale.id,
+            method: paymentMethod as PaymentMethod,
+            amount: applied,
+            status: 'completed'
+          }
+        });
 
+        const newRemaining = money(currentRemaining - applied);
         const updated = await tx.sale.update({
           where: { id: sale.id },
           data: {
-            paidAmount: money(sale.totalAmount),
-            remainingBalance: 0,
-            status: 'paid'
+            paidAmount: money(sale.paidAmount + applied),
+            remainingBalance: newRemaining,
+            status: newRemaining <= 0 ? 'paid' : 'partial'
           },
           include: { items: true, payments: true }
         });
 
         results.push(updated);
+        remainingToApply = money(remainingToApply - applied);
       }
 
       return results;
@@ -509,11 +634,13 @@ export class CustomerService {
     return {
       success: true,
       statusCode: 200,
-      message: `Settled ${settledSales.length} sale(s) successfully.`,
+      message: requestedAmount === totalOutstanding
+        ? `Settled ${settledSales.length} sale(s) successfully.`
+        : `Collected Rs. ${requestedAmount} and updated the remaining khata balance.`,
       data: {
         customer,
         settledCount: settledSales.length,
-        totalSettled,
+        totalSettled: requestedAmount,
         sales: settledSales
       }
     };

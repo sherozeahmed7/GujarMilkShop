@@ -23,6 +23,15 @@ model User {
   updatedAt       DateTime @updatedAt
 }
 
+// Temporary POS bills owned by the cashier who created them
+model HeldCart {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  snapshot  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // DailyRate model for tracking historical and current prices
 model DailyRate {
   id            Int      @id @default(autoincrement())
@@ -85,4 +94,48 @@ model Payment {
   amount    Float
   status    String   // "completed" | "partial" | "pending"
   createdAt DateTime @default(now())
+}
+
+// Daily stock record for F2 milk products (Lassi, Butter, Ghee)
+// One record per calendar date — enforced by unique constraint on date
+model MilkProductDailyStock {
+  id              Int      @id @default(autoincrement())
+  date            DateTime @unique
+  milkTotal       Float    @default(0)
+  lassiProduced   Float    @default(0)
+  lassiSold       Float    @default(0)
+  lassiRemaining  Float    @default(0)
+  butterOpening   Float    @default(0)
+  butterProduced  Float    @default(0)
+  butterSold      Float    @default(0)
+  butterConverted Float    @default(0)
+  butterClosing   Float    @default(0)
+  gheeOpening     Float    @default(0)
+  gheeProduced    Float    @default(0)
+  gheeSold        Float    @default(0)
+  gheeClosing     Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Transaction log for all F2 stock movements
+model MilkProductTransaction {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  product   String   // "Milk" | "Lassi" | "Butter" | "Ghee"
+  type      String   // "milk_added" | "lassi_produced" | "lassi_sold" | "butter_produced" | "butter_sold" | "butter_converted" | "ghee_produced" | "ghee_sold" | "opening" | "adjustment"
+  quantity  Float
+  reference String?
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+// Butter → Ghee conversion records
+model ButterGheeConversion {
+  id           Int      @id @default(autoincrement())
+  date         DateTime
+  butterUsed   Float
+  gheeProduced Float
+  notes        String?
+  createdAt    DateTime @default(now())
 }

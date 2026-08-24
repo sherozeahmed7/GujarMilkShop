@@ -10,7 +10,10 @@ import { DayEndLassiModal } from '../../components/milk-products/DayEndLassiModa
 import { ProductHistory } from '../../components/milk-products/ProductHistory';
 import { Calendar, Plus } from 'lucide-react';
 
-export const MilkProducts: React.FC = () => {
+export const MilkProducts: React.FC<{
+  onAddToCart?: (name: string, qty: number, unitPrice: number) => void;
+  onRegisterRefresh?: (fn: () => void) => void;
+}> = ({ onAddToCart, onRegisterRefresh }) => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [stock, setStock] = useState<MilkProductsDailyStock | null>(null);
   
@@ -21,6 +24,11 @@ export const MilkProducts: React.FC = () => {
 
   useEffect(() => {
     loadData();
+  }, [selectedDate]);
+
+  // Register loadData so POS can trigger a refresh after a sale
+  useEffect(() => {
+    onRegisterRefresh?.(loadData);
   }, [selectedDate]);
 
   const loadData = async () => {
@@ -49,37 +57,14 @@ export const MilkProducts: React.FC = () => {
     setStock(updated);
   };
   
-  const handleLassiSale = async (qty: number) => {
-    const updated = await milkProductsService.addLassiSale(selectedDate, qty);
-    setStock(updated);
-  };
-
   const handleButterProd = async (qty: number) => {
     const updated = await milkProductsService.addButterProduction(selectedDate, qty);
     setStock(updated);
   };
 
-  const handleButterSale = async (qty: number) => {
-    try {
-      const updated = await milkProductsService.addButterSale(selectedDate, qty);
-      setStock(updated);
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
   const handleGheeProd = async (qty: number) => {
     const updated = await milkProductsService.addGheeProduction(selectedDate, qty);
     setStock(updated);
-  };
-
-  const handleGheeSale = async (qty: number) => {
-    try {
-      const updated = await milkProductsService.addGheeSale(selectedDate, qty);
-      setStock(updated);
-    } catch (err: any) {
-      alert(err.message);
-    }
   };
 
   if (!stock) return <div className="p-8 text-center text-slate-500">Loading...</div>;
@@ -132,23 +117,23 @@ export const MilkProducts: React.FC = () => {
               <LassiSection 
                 stock={stock} 
                 onAddProduction={handleLassiProd} 
-                onAddSale={handleLassiSale} 
                 onOpenDayEnd={() => setIsLassiModalOpen(true)}
+                onAddToCart={onAddToCart}
               />
             </div>
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <ButterSection 
                 stock={stock} 
                 onAddProduction={handleButterProd} 
-                onAddSale={handleButterSale} 
                 onOpenConversion={() => setIsConversionModalOpen(true)}
+                onAddToCart={onAddToCart}
               />
             </div>
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <GheeSection 
                 stock={stock} 
-                onAddProduction={handleGheeProd} 
-                onAddSale={handleGheeSale} 
+                onAddProduction={handleGheeProd}
+                onAddToCart={onAddToCart}
               />
             </div>
           </div>

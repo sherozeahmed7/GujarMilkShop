@@ -1,9 +1,9 @@
 import { IMilkProductsRepository } from '../repositories/milkProducts.repository';
-import { mockMilkProductsRepository } from '../repositories/mockMilkProducts.repository';
+import { apiMilkProductsRepository } from '../repositories/apiMilkProducts.repository';
 import { MilkProductsDailyStock, MilkProductTransaction, ButterGheeConversion } from '../types/milkProducts.types';
 
-// Future: switch this to apiMilkProductsRepository
-const repository: IMilkProductsRepository = mockMilkProductsRepository;
+// Using real API repository — backend handles transaction logging internally
+const repository: IMilkProductsRepository = apiMilkProductsRepository;
 
 export const milkProductsService = {
   async getDailyStock(date: string): Promise<MilkProductsDailyStock> {
@@ -19,120 +19,39 @@ export const milkProductsService = {
   },
 
   async addMilk(date: string, qty: number): Promise<MilkProductsDailyStock> {
-    const stock = await repository.getDailyStock(date);
-    await repository.addTransaction({
-      date,
-      product: 'Milk',
-      type: 'milk_added',
-      quantity: qty
-    });
-    return repository.updateDailyStock(date, { milkTotal: stock.milkTotal + qty });
+    // POST /stock/milk — backend increments milkTotal and writes transaction
+    return repository.updateDailyStock(date, { milkTotal: qty });
   },
 
   async addLassiProduction(date: string, qty: number): Promise<MilkProductsDailyStock> {
-    const stock = await repository.getDailyStock(date);
-    await repository.addTransaction({
-      date,
-      product: 'Lassi',
-      type: 'lassi_produced',
-      quantity: qty
-    });
-    return repository.updateDailyStock(date, { lassiProduced: stock.lassiProduced + qty });
-  },
-
-  async addLassiSale(date: string, qty: number): Promise<MilkProductsDailyStock> {
-    const stock = await repository.getDailyStock(date);
-    await repository.addTransaction({
-      date,
-      product: 'Lassi',
-      type: 'lassi_sold',
-      quantity: qty
-    });
-    return repository.updateDailyStock(date, { lassiSold: stock.lassiSold + qty });
+    // POST /stock/lassi-production — backend increments lassiProduced + lassiRemaining and writes transaction
+    return repository.updateDailyStock(date, { lassiProduced: qty });
   },
 
   async addButterProduction(date: string, qty: number): Promise<MilkProductsDailyStock> {
-    const stock = await repository.getDailyStock(date);
-    await repository.addTransaction({
-      date,
-      product: 'Butter',
-      type: 'butter_produced',
-      quantity: qty
-    });
-    return repository.updateDailyStock(date, { butterProduced: stock.butterProduced + qty });
-  },
-
-  async addButterSale(date: string, qty: number): Promise<MilkProductsDailyStock> {
-    const stock = await repository.getDailyStock(date);
-    if (stock.butterClosing < qty) {
-      throw new Error(`Cannot sell ${qty} kg of Butter. Only ${stock.butterClosing} kg available.`);
-    }
-    await repository.addTransaction({
-      date,
-      product: 'Butter',
-      type: 'butter_sold',
-      quantity: qty
-    });
-    return repository.updateDailyStock(date, { butterSold: stock.butterSold + qty });
+    // POST /stock/butter-production — backend increments butterProduced + butterClosing and writes transaction
+    return repository.updateDailyStock(date, { butterProduced: qty });
   },
 
   async addGheeProduction(date: string, qty: number): Promise<MilkProductsDailyStock> {
-    const stock = await repository.getDailyStock(date);
-    await repository.addTransaction({
-      date,
-      product: 'Ghee',
-      type: 'ghee_produced',
-      quantity: qty
-    });
-    return repository.updateDailyStock(date, { gheeProduced: stock.gheeProduced + qty });
+    // POST /stock/ghee-production — backend increments gheeProduced + gheeClosing and writes transaction
+    return repository.updateDailyStock(date, { gheeProduced: qty });
   },
 
-  async addGheeSale(date: string, qty: number): Promise<MilkProductsDailyStock> {
-    const stock = await repository.getDailyStock(date);
-    if (stock.gheeClosing < qty) {
-      throw new Error(`Cannot sell ${qty} kg of Ghee. Only ${stock.gheeClosing} kg available.`);
-    }
-    await repository.addTransaction({
-      date,
-      product: 'Ghee',
-      type: 'ghee_sold',
-      quantity: qty
-    });
-    return repository.updateDailyStock(date, { gheeSold: stock.gheeSold + qty });
-  },
-
-  async convertButterToGhee(date: string, butterUsed: number, gheeProduced: number, notes?: string): Promise<MilkProductsDailyStock> {
+  async convertButterToGhee(
+    date: string,
+    butterUsed: number,
+    gheeProduced: number,
+    notes?: string
+  ): Promise<MilkProductsDailyStock> {
     const stock = await repository.getDailyStock(date);
     if (stock.butterClosing < butterUsed) {
-      throw new Error(`Not enough Butter to convert. Need ${butterUsed} kg, but only ${stock.butterClosing} kg available.`);
+      throw new Error(
+        `Not enough Butter to convert. Need ${butterUsed} kg, but only ${stock.butterClosing} kg available.`
+      );
     }
-
-    await repository.addConversion({
-      date,
-      butterUsed,
-      gheeProduced,
-      notes
-    });
-
-    await repository.addTransaction({
-      date,
-      product: 'Butter',
-      type: 'butter_converted',
-      quantity: butterUsed,
-      notes: `Converted to ${gheeProduced} kg Ghee`
-    });
-
-    await repository.addTransaction({
-      date,
-      product: 'Ghee',
-      type: 'ghee_produced',
-      quantity: gheeProduced,
-      notes: `Produced from ${butterUsed} kg Butter`
-    });
-
-    return repository.updateDailyStock(date, {
-      butterConverted: stock.butterConverted + butterUsed,
-      gheeProduced: stock.gheeProduced + gheeProduced
-    });
-  }
+    // POST /stock/conversion — backend atomically updates stock + writes conversion + writes 2 transactions
+    await repository.addConversion({ date, butterUsed, gheeProduced, notes });
+    return repository.getDailyStock(date);
+  },
 };

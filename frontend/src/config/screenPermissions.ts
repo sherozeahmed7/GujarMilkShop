@@ -1,3 +1,7 @@
+/**
+ * Canonical screen permissions — keep in sync with Sidebar nav items.
+ * Used by Users & Roles permission UI and ALL_SCREENS export.
+ */
 export const SCREEN_PERMISSIONS = {
   MAIN_MODULES: [
     'Dashboard',
@@ -10,7 +14,6 @@ export const SCREEN_PERMISSIONS = {
     'Receipt Audit',
     'Shifts',
     'Cash Register',
-    'Backup',
     'Expenses',
   ],
   SETTINGS: [
@@ -34,7 +37,7 @@ export const SCREEN_PERMISSIONS = {
     'Backup Report',
     'Profit & Loss',
     'Activity Logs',
-  ]
+  ],
 };
 
 export const ALL_SCREENS = [

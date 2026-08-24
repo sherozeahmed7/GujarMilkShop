@@ -23,10 +23,12 @@ export class CustomerController {
 
   /**
    * GET /api/customers/summary — global stats for summary cards
+   * Optional query: scope=ledger → Khata Ledger cards only
    */
   static async getSummary(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const result = await CustomerService.getCustomersSummary();
+      const scope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
+      const result = await CustomerService.getCustomersSummary(scope);
       return ApiResponse.success(res, 'Customer summary fetched successfully', result.data, 200);
     } catch (error) {
       next(error);
@@ -35,11 +37,11 @@ export class CustomerController {
 
   /**
    * GET /api/customers
-   * Query: search, dues (true|false), customerType, status
+   * Query: search, dues (true|false), duesStatus (pending|paid|all), customerType, status
    */
   static async listCustomers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { status, customerType, search, dues } = req.query;
+      const { status, customerType, search, dues, duesStatus } = req.query;
       const duesFlag =
         typeof dues === 'string' &&
         ['true', '1', 'yes'].includes(dues.toLowerCase());
@@ -48,7 +50,8 @@ export class CustomerController {
         status: status as string | undefined,
         customerType: customerType as string | undefined,
         search: search as string | undefined,
-        dues: duesFlag
+        dues: duesFlag,
+        duesStatus: duesStatus as string | undefined
       });
 
       if (!result.success) {
@@ -184,8 +187,8 @@ export class CustomerController {
         return ApiResponse.error(res, 'Invalid customer id.', 400);
       }
 
-      const { paymentMethod } = req.body;
-      const result = await CustomerService.settleAllDues(id, paymentMethod);
+      const { paymentMethod, amount } = req.body;
+      const result = await CustomerService.settleAllDues(id, paymentMethod, amount);
 
       if (!result.success) {
         return ApiResponse.error(res, result.message!, result.statusCode);

@@ -19,8 +19,10 @@ export interface CustomerListFilters {
   status?: string;
   customerType?: string;
   search?: string;
-  /** When true, only customers with open dues */
+  /** When true, only customers with open dues (legacy) */
   dues?: boolean;
+  /** pending | paid | all — Paid/Pending filter for Khata Ledger */
+  duesStatus?: 'pending' | 'paid' | 'all';
 }
 
 export interface CustomerSummaryStats {
@@ -29,9 +31,17 @@ export interface CustomerSummaryStats {
   withDues: number;
 }
 
+export interface LedgerSummaryStats {
+  khataAccounts: number;
+  totalOutstanding: number;
+  collectedToday: number;
+  pendingCount: number;
+  paidCount: number;
+}
+
 export const customerService = {
   /**
-   * GET /api/customers/summary
+   * GET /api/customers/summary — Customers screen (mixed ledger + walk-in + split)
    */
   getSummary: async (): Promise<CustomerSummaryStats> => {
     const response = await apiClient.get('/customers/summary');
@@ -39,7 +49,15 @@ export const customerService = {
   },
 
   /**
-   * GET /api/customers?search=&dues=&customerType=&status=
+   * GET /api/customers/summary?scope=ledger — Khata Ledger cards
+   */
+  getLedgerSummary: async (): Promise<LedgerSummaryStats> => {
+    const response = await apiClient.get('/customers/summary', { scope: 'ledger' });
+    return response.data as LedgerSummaryStats;
+  },
+
+  /**
+   * GET /api/customers?search=&dues=&duesStatus=&customerType=&status=
    */
   getCustomers: async (filters?: CustomerListFilters): Promise<ApiCustomer[]> => {
     const params: Record<string, string> = {};
@@ -47,6 +65,7 @@ export const customerService = {
     if (filters?.customerType) params.customerType = filters.customerType;
     if (filters?.search?.trim()) params.search = filters.search.trim();
     if (filters?.dues) params.dues = 'true';
+    if (filters?.duesStatus) params.duesStatus = filters.duesStatus;
 
     const response = await apiClient.get(
       '/customers',
@@ -87,10 +106,12 @@ export const customerService = {
    */
   settleAll: async (
     id: number,
-    paymentMethod: 'cash' | 'online'
+    paymentMethod: 'cash' | 'online',
+    amount?: number
   ): Promise<unknown> => {
     const response = await apiClient.post(`/customers/${id}/settle-all`, {
       paymentMethod,
+      ...(amount !== undefined ? { amount } : {}),
     });
     return response.data;
   },

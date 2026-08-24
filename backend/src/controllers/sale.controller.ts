@@ -97,8 +97,8 @@ export class SaleController {
         return ApiResponse.error(res, 'Invalid sale id.', 400);
       }
 
-      const { paymentMethod } = req.body;
-      const result = await SaleService.settleSplitSale(id, paymentMethod);
+      const { paymentMethod, amount } = req.body;
+      const result = await SaleService.settleSplitSale(id, paymentMethod, amount);
 
       if (!result.success) {
         return ApiResponse.error(res, result.message!, result.statusCode);
