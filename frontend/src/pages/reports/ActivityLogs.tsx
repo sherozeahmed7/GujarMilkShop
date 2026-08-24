@@ -3,7 +3,7 @@ import { activityLogger, ActivityLogEntry } from '../../services/activityLogger'
 import { ReportLayout } from '../../components/reports/ReportLayout';
 import { ReportHeader } from '../../components/reports/ReportHeader';
 import { SummaryCard } from '../../components/reports/SummaryCard';
-import { LoadingState, EmptyState, ErrorState } from '../../components/reports/ReportStates';
+import { LoadingState, ErrorState } from '../../components/reports/ReportStates';
 import { Activity, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -61,7 +61,6 @@ export const ActivityLogs: React.FC = () => {
 
   // Pagination logic
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
-  // Ensure current page is valid when filters change
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
@@ -130,7 +129,6 @@ export const ActivityLogs: React.FC = () => {
               <h3 className="font-bold text-slate-800">Activity Log</h3>
               <p className="text-xs text-slate-400 mt-0.5">{filtered.length} entries found</p>
             </div>
-            {/* Pagination Controls (Top) */}
             <div className="flex items-center gap-2">
               <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="p-1.5 rounded border border-slate-200 text-slate-500 disabled:opacity-50 hover:bg-slate-50 transition-colors">
                 <ChevronLeft className="w-4 h-4" />

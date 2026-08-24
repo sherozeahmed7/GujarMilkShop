@@ -16,9 +16,7 @@ import { DailyRates } from './pages/settings/DailyRates';
 import { ShopInfo } from './pages/settings/ShopInfo';
 import { POSConfig } from './pages/settings/POSConfig';
 import { UsersRoles } from './pages/settings/UsersRoles';
-import { AuditLog } from './pages/settings/AuditLog';
 import { CloudSync } from './pages/settings/CloudSync';
-import { CustomerDisplay } from './pages/settings/CustomerDisplay';
 import { LocalBackup } from './pages/settings/LocalBackup';
 import { Suppliers } from './pages/Suppliers';
 import { Customers } from './pages/Customers';
@@ -28,7 +26,6 @@ import { ReceiptAudit } from './pages/ReceiptAudit';
 import { Shifts } from './pages/Shifts';
 import { CashRegister } from './pages/CashRegister';
 import { ZReport } from './pages/ZReport';
-import { Backup } from './pages/Backup';
 import { Expenses } from './pages/Expenses';
 
 // Reports Imports
@@ -43,6 +40,7 @@ import { ShiftsReport } from './pages/reports/ShiftsReport';
 import { ExpensesReport } from './pages/reports/ExpensesReport';
 import { BackupReport } from './pages/reports/BackupReport';
 import { ActivityLogs } from './pages/reports/ActivityLogs';
+import { F2SalesReport } from './pages/reports/F2SalesReport';
 
 /**
  * ProtectedRoute Component:
@@ -102,9 +100,8 @@ function App() {
             <Route path="shifts" element={<Shifts />} />
             <Route path="register" element={<CashRegister />} />
             <Route path="zreport" element={<ZReport />} />
-            <Route path="backup" element={<Backup />} />
             <Route path="sales" element={<Sales />} />
-            
+
             {/* Settings Routes */}
             <Route path="settings">
               <Route index element={<Navigate to="daily-rates" replace />} />
@@ -112,14 +109,12 @@ function App() {
               <Route path="shop-info" element={<ShopInfo />} />
               <Route path="pos-config" element={<POSConfig />} />
               <Route path="users-roles" element={<UsersRoles />} />
-              <Route path="audit-log" element={<AuditLog />} />
               <Route path="cloud-sync" element={<CloudSync />} />
-              <Route path="customer-display" element={<CustomerDisplay />} />
               <Route path="local-backup" element={<LocalBackup />} />
             </Route>
 
             <Route path="expenses" element={<Expenses />} />
-            
+
             {/* Reports Routes */}
             <Route path="reports">
               <Route path="sales" element={<SalesReport />} />
@@ -133,6 +128,7 @@ function App() {
               <Route path="expenses" element={<ExpensesReport />} />
               <Route path="backups" element={<BackupReport />} />
               <Route path="logs" element={<ActivityLogs />} />
+              <Route path="f2-sales" element={<F2SalesReport />} />
             </Route>
           </Route>
         </Route>

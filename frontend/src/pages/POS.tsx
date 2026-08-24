@@ -4,6 +4,8 @@ import { rateService, StandardPrices } from '../services/rate.service';
 import { saleService, CreateSalePayload, SaleItemPayload } from '../services/sale.service';
 import { customerService } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
+import { MilkProducts } from './inventory/MilkProducts';
+import { ConfirmSaleModal } from '../components/pos/ConfirmSaleModal';
 
 interface CartItem {
   id: string;
@@ -66,6 +68,7 @@ export const POS: React.FC = () => {
 
   const [milkCustomAmount, setMilkCustomAmount] = useState('');
   const [yogurtCustomAmount, setYogurtCustomAmount] = useState('');
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   const [prices, setPrices] = useState<StandardPrices | null>(null);
   const [pricesLoading, setPricesLoading] = useState(true);
@@ -213,6 +216,21 @@ export const POS: React.FC = () => {
     setCustomerPhone('');
     setSelectedKhataCustomer(null);
     setKhataFilter('');
+    setIsConfirmModalOpen(false);
+  };
+
+  const handleCheckoutClick = () => {
+    if (cart.length === 0 || finalTotal <= 0) {
+      setCheckoutError('Add items to the cart before completing the sale.');
+      return;
+    }
+
+    const hasF2 = cart.some((item) => ['Lassi', 'Butter', 'Ghee'].includes(item.name));
+    if (hasF2) {
+      setIsConfirmModalOpen(true);
+    } else {
+      handleCheckout();
+    }
   };
 
   const handleCheckout = async () => {
@@ -362,7 +380,9 @@ export const POS: React.FC = () => {
         </div>
 
         <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
-          {pricesLoading ? (
+          {activeTab === 'items' ? (
+            <MilkProducts />
+          ) : pricesLoading ? (
             <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
               Loading standard prices…
             </div>
@@ -476,6 +496,7 @@ export const POS: React.FC = () => {
       </div>
 
       {/* Right Panel - Current Bill / Khata customer picker */}
+      {activeTab !== 'items' && (
       <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-4 min-h-0">
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden min-h-[520px] md:min-h-0">
 
@@ -787,7 +808,7 @@ export const POS: React.FC = () => {
               {paymentMethod === 'cash' && (
                 <button
                   type="button"
-                  onClick={handleCheckout}
+                  onClick={handleCheckoutClick}
                   disabled={submitting}
                   className="w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl p-4 flex justify-between items-center transition-colors disabled:opacity-50"
                 >
@@ -807,7 +828,7 @@ export const POS: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={handleCheckout}
+                  onClick={handleCheckoutClick}
                   disabled={submitting}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-4 font-bold tracking-wide transition-colors shadow-sm shadow-blue-600/20 disabled:opacity-50"
                 >
@@ -828,6 +849,22 @@ export const POS: React.FC = () => {
           )}
         </div>
       </div>
+      )}
+
+      {isConfirmModalOpen && (
+        <ConfirmSaleModal
+          cart={cart}
+          discount={discount || 0}
+          finalTotal={finalTotal}
+          paymentMethod={paymentMethod}
+          customerName={customerName}
+          customerPhone={customerPhone}
+          selectedKhataCustomer={selectedKhataCustomer}
+          onConfirm={handleCheckout}
+          onCancel={() => setIsConfirmModalOpen(false)}
+          isProcessing={submitting}
+        />
+      )}
     </div>
   );
 };

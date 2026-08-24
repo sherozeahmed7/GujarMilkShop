@@ -34,6 +34,7 @@ export async function createBackup(): Promise<BackupRecord> {
     path: `${BASE_PATH}${filename}`,
     createdAt: new Date().toISOString(),
     sizeKb: Math.floor(Math.random() * 900 + 300),
+    type: 'Manual',
   };
   return newBackup;
 }
@@ -106,4 +107,40 @@ export function exportToPDF(backups: BackupRecord[]): void {
     w.document.close();
     w.print();
   }
+}
+
+export async function deleteBackup(id: string): Promise<void> {
+  await delay(1000);
+}
+
+export async function getBackupFolder(): Promise<string> {
+  return BASE_PATH;
+}
+
+export async function changeBackupFolder(): Promise<string> {
+  await delay(500);
+  // Mock opening a folder dialog and picking a new one
+  return 'D:\\Backups\\RetailPOSBackup\\';
+}
+
+export async function resetBackupFolder(): Promise<string> {
+  await delay(300);
+  return BASE_PATH;
+}
+
+export async function getBackupSettings(): Promise<import('../types').AutoBackupSettings> {
+  return {
+    enabled: true,
+    schedule: 'Daily',
+    time: '02:00',
+    retention: '30',
+  };
+}
+
+export async function updateBackupSettings(settings: Partial<import('../types').AutoBackupSettings>): Promise<void> {
+  await delay(500);
+}
+
+export async function restoreBackupFromFile(file: File): Promise<void> {
+  await delay(2000);
 }

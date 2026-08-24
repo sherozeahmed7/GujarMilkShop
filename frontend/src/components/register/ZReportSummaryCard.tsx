@@ -20,7 +20,7 @@ function calculateHours(start?: string, end?: string) {
 
 export const ZReportSummaryCard: React.FC<ZReportSummaryCardProps> = ({ data }) => {
   return (
-    <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 overflow-hidden relative">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
       {/* Decorative gradient */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-emerald-400 to-emerald-500"></div>
       
@@ -29,81 +29,81 @@ export const ZReportSummaryCard: React.FC<ZReportSummaryCardProps> = ({ data }) 
           
           {/* Left Column */}
           <div className="space-y-4">
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Cashier</span>
-              <span className="font-bold text-white">{data.cashier}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Cashier</span>
+              <span className="font-bold text-slate-800">{data.cashier}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Shift Open</span>
-              <span className="font-bold text-white">{formatTime(data.shiftOpen)}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Shift Open</span>
+              <span className="font-bold text-slate-800">{formatTime(data.shiftOpen)}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Shift Close</span>
-              <span className="font-bold text-white">{formatTime(data.shiftClose)}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Shift Close</span>
+              <span className="font-bold text-slate-800">{formatTime(data.shiftClose)}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Total Hours Open</span>
-              <span className="font-bold text-white">
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Total Hours Open</span>
+              <span className="font-bold text-slate-800">
                 {data.shiftClose ? calculateHours(data.shiftOpen, data.shiftClose) : '—'}
               </span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Bills Count</span>
-              <span className="font-bold text-white">{data.billsCount}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Bills Count</span>
+              <span className="font-bold text-slate-800">{data.billsCount}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Gross Sales</span>
-              <span className="font-bold text-white">Rs. {data.grossSales.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Gross Sales</span>
+              <span className="font-bold text-slate-800">Rs. {data.grossSales.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Discounts</span>
-              <span className="font-bold text-rose-400">- Rs. {data.discounts.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Discounts</span>
+              <span className="font-bold text-rose-600">- Rs. {data.discounts.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Refunds</span>
-              <span className="font-bold text-rose-400">- Rs. {data.refunds.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Refunds</span>
+              <span className="font-bold text-rose-600">- Rs. {data.refunds.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Voids</span>
-              <span className="font-bold text-white">{data.voids} bills</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Voids</span>
+              <span className="font-bold text-slate-800">{data.voids} bills</span>
             </div>
           </div>
 
           {/* Right Column */}
           <div className="space-y-4">
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Opening Cash</span>
-              <span className="font-bold text-white">Rs. {data.openingBalance.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Opening Cash</span>
+              <span className="font-bold text-slate-800">Rs. {data.openingBalance.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Cash Sales</span>
-              <span className="font-bold text-emerald-400">Rs. {data.cashSales.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Cash Sales</span>
+              <span className="font-bold text-emerald-600">Rs. {data.cashSales.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Online Sales</span>
-              <span className="font-bold text-white">Rs. {data.onlineSales.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Online Sales</span>
+              <span className="font-bold text-slate-800">Rs. {data.onlineSales.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Khata / Credit Sales</span>
-              <span className="font-bold text-white">Rs. {data.khataSales.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Khata / Credit Sales</span>
+              <span className="font-bold text-slate-800">Rs. {data.khataSales.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-400">Expenses</span>
-              <span className="font-bold text-rose-400">- Rs. {data.expenses.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-500">Expenses</span>
+              <span className="font-bold text-rose-600">- Rs. {data.expenses.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2 mt-4 pt-4">
-              <span className="font-bold text-slate-300">Expected Cash</span>
-              <span className="font-bold text-emerald-400 text-lg">Rs. {data.expectedCash.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2 mt-4 pt-4">
+              <span className="font-semibold text-slate-600">Expected Cash</span>
+              <span className="font-bold text-emerald-600 text-lg">Rs. {data.expectedCash.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-sm border-b border-slate-700/50 pb-2">
-              <span className="font-bold text-slate-300">Counted Cash</span>
-              <span className="font-bold text-white">
+            <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+              <span className="font-semibold text-slate-600">Counted Cash</span>
+              <span className="font-bold text-slate-800">
                 {data.countedCash !== undefined ? `Rs. ${data.countedCash.toLocaleString()}` : 'Not counted'}
               </span>
             </div>
             <div className="flex justify-between items-center text-sm pb-2">
-              <span className="font-bold text-slate-300">Variance</span>
-              <span className={`font-bold ${data.variance !== undefined ? (data.variance < 0 ? 'text-rose-400' : data.variance > 0 ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-400'}`}>
+              <span className="font-semibold text-slate-600">Variance</span>
+              <span className={`font-bold ${data.variance !== undefined ? (data.variance < 0 ? 'text-rose-600' : data.variance > 0 ? 'text-amber-600' : 'text-emerald-600') : 'text-slate-500'}`}>
                 {data.variance !== undefined ? `Rs. ${data.variance.toLocaleString()}` : 'Not counted'}
               </span>
             </div>
