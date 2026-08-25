@@ -16,22 +16,14 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
   onDeleteClick
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('All Status');
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
-    const matchesStatus = statusFilter === 'All Status' || p.status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+    return (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.description.toLowerCase().includes(searchQuery.toLowerCase()));
   });
 
   const formatCurrency = (n: number) => `Rs. ${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-
-  // Extract unique categories for filter
-  const categories = Array.from(new Set(products.map(p => p.category)));
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -47,26 +39,6 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
             placeholder="Search by name or code..." 
           />
         </div>
-        <select 
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:w-40"
-        >
-          <option value="ALL">ALL CATEGORIES</option>
-          {categories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-        <select 
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:w-40"
-        >
-          <option value="All Status">All Status</option>
-          <option value="In Stock">In Stock</option>
-          <option value="Warning: Low">Warning: Low</option>
-          <option value="Out of Stock">Out of Stock</option>
-        </select>
       </div>
 
       {/* Table */}
