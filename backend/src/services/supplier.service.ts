@@ -80,9 +80,21 @@ export class SupplierService {
     if (!supplier) return { success: false, statusCode: 404, message: 'Supplier not found.' };
     try {
       const data = { date: payload.date, shift: payload.shift, milkType: payload.milkType, quantity, rate, amount: money(quantity * rate), notes: payload.notes?.trim() || null, createdById: userId };
-      const collection = collectionId
-        ? await prisma.supplierCollection.update({ where: { id: collectionId }, data })
-        : await prisma.supplierCollection.create({ data: { ...data, supplierId } });
+      const collection = await prisma.$transaction(async (tx) => {
+        const saved = collectionId
+          ? await tx.supplierCollection.update({ where: { id: collectionId }, data })
+          : await tx.supplierCollection.create({ data: { ...data, supplierId } });
+        const product = await tx.inventoryProduct.findFirst({ where: { code: 'MILK' } });
+        const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' } });
+        if (product) {
+          await tx.inventoryMovement.upsert({
+            where: { reference: `supplier-collection-${saved.id}` },
+            create: { productId: product.id, quantity, movementType: 'STOCK_IN', source: 'Supplier Purchase', reference: `supplier-collection-${saved.id}`, unitCost: rate, supplierId, userId, shiftId: shift?.id, date: new Date(`${payload.date}T00:00:00`) },
+            update: { productId: product.id, quantity, unitCost: rate, supplierId, userId, shiftId: shift?.id, date: new Date(`${payload.date}T00:00:00`) },
+          });
+        }
+        return saved;
+      });
       return { success: true, statusCode: collectionId ? 200 : 201, data: collection };
     } catch (error: any) {
       if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'A collection already exists for this supplier, date, and shift.' };
@@ -91,7 +103,10 @@ export class SupplierService {
   }
 
   static async deleteCollection(id: number) {
-    await prisma.supplierCollection.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.supplierCollection.delete({ where: { id } });
+      await tx.inventoryMovement.deleteMany({ where: { reference: `supplier-collection-${id}` } });
+    });
     return { success: true, statusCode: 200, data: null };
   }
 

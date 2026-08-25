@@ -9,6 +9,7 @@ import milkProductsRoutes from './milkProducts.routes';
 import heldCartRoutes from './heldCart.routes';
 import shiftRoutes from './shift.routes';
 import supplierRoutes from './supplier.routes';
+import inventoryRoutes from './inventory.routes';
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/milk-products', milkProductsRoutes);
 router.use('/held-carts', heldCartRoutes);
 router.use('/shifts', shiftRoutes);
 router.use('/suppliers', supplierRoutes);
+router.use('/inventory', inventoryRoutes);
 
 export default router;

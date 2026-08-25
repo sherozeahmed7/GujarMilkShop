@@ -82,6 +82,26 @@ function localDateKey(d: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput[], userId?: number) {
+  const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' } });
+  for (const item of items) {
+    const product = await tx.inventoryProduct.findFirst({
+      where: { OR: [{ code: item.itemName.toUpperCase() }, { name: { equals: item.itemName } }] }
+    });
+    if (!product) continue;
+    const reference = `sale-${saleId}-${item.itemName}`;
+    const existing = await tx.inventoryMovement.findUnique({ where: { reference } });
+    if (existing) continue;
+    const stock = (await tx.inventoryMovement.aggregate({ where: { productId: product.id }, _sum: { quantity: true } }))._sum.quantity || 0;
+    if (stock - item.quantity < 0) {
+      throw new Error(`Insufficient inventory for ${item.itemName}. Available: ${stock}.`);
+    }
+    await tx.inventoryMovement.create({
+      data: { productId: product.id, quantity: money(-item.quantity), movementType: 'SALE', source: 'Point of Sale', reference, userId, shiftId: shift?.id }
+    });
+  }
+}
+
 function buildTrendBuckets(
   start: Date,
   end: Date
@@ -314,7 +334,7 @@ export class SaleService {
    * Creates a sale (walk_in | split | ledger_daily | ledger_monthly)
    * with full edge-case validation.
    */
-  static async createSale(payload: CreateSalePayload) {
+  static async createSale(payload: CreateSalePayload, userId?: number) {
     const {
       saleType,
       items,
@@ -517,6 +537,7 @@ export class SaleService {
           include: { items: true, payments: true }
         });
         await deductF2Stock(tx, payload);
+        await recordInventorySale(tx, created.id, normalizedItems, userId);
         return created;
       });
 
@@ -591,6 +612,7 @@ export class SaleService {
           include: { items: true, payments: true }
         });
         await deductF2Stock(tx, payload);
+        await recordInventorySale(tx, created.id, normalizedItems, userId);
         return created;
       });
 
@@ -658,6 +680,7 @@ export class SaleService {
           include: { items: true, payments: true, customer: true }
         });
         await deductF2Stock(tx, payload);
+        await recordInventorySale(tx, created.id, normalizedItems, userId);
         return created;
       });
 

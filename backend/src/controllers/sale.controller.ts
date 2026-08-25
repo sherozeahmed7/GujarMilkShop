@@ -9,7 +9,7 @@ export class SaleController {
    */
   static async createSale(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const result = await SaleService.createSale(req.body);
+      const result = await SaleService.createSale(req.body, req.user?.userId);
 
       if (!result.success) {
         return ApiResponse.error(res, result.message!, result.statusCode);

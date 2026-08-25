@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { Product } from '../../types/inventory';
+import { inventoryService } from '../../services/inventoryService';
 
 interface AddProductModalProps {
   onClose: () => void;
-  onSave: (product: Omit<Product, 'id' | 'status'>) => void;
+  onSave: (product: Omit<Product, 'id' | 'status'>) => void | Promise<void>;
 }
 
 export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSave }) => {
@@ -19,6 +20,26 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const name = formData.name.trim();
+    if (!name) {
+      setFormData((current) => ({ ...current, cost: '', sellPrice: '' }));
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const pricing = await inventoryService.getPricing(name);
+        setFormData((current) => ({ ...current, cost: pricing.averageCost ? String(pricing.averageCost) : '', sellPrice: pricing.sellingPrice ? String(pricing.sellingPrice) : '' }));
+        setErrors((current) => ({ ...current, cost: pricing.averageCost ? '' : 'No supplier cost available', sellPrice: pricing.sellingPrice ? '' : 'Selling price is not configured in Daily Rates' }));
+      } catch {
+        setFormData((current) => ({ ...current, cost: '', sellPrice: '' }));
+        setErrors((current) => ({ ...current, cost: 'Supplier cost unavailable', sellPrice: 'Selling price is not configured in Daily Rates' }));
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [formData.name]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -26,35 +47,43 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
     if (!formData.code) newErrors.code = 'Code is required';
     if (!formData.unit) newErrors.unit = 'Unit is required';
     
-    if (isNaN(Number(formData.sellPrice)) || Number(formData.sellPrice) < 0) {
-      newErrors.sellPrice = 'Valid positive number required';
+    if (isNaN(Number(formData.sellPrice)) || Number(formData.sellPrice) <= 0) {
+      newErrors.sellPrice = 'Selling price is not configured in Daily Rates';
     }
-    if (isNaN(Number(formData.cost)) || Number(formData.cost) < 0) {
-      newErrors.cost = 'Valid positive number required';
+    if (isNaN(Number(formData.cost)) || Number(formData.cost) <= 0) {
+      newErrors.cost = 'No supplier cost is available for this product';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave({
-        name: formData.name,
-        code: formData.code,
-        description: formData.description,
-        category: 'Uncategorized',
-        unit: formData.unit,
-        sellPrice: Number(formData.sellPrice),
-        cost: Number(formData.cost),
-        tax: formData.tax,
-        stock: 0,
-        lowStockThreshold: 10,
-        tags: [],
-        isLocked: false
-      });
-      onClose();
+      setIsSaving(true);
+      setErrors({});
+      try {
+        await onSave({
+          name: formData.name,
+          code: formData.code,
+          description: formData.description,
+          category: 'Uncategorized',
+          unit: formData.unit,
+          sellPrice: Number(formData.sellPrice),
+          cost: Number(formData.cost),
+          tax: formData.tax,
+          stock: 0,
+          lowStockThreshold: 10,
+          tags: [],
+          isLocked: false
+        });
+        onClose();
+      } catch (error: any) {
+        setErrors({ form: error?.message || 'Unable to create product.' });
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -70,6 +99,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
         
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="p-6 flex-1 overflow-y-auto space-y-4">
+            {errors.form && <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{errors.form}</div>}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Product Code *</label>
@@ -139,8 +169,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
                   type="number" 
                   step="0.01"
                   value={formData.cost}
-                  onChange={(e) => setFormData({...formData, cost: e.target.value})}
-                  className={`w-full border ${errors.cost ? 'border-rose-500' : 'border-slate-200'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`} 
+                  readOnly
+                  className={`w-full border ${errors.cost ? 'border-rose-500' : 'border-slate-200'} rounded-lg px-3 py-2 text-sm bg-slate-100 focus:outline-none`}
                   placeholder="0.00" 
                 />
                 {errors.cost && <p className="text-xs text-rose-500 mt-1">{errors.cost}</p>}
@@ -151,8 +181,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
                   type="number" 
                   step="0.01"
                   value={formData.sellPrice}
-                  onChange={(e) => setFormData({...formData, sellPrice: e.target.value})}
-                  className={`w-full border ${errors.sellPrice ? 'border-rose-500' : 'border-slate-200'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`} 
+                  readOnly
+                  className={`w-full border ${errors.sellPrice ? 'border-rose-500' : 'border-slate-200'} rounded-lg px-3 py-2 text-sm bg-slate-100 focus:outline-none`}
                   placeholder="0.00" 
                 />
                 {errors.sellPrice && <p className="text-xs text-rose-500 mt-1">{errors.sellPrice}</p>}
@@ -166,8 +196,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
               Cancel
             </button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm">
-              Save Product
+            <button type="submit" disabled={isSaving} className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm disabled:opacity-60">
+              {isSaving ? 'Saving...' : 'Save Product'}
             </button>
           </div>
         </form>

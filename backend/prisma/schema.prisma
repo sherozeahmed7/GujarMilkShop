@@ -42,6 +42,43 @@ model Supplier {
   updatedAt         DateTime @updatedAt
   collections       SupplierCollection[]
   payments          SupplierPayment[]
+  inventoryMovements InventoryMovement[]
+}
+
+model InventoryProduct {
+  id              Int      @id @default(autoincrement())
+  code            String   @unique
+  name            String
+  description     String?
+  category        String   @default("Dairy")
+  unit            String   @default("kg")
+  tax             String   @default("Exempt")
+  lowStockThreshold Float  @default(0)
+  isActive        Boolean  @default(true)
+  isLocked        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  movements      InventoryMovement[]
+}
+
+model InventoryMovement {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  product       InventoryProduct @relation(fields: [productId], references: [id])
+  quantity      Float
+  movementType  String
+  source        String
+  reference     String   @unique
+  unitCost      Float?
+  supplierId    Int?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  shiftId       Int?
+  date          DateTime @default(now())
+  userId        Int?
+  createdAt     DateTime @default(now())
+
+  @@index([productId, date])
+  @@index([movementType, date])
 }
 
 model SupplierCollection {

@@ -1,0 +1,18 @@
+import { Response, NextFunction } from 'express';
+import { InventoryService } from '../services/inventory.service';
+import { ApiResponse } from '../utils/apiResponse';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
+
+const id = (value: string) => Number(value);
+export class InventoryController {
+  static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { return ApiResponse.success(res, 'Inventory products fetched successfully', await InventoryService.list(typeof req.query.search === 'string' ? req.query.search : undefined)); } catch (error) { next(error); } }
+  static async summary(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { return ApiResponse.success(res, 'Inventory summary fetched successfully', await InventoryService.summary()); } catch (error) { next(error); } }
+  static async pricing(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const name = typeof req.query.name === 'string' ? req.query.name.trim() : ''; if (!name) return ApiResponse.error(res, 'Product name is required.', 400); return ApiResponse.success(res, 'Inventory pricing fetched successfully', await InventoryService.pricing(name)); } catch (error) { next(error); } }
+  static async get(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const result = await InventoryService.get(id(req.params.id)); return result.success ? ApiResponse.success(res, 'Inventory product fetched successfully', result.data) : ApiResponse.error(res, result.message!, result.statusCode); } catch (error) { next(error); } }
+  static async create(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const result = await InventoryService.createProduct(req.body); return result.success ? ApiResponse.success(res, 'Product created successfully', result.data, result.statusCode) : ApiResponse.error(res, result.message!, result.statusCode); } catch (error) { next(error); } }
+  static async update(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const result = await InventoryService.updateProduct(id(req.params.id), req.body); return result.success ? ApiResponse.success(res, 'Product updated successfully', result.data) : ApiResponse.error(res, result.message!, result.statusCode); } catch (error) { next(error); } }
+  static async remove(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const result = await InventoryService.deleteProduct(id(req.params.id)); return result.success ? ApiResponse.success(res, 'Product deleted successfully', result.data) : ApiResponse.error(res, result.message!, result.statusCode); } catch (error) { next(error); } }
+  static async movements(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { return ApiResponse.success(res, 'Inventory movements fetched successfully', await InventoryService.movements(req.query.productId ? id(String(req.query.productId)) : undefined)); } catch (error) { next(error); } }
+  static async stockIn(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { return ApiResponse.success(res, 'Inventory stock-in fetched successfully', await InventoryService.stockIn(req.query.productId ? id(String(req.query.productId)) : undefined)); } catch (error) { next(error); } }
+  static async record(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const result = await InventoryService.record(req.user!.userId, req.body); return result.success ? ApiResponse.success(res, 'Inventory movement recorded successfully', result.data, result.statusCode) : ApiResponse.error(res, result.message!, result.statusCode); } catch (error) { next(error); } }
+}

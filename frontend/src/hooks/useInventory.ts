@@ -12,42 +12,52 @@ export const useInventory = () => {
     lowStockCount: 0,
     outOfStockCount: 0
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(() => {
-    setProducts(inventoryService.getProducts());
-    setStockInRecords(inventoryService.getStockInRecords());
-    setMovements(inventoryService.getMovements());
-    setSummary(inventoryService.getSummary());
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [nextProducts, nextStockIn, nextMovements, nextSummary] = await Promise.all([
+        inventoryService.getProducts(),
+        inventoryService.getStockInRecords(),
+        inventoryService.getMovements(),
+        inventoryService.getSummary(),
+      ]);
+      setProducts(nextProducts);
+      setStockInRecords(nextStockIn);
+      setMovements(nextMovements);
+      setSummary(nextSummary);
+    } catch (loadError: any) {
+      setError(loadError?.message || 'Failed to load inventory.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    inventoryService.initializeMockData();
     loadData();
   }, [loadData]);
 
-  const addProduct = (product: Omit<Product, 'id' | 'status'>) => {
-    inventoryService.createProduct(product);
-    loadData();
+  const addProduct = async (product: Omit<Product, 'id' | 'status'>) => {
+    await inventoryService.createProduct(product);
+    await loadData();
   };
 
-  const updateProduct = (id: string, product: Partial<Omit<Product, 'id' | 'stock'>>) => {
-    inventoryService.updateProduct(id, product);
-    loadData();
+  const updateProduct = async (id: string, product: Partial<Omit<Product, 'id' | 'stock'>>) => {
+    await inventoryService.updateProduct(id, product);
+    await loadData();
   };
 
-  const deleteProduct = (id: string) => {
-    inventoryService.deleteProduct(id);
-    loadData();
+  const deleteProduct = async (id: string) => {
+    await inventoryService.deleteProduct(id);
+    await loadData();
   };
 
-  const addStockIn = (data: Omit<StockIn, 'id' | 'date' | 'totalCost'>) => {
-    inventoryService.addStockIn(data);
-    loadData();
-  };
-
-  const adjustStock = (productId: string, type: 'Add Stock' | 'Remove Stock' | 'Set Stock', quantity: number, reason: string, user: string) => {
-    inventoryService.adjustStock(productId, type, quantity, reason, user);
-    loadData();
+  const adjustStock = async (productId: string, type: 'Add Stock' | 'Remove Stock' | 'Set Stock', quantity: number, reason: string, _user: string) => {
+    await inventoryService.adjustStock(productId, type, quantity, reason);
+    await loadData();
   };
 
   return {
@@ -55,10 +65,11 @@ export const useInventory = () => {
     stockInRecords,
     movements,
     summary,
+    isLoading,
+    error,
     addProduct,
     updateProduct,
     deleteProduct,
-    addStockIn,
     adjustStock,
     refresh: loadData
   };

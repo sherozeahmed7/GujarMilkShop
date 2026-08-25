@@ -20,7 +20,9 @@ export const Inventory: React.FC = () => {
     addProduct,
     updateProduct,
     deleteProduct,
-    adjustStock
+    adjustStock,
+    isLoading,
+    error
   } = useInventory();
 
   const [activeTab, setActiveTab] = useState('Products');
@@ -67,6 +69,8 @@ export const Inventory: React.FC = () => {
 
       {/* Summary Cards */}
       <InventorySummaryCards summary={summary} />
+      {isLoading && <div className="text-xs font-medium text-slate-400">Loading inventory...</div>}
+      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</div>}
 
       {/* Main Content Area */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden min-h-[500px]">
@@ -125,8 +129,7 @@ export const Inventory: React.FC = () => {
         <AddProductModal 
           onClose={() => setShowAddProduct(false)} 
           onSave={(data) => {
-            addProduct(data);
-            handleAction('Product added successfully');
+            return addProduct(data).then(() => handleAction('Product added successfully'));
           }} 
         />
       )}
@@ -136,8 +139,7 @@ export const Inventory: React.FC = () => {
           product={editingProduct}
           onClose={() => setEditingProduct(null)}
           onSave={(id, updates) => {
-            updateProduct(id, updates);
-            handleAction('Product updated successfully');
+            updateProduct(id, updates).then(() => handleAction('Product updated successfully')).catch(() => undefined);
           }}
         />
       )}
@@ -148,8 +150,7 @@ export const Inventory: React.FC = () => {
           message={`Are you sure you want to delete ${deletingProduct.name}? This action cannot be undone.`}
           onClose={() => setDeletingProduct(null)}
           onConfirm={() => {
-            deleteProduct(deletingProduct.id);
-            handleAction('Product deleted successfully');
+            deleteProduct(deletingProduct.id).then(() => handleAction('Product deleted successfully')).catch(() => undefined);
           }}
         />
       )}
@@ -159,8 +160,7 @@ export const Inventory: React.FC = () => {
           product={adjustingStockProduct}
           onClose={() => setAdjustingStockProduct(null)}
           onSave={(id, type, qty, reason, user) => {
-            adjustStock(id, type, qty, reason, user);
-            handleAction('Stock adjusted successfully');
+            adjustStock(id, type, qty, reason, user).then(() => handleAction('Stock adjusted successfully')).catch(() => undefined);
           }}
         />
       )}
