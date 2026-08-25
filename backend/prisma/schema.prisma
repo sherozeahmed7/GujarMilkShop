@@ -23,6 +23,58 @@ model User {
   updatedAt       DateTime @updatedAt
   openedShifts     Shift[]  @relation("ShiftOpenedBy")
   closedShifts     Shift[]  @relation("ShiftClosedBy")
+  createdSupplierCollections SupplierCollection[] @relation("CollectionCreatedBy")
+  createdSupplierPayments    SupplierPayment[]    @relation("PaymentCreatedBy")
+}
+
+model Supplier {
+  id                Int      @id @default(autoincrement())
+  name              String
+  code              String   @unique
+  phone             String?
+  defaultRate       Float    @default(0)
+  cowRate           Float    @default(0)
+  buffaloRate       Float    @default(0)
+  cycleType         String   @default("Monthly Cycle")
+  isActive          Boolean  @default(true)
+  guaranteedAdvance Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  collections       SupplierCollection[]
+  payments          SupplierPayment[]
+}
+
+model SupplierCollection {
+  id          Int      @id @default(autoincrement())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  date        String
+  shift       String
+  milkType    String
+  quantity    Float
+  rate        Float
+  amount      Float
+  notes       String?
+  createdById Int?
+  createdBy   User?    @relation("CollectionCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([supplierId, date, shift])
+  @@index([date])
+}
+
+model SupplierPayment {
+  id          Int      @id @default(autoincrement())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  date        String
+  amount      Float
+  method      String   @default("cash")
+  notes       String?
+  createdById Int?
+  createdBy   User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
 }
 
 // Cash drawer session for one shop day. Only one open shift is allowed at a time.

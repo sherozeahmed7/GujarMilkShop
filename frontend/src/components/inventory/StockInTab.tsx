@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { StockIn, Product } from '../../types/inventory';
 
 interface StockInTabProps {
   stockInRecords: StockIn[];
   products: Product[];
-  onAddStockInClick: () => void;
 }
 
-export const StockInTab: React.FC<StockInTabProps> = ({ stockInRecords, products, onAddStockInClick }) => {
+export const StockInTab: React.FC<StockInTabProps> = ({ stockInRecords, products }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredRecords = stockInRecords.filter(record => {
@@ -34,12 +33,6 @@ export const StockInTab: React.FC<StockInTabProps> = ({ stockInRecords, products
             placeholder="Search reference, product, supplier..." 
           />
         </div>
-        <button 
-          onClick={onAddStockInClick}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm w-full sm:w-auto justify-center"
-        >
-          <Plus className="w-4 h-4" /> Receive Stock
-        </button>
       </div>
 
       {/* Table */}

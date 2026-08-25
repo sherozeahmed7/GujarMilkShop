@@ -32,7 +32,8 @@ async function expectedCash(shift: { openingCash: number; openedAt: Date; closed
   const payments = await prisma.payment.findMany({
     where: {
       method: 'cash',
-      status: 'completed',
+      // Split sales store their upfront cash as "partial" until the sale is fully settled.
+      status: { in: ['completed', 'partial'] },
       createdAt: { gte: shift.openedAt, ...(shift.closedAt ? { lte: shift.closedAt } : {}) },
     },
     select: { amount: true },

@@ -37,6 +37,8 @@ export interface LedgerSummaryStats {
   collectedToday: number;
   pendingCount: number;
   paidCount: number;
+  supplierAccounts?: number;
+  supplierPayables?: number;
 }
 
 export const customerService = {

@@ -50,6 +50,15 @@ export const KhataSummaryCards: React.FC<KhataSummaryCardsProps> = ({
           </h3>
         </div>
       </div>
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100 flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0">
+          <BookOpen className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Supplier Payables</p>
+          <h3 className="text-2xl font-bold text-amber-600 mt-1">{loading ? '…' : formatCurrency(summary.supplierPayables || 0)}</h3>
+        </div>
+      </div>
     </div>
   );
 };

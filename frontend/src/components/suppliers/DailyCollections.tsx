@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Supplier, ShiftType, MilkType, MilkCollection } from '../../types';
+import { Supplier, ShiftType, MilkType } from '../../types';
 import { useSupplierStore } from '../../store/supplierStore';
 import { Calendar as CalendarIcon, Save, Trash2, Edit2 } from 'lucide-react';
 

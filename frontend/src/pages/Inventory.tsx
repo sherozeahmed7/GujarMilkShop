@@ -7,7 +7,6 @@ import { StockInTab } from '../components/inventory/StockInTab';
 import { StockMovementsTab } from '../components/inventory/StockMovementsTab';
 import { AddProductModal } from '../components/inventory/AddProductModal';
 import { EditProductModal } from '../components/inventory/EditProductModal';
-import { AddStockInModal } from '../components/inventory/AddStockInModal';
 import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
 import { DeleteConfirmModal } from '../components/inventory/DeleteConfirmModal';
 import { Product } from '../types/inventory';
@@ -21,7 +20,6 @@ export const Inventory: React.FC = () => {
     addProduct,
     updateProduct,
     deleteProduct,
-    addStockIn,
     adjustStock
   } = useInventory();
 
@@ -33,7 +31,6 @@ export const Inventory: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [adjustingStockProduct, setAdjustingStockProduct] = useState<Product | null>(null);
-  const [showAddStockIn, setShowAddStockIn] = useState(false);
 
   const handleAction = (message: string) => {
     setShowToast(message);
@@ -111,7 +108,6 @@ export const Inventory: React.FC = () => {
           <StockInTab 
             stockInRecords={stockInRecords}
             products={products}
-            onAddStockInClick={() => setShowAddStockIn(true)}
           />
         )}
         
@@ -165,17 +161,6 @@ export const Inventory: React.FC = () => {
           onSave={(id, type, qty, reason, user) => {
             adjustStock(id, type, qty, reason, user);
             handleAction('Stock adjusted successfully');
-          }}
-        />
-      )}
-
-      {showAddStockIn && (
-        <AddStockInModal
-          products={products}
-          onClose={() => setShowAddStockIn(false)}
-          onSave={(data) => {
-            addStockIn(data);
-            handleAction('Stock in recorded successfully');
           }}
         />
       )}

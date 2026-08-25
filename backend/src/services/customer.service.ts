@@ -265,7 +265,7 @@ export class CustomerService {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
 
-    const [khataAccounts, outstandingAgg, collectedAgg, pendingCount, paidCount] =
+    const [khataAccounts, outstandingAgg, collectedAgg, pendingCount, paidCount, supplierStats] =
       await Promise.all([
         prisma.customer.count({ where: { status: 'active' } }),
         prisma.sale.aggregate({
@@ -310,7 +310,16 @@ export class CustomerService {
               }
             }
           }
-        })
+        }),
+        prisma.$queryRaw<Array<{ accounts: number; outstanding: number | null }>>`
+          SELECT COUNT(*) as accounts,
+                 COALESCE(SUM(
+                   (SELECT COALESCE(SUM(c.amount), 0) FROM SupplierCollection c WHERE c.supplierId = s.id) -
+                   (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p WHERE p.supplierId = s.id)
+                 ), 0) as outstanding
+          FROM Supplier s
+          WHERE s.isActive = 1
+        `
       ]);
 
     return {
@@ -318,10 +327,12 @@ export class CustomerService {
       statusCode: 200,
       data: {
         khataAccounts,
-        totalOutstanding: money(outstandingAgg._sum.remainingBalance || 0),
+        totalOutstanding: money((outstandingAgg._sum.remainingBalance || 0) + Number(supplierStats[0]?.outstanding || 0)),
         collectedToday: money(collectedAgg._sum.amount || 0),
         pendingCount,
-        paidCount
+        paidCount,
+        supplierAccounts: Number(supplierStats[0]?.accounts || 0),
+        supplierPayables: money(Number(supplierStats[0]?.outstanding || 0))
       }
     };
   }

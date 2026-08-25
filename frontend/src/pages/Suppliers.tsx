@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { Search, Plus, Filter, Droplets, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Search, Plus, Droplets, RefreshCw } from 'lucide-react';
 import { useSupplierStore } from '../store/supplierStore';
 import { SupplierDetails } from '../components/suppliers/SupplierDetails';
 import { SupplierFormModal } from '../components/suppliers/SupplierFormModal';
 
 export const Suppliers: React.FC = () => {
-  const { suppliers } = useSupplierStore();
+  const { suppliers, fetchData, error } = useSupplierStore();
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showInactive, setShowInactive] = useState(false);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Filter suppliers
   const filteredSuppliers = suppliers.filter(sup => {
@@ -70,6 +72,8 @@ export const Suppliers: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {error && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</div>}
 
       {/* ── Main Layout (Left List, Right Details) ─────────────────────── */}
       <div className="flex gap-6 flex-1 min-h-0">

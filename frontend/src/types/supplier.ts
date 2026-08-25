@@ -33,5 +33,6 @@ export interface SupplierPayment {
   supplierId: string;
   date: string;
   amount: number;
+  method?: string;
   notes?: string;
 }

@@ -12,6 +12,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose })
   const { addPayment } = useSupplierStore();
   const [amount, setAmount] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [method, setMethod] = useState('cash');
   
   const todayStr = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState<string>(todayStr);
@@ -26,6 +27,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose })
       supplierId: supplier.id,
       date,
       amount: numAmount,
+      method,
       notes
     });
     
@@ -93,10 +95,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose })
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Payment Method</label>
-              <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500">
-                <option>Cash</option>
-                <option>Bank Transfer</option>
-                <option>JazzCash</option>
+              <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500">
+                <option value="cash">Cash</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="jazzcash">JazzCash</option>
               </select>
             </div>
           </div>
