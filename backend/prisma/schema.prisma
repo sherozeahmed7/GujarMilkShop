@@ -21,6 +21,33 @@ model User {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  openedShifts     Shift[]  @relation("ShiftOpenedBy")
+  closedShifts     Shift[]  @relation("ShiftClosedBy")
+}
+
+// Cash drawer session for one shop day. Only one open shift is allowed at a time.
+model Shift {
+  id             Int      @id @default(autoincrement())
+  shiftDate      String   @unique
+  openedById     Int
+  openedBy       User     @relation("ShiftOpenedBy", fields: [openedById], references: [id])
+  closedById     Int?
+  closedBy       User?    @relation("ShiftClosedBy", fields: [closedById], references: [id])
+  openedAt       DateTime @default(now())
+  closedAt       DateTime?
+  openingCash    Float
+  openingNotes   String?
+  expectedCash   Float    @default(0)
+  countedCash    Float?
+  difference     Float?
+  differenceStatus String?
+  closingNotes   String?
+  status         String   @default("Open")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([openedAt])
 }
 
 // Temporary POS bills owned by the cashier who created them

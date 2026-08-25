@@ -7,6 +7,7 @@ import saleRoutes from './sale.routes';
 import customerRoutes from './customer.routes';
 import milkProductsRoutes from './milkProducts.routes';
 import heldCartRoutes from './heldCart.routes';
+import shiftRoutes from './shift.routes';
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use('/milk-products', milkProductsRoutes);
 
 // Temporary POS bills (hold/resume)
 router.use('/held-carts', heldCartRoutes);
+router.use('/shifts', shiftRoutes);
 
 export default router;

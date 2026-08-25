@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { CurrentShiftPanel } from '../components/shifts/CurrentShiftPanel';
 import { ShiftHistoryPanel } from '../components/shifts/ShiftHistoryPanel';
 import { useShiftStore } from '../store/shiftStore';
 
 export const Shifts: React.FC = () => {
-  const { refreshData } = useShiftStore();
+  const { refreshData, error } = useShiftStore();
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
 
   return (
     <div className="flex flex-col h-full gap-4 min-h-0">
@@ -25,6 +29,7 @@ export const Shifts: React.FC = () => {
           Refresh
         </button>
       </div>
+      {error && <div className="flex-shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       {/* Main Content Layout */}
       <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
