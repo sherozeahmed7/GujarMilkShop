@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { KhataSummaryCards } from '../components/khata/KhataSummaryCards';
 import { KhataCashCollectModal } from '../components/khata/KhataCashCollectModal';
 import { KhataLedgerModal } from '../components/khata/KhataLedgerModal';
@@ -30,6 +31,7 @@ function typeBadge(t: ApiCustomer['customerType']) {
 }
 
 export const KhataLedger: React.FC = () => {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState<ApiCustomer[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [partyMode, setPartyMode] = useState<'customers' | 'suppliers'>('customers');
@@ -346,7 +348,13 @@ export const KhataLedger: React.FC = () => {
                             {initials}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-sm text-slate-800 truncate">{c.name}</p>
+                            <button 
+                              type="button"
+                              onClick={() => navigate(`/ledger/customers/${c.id}`)}
+                              className="font-semibold text-sm text-blue-600 hover:text-blue-800 hover:underline truncate text-left"
+                            >
+                              {c.name}
+                            </button>
                             {c.address && (
                               <p className="text-[10px] text-slate-400 truncate">
                                 {c.address}
@@ -446,7 +454,7 @@ export const KhataLedger: React.FC = () => {
       </div> : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center gap-3"><div className="relative w-56 flex-shrink-0"><button type="button" onClick={() => setPartyPickerOpen((open) => !open)} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm" aria-haspopup="listbox" aria-expanded={partyPickerOpen}>Suppliers<ChevronDown className="w-4 h-4 text-slate-400" /></button>{partyPickerOpen && <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"><div className="relative mb-2"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input autoFocus type="search" value={partySearch} onChange={(e) => setPartySearch(e.target.value)} placeholder="Search party type..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none focus:border-blue-500" /></div>{(['customers', 'suppliers'] as const).filter((mode) => mode.includes(partySearch.toLowerCase().trim())).map((mode) => <button key={mode} type="button" onClick={() => { setPartyMode(mode); setPartySearch(''); setPartyPickerOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${partyMode === mode ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>{mode === 'customers' ? 'Customers' : 'Suppliers'}</button>)}</div>}</div><div className="relative max-w-lg flex-1"><Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input type="text" placeholder="Search suppliers by name or code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div></div>
-          <div className="flex-1 overflow-auto custom-scrollbar"><table className="w-full text-left"><thead className="bg-slate-50"><tr><th className="px-5 py-3 text-xs uppercase text-slate-500">Supplier</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Code</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Cycle</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Payable</th><th className="px-5 py-3 text-right text-xs uppercase text-slate-500">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{suppliers.filter((s) => `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())).map((supplier) => <tr key={supplier.id} className="hover:bg-slate-50"><td className="px-5 py-3 font-semibold text-slate-800">{supplier.name}</td><td className="px-5 py-3 text-sm text-slate-500">{supplier.code}</td><td className="px-5 py-3 text-sm text-slate-500">{supplier.cycleType}</td><td className="px-5 py-3 font-bold text-amber-600">Rs. {Math.round(supplier.payableBalance).toLocaleString()}</td><td className="px-5 py-3 text-right"><button onClick={() => setLedgerSupplier(supplier)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200">Ledger</button></td></tr>)}</tbody></table></div>
+          <div className="flex-1 overflow-auto custom-scrollbar"><table className="w-full text-left"><thead className="bg-slate-50"><tr><th className="px-5 py-3 text-xs uppercase text-slate-500">Supplier</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Code</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Cycle</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Payable</th><th className="px-5 py-3 text-right text-xs uppercase text-slate-500">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{suppliers.filter((s) => `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())).map((supplier) => <tr key={supplier.id} className="hover:bg-slate-50"><td className="px-5 py-3 font-semibold text-slate-800"><button type="button" onClick={() => navigate(`/ledger/suppliers/${supplier.id}`)} className="text-blue-600 hover:text-blue-800 hover:underline">{supplier.name}</button></td><td className="px-5 py-3 text-sm text-slate-500">{supplier.code}</td><td className="px-5 py-3 text-sm text-slate-500">{supplier.cycleType}</td><td className="px-5 py-3 font-bold text-amber-600">Rs. {Math.round(supplier.payableBalance).toLocaleString()}</td><td className="px-5 py-3 text-right"><button onClick={() => setLedgerSupplier(supplier)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200">Ledger</button></td></tr>)}</tbody></table></div>
           <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 text-xs font-medium text-slate-500">Showing {suppliers.length} suppliers</div>
         </div>
       )}

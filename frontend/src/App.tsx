@@ -21,6 +21,8 @@ import { LocalBackup } from './pages/settings/LocalBackup';
 import { Suppliers } from './pages/Suppliers';
 import { Customers } from './pages/Customers';
 import { KhataLedger } from './pages/KhataLedger';
+import { CustomerMonthlyMilkLedger } from './pages/khata/CustomerMonthlyMilkLedger';
+import { SupplierMonthlyPurchaseLedger } from './pages/khata/SupplierMonthlyPurchaseLedger';
 import { Returns } from './pages/Returns';
 import { ReceiptAudit } from './pages/ReceiptAudit';
 import { Shifts } from './pages/Shifts';
@@ -94,7 +96,11 @@ function App() {
             <Route path="inventory" element={<Inventory />} />
             <Route path="suppliers" element={<Suppliers />} />
             <Route path="customers" element={<Customers />} />
-            <Route path="ledger" element={<KhataLedger />} />
+            <Route path="ledger">
+              <Route index element={<KhataLedger />} />
+              <Route path="customers/:customerId" element={<CustomerMonthlyMilkLedger />} />
+              <Route path="suppliers/:supplierId" element={<SupplierMonthlyPurchaseLedger />} />
+            </Route>
             <Route path="returns" element={<Returns />} />
             <Route path="audit" element={<ReceiptAudit />} />
             <Route path="shifts" element={<Shifts />} />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, DownloadCloud } from 'lucide-react';
-// import { cloudSyncService } from '../../../services/cloudSync.service';
+import { cloudSyncService } from '../../services/cloudSync.service';
 
 interface RestoreCloudDataModalProps {
   onClose: () => void;
