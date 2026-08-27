@@ -17,8 +17,8 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'
 export const SupplierReport: React.FC = () => {
   const [filter, setFilter] = useState<DateFilterType>({
     label: 'All Time',
-    startDate: undefined,
-    endDate: undefined
+    startDate: null,
+    endDate: null
   });
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<any>(null);

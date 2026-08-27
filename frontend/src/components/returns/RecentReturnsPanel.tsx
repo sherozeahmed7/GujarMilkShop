@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { History, Eye, Printer, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { History, Eye, Printer } from 'lucide-react';
 import { ReturnRecord, ReturnType } from '../../types';
 import { useReturnsStore } from '../../store/returnsStore';
 import { ReturnDetailModal } from './ReturnDetailModal';
@@ -24,9 +24,11 @@ interface RecentReturnsPanelProps {
 }
 
 export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highlightLatest }) => {
-  const { returns } = useReturnsStore();
+  const { returns, fetchReturns } = useReturnsStore();
   const [viewRecord, setViewRecord] = useState<ReturnRecord | null>(null);
   const [printRecord, setPrintRecord] = useState<ReturnRecord | null>(null);
+
+  useEffect(() => { fetchReturns(); }, []);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden h-full">

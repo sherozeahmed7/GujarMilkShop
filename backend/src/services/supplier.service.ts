@@ -25,6 +25,15 @@ export class SupplierService {
     return suppliers.map((s) => shape(s, s.collections, s.payments));
   }
 
+  static async get(id: number) {
+    const supplier = await prisma.supplier.findUnique({
+      where: { id },
+      include: { collections: true, payments: true },
+    });
+    if (!supplier) return { success: false, statusCode: 404, message: 'Supplier not found.' };
+    return { success: true, statusCode: 200, data: shape(supplier, supplier.collections, supplier.payments) };
+  }
+
   static async create(payload: any) {
     if (!payload.name?.trim() || !payload.code?.trim()) return { success: false, statusCode: 400, message: 'Name and code are required.' };
     if (!CYCLE_TYPES.includes(payload.cycleType)) return { success: false, statusCode: 400, message: 'Invalid cycle type.' };

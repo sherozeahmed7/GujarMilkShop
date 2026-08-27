@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { History, Eye } from 'lucide-react';
 import { AuditRecord, AuditStatus } from '../../types';
 import { useAuditStore } from '../../store/auditStore';
@@ -19,8 +19,10 @@ function formatTimestamp(iso: string) {
 }
 
 export const PreviousAuditsPanel: React.FC = () => {
-  const { pastAudits } = useAuditStore();
+  const { pastAudits, fetchAudits } = useAuditStore();
   const [viewRecord, setViewRecord] = useState<AuditRecord | null>(null);
+
+  useEffect(() => { fetchAudits(); }, []);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col h-full overflow-hidden">

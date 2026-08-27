@@ -4,15 +4,15 @@ export type ShiftDifferenceStatus = 'Balanced' | 'Short' | 'Over';
 
 export interface ShiftRecord {
   id: string;
-  date: string; // ISO string representing the shift day
+  date: string;
   
   openedBy: string;
-  openedAt: string; // ISO timestamp
+  openedAt: string;
   openingCash: number;
   openingNotes?: string;
 
   closedBy?: string;
-  closedAt?: string; // ISO timestamp
+  closedAt?: string;
   
   expectedCash: number;
   countedCash?: number;
@@ -21,4 +21,11 @@ export interface ShiftRecord {
   closingNotes?: string;
 
   status: ShiftStatus;
+
+  // Sales aggregates (populated by backend from real sales in the shift window)
+  billsCount:  number;
+  grossSales:  number;
+  cashSales:   number;
+  onlineSales: number;
+  khataSales:  number;
 }

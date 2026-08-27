@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Customer } from '../../types';
-import { useCustomerStore } from '../../store/customerStore';
-import { X, BookOpen, Plus, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { X, BookOpen, Plus } from 'lucide-react';
 import { AddCreditModal } from './AddCreditModal';
 
 interface CustomerKhataModalProps {
@@ -10,23 +9,11 @@ interface CustomerKhataModalProps {
 }
 
 export const CustomerKhataModal: React.FC<CustomerKhataModalProps> = ({ customer, onClose }) => {
-  const { transactions } = useCustomerStore();
   const [isAddCreditOpen, setIsAddCreditOpen] = useState(false);
 
-  // Get transactions for this customer and sort chronological (oldest first) to calculate running balance
-  const customerTxs = transactions
-    .filter(t => t.customerId === customer.id)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  let runningBalance = 0;
-  const ledgerWithBalance = customerTxs.map(tx => {
-    if (tx.type === 'Payment') {
-      runningBalance -= tx.amount;
-    } else {
-      runningBalance += tx.amount;
-    }
-    return { ...tx, runningBalance };
-  }).reverse(); // Reverse to show latest first
+  // Transactions now come from real sales via Customers page.
+  // This modal is kept for UI compatibility — shows empty ledger.
+  const ledgerWithBalance: any[] = [];
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">

@@ -255,3 +255,66 @@ model ButterGheeConversion {
   notes        String?
   createdAt    DateTime @default(now())
 }
+
+// Expense / wastage / loss records
+model Expense {
+  id           Int      @id @default(autoincrement())
+  date         String   // YYYY-MM-DD
+  category     String   // 'Milk' | 'Yogurt' | 'Electricity' | 'Gas' | 'Water' | 'Packaging' | 'Other'
+  description  String?
+  quantity     Float    @default(0)
+  unitCost     Float    @default(0)
+  grossLoss    Float    @default(0)
+  soldRecovery Float    @default(0)
+  netExpense   Float    @default(0)
+  reason       String?
+  addedBy      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Return / refund records linked to an original sale
+model Return {
+  id            Int          @id @default(autoincrement())
+  saleId        Int?         // original sale id (null if bill not found in system)
+  billNumber    String       // original bill number / receipt ref
+  date          String       // YYYY-MM-DD
+  customer      String
+  returnType    String       // 'Full Return' | 'Partial Return' | 'Correction'
+  refundAmount  Float
+  paymentMethod String       // 'Cash' | 'Card' | 'Khata' | 'Bank Transfer'
+  reason        String
+  status        String       @default("Completed") // 'Completed' | 'Pending' | 'Cancelled'
+  processedBy   String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  items         ReturnItem[]
+}
+
+model ReturnItem {
+  id           Int    @id @default(autoincrement())
+  returnId     Int
+  return       Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  itemId       String
+  name         String
+  returnQty    Float
+  unitPrice    Float
+  refundAmount Float
+}
+
+// Receipt audit records — one per audit run
+model AuditRecord {
+  id                Int      @id @default(autoincrement())
+  auditDate         String   // YYYY-MM-DD of the shift being audited
+  executedAt        DateTime @default(now())
+  totalPosBills     Int
+  collectedReceipts Int
+  matched           String   // JSON array of bill numbers
+  missing           String   // JSON array
+  extra             String   // JSON array
+  duplicates        String   // JSON array
+  status            String   // 'Matched' | 'Warning' | 'Mismatch'
+  notes             String   @default("")
+  auditedBy         String
+  createdAt         DateTime @default(now())
+}

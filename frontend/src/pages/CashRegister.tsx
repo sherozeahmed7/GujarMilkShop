@@ -9,25 +9,63 @@ import { CloseConfirmModal } from '../components/register/CloseConfirmModal';
 import { useRegisterStore } from '../store/registerStore';
 
 export const CashRegister: React.FC = () => {
-  const { currentRegister } = useRegisterStore();
+  const { currentRegister, fetchShifts, isLoading, error } = useRegisterStore();
   const [showCountModal, setShowCountModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
 
+  useEffect(() => { fetchShifts(); }, []);
+
   const handleCloseRequest = () => {
+    if (!currentRegister) return;
     if (currentRegister.status === 'OPEN') {
       setShowCountModal(true);
-    } else if (currentRegister.status === 'COUNTED') {
-      setShowCloseModal(true);
     } else {
-       setShowCloseModal(true); // Can also just show it, though button disables itself
+      setShowCloseModal(true);
     }
   };
 
   const handleCountSaved = () => {
-    setTimeout(() => {
-      setShowCloseModal(true);
-    }, 100);
+    setTimeout(() => setShowCloseModal(true), 100);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center text-slate-400 text-sm">
+        Loading shift data…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center gap-3">
+        <p className="text-rose-600 font-medium text-sm">{error}</p>
+        <button
+          onClick={fetchShifts}
+          className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!currentRegister) {
+    return (
+      <div className="flex flex-col h-full gap-6 min-h-0">
+        <div className="flex-shrink-0">
+          <RegisterHeader onCloseRegisterRequest={handleCloseRequest} />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <p className="text-slate-600 font-semibold">No active shift found.</p>
+            <p className="text-slate-400 text-sm">Open a shift from the Shifts page to start the register.</p>
+          </div>
+        </div>
+        <ZReportSection />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full gap-6 min-h-0">
@@ -43,12 +81,12 @@ export const CashRegister: React.FC = () => {
       </div>
 
       {showCountModal && (
-        <CountCashModal 
-          onClose={() => setShowCountModal(false)} 
-          onSaved={handleCountSaved} 
+        <CountCashModal
+          onClose={() => setShowCountModal(false)}
+          onSaved={handleCountSaved}
         />
       )}
-      
+
       {showCloseModal && (
         <CloseConfirmModal onClose={() => setShowCloseModal(false)} />
       )}

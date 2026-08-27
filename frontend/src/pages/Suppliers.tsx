@@ -4,8 +4,15 @@ import { useSupplierStore } from '../store/supplierStore';
 import { SupplierDetails } from '../components/suppliers/SupplierDetails';
 import { SupplierFormModal } from '../components/suppliers/SupplierFormModal';
 
+const localDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const Suppliers: React.FC = () => {
-  const { suppliers, fetchData, error } = useSupplierStore();
+  const { suppliers, collections, fetchData, error } = useSupplierStore();
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,6 +34,10 @@ export const Suppliers: React.FC = () => {
 
   // Quick stats - Calculate from ALL suppliers, not just filtered ones
   const totalPayables = suppliers.reduce((acc, sup) => acc + sup.payableBalance, 0);
+  const todayStr = localDateKey(new Date());
+  const todaysMilk = collections
+    .filter((collection) => collection.date === todayStr)
+    .reduce((total, collection) => total + collection.quantity, 0);
 
   const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 
@@ -55,7 +66,7 @@ export const Suppliers: React.FC = () => {
           
           <div className="flex flex-col items-end">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today's Milk</span>
-            <span className="text-lg font-bold text-slate-800">0.00 kg</span>
+            <span className="text-lg font-bold text-slate-800">{todaysMilk.toFixed(2)} kg</span>
           </div>
           <div className="w-px h-10 bg-slate-200"></div>
           <div className="flex flex-col items-end">

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ClipboardList, Search, X } from 'lucide-react';
+import { ClipboardList, Search } from 'lucide-react';
 
 interface ClosingReceiptCountProps {
-  onRunAudit: (date: string, receiptsText: string, notes: string) => void;
+  onRunAudit: (date: string, receiptsText: string, notes: string) => Promise<void> | void;
 }
 
 export const ClosingReceiptCount: React.FC<ClosingReceiptCountProps> = ({ onRunAudit }) => {

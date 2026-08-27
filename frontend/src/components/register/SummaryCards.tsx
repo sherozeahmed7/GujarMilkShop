@@ -4,6 +4,7 @@ import { useRegisterStore } from '../../store/registerStore';
 
 export const SummaryCards: React.FC = () => {
   const { currentRegister } = useRegisterStore();
+  if (!currentRegister) return null;
 
   return (
     <div className="grid grid-cols-3 gap-4">

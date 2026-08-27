@@ -10,39 +10,29 @@ import heldCartRoutes from './heldCart.routes';
 import shiftRoutes from './shift.routes';
 import supplierRoutes from './supplier.routes';
 import inventoryRoutes from './inventory.routes';
+import expenseRoutes from './expense.routes';
+import returnRoutes from './return.routes';
+import auditRoutes from './audit.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const router = Router();
 
-// Basic verification endpoint
-router.get('/status', (req, res) => {
-  res.json({ message: 'API routes are active!' });
-});
+router.get('/status', (req, res) => { res.json({ message: 'API routes are active!' }); });
 
-// Connection test route
 router.use('/connection-test', connectionTestRoutes);
-
-// Auth routes (POST /api/auth/login, POST /api/auth/logout)
-router.use('/auth', authRoutes);
-
-// User management routes (POST /api/users)
-router.use('/users', userRoutes);
-
-// Daily Rates routes (GET /api/rates, POST /api/rates)
-router.use('/rates', rateRoutes);
-
-// Sales routes (POST/GET /api/sales, settle)
-router.use('/sales', saleRoutes);
-
-// Customer (ledger) routes
-router.use('/customers', customerRoutes);
-
-// F2 Milk Products routes (stock, transactions, conversions)
-router.use('/milk-products', milkProductsRoutes);
-
-// Temporary POS bills (hold/resume)
-router.use('/held-carts', heldCartRoutes);
-router.use('/shifts', shiftRoutes);
-router.use('/suppliers', supplierRoutes);
-router.use('/inventory', inventoryRoutes);
+router.use('/auth',            authRoutes);
+router.use('/users',           userRoutes);
+router.use('/rates',           rateRoutes);
+router.use('/sales',           saleRoutes);
+router.use('/customers',       customerRoutes);
+router.use('/milk-products',   milkProductsRoutes);
+router.use('/held-carts',      heldCartRoutes);
+router.use('/shifts',          shiftRoutes);
+router.use('/suppliers',       supplierRoutes);
+router.use('/inventory',       inventoryRoutes);
+router.use('/expenses',        expenseRoutes);
+router.use('/returns',         returnRoutes);
+router.use('/audits',          auditRoutes);
+router.use('/dashboard',       dashboardRoutes);
 
 export default router;

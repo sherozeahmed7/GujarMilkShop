@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
   Search, ReceiptText, User, Calendar, CreditCard,
-  CheckSquare, Square, ChevronDown, RotateCcw, X
+  CheckSquare, Square, RotateCcw, X
 } from 'lucide-react';
-import { MockBill, ReturnRecord, ReturnType, ReturnItem } from '../../types';
+import { MockBill, ReturnType, ReturnItem } from '../../types';
 import { useReturnsStore } from '../../store/returnsStore';
 
 const RETURN_TYPES: ReturnType[] = ['Full Return', 'Partial Return', 'Correction'];
@@ -38,8 +38,10 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
   const [returnType, setReturnType] = useState<ReturnType>('Partial Return');
   const [reason, setReason] = useState('');
 
-  const handleFindBill = () => {
-    const bill = findBill(query);
+  const handleFindBill = async () => {
+    // Strip common prefixes (INV-, BILL-, #) so users can enter any format
+    const cleaned = query.trim().replace(/^(INV-0*|BILL-0*|#)/i, '');
+    const bill = await findBill(cleaned);
     if (bill) {
       setFoundBill(bill);
       setNotFound(false);
@@ -100,7 +102,7 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
     setReason('');
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!foundBill) return;
     const returnItems: ReturnItem[] = foundBill.items
       .filter((i) => i.id in selectedItems)
@@ -113,10 +115,8 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
       }));
 
     const now = new Date().toISOString();
-    const id = `RET-${now.slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 900 + 100)}`;
 
-    const record: ReturnRecord = {
-      returnId: id,
+    await addReturn({
       billNumber: foundBill.billNumber,
       date: now,
       customer: foundBill.customer,
@@ -127,9 +127,8 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
       status: 'Completed',
       items: returnItems,
       processedBy: 'System Admin',
-    };
+    });
 
-    addReturn(record);
     handleCancel();
     onReturnCreated();
   };
@@ -160,7 +159,7 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                 setNotFound(false);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Scan receipt barcode or enter BILL-0001"
+              placeholder="Enter sale number: 15 or INV-00015"
               className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder-slate-400 transition"
             />
           </div>
@@ -177,7 +176,7 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
         {notFound && (
           <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700">
             <X className="w-4 h-4 flex-shrink-0" />
-            No bill found for <span className="font-bold ml-1">"{query}"</span>. Try BILL-0001 to BILL-0008.
+            No bill found for <span className="font-bold ml-1">"{query}"</span>. Enter the sale number (e.g. 15) or INV-00015.
           </div>
         )}
 
@@ -188,8 +187,8 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
               <ReceiptText className="w-6 h-6 text-slate-400" />
             </div>
             <p className="text-slate-600 font-semibold text-sm">Find a bill to start a return</p>
-            <p className="text-slate-400 text-xs mt-1">Use the bill number printed on the receipt.</p>
-            <p className="text-slate-400 text-xs mt-1">Demo: BILL-0001 through BILL-0008</p>
+            <p className="text-slate-400 text-xs mt-1">Use the sale number printed on the receipt.</p>
+            <p className="text-slate-400 text-xs mt-1">Enter: 15 or INV-00015</p>
           </div>
         )}
 

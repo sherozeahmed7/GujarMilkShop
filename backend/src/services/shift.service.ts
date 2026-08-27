@@ -2,7 +2,13 @@ import { prisma } from '../config/database';
 
 const money = (value: number) => Math.round(value * 100) / 100;
 
-function formatShift(shift: any) {
+function formatShift(shift: any, salesAggregates?: {
+  billsCount: number;
+  grossSales: number;
+  cashSales: number;
+  onlineSales: number;
+  khataSales: number;
+}) {
   return {
     id: `SHIFT-${shift.shiftDate}`,
     date: shift.shiftDate,
@@ -18,7 +24,43 @@ function formatShift(shift: any) {
     differenceStatus: shift.differenceStatus ?? undefined,
     closingNotes: shift.closingNotes || undefined,
     status: shift.status,
+    // Sales aggregates for Cash Register screen
+    billsCount:   salesAggregates?.billsCount   ?? 0,
+    grossSales:   salesAggregates?.grossSales    ?? 0,
+    cashSales:    salesAggregates?.cashSales     ?? 0,
+    onlineSales:  salesAggregates?.onlineSales   ?? 0,
+    khataSales:   salesAggregates?.khataSales    ?? 0,
   };
+}
+
+async function getSalesAggregates(openedAt: Date, closedAt?: Date | null) {
+  const dateFilter = { gte: openedAt, ...(closedAt ? { lte: closedAt } : {}) };
+
+  const sales = await prisma.sale.findMany({
+    where: { createdAt: dateFilter },
+    include: { payments: true },
+  });
+
+  let billsCount = sales.length;
+  let grossSales = 0;
+  let cashSales = 0;
+  let onlineSales = 0;
+  let khataSales = 0;
+
+  for (const sale of sales) {
+    grossSales = money(grossSales + sale.totalAmount);
+    if (sale.saleType === 'walk_in') {
+      const method = sale.payments[0]?.method;
+      if (method === 'online') onlineSales = money(onlineSales + sale.totalAmount);
+      else cashSales = money(cashSales + sale.totalAmount);
+    } else if (sale.saleType === 'split') {
+      cashSales = money(cashSales + (sale.payments[0]?.amount ?? 0));
+    } else {
+      khataSales = money(khataSales + sale.totalAmount);
+    }
+  }
+
+  return { billsCount, grossSales, cashSales, onlineSales, khataSales };
 }
 
 async function withRelations(id: number) {
@@ -48,8 +90,14 @@ export class ShiftService {
       include: { openedBy: true, closedBy: true },
     });
     return Promise.all(shifts.map(async (shift) => {
-      if (shift.status !== 'Open') return formatShift(shift);
-      return formatShift({ ...shift, expectedCash: await expectedCash(shift) });
+      const [expCash, salesAgg] = await Promise.all([
+        shift.status === 'Open' ? expectedCash(shift) : Promise.resolve(shift.expectedCash),
+        getSalesAggregates(shift.openedAt, shift.closedAt),
+      ]);
+      return formatShift(
+        shift.status === 'Open' ? { ...shift, expectedCash: expCash } : shift,
+        salesAgg
+      );
     }));
   }
 
@@ -64,7 +112,7 @@ export class ShiftService {
       data: { shiftDate, openedById: userId, openingCash, openingNotes: openingNotes?.trim() || null, expectedCash: openingCash },
       include: { openedBy: true, closedBy: true },
     });
-    return { success: true, statusCode: 201, data: formatShift(shift) };
+    return { success: true, statusCode: 201, data: formatShift(shift, { billsCount: 0, grossSales: 0, cashSales: 0, onlineSales: 0, khataSales: 0 }) };
   }
 
   static async close(userId: number, countedCash: number, closingNotes?: string) {
@@ -82,6 +130,7 @@ export class ShiftService {
       data: { closedById: userId, closedAt, countedCash, expectedCash: expected, difference, differenceStatus, closingNotes: closingNotes?.trim() || null, status: 'Closed' },
       include: { openedBy: true, closedBy: true },
     });
-    return { success: true, statusCode: 200, data: formatShift(updated) };
+    const salesAgg = await getSalesAggregates(current.openedAt, closedAt);
+    return { success: true, statusCode: 200, data: formatShift(updated, salesAgg) };
   }
 }

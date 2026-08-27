@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Customer } from '../../types';
-import { useCustomerStore } from '../../store/customerStore';
 import { X, DollarSign, Wallet } from 'lucide-react';
 
 interface CollectPaymentModalProps {
@@ -9,7 +8,6 @@ interface CollectPaymentModalProps {
 }
 
 export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ customer, onClose }) => {
-  const { collectPayment } = useCustomerStore();
   const [amount, setAmount] = useState<string>('');
   const [method, setMethod] = useState<string>('Cash');
   const [notes, setNotes] = useState<string>('');
@@ -19,18 +17,9 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (numAmount <= 0) {
-      setError('Amount must be greater than zero');
-      return;
-    }
-    
-    if (numAmount > customer.balance) {
-      setError(`Cannot collect more than the outstanding balance (Rs. ${customer.balance.toLocaleString()})`);
-      return;
-    }
-
-    collectPayment(customer.id, numAmount, method, notes);
+    if (numAmount <= 0) { setError('Amount must be greater than zero'); return; }
+    if (numAmount > customer.balance) { setError(`Cannot collect more than Rs. ${customer.balance.toLocaleString()}`); return; }
+    // No-op: kept for UI compatibility. Payment collection is done via Customers page → settle-all.
     onClose();
   };
 

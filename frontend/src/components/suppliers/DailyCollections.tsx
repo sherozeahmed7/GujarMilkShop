@@ -7,8 +7,15 @@ interface DailyCollectionsProps {
   supplier: Supplier;
 }
 
+const localDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const DailyCollections: React.FC<DailyCollectionsProps> = ({ supplier }) => {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
 
   return (

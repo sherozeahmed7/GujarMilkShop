@@ -1,131 +1,100 @@
 import { create } from 'zustand';
 import { RegisterData, DifferenceStatus } from '../types';
+import { shiftService } from '../services/shift.service';
+import { ShiftRecord } from '../types/shift';
 
-interface RegisterStore {
-  currentRegister: RegisterData;
-  registerHistory: RegisterData[];
-  
-  setCountedCash: (cash: number, notes: string) => void;
-  closeRegister: () => void;
-}
-
-const generateMockHistory = (): RegisterData[] => {
-  return [
-    {
-      id: 'REG-2026-08-16',
-      date: '2026-08-16',
-      cashier: 'System Admin',
-      shiftOpen: '2026-08-16T06:00:00+05:00',
-      shiftClose: '2026-08-16T22:30:00+05:00',
-      billsCount: 412,
-      grossSales: 150000,
-      discounts: 500,
-      refunds: 0,
-      voids: 2,
-      cashSales: 110000,
-      onlineSales: 15000,
-      khataSales: 24500,
-      openingBalance: 4000,
-      expenses: 1500,
-      expectedCash: 112500, // 4000 + 110000 - 1500 - 0 (Note: Khata isn't cash in drawer directly, but let's assume Expected Cash = Opening + Cash Sales - Expenses - Refunds)
-      countedCash: 112500,
-      variance: 0,
-      differenceStatus: 'Balanced',
-      status: 'CLOSED',
-    },
-    {
-      id: 'REG-2026-08-15',
-      date: '2026-08-15',
-      cashier: 'System Admin',
-      shiftOpen: '2026-08-15T05:50:00+05:00',
-      shiftClose: '2026-08-15T22:15:00+05:00',
-      billsCount: 389,
-      grossSales: 142000,
-      discounts: 200,
-      refunds: 1000,
-      voids: 0,
-      cashSales: 105000,
-      onlineSales: 12000,
-      khataSales: 23800,
-      openingBalance: 5000,
-      expenses: 2000,
-      expectedCash: 107000, // 5000 + 105000 - 2000 - 1000
-      countedCash: 106800,
-      variance: -200,
-      differenceStatus: 'Short',
-      status: 'CLOSED',
-    },
-    {
-      id: 'REG-2026-08-14',
-      date: '2026-08-14',
-      cashier: 'System Admin',
-      shiftOpen: '2026-08-14T06:10:00+05:00',
-      shiftClose: '2026-08-14T23:00:00+05:00',
-      billsCount: 450,
-      grossSales: 165000,
-      discounts: 1000,
-      refunds: 0,
-      voids: 5,
-      cashSales: 120000,
-      onlineSales: 18000,
-      khataSales: 26000,
-      openingBalance: 4000,
-      expenses: 0,
-      expectedCash: 124000, // 4000 + 120000 - 0 - 0
-      countedCash: 124500,
-      variance: 500,
-      differenceStatus: 'Over',
-      status: 'CLOSED',
-    }
-  ];
-};
-
-const getInitialCurrentRegister = (): RegisterData => {
-  const today = new Date();
-  const dateStr = today.toISOString().split('T')[0];
-  today.setHours(6, 0, 0, 0); // Open at 6 AM
-
-  const openingBalance = 4000;
-  const cashSales = 131343;
-  const khataSales = 28770;
-  const onlineSales = 360;
-  const expenses = 0;
-  const refunds = 0;
-  
-  // Cash Drawer Expected Cash = Opening + Cash Sales - Expenses - Refunds
-  const expectedCash = openingBalance + cashSales - expenses - refunds;
+// Map the backend ShiftRecord shape → frontend RegisterData shape
+function shiftToRegister(shift: ShiftRecord): RegisterData {
+  const statusMap: Record<string, RegisterData['status']> = {
+    Open:   'OPEN',
+    Closed: 'CLOSED',
+  };
+  const diffMap: Record<string, DifferenceStatus> = {
+    Balanced: 'Balanced',
+    Short:    'Short',
+    Over:     'Over',
+  };
 
   return {
-    id: `REG-${dateStr}`,
-    date: dateStr,
-    cashier: 'System Admin',
-    shiftOpen: today.toISOString(),
-    billsCount: 544,
-    grossSales: 160473,
-    discounts: 70,
-    refunds,
-    voids: 0,
-    cashSales,
-    onlineSales,
-    khataSales,
-    openingBalance,
-    expenses,
-    expectedCash,
-    status: 'OPEN',
+    id:               shift.id,
+    date:             shift.date,
+    cashier:          shift.openedBy,
+    shiftOpen:        shift.openedAt,
+    shiftClose:       shift.closedAt,
+
+    // Real sales aggregates from the backend shift response
+    billsCount:       shift.billsCount  ?? 0,
+    grossSales:       shift.grossSales  ?? 0,
+    discounts:        0,
+    refunds:          0,
+    voids:            0,
+    cashSales:        shift.cashSales   ?? 0,
+    onlineSales:      shift.onlineSales ?? 0,
+    khataSales:       shift.khataSales  ?? 0,
+
+    openingBalance:   shift.openingCash,
+    expenses:         0,
+    expectedCash:     shift.expectedCash,
+    countedCash:      shift.countedCash,
+
+    variance:         shift.difference,
+    differenceStatus: shift.differenceStatus ? diffMap[shift.differenceStatus] : undefined,
+    status:           statusMap[shift.status] ?? 'OPEN',
+    notes:            shift.closingNotes,
   };
-};
+}
+
+interface RegisterStore {
+  currentRegister:  RegisterData | null;
+  registerHistory:  RegisterData[];
+  isLoading:        boolean;
+  error:            string | null;
+
+  fetchShifts:      () => Promise<void>;
+  openShift:        (openingCash: number, notes?: string) => Promise<void>;
+  setCountedCash:   (cash: number, notes: string) => void;
+  closeRegister:    (countedCash: number, notes?: string) => Promise<void>;
+  clearError:       () => void;
+}
 
 export const useRegisterStore = create<RegisterStore>((set) => ({
-  currentRegister: getInitialCurrentRegister(),
-  registerHistory: generateMockHistory(),
+  currentRegister:  null,
+  registerHistory:  [],
+  isLoading:        false,
+  error:            null,
 
+  fetchShifts: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const shifts = await shiftService.getShifts();
+      const mapped = shifts.map(shiftToRegister);
+      const current = mapped.find(r => r.status === 'OPEN') ?? null;
+      const history = mapped.filter(r => r.status !== 'OPEN');
+      set({ currentRegister: current, registerHistory: history, isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to fetch shifts', isLoading: false });
+    }
+  },
+
+  openShift: async (openingCash: number, notes = '') => {
+    set({ isLoading: true, error: null });
+    try {
+      const shift = await shiftService.openShift(openingCash, notes);
+      const register = shiftToRegister(shift);
+      set({ currentRegister: register, isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to open shift', isLoading: false });
+      throw err;
+    }
+  },
+
+  // Local-only optimistic update before the close API call
   setCountedCash: (cash: number, notes: string) => {
     set((state) => {
+      if (!state.currentRegister) return {};
       const variance = cash - state.currentRegister.expectedCash;
-      let differenceStatus: DifferenceStatus = 'Balanced';
-      if (variance < 0) differenceStatus = 'Short';
-      if (variance > 0) differenceStatus = 'Over';
-
+      const differenceStatus: DifferenceStatus =
+        variance === 0 ? 'Balanced' : variance < 0 ? 'Short' : 'Over';
       return {
         currentRegister: {
           ...state.currentRegister,
@@ -139,40 +108,21 @@ export const useRegisterStore = create<RegisterStore>((set) => ({
     });
   },
 
-  closeRegister: () => {
-    set((state) => {
-      const closingTime = new Date().toISOString();
-      const closedRegister: RegisterData = {
-        ...state.currentRegister,
-        status: 'CLOSED',
-        shiftClose: closingTime,
-      };
-
-      return {
-        // Move current to history
-        registerHistory: [closedRegister, ...state.registerHistory],
-        // Mock opening a new register for tomorrow just so UI has something to show,
-        // or we can leave it closed. Let's leave it as a fresh open register to simulate next day.
-        currentRegister: {
-          ...getInitialCurrentRegister(),
-          id: `REG-${Date.now()}`, // unique id
-          openingBalance: closedRegister.countedCash || 0, // carry over
-          cashSales: 0,
-          onlineSales: 0,
-          khataSales: 0,
-          expenses: 0,
-          refunds: 0,
-          grossSales: 0,
-          discounts: 0,
-          voids: 0,
-          billsCount: 0,
-          expectedCash: closedRegister.countedCash || 0,
-          countedCash: undefined,
-          variance: undefined,
-          differenceStatus: undefined,
-          status: 'OPEN',
-        }
-      };
-    });
+  closeRegister: async (countedCash: number, notes = '') => {
+    set({ isLoading: true, error: null });
+    try {
+      const shift = await shiftService.closeShift(countedCash, notes);
+      const closed = shiftToRegister(shift);
+      set((state) => ({
+        currentRegister:  null,
+        registerHistory:  [closed, ...state.registerHistory],
+        isLoading:        false,
+      }));
+    } catch (err: any) {
+      set({ error: err.message || 'Failed to close shift', isLoading: false });
+      throw err;
+    }
   },
+
+  clearError: () => set({ error: null }),
 }));

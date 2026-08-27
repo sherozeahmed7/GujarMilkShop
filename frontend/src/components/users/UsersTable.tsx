@@ -1,7 +1,6 @@
 import React from 'react';
 import { User } from '../../types/user';
 import { UserActionsMenu } from './UserActionsMenu';
-import { format } from 'date-fns'; // Assuming date-fns is available, or we'll use native Date
 
 interface UsersTableProps {
   users: User[];

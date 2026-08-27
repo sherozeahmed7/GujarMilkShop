@@ -13,8 +13,10 @@ const statusColors: Record<RegisterStatus, string> = {
 };
 
 export const ZReport: React.FC = () => {
-  const { currentRegister } = useRegisterStore();
+  const { currentRegister, registerHistory, fetchShifts } = useRegisterStore();
   const navigate = useNavigate();
+
+  useEffect(() => { fetchShifts(); }, []);
 
   // Inject print styles
   useEffect(() => {
@@ -42,6 +44,8 @@ export const ZReport: React.FC = () => {
     alert(`Mock: Generating ${type} report...`);
   };
 
+  const display = currentRegister ?? registerHistory[0] ?? null;
+
   return (
     <div className="flex flex-col h-full gap-6 min-h-0">
       {/* Header */}
@@ -55,42 +59,36 @@ export const ZReport: React.FC = () => {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Z-Report / End of Day Closing</h1>
-            <p className="text-slate-500 text-sm mt-1">Accountant-ready closing summary for {currentRegister.date}</p>
+            <p className="text-slate-500 text-sm mt-1">
+              {display ? `Accountant-ready closing summary for ${display.date}` : 'No shift data available'}
+            </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3 flex-wrap">
-          <span className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest border ${statusColors[currentRegister.status]}`}>
-            {currentRegister.status}
-          </span>
+          {display && (
+            <span className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest border ${statusColors[display.status]}`}>
+              {display.status}
+            </span>
+          )}
           <div className="w-px h-8 bg-slate-200 mx-1"></div>
-          <button
-            onClick={() => handleMockExport('Excel')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            Excel
+          <button onClick={() => handleMockExport('Excel')} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />Excel
           </button>
-          <button
-            onClick={() => handleMockExport('PDF')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
-          >
-            <FileText className="w-4 h-4 text-rose-500" />
-            PDF
+          <button onClick={() => handleMockExport('PDF')} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all">
+            <FileText className="w-4 h-4 text-rose-500" />PDF
           </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-sm transition-all"
-          >
-            <Printer className="w-4 h-4" />
-            Print Z-Report
+          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-sm transition-all">
+            <Printer className="w-4 h-4" />Print Z-Report
           </button>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pb-6" id="z-report-printable-area">
-        <ZReportSummaryCard data={currentRegister} />
+        {display ? <ZReportSummaryCard data={display} /> : (
+          <div className="text-center text-slate-400 text-sm py-16">No shift data to display.</div>
+        )}
         <RegisterHistoryTable />
       </div>
     </div>

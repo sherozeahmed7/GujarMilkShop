@@ -193,8 +193,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
               <PermissionSelector 
                 selectedScreens={assignedScreens}
                 onChange={setAssignedScreens}
-                disabled={user?.isPrimaryAdmin} // Primary admin has all permissions
-                allowedScreens={allowedScreens}
+                disabled={user?.isPrimaryAdmin}
               />
             </div>
 

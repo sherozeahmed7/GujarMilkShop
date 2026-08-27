@@ -72,7 +72,7 @@ export const initialMockBackups: BackupRecord[] = timestamps.map((ts, i) => {
     path: `${BASE_PATH}${filename}`,
     createdAt: isoFromBackupTimestamp(ts),
     sizeKb: Math.floor(Math.random() * 900 + 100),
-    type: filename.includes('manual') ? 'Manual' : 'Auto',
+    type: (filename.includes('manual') ? 'Manual' : 'Auto') as 'Auto' | 'Manual',
   };
 }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

@@ -22,11 +22,7 @@ export const DayEndLassiModal: React.FC<Props> = ({ date, currentSold, onClose, 
 
     setSubmitting(true);
     try {
-      // Calculate difference from currently recorded sold to avoid double counting
-      const diff = sold - currentSold;
-      if (diff !== 0) {
-        await milkProductsService.addLassiSale(date, diff);
-      }
+      await milkProductsService.setDayEndLassi(date, sold);
       onSuccess();
       onClose();
     } catch (err: any) {

@@ -124,7 +124,7 @@ export const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
             : 'text-slate-700 hover:bg-slate-50'
         }`}
       >
-        {user.status === 'active' || user.status === 'Active' ? (
+        {user.status?.toLowerCase() === 'active' ? (
           <>
             <UserX className="w-4 h-4 text-orange-600" />
             Inactive

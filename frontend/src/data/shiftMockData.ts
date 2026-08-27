@@ -1,8 +1,10 @@
 import { ShiftRecord } from '../types';
 
+const defaults = { billsCount: 0, grossSales: 0, cashSales: 0, onlineSales: 0, khataSales: 0 };
+
 export const mockShifts: ShiftRecord[] = [
-  // A previous shift that is still open (requires closing)
   {
+    ...defaults,
     id: 'SHIFT-2026-08-16',
     date: '2026-08-16',
     openedBy: 'System Admin',
@@ -12,8 +14,8 @@ export const mockShifts: ShiftRecord[] = [
     status: 'Open',
     openingNotes: 'Started day with 5000 in register.',
   },
-  // History of closed shifts
   {
+    ...defaults,
     id: 'SHIFT-2026-08-15',
     date: '2026-08-15',
     openedBy: 'System Admin',
@@ -29,6 +31,7 @@ export const mockShifts: ShiftRecord[] = [
     closingNotes: 'All good.',
   },
   {
+    ...defaults,
     id: 'SHIFT-2026-08-14',
     date: '2026-08-14',
     openedBy: 'System Admin',
@@ -44,6 +47,7 @@ export const mockShifts: ShiftRecord[] = [
     closingNotes: 'Short by 200, checking with delivery staff.',
   },
   {
+    ...defaults,
     id: 'SHIFT-2026-08-13',
     date: '2026-08-13',
     openedBy: 'System Admin',
@@ -56,6 +60,6 @@ export const mockShifts: ShiftRecord[] = [
     difference: 500,
     differenceStatus: 'Over',
     status: 'Closed',
-    closingNotes: 'Extra 500 in drawer, could be a tip not punched.',
-  }
+    closingNotes: 'Extra 500 in drawer.',
+  },
 ];

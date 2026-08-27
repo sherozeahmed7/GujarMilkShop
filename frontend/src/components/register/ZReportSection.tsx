@@ -21,7 +21,18 @@ function formatTime(iso?: string) {
 }
 
 export const ZReportSection: React.FC = () => {
-  const { currentRegister: data } = useRegisterStore();
+  const { currentRegister: data, registerHistory } = useRegisterStore();
+
+  // Show most recent closed shift when no shift is open
+  const display = data ?? registerHistory[0] ?? null;
+
+  if (!display) {
+    return (
+      <div id="z-report-section" className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <p className="text-sm text-slate-400 text-center">No shift data available yet.</p>
+      </div>
+    );
+  }
 
   return (
     <div id="z-report-section" className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-6">
@@ -29,10 +40,10 @@ export const ZReportSection: React.FC = () => {
       <div className="flex items-start justify-between border-b border-slate-100 pb-4">
         <div>
           <h2 className="font-bold text-slate-800 tracking-tight">Z-Report / End of Day Closing</h2>
-          <p className="text-xs text-slate-500 mt-1">Accountant-ready closing summary for {data.date}</p>
+          <p className="text-xs text-slate-500 mt-1">Accountant-ready closing summary for {display.date}</p>
         </div>
-        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest ${statusColors[data.status]}`}>
-          {data.status}
+        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest ${statusColors[display.status]}`}>
+          {display.status}
         </span>
       </div>
 
@@ -41,41 +52,41 @@ export const ZReportSection: React.FC = () => {
         {/* Row 1 */}
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cashier</p>
-          <p className="font-semibold text-slate-800">{data.cashier}</p>
+          <p className="font-semibold text-slate-800">{display.cashier}</p>
         </div>
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Opening Cash</p>
-          <p className="font-semibold text-slate-800">Rs. {data.openingBalance.toLocaleString()}</p>
+          <p className="font-semibold text-slate-800">Rs. {display.openingBalance.toLocaleString()}</p>
         </div>
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cash Sales</p>
-          <p className="font-semibold text-emerald-600">+Rs. {data.cashSales.toLocaleString()}</p>
+          <p className="font-semibold text-emerald-600">+Rs. {display.cashSales.toLocaleString()}</p>
         </div>
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Expenses</p>
-          <p className="font-semibold text-rose-600">-Rs. {data.expenses.toLocaleString()}</p>
+          <p className="font-semibold text-rose-600">-Rs. {display.expenses.toLocaleString()}</p>
         </div>
 
         {/* Row 2 */}
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Expected Cash</p>
-          <p className="font-bold text-slate-800">Rs. {data.expectedCash.toLocaleString()}</p>
+          <p className="font-bold text-slate-800">Rs. {display.expectedCash.toLocaleString()}</p>
         </div>
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Counted Cash</p>
           <p className="font-bold text-slate-800">
-            {data.countedCash !== undefined ? `Rs. ${data.countedCash.toLocaleString()}` : '—'}
+            {display.countedCash !== undefined ? `Rs. ${display.countedCash.toLocaleString()}` : '—'}
           </p>
         </div>
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Variance</p>
-          {data.variance !== undefined ? (
+          {display.variance !== undefined ? (
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-800">
-                Rs. {data.variance.toLocaleString()}
+                Rs. {display.variance.toLocaleString()}
               </span>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${diffColors[data.differenceStatus!]}`}>
-                {data.differenceStatus}
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${diffColors[display.differenceStatus!]}`}>
+                {display.differenceStatus}
               </span>
             </div>
           ) : (
@@ -85,17 +96,17 @@ export const ZReportSection: React.FC = () => {
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Times</p>
           <div className="flex flex-col text-xs text-slate-600 font-medium">
-            <span>Opened: {formatTime(data.shiftOpen)}</span>
-            <span>Closed: {formatTime(data.shiftClose)}</span>
+            <span>Opened: {formatTime(display.shiftOpen)}</span>
+            <span>Closed: {formatTime(display.shiftClose)}</span>
           </div>
         </div>
       </div>
       
       {/* Notes */}
-      {data.notes && (
+      {display.notes && (
         <div className="mt-4 pt-4 border-t border-slate-100">
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
-          <p className="text-sm text-slate-700">{data.notes}</p>
+          <p className="text-sm text-slate-700">{display.notes}</p>
         </div>
       )}
     </div>

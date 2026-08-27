@@ -3,6 +3,7 @@ import { useRegisterStore } from '../../store/registerStore';
 
 export const ExpectedCashCard: React.FC = () => {
   const { currentRegister } = useRegisterStore();
+  const expectedCash = currentRegister?.expectedCash ?? 0;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
@@ -16,7 +17,7 @@ export const ExpectedCashCard: React.FC = () => {
         <div className="flex items-baseline justify-center gap-2">
           <span className="text-2xl font-bold text-slate-400">Rs.</span>
           <span className="text-5xl font-black text-slate-800 tracking-tight">
-            {currentRegister.expectedCash.toLocaleString()}
+            {expectedCash.toLocaleString()}
           </span>
         </div>
         <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-100">

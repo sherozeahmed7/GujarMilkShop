@@ -39,8 +39,8 @@ export const AuditResultPanel: React.FC<AuditResultPanelProps> = ({ previewRecor
     );
   }
 
-  const handleSave = () => {
-    saveAudit(previewRecord);
+  const handleSave = async () => {
+    await saveAudit(previewRecord);
     onSave();
   };
 

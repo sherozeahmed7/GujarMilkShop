@@ -8,7 +8,8 @@ interface CashCountAuditProps {
 
 export const CashCountAudit: React.FC<CashCountAuditProps> = ({ onCountCashClick }) => {
   const { currentRegister } = useRegisterStore();
-  const isClosed = currentRegister.status === 'CLOSED';
+  const isClosed = !currentRegister || currentRegister.status === 'CLOSED';
+  const buttonLabel = currentRegister?.status === 'COUNTED' ? 'Recount Cash' : 'Count Cash';
 
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4">
@@ -30,7 +31,7 @@ export const CashCountAudit: React.FC<CashCountAuditProps> = ({ onCountCashClick
         className="flex-shrink-0 flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all"
       >
         <Calculator className="w-4 h-4" />
-        {currentRegister.status === 'COUNTED' ? 'Recount Cash' : 'Count Cash'}
+        {buttonLabel}
       </button>
     </div>
   );

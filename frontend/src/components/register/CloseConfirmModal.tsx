@@ -7,11 +7,20 @@ interface CloseConfirmModalProps {
 }
 
 export const CloseConfirmModal: React.FC<CloseConfirmModalProps> = ({ onClose }) => {
-  const { closeRegister } = useRegisterStore();
+  const { currentRegister, closeRegister } = useRegisterStore();
+  const [submitting, setSubmitting] = React.useState(false);
 
-  const handleConfirm = () => {
-    closeRegister();
-    onClose();
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      const counted = currentRegister?.countedCash ?? currentRegister?.expectedCash ?? 0;
+      await closeRegister(counted, currentRegister?.notes || '');
+      onClose();
+    } catch {
+      // error shown via store.error
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -44,9 +53,10 @@ export const CloseConfirmModal: React.FC<CloseConfirmModalProps> = ({ onClose })
         <div className="px-5 py-4 border-t border-slate-100 flex gap-3">
           <button
             onClick={handleConfirm}
-            className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl shadow-sm transition-all"
+            disabled={submitting}
+            className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-sm transition-all"
           >
-            Yes, Close Register
+            {submitting ? 'Closing…' : 'Yes, Close Register'}
           </button>
           <button
             onClick={onClose}

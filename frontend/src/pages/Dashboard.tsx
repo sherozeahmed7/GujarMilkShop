@@ -36,8 +36,9 @@ export const Dashboard: React.FC = () => {
 
   // ── All dashboard data derived from a single dateFilter ─────────────────
   const data = useDashboardData(dateFilter);
-  const { metrics, recentSales, khataCustomers, revenueChart, chartInterval,
-          chartTitleSuffix, chartSubtitle, periodLabel, periodSummary } = data;
+  const { metrics, recentSales, khataCustomers,
+          chartTitleSuffix, chartSubtitle, periodLabel, periodSummary,
+          isLoading, error } = data;
 
   useEffect(() => {
     if (showCustomPicker && buttonRef.current && popupRef.current) {
@@ -124,6 +125,20 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Loading / Error Banner ────────────────────────────────────── */}
+      {isLoading && (
+        <div className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-100 rounded-xl px-4 py-3 shadow-sm">
+          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          Loading dashboard data…
+        </div>
+      )}
+      {error && !isLoading && (
+        <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </div>
+      )}
 
       {/* ── Welcome + Pace ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

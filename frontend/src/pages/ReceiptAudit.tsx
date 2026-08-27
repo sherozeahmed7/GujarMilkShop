@@ -10,15 +10,26 @@ export const ReceiptAudit: React.FC = () => {
   const { getPosBillsForDate } = useAuditStore();
   const [previewRecord, setPreviewRecord] = useState<AuditRecord | null>(null);
 
-  const handleRunAudit = (date: string, receiptsText: string, notes: string) => {
-    const posBills = getPosBillsForDate(date);
-    
-    // Parse input receipts
-    const inputReceiptsRaw = receiptsText.split(/[\n, ]+/).filter((r) => r.trim().length > 0).map(r => r.trim().toUpperCase());
-    
+  const handleRunAudit = async (date: string, receiptsText: string, notes: string) => {
+    const rawPosBills = await getPosBillsForDate(date);
+
+    // Normalize a receipt/bill string to its bare numeric ID
+    // Strips prefixes like INV-, BILL-, #, leading zeros → "INV-00015" → "15"
+    const normalize = (s: string) =>
+      s.trim().replace(/^(INV-0*|BILL-0*|#|0+)/i, '').toUpperCase() || s.trim().toUpperCase();
+
+    // Normalize POS bills from backend (numeric IDs → string)
+    const posBills = rawPosBills.map(normalize);
+
+    // Parse and normalize user-entered receipts
+    const inputReceiptsRaw = receiptsText
+      .split(/[\n, ]+/)
+      .filter(r => r.trim().length > 0)
+      .map(normalize);
+
     const uniqueReceipts = new Set<string>();
     const duplicates = new Set<string>();
-    
+
     for (const r of inputReceiptsRaw) {
       if (uniqueReceipts.has(r)) {
         duplicates.add(r);
@@ -28,26 +39,20 @@ export const ReceiptAudit: React.FC = () => {
     }
 
     const collectedArray = Array.from(uniqueReceipts);
-    
+
     // Comparison
     const matched: string[] = [];
     const extra: string[] = [];
     const missing: string[] = [];
-
     const posSet = new Set(posBills);
 
     for (const r of collectedArray) {
-      if (posSet.has(r)) {
-        matched.push(r);
-      } else {
-        extra.push(r);
-      }
+      if (posSet.has(r)) matched.push(r);
+      else extra.push(r);
     }
 
     for (const b of posBills) {
-      if (!uniqueReceipts.has(b)) {
-        missing.push(b);
-      }
+      if (!uniqueReceipts.has(b)) missing.push(b);
     }
 
     let status: AuditStatus = 'Matched';

@@ -18,6 +18,17 @@ export const RegisterHeader: React.FC<RegisterHeaderProps> = ({ onCloseRegisterR
   const { currentRegister } = useRegisterStore();
   const navigate = useNavigate();
 
+  if (!currentRegister) {
+    return (
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Z-Report / End of Day Closing</h1>
+          <p className="text-slate-500 text-sm mt-1">No active shift — open a shift to begin.</p>
+        </div>
+      </div>
+    );
+  }
+
   const handleMockExport = (type: string) => {
     alert(`Mock: Generating ${type} report...`);
   };

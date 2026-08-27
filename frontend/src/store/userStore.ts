@@ -94,7 +94,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       await userService.changeUserStatus(id, backendStatus);
       // Patch the user status in-place — no full refetch needed
       set((state) => ({
-        users: state.users.map(u => u.id === id ? { ...u, status: backendStatus } : u),
+        users: state.users.map(u => u.id === id ? { ...u, status: backendStatus as any } : u),
         isLoading: false,
       }));
     } catch (error: any) {

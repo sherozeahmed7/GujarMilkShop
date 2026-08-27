@@ -9,14 +9,16 @@ interface CountCashModalProps {
 
 export const CountCashModal: React.FC<CountCashModalProps> = ({ onClose, onSaved }) => {
   const { currentRegister: data, setCountedCash } = useRegisterStore();
-  
+
+  const expectedCash = data?.expectedCash ?? 0;
+
   const [countedValue, setCountedValue] = useState<string>(
-    data.countedCash !== undefined ? data.countedCash.toString() : ''
+    data?.countedCash !== undefined ? data.countedCash.toString() : ''
   );
-  const [notes, setNotes] = useState<string>(data.notes || '');
+  const [notes, setNotes] = useState<string>(data?.notes || '');
 
   const parsedCounted = parseFloat(countedValue);
-  const difference = !isNaN(parsedCounted) ? parsedCounted - data.expectedCash : null;
+  const difference = !isNaN(parsedCounted) ? parsedCounted - expectedCash : null;
 
   let diffBadge = '';
   let diffBadgeClass = '';
@@ -61,7 +63,7 @@ export const CountCashModal: React.FC<CountCashModalProps> = ({ onClose, onSaved
         <div className="p-5 space-y-4">
           <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Expected Cash</span>
-            <span className="text-sm font-bold text-slate-800">Rs. {data.expectedCash.toLocaleString()}</span>
+            <span className="text-sm font-bold text-slate-800">Rs. {expectedCash.toLocaleString()}</span>
           </div>
 
           <div>

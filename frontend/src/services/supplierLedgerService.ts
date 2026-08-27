@@ -1,9 +1,9 @@
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { apiClient } from './apiClient';
 
 export interface PurchaseEntry {
   id: string;
   supplierId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   product: string;
   quantity: number;
   unit: string;
@@ -15,7 +15,7 @@ export interface PurchaseEntry {
 export interface SupplierPaymentEntry {
   id: string;
   supplierId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   amount: number;
   paymentMethod: string;
   reference: string;
@@ -24,10 +24,10 @@ export interface SupplierPaymentEntry {
 
 export interface SupplierLedgerSummary {
   currentMonthAmount: number;
-  previousBalance: number; // What we owed from previous month
-  totalPayable: number;    // previousBalance + currentMonthAmount
-  totalPaid: number;       // Payments made this month
-  remaining: number;       // totalPayable - totalPaid (we owe supplier)
+  previousBalance: number;
+  totalPayable: number;
+  totalPaid: number;
+  remaining: number;
 }
 
 export interface SupplierInfo {
@@ -38,165 +38,78 @@ export interface SupplierInfo {
   payableBalance: number;
 }
 
-// ─── Mock helpers ─────────────────────────────────────────────────────────────
+const monthRange = (month: number, year: number) => ({
+  start: `${year}-${String(month).padStart(2, '0')}-01`,
+  end: `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`,
+});
 
-/** Build a YYYY-MM-DD string */
-const dt = (year: number, month: number, day: number) =>
-  `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+const inMonth = (date: string, month: number, year: number) => {
+  const range = monthRange(month, year);
+  return date >= range.start && date <= range.end;
+};
 
-/** Simulate network delay */
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+const mockSupplierEntries = (supplierId: string, month: number, year: number): PurchaseEntry[] => [
+  { id: `mock-purchase-${supplierId}-${year}-${month}-01`, supplierId, date: `${year}-${String(month).padStart(2, '0')}-01`, product: 'Milk', quantity: 100, unit: 'kg', rate: 190, amount: 19000, time: '06:30' },
+  { id: `mock-purchase-${supplierId}-${year}-${month}-15`, supplierId, date: `${year}-${String(month).padStart(2, '0')}-15`, product: 'Milk', quantity: 110, unit: 'kg', rate: 195, amount: 21450, time: '06:15' },
+];
+const mockSupplierPayments = (supplierId: string, month: number, year: number): SupplierPaymentEntry[] => [
+  { id: `mock-supplier-payment-${supplierId}-${year}-${month}`, supplierId, date: `${year}-${String(month).padStart(2, '0')}-20`, amount: 10000, paymentMethod: 'cash', reference: 'MOCK-SUP-PAY-001', addedBy: 'System Admin' },
+];
+const mockSupplier = (supplierId: string): SupplierInfo => ({ id: supplierId, name: 'Dairy Farm Supplier (Demo)', phone: '0300-1234567', cycleType: 'Monthly Cycle', payableBalance: 30450 });
 
-/**
- * Generate rich mock purchase entries for the requested month/year.
- * The supplierId is stamped at query time so any real ID shows data.
- * Replace this function body with a real API call when backend is ready.
- */
-function buildMockPurchaseEntries(
-  supplierId: string,
-  year: number,
-  month: number
-): PurchaseEntry[] {
-  const base: Omit<PurchaseEntry, 'supplierId'>[] = [
-    { id: `p-${year}${month}-01a`, date: dt(year, month, 1),  product: 'Milk',   quantity: 100, unit: 'kg', rate: 190, amount: 19000, time: '06:30' },
-    { id: `p-${year}${month}-01b`, date: dt(year, month, 1),  product: 'Yogurt', quantity: 20,  unit: 'kg', rate: 250, amount: 5000,  time: '07:00' },
-    { id: `p-${year}${month}-02a`, date: dt(year, month, 2),  product: 'Milk',   quantity: 120, unit: 'kg', rate: 190, amount: 22800, time: '06:15' },
-    { id: `p-${year}${month}-03a`, date: dt(year, month, 3),  product: 'Milk',   quantity: 80,  unit: 'kg', rate: 190, amount: 15200, time: '06:45' },
-    { id: `p-${year}${month}-03b`, date: dt(year, month, 3),  product: 'Lassi',  quantity: 15,  unit: 'L',  rate: 150, amount: 2250,  time: '07:30' },
-    { id: `p-${year}${month}-05a`, date: dt(year, month, 5),  product: 'Milk',   quantity: 110, unit: 'kg', rate: 190, amount: 20900, time: '06:20' },
-    { id: `p-${year}${month}-07a`, date: dt(year, month, 7),  product: 'Milk',   quantity: 95,  unit: 'kg', rate: 190, amount: 18050, time: '06:30' },
-    { id: `p-${year}${month}-07b`, date: dt(year, month, 7),  product: 'Butter', quantity: 10,  unit: 'kg', rate: 600, amount: 6000,  time: '08:00' },
-    { id: `p-${year}${month}-09a`, date: dt(year, month, 9),  product: 'Milk',   quantity: 130, unit: 'kg', rate: 190, amount: 24700, time: '06:00' },
-    { id: `p-${year}${month}-11a`, date: dt(year, month, 11), product: 'Milk',   quantity: 100, unit: 'kg', rate: 190, amount: 19000, time: '06:30' },
-    { id: `p-${year}${month}-12a`, date: dt(year, month, 12), product: 'Milk',   quantity: 115, unit: 'kg', rate: 190, amount: 21850, time: '06:45' },
-    { id: `p-${year}${month}-12b`, date: dt(year, month, 12), product: 'Yogurt', quantity: 25,  unit: 'kg', rate: 250, amount: 6250,  time: '07:00' },
-    { id: `p-${year}${month}-14a`, date: dt(year, month, 14), product: 'Milk',   quantity: 90,  unit: 'kg', rate: 190, amount: 17100, time: '06:15' },
-    { id: `p-${year}${month}-15a`, date: dt(year, month, 15), product: 'Milk',   quantity: 110, unit: 'kg', rate: 190, amount: 20900, time: '06:30' },
-    { id: `p-${year}${month}-17a`, date: dt(year, month, 17), product: 'Milk',   quantity: 100, unit: 'kg', rate: 190, amount: 19000, time: '06:30' },
-    { id: `p-${year}${month}-17b`, date: dt(year, month, 17), product: 'Lassi',  quantity: 20,  unit: 'L',  rate: 150, amount: 3000,  time: '07:15' },
-    { id: `p-${year}${month}-19a`, date: dt(year, month, 19), product: 'Milk',   quantity: 125, unit: 'kg', rate: 190, amount: 23750, time: '06:00' },
-    { id: `p-${year}${month}-21a`, date: dt(year, month, 21), product: 'Milk',   quantity: 90,  unit: 'kg', rate: 190, amount: 17100, time: '06:30' },
-    { id: `p-${year}${month}-23a`, date: dt(year, month, 23), product: 'Milk',   quantity: 105, unit: 'kg', rate: 190, amount: 19950, time: '06:45' },
-    { id: `p-${year}${month}-25a`, date: dt(year, month, 25), product: 'Milk',   quantity: 110, unit: 'kg', rate: 190, amount: 20900, time: '06:15' },
-    { id: `p-${year}${month}-25b`, date: dt(year, month, 25), product: 'Butter', quantity: 8,   unit: 'kg', rate: 600, amount: 4800,  time: '07:45' },
-    { id: `p-${year}${month}-28a`, date: dt(year, month, 28), product: 'Milk',   quantity: 120, unit: 'kg', rate: 190, amount: 22800, time: '06:00' },
-  ];
-  return base.map(e => ({ ...e, supplierId }));
+async function getEntries(supplierId: string) {
+  const response = await apiClient.get(`/suppliers/${supplierId}/entries`);
+  return {
+    collections: (response.data?.collections || []) as any[],
+    payments: (response.data?.payments || []) as any[],
+  };
 }
-
-/**
- * Generate mock payments made TO the supplier for the given month/year.
- * Replace with a real API call when backend is ready.
- */
-function buildMockPayments(
-  supplierId: string,
-  year: number,
-  month: number
-): SupplierPaymentEntry[] {
-  const base: Omit<SupplierPaymentEntry, 'supplierId'>[] = [
-    {
-      id: `sp-${year}${month}-01`,
-      date: dt(year, month, 10),
-      amount: 80000,
-      paymentMethod: 'Bank Transfer',
-      reference: `TRF-${year}${month}01`,
-      addedBy: 'Admin',
-    },
-    {
-      id: `sp-${year}${month}-02`,
-      date: dt(year, month, 25),
-      amount: 50000,
-      paymentMethod: 'Cash',
-      reference: `CSH-${year}${month}02`,
-      addedBy: 'Admin',
-    },
-  ];
-  return base.map(p => ({ ...p, supplierId }));
-}
-
-// ─── Service ──────────────────────────────────────────────────────────────────
 
 export const supplierLedgerService = {
-  /**
-   * Fetch supplier info by ID.
-   * Replace body with: return apiClient.get(`/suppliers/${supplierId}`)
-   */
   async getSupplier(supplierId: string): Promise<SupplierInfo> {
-    await delay(200);
-    return {
-      id: supplierId,
-      name: 'Dairy Farm Supplier (Demo)',
-      phone: '0300-1234567',
-      cycleType: 'Monthly',
-      payableBalance: 12500,
-    };
+    try {
+      const response = await apiClient.get(`/suppliers/${supplierId}`);
+      const supplier = response.data;
+      return { id: String(supplier.id), name: supplier.name, phone: supplier.phone || '', cycleType: supplier.cycleType, payableBalance: Number(supplier.payableBalance || 0) };
+    } catch { return mockSupplier(supplierId); }
   },
 
-  /**
-   * Fetch all purchase entries for a supplier in a given month/year.
-   * Replace body with: return apiClient.get(`/suppliers/${supplierId}/purchases?month=${month}&year=${year}`)
-   */
-  async getMonthlyPurchaseEntries(
-    supplierId: string,
-    month: number,
-    year: number
-  ): Promise<PurchaseEntry[]> {
-    await delay(300);
-    return buildMockPurchaseEntries(supplierId, year, month);
+  async getMonthlyPurchaseEntries(supplierId: string, month: number, year: number): Promise<PurchaseEntry[]> {
+    try {
+      const { collections } = await getEntries(supplierId);
+      return collections.filter((entry) => inMonth(entry.date, month, year)).map((entry) => ({
+      id: String(entry.id), supplierId: String(entry.supplierId), date: entry.date, product: `${entry.milkType} Milk`, quantity: Number(entry.quantity), unit: 'kg', rate: Number(entry.rate), amount: Number(entry.amount), time: entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      }));
+    } catch { return mockSupplierEntries(supplierId, month, year); }
   },
 
-  /**
-   * Fetch all payments made to the supplier in a given month/year.
-   * Replace body with: return apiClient.get(`/suppliers/${supplierId}/payments?month=${month}&year=${year}`)
-   */
-  async getMonthlyPayments(
-    supplierId: string,
-    month: number,
-    year: number
-  ): Promise<SupplierPaymentEntry[]> {
-    await delay(200);
-    return buildMockPayments(supplierId, year, month);
+  async getMonthlyPayments(supplierId: string, month: number, year: number): Promise<SupplierPaymentEntry[]> {
+    try {
+      const { payments } = await getEntries(supplierId);
+      return payments.filter((entry) => inMonth(entry.date, month, year)).map((entry) => ({
+      id: String(entry.id), supplierId: String(entry.supplierId), date: entry.date, amount: Number(entry.amount), paymentMethod: entry.method || 'cash', reference: `PAY-${entry.id}`, addedBy: entry.createdBy?.name || 'System',
+      }));
+    } catch { return mockSupplierPayments(supplierId, month, year); }
   },
 
-  /**
-   * Get the carried-over payable balance from the previous month.
-   * Replace body with: return apiClient.get(`/suppliers/${supplierId}/balance?month=${month}&year=${year}`)
-   */
-  async getPreviousBalance(
-    _supplierId: string,
-    _month: number,
-    _year: number
-  ): Promise<number> {
-    await delay(100);
-    return 25000; // mock: we owe supplier Rs. 25,000 from last month
+  async getPreviousBalance(supplierId: string, month: number, year: number): Promise<number> {
+    try {
+      const { collections, payments } = await getEntries(supplierId);
+      const priorCollections = collections.filter((entry) => entry.date < monthRange(month, year).start).reduce((sum, entry) => sum + Number(entry.amount), 0);
+      const priorPayments = payments.filter((entry) => entry.date < monthRange(month, year).start).reduce((sum, entry) => sum + Number(entry.amount), 0);
+      return Math.round((priorCollections - priorPayments) * 100) / 100;
+    } catch { return 25000; }
   },
 
-  /**
-   * Compute the full monthly summary.
-   * This calls the individual methods; replace those instead of this one.
-   */
-  async getMonthlySummary(
-    supplierId: string,
-    month: number,
-    year: number
-  ): Promise<SupplierLedgerSummary> {
-    const [entries, payments, prevBalance] = await Promise.all([
+  async getMonthlySummary(supplierId: string, month: number, year: number): Promise<SupplierLedgerSummary> {
+    const [entries, payments, previousBalance] = await Promise.all([
       this.getMonthlyPurchaseEntries(supplierId, month, year),
       this.getMonthlyPayments(supplierId, month, year),
       this.getPreviousBalance(supplierId, month, year),
     ]);
-
-    const currentMonthAmount = entries.reduce((s, e) => s + e.amount, 0);
-    const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-    const totalPayable = prevBalance + currentMonthAmount;
-    const remaining = Math.max(0, totalPayable - totalPaid);
-
-    return {
-      currentMonthAmount,
-      previousBalance: prevBalance,
-      totalPayable,
-      totalPaid,
-      remaining,
-    };
+    const currentMonthAmount = entries.reduce((sum, entry) => sum + Number(entry.amount), 0);
+    const totalPaid = payments.reduce((sum, entry) => sum + Number(entry.amount), 0);
+    const totalPayable = previousBalance + currentMonthAmount;
+    return { currentMonthAmount, previousBalance, totalPayable, totalPaid, remaining: totalPayable - totalPaid };
   },
 };

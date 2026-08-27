@@ -38,6 +38,11 @@ export const milkProductsService = {
     return repository.updateDailyStock(date, { gheeProduced: qty });
   },
 
+  async setDayEndLassi(date: string, totalSold: number): Promise<MilkProductsDailyStock> {
+    // POST /stock/day-end-lassi — sets lassiSold to absolute value
+    return repository.updateDailyStock(date, { lassiSold: totalSold });
+  },
+
   async convertButterToGhee(
     date: string,
     butterUsed: number,

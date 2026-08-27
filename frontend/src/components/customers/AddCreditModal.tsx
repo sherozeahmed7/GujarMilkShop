@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Customer } from '../../types';
-import { useCustomerStore } from '../../store/customerStore';
 import { X, PlusCircle } from 'lucide-react';
 
 interface AddCreditModalProps {
@@ -9,7 +8,6 @@ interface AddCreditModalProps {
 }
 
 export const AddCreditModal: React.FC<AddCreditModalProps> = ({ customer, onClose }) => {
-  const { addTransaction } = useCustomerStore();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -18,20 +16,9 @@ export const AddCreditModal: React.FC<AddCreditModalProps> = ({ customer, onClos
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (numAmount <= 0) {
-      setError('Amount must be greater than zero');
-      return;
-    }
-
-    addTransaction({
-      customerId: customer.id,
-      date: new Date().toISOString().split('T')[0],
-      type: 'Credit Sale',
-      amount: numAmount,
-      description: description || 'Credit Sale',
-    });
-
+    if (numAmount <= 0) { setError('Amount must be greater than zero'); return; }
+    // No-op: this modal is kept for UI compatibility but is no longer wired to the store.
+    // Credit sales are added via the POS → Khata flow.
     onClose();
   };
 
