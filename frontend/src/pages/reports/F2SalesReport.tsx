@@ -7,6 +7,7 @@ import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, ErrorState } from '../../components/reports/ReportStates';
 import { Banknote, CreditCard, Beaker, Package } from 'lucide-react';
 import { saleService, SaleRecord, SalesReportAnalytics } from '../../services/sale.service';
+import { getF2SalesReport } from '../../services/reportsApi';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -63,15 +64,10 @@ export const F2SalesReport: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = async () => {
-    if (!filter.startDate || !filter.endDate) return;
-
     setIsLoading(true);
     setError(null);
     try {
-      const result = await saleService.getF2SalesReport({
-        fromDate: filter.startDate.toISOString(),
-        toDate: filter.endDate.toISOString(),
-      });
+      const result = await getF2SalesReport(filter);
       setSales(result.sales || []);
       setAnalytics(result.analytics || EMPTY_ANALYTICS);
     } catch (e: any) {
