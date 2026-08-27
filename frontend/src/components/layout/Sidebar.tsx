@@ -322,15 +322,26 @@ export const Sidebar: React.FC = () => {
           
           {/* User Profile */}
           <div className={`flex items-center mb-4 w-full ${isCollapsed ? 'justify-center' : 'gap-3 px-2'}`}>
-            <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 flex items-center justify-center font-semibold text-slate-700 text-sm">
-              S
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col whitespace-nowrap overflow-hidden">
-                <span className="text-xs font-semibold text-slate-800 truncate">System Admin</span>
-                <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded w-fit mt-0.5">ADMIN</span>
-              </div>
-            )}
+            {(() => {
+              const userName = localStorage.getItem('userName') || '';
+              const role = localStorage.getItem('role') || 'user';
+              // Show name if set and not the generic fallback; otherwise show role
+              const displayName = userName && userName !== 'User' ? userName : role;
+              const initial = displayName.charAt(0).toUpperCase();
+              return (
+                <>
+                  <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 flex items-center justify-center font-semibold text-slate-700 text-sm">
+                    {initial}
+                  </div>
+                  {!isCollapsed && (
+                    <div className="flex flex-col whitespace-nowrap overflow-hidden">
+                      <span className="text-xs font-semibold text-slate-800 truncate">{displayName}</span>
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded w-fit mt-0.5 uppercase">{role}</span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Action Buttons */}

@@ -12,7 +12,7 @@ export const ExpenseForm: React.FC = () => {
   const [soldRecovery, setSoldRecovery] = useState<string>('0');
   const [reason, setReason] = useState<string>('');
   
-  const [unitCost, setUnitCost] = useState(190.00); // Mock unit cost based on screenshot
+  const [unitCost, setUnitCost] = useState(0); // fetched from rates or entered manually
 
   const [grossLoss, setGrossLoss] = useState(0);
   const [netExpense, setNetExpense] = useState(0);
@@ -52,7 +52,7 @@ export const ExpenseForm: React.FC = () => {
         soldRecovery: recovery,
         netExpense,
         reason,
-        addedBy: 'System Admin' // Mock added by
+        addedBy: localStorage.getItem('userName') || 'User'
       });
       
       // Reset form

@@ -20,6 +20,12 @@ export const WelcomeCard: React.FC<WelcomeCardProps> = ({
   const fmt = (n: number) =>
     n >= 100000 ? `Rs. ${(n / 100000).toFixed(1)}L` : `Rs. ${n.toLocaleString()}`;
 
+  const rawName = localStorage.getItem('userName') || '';
+  const role = localStorage.getItem('role') || 'user';
+  const userName = rawName && rawName !== 'User' ? rawName : role;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
       <div className="flex justify-between items-start mb-6">
@@ -28,7 +34,7 @@ export const WelcomeCard: React.FC<WelcomeCardProps> = ({
             <Calendar className="w-4 h-4" />
             <span>{periodSummary}</span>
           </div>
-          <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Good evening, System Admin</h2>
+          <h2 className="text-3xl font-bold text-slate-800 tracking-tight">{greeting}, {userName}</h2>
           <p className="text-slate-500 text-sm mt-1">
             Live counter summary for{' '}
             <span className="font-medium text-slate-700">{dateFilter.label.toLowerCase()}</span>'s shift.

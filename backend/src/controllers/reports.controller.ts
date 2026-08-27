@@ -283,19 +283,24 @@ export class ReportsController {
       const customers = await prisma.customer.findMany({
         include: {
           sales: {
-            where: { createdAt: { gte: new Date(from + 'T00:00:00'), lte: new Date(to + 'T23:59:59') } },
             include: { payments: true },
           },
         },
         orderBy: { name: 'asc' },
       });
 
+      // Period filter for sales amounts shown in report
+      const fromDate = new Date(from + 'T00:00:00');
+      const toDate   = new Date(to   + 'T23:59:59');
+
       const rows = customers.map(c => {
-        const totalSales = money(c.sales.reduce((s, x) => s + x.totalAmount, 0));
-        const paid       = money(c.sales.reduce((s, x) => s + x.paidAmount, 0));
-        const outstanding= money(c.sales.reduce((s, x) => s + x.remainingBalance, 0));
-        const credit     = totalSales; // all ledger sales are credit
-        const lastSale   = c.sales.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+        const periodSales  = c.sales.filter(s => s.createdAt >= fromDate && s.createdAt <= toDate);
+        const totalSales   = money(periodSales.reduce((s, x) => s + x.totalAmount, 0));
+        const paid         = money(periodSales.reduce((s, x) => s + x.paidAmount, 0));
+        const credit       = totalSales;
+        // Outstanding = ALL-time remaining balance (not period-filtered)
+        const outstanding  = money(c.sales.filter(s => s.remainingBalance > 0).reduce((s, x) => s + x.remainingBalance, 0));
+        const lastSale     = c.sales.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
         return {
           id: c.id, name: c.name, phone: c.phone || '',
           totalSales, paid, credit, outstanding,
@@ -308,7 +313,8 @@ export class ReportsController {
 
       const byDate: Record<string, number> = {};
       for (const c of customers) {
-        for (const s of c.sales) {
+        const periodSalesForTrend = c.sales.filter(s => s.createdAt >= new Date(from + 'T00:00:00') && s.createdAt <= new Date(to + 'T23:59:59'));
+        for (const s of periodSalesForTrend) {
           const key = toYMD(s.createdAt);
           byDate[key] = money((byDate[key] || 0) + s.totalAmount);
         }
@@ -447,17 +453,23 @@ export class ReportsController {
       const returnsAmt  = money(returns.reduce((s, r) => s + r.refundAmount, 0));
       const netSales    = money(grossSales - discounts - returnsAmt);
 
-      // Estimate COGS: cost price from inventory movements (fallback: 64% of sales)
+      // COGS: use average supplier collection rate as cost price
+      const avgCostResult = await prisma.supplierCollection.aggregate({
+        _avg: { rate: true },
+        where: { rate: { gt: 0 } },
+      });
       const rate = await prisma.dailyRate.findFirst({ orderBy: { id: 'desc' } });
-      const milkRate   = rate?.milkRate   || 0;
-      const yogurtRate = rate?.yogurtRate || 0;
+      const avgSupplierCost = avgCostResult._avg.rate || ((rate?.milkRate || 100) * 0.65);
+
       let cogs = 0;
       for (const sale of sales) {
         for (const item of sale.items) {
-          const cost = item.itemName === 'yogurt' ? yogurtRate * 0.7
-            : ['butter', 'ghee'].includes(item.itemName) ? item.unitPrice * 0.75
-            : milkRate * 0.7;
-          cogs += money(item.quantity * cost);
+          let costPerUnit: number;
+          if (item.itemName === 'milk') costPerUnit = avgSupplierCost;
+          else if (item.itemName === 'yogurt') costPerUnit = avgSupplierCost * 1.1; // yogurt slightly higher
+          else if (['butter', 'ghee'].includes(item.itemName)) costPerUnit = item.unitPrice * 0.75;
+          else costPerUnit = item.unitPrice * 0.65; // lassi
+          cogs += money(item.quantity * costPerUnit);
         }
       }
       cogs = money(cogs);

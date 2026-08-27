@@ -126,7 +126,7 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
       reason: reason.trim() || 'No reason provided.',
       status: 'Completed',
       items: returnItems,
-      processedBy: 'System Admin',
+      processedBy: localStorage.getItem('userName') || 'User',
     });
 
     handleCancel();

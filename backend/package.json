@@ -5,8 +5,6 @@
   "main": "dist/server.js",
   "scripts": {
     "prisma:generate": "prisma generate",
-    "predev": "prisma generate",
-    "prestart": "prisma generate",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc"

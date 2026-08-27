@@ -75,7 +75,7 @@ export const ReceiptAudit: React.FC = () => {
       duplicates: Array.from(duplicates),
       status,
       notes,
-      auditedBy: 'System Admin',
+      auditedBy: localStorage.getItem('userName') || 'User',
     };
 
     setPreviewRecord(newRecord);

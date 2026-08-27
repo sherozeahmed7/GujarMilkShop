@@ -7,7 +7,7 @@ import { CostBreakdown } from '../components/expenses/CostBreakdown';
 import { Wallet, Info } from 'lucide-react';
 
 export const Expenses: React.FC = () => {
-  const { fetchExpenses } = useExpenseStore();
+  const { fetchExpenses, isLoading, error, clearError } = useExpenseStore();
 
   useEffect(() => {
     fetchExpenses();
@@ -15,6 +15,19 @@ export const Expenses: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 relative">
+      {error && (
+        <div className="flex items-center justify-between gap-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-3 text-sm font-medium">
+          <span>{error}</span>
+          <button onClick={clearError} className="text-rose-500 hover:text-rose-700 font-bold">✕</button>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-100 rounded-xl px-4 py-3 shadow-sm">
+          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          Loading expenses…
+        </div>
+      )}
       {/* Header handled by Layout, we just need the page content */}
       
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

@@ -38,7 +38,7 @@ export const Dashboard: React.FC = () => {
   const data = useDashboardData(dateFilter);
   const { metrics, recentSales, khataCustomers,
           chartTitleSuffix, chartSubtitle, periodLabel, periodSummary,
-          isLoading, error } = data;
+          revenueChart, isLoading, error } = data;
 
   useEffect(() => {
     if (showCustomPicker && buttonRef.current && popupRef.current) {
@@ -218,6 +218,10 @@ export const Dashboard: React.FC = () => {
         <div className="lg:col-span-2">
           <WeeklyRevenue
             dateFilter={dateFilter}
+            data={revenueChart ?? []}
+            isLoading={isLoading && (!revenueChart || revenueChart.length === 0)}
+            titleSuffix={chartTitleSuffix}
+            subtitle={chartSubtitle}
           />
         </div>
         <div>

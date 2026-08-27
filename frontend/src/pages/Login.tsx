@@ -52,6 +52,7 @@ export const Login: React.FC = () => {
         localStorage.setItem('token', accessToken);
         localStorage.setItem('userId', String(user.id));
         localStorage.setItem('role', user.role);
+        localStorage.setItem('userName', user.name || user.email || 'User');
         localStorage.setItem('assignedScreens', JSON.stringify(user.assignedScreens));
 
         toast.success('Login successful! Redirecting...');

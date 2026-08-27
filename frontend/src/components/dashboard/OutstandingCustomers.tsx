@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, AlertCircle, Clock } from 'lucide-react';
+import { ChevronRight, AlertCircle, Clock, CheckCircle } from 'lucide-react';
 import { DateFilterType } from '../../types';
 import { KhataCustomer } from '../../hooks/useDashboardData';
 
@@ -24,8 +24,17 @@ export const OutstandingCustomers: React.FC<OutstandingCustomersProps> = ({ date
       </div>
       
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-        <ul className="space-y-4">
-          {customers.map((customer) => (
+        {customers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-10 text-center">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
+              <CheckCircle className="w-6 h-6 text-emerald-400" />
+            </div>
+            <p className="text-sm font-medium text-slate-500">All clear!</p>
+            <p className="text-xs text-slate-400 mt-1">No outstanding Khata balances.</p>
+          </div>
+        ) : (
+          <ul className="space-y-4">
+            {customers.map((customer) => (
             <li key={customer.id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
               <div className="flex gap-3 items-center">
                 <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
@@ -57,6 +66,7 @@ export const OutstandingCustomers: React.FC<OutstandingCustomersProps> = ({ date
             </li>
           ))}
         </ul>
+        )}
       </div>
     </div>
   );
