@@ -3,7 +3,6 @@ import { Lock, FileSpreadsheet, FileText, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRegisterStore } from '../../store/registerStore';
 import { RegisterStatus } from '../../types';
-import { exportRegisterExcel, exportRegisterPDF } from '../../utils/registerExport';
 
 interface RegisterHeaderProps {
   onCloseRegisterRequest: () => void;
@@ -30,13 +29,17 @@ export const RegisterHeader: React.FC<RegisterHeaderProps> = ({ onCloseRegisterR
     );
   }
 
+  const handleMockExport = (type: string) => {
+    alert(`Mock: Generating ${type} report...`);
+  };
+
   return (
     <div className="flex items-start justify-between flex-wrap gap-4">
       <div>
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Z-Report / End of Day Closing</h1>
         <p className="text-slate-500 text-sm mt-1">Accountant-ready closing summary for {currentRegister.date}</p>
       </div>
-
+      
       <div className="flex items-center gap-3 flex-wrap">
         <span className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest border ${statusColors[currentRegister.status]}`}>
           {currentRegister.status}
@@ -54,14 +57,14 @@ export const RegisterHeader: React.FC<RegisterHeaderProps> = ({ onCloseRegisterR
         <div className="w-px h-8 bg-slate-200 mx-1"></div>
 
         <button
-          onClick={() => exportRegisterExcel(currentRegister)}
+          onClick={() => handleMockExport('Excel')}
           className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
         >
           <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
           Excel
         </button>
         <button
-          onClick={() => exportRegisterPDF(currentRegister)}
+          onClick={() => handleMockExport('PDF')}
           className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
         >
           <FileText className="w-4 h-4 text-rose-500" />

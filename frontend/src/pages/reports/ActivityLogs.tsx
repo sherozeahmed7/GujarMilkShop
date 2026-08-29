@@ -12,7 +12,7 @@ const STATUS_STYLES: Record<string, string> = {
   'Error': 'bg-rose-100 text-rose-700',
 };
 
-const MODULES = ['All', 'Sales', 'Inventory', 'Daily Rates', 'Customers', 'Suppliers', 'Shifts', 'Expenses', 'Returns', 'Backup'];
+const MODULES = ['All', 'Sales', 'Inventory', 'Customers', 'Suppliers', 'Shifts', 'Expenses', 'Returns', 'Backup'];
 const ITEMS_PER_PAGE = 15;
 
 export const ActivityLogs: React.FC = () => {

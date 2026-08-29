@@ -1,5 +1,12 @@
 /**
- * Customer Monthly Milk Report — real sales + settle-all payments.
+ * customerMilkReportService.ts
+ *
+ * Service layer for Customer Monthly Milk Report.
+ * Currently uses mock/in-memory data.
+ *
+ * TO CONNECT BACKEND:
+ *   Replace the body of each function with real API calls.
+ *   The React UI components do NOT need to change.
  */
 
 import {
@@ -9,63 +16,140 @@ import {
   CustomerPayment,
   AddPaymentPayload,
 } from '../types/customerMilkReport';
-import { customerLedgerService } from './customerLedgerService';
-import { customerService } from './customer.service';
 
-const money = (value: number) => Math.round(value * 100) / 100;
+// ---------------------------------------------------------------------------
+// Mock in-memory payment store (keyed by "customerId-month-year")
+// ---------------------------------------------------------------------------
+const _paymentStore: Record<string, CustomerPayment[]> = {
+  '1-7-2026': [
+    {
+      id: 'p1', date: '2026-07-10T00:00:00.000Z', amount: 10000,
+      method: 'Cash', notes: 'Monthly payment', receivedBy: 'System Admin',
+    },
+  ],
+  '1-8-2026': [
+    {
+      id: 'p2', date: '2026-08-15T00:00:00.000Z', amount: 15000,
+      method: 'Cash', notes: 'Monthly payment', receivedBy: 'System Admin',
+    },
+  ],
+  '2-7-2026': [
+    {
+      id: 'p3', date: '2026-07-20T00:00:00.000Z', amount: 8000,
+      method: 'Online', notes: '', receivedBy: 'System Admin',
+    },
+  ],
+  '2-8-2026': [
+    {
+      id: 'p4', date: '2026-08-22T00:00:00.000Z', amount: 12000,
+      method: 'Cash', notes: 'Partial payment', receivedBy: 'System Admin',
+    },
+  ],
+  '3-8-2026': [
+    {
+      id: 'p5', date: '2026-08-28T00:00:00.000Z', amount: 9000,
+      method: 'Cash', notes: '', receivedBy: 'System Admin',
+    },
+  ],
+};
 
-function mapMethodLabel(method: string): CustomerPayment['method'] {
-  const m = method.toLowerCase();
-  if (m === 'online') return 'Online';
-  if (m === 'bank' || m.includes('bank')) return 'Bank Transfer';
-  return 'Cash';
+// ---------------------------------------------------------------------------
+// Mock daily milk quantities (per customer per month)
+// keys like "customerId-month-year", value = array of 0's with actual quantities
+// ---------------------------------------------------------------------------
+function getMockDailyQtys(customerId: number, month: number, year: number): number[] {
+  // Returns an array where index = day-1, value = qty in kg
+  const key = `${customerId}-${month}-${year}`;
+  const patterns: Record<string, number[]> = {
+    // Customer 1 — Abdul Malik — July 2026 (31 days)
+    '1-6-2026': [14,14,0,12,15,14,0,14,14,12,0,14,14,16,14,0,14,12,14,14,0,15,14,14,0,14,14,12,14,0,14],
+    // Customer 1 — Abdul Malik — August 2026 (31 days)
+    '1-7-2026': [14,14,0,12,15,14,0,14,14,12,0,14,14,16,14,0,14,12,14,14,0,15,14,14,0,14,14,12,14,0,14],
+    // Customer 1 — September 2026 (30 days)
+    '1-8-2026': [14,14,0,12,15,14,0,14,14,12,0,14,14,16,14,0,14,12,14,14,0,15,14,14,0,14,14,12,14,14],
+    // Customer 2 — Rehman Ghee Store — July 2026
+    '2-6-2026': [20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20],
+    '2-7-2026': [20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20],
+    '2-8-2026': [20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,20,20,0,0],
+    // Customer 3 — Sana Bakery — August 2026
+    '3-7-2026': [10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10,10],
+    '3-8-2026': [10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10,10,0,10,10],
+  };
+  return patterns[key] || [];
 }
 
-function mapMethodToApi(method: AddPaymentPayload['method']): 'cash' | 'online' {
-  return method === 'Cash' ? 'cash' : 'online';
+// Mock customer milk rates (Rs. per kg)
+const CUSTOMER_RATES: Record<number, number> = {
+  1: 180, // Abdul Malik
+  2: 175, // Rehman Ghee Store
+  3: 185, // Sana Bakery
+};
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function buildDailyEntries(
-  customerId: string,
-  month0: number,
-  year: number,
-): Promise<{ dailyEntries: DailyMilkEntry[]; milkRatePerKg: number }> {
-  const month1 = month0 + 1;
-  const entries = await customerLedgerService.getMonthlyMilkEntries(customerId, month1, year);
-  const daysInMonth = new Date(year, month1, 0).getDate();
-  const byDay: Record<number, { qty: number; amount: number; rateSum: number; rateCount: number }> = {};
-
-  for (const entry of entries) {
-    const day = Number(entry.date.split('-')[2]);
-    if (!byDay[day]) byDay[day] = { qty: 0, amount: 0, rateSum: 0, rateCount: 0 };
-    byDay[day].qty += entry.quantity;
-    byDay[day].amount += entry.amount;
-    byDay[day].rateSum += entry.rate;
-    byDay[day].rateCount += 1;
-  }
-
-  let rateFallback = 0;
-  const dailyEntries: DailyMilkEntry[] = Array.from({ length: daysInMonth }, (_, i) => {
-    const day = i + 1;
-    const bucket = byDay[day];
-    if (!bucket || bucket.qty <= 0) {
-      return { date: day, quantityKg: 0, ratePerKg: rateFallback, amount: 0 };
-    }
-    const ratePerKg = money(bucket.rateSum / bucket.rateCount);
-    rateFallback = ratePerKg || rateFallback;
+/** Build the dailyEntries array for an entire month */
+function buildDailyEntries(customerId: number, month: number, year: number, rate: number): DailyMilkEntry[] {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const qtys = getMockDailyQtys(customerId, month, year);
+  return Array.from({ length: daysInMonth }, (_, i) => {
+    const qty = qtys[i] ?? 0;
     return {
-      date: day,
-      quantityKg: money(bucket.qty),
-      ratePerKg,
-      amount: money(bucket.amount),
+      date: i + 1,
+      quantityKg: qty,
+      ratePerKg: rate,
+      amount: qty * rate,
     };
   });
-
-  const withRate = dailyEntries.find((d) => d.quantityKg > 0);
-  return { dailyEntries, milkRatePerKg: withRate?.ratePerKg || 0 };
 }
 
+// ---------------------------------------------------------------------------
+// Calculate the running remaining balance for a given month
+// (walks backwards through all months from the first month of data)
+// ---------------------------------------------------------------------------
+function calcRemainingForMonth(customerId: number, month: number, year: number): number {
+  // Walk backwards until we find a month with no data (treat as 0 balance start)
+  // For mock, we hardcode starting balances for July 2026 as origin
+  const mockStartBalances: Record<string, number> = {
+    '1-6-2026': 2000,   // Abdul Malik started July with Rs 2,000 outstanding
+    '2-6-2026': 0,
+    '3-6-2026': 0,
+  };
+
+  // Build a chain from the "start" month up to the requested month
+  const startMonth = 6; // July (0-indexed)
+  const startYear = 2026;
+
+  let balance = mockStartBalances[`${customerId}-${startMonth}-${startYear}`] ?? 0;
+
+  let m = startMonth;
+  let y = startYear;
+
+  while (y < year || (y === year && m < month)) {
+    const rate = CUSTOMER_RATES[customerId] ?? 180;
+    const entries = buildDailyEntries(customerId, m, y, rate);
+    const milkAmt = entries.reduce((s, e) => s + e.amount, 0);
+    const pmtKey = `${customerId}-${m}-${y}`;
+    const pmts = (_paymentStore[pmtKey] || []).reduce((s, p) => s + p.amount, 0);
+    balance = balance + milkAmt - pmts;
+
+    m++;
+    if (m > 11) { m = 0; y++; }
+  }
+
+  return Math.max(0, balance);
+}
+
+// ---------------------------------------------------------------------------
+// Public service API
+// ---------------------------------------------------------------------------
+
 export const customerMilkReportService = {
+  /**
+   * Get the full monthly statement for a customer.
+   * Replace with: GET /api/customers/:id/monthly-statement?month=&year=
+   */
   getCustomerMonthlyStatement: async (
     customerId: number,
     customerName: string,
@@ -73,28 +157,18 @@ export const customerMilkReportService = {
     month: number,
     year: number,
   ): Promise<MonthlyStatement> => {
-    const month1 = month + 1;
-    const id = String(customerId);
-    const [{ dailyEntries, milkRatePerKg }, previousBalance, ledgerPayments] = await Promise.all([
-      buildDailyEntries(id, month, year),
-      customerLedgerService.getPreviousBalance(id, month1, year),
-      customerLedgerService.getMonthlyPayments(id, month1, year),
-    ]);
-
-    const payments: CustomerPayment[] = ledgerPayments.map((p) => ({
-      id: p.id,
-      date: new Date(p.date).toISOString(),
-      amount: p.amount,
-      method: mapMethodLabel(p.paymentMethod),
-      notes: p.reference || '',
-      receivedBy: p.addedBy || 'System',
-    }));
+    await delay(300);
+    const rate = CUSTOMER_RATES[customerId] ?? 180;
+    const dailyEntries = buildDailyEntries(customerId, month, year, rate);
+    const previousBalance = calcRemainingForMonth(customerId, month, year);
+    const pmtKey = `${customerId}-${month}-${year}`;
+    const payments = _paymentStore[pmtKey] ?? [];
 
     return {
       customerId,
       customerName,
       customerPhone,
-      milkRatePerKg,
+      milkRatePerKg: rate,
       month,
       year,
       dailyEntries,
@@ -103,31 +177,43 @@ export const customerMilkReportService = {
     };
   },
 
+  /**
+   * Calculate totals from a MonthlyStatement.
+   * This is a pure function — no async needed.
+   */
   calculateMonthlyBalance: (stmt: MonthlyStatement): CalculatedStatement => {
-    const totalMilkKg = money(stmt.dailyEntries.reduce((s, e) => s + e.quantityKg, 0));
-    const totalMilkAmount = money(stmt.dailyEntries.reduce((s, e) => s + e.amount, 0));
-    const totalPayable = money(stmt.previousBalance + totalMilkAmount);
-    const totalReceived = money(stmt.payments.reduce((s, p) => s + p.amount, 0));
-    const remaining = money(totalPayable - totalReceived);
+    const totalMilkKg = stmt.dailyEntries.reduce((s, e) => s + e.quantityKg, 0);
+    const totalMilkAmount = stmt.dailyEntries.reduce((s, e) => s + e.amount, 0);
+    const totalPayable = stmt.previousBalance + totalMilkAmount;
+    const totalReceived = stmt.payments.reduce((s, p) => s + p.amount, 0);
+    const remaining = totalPayable - totalReceived;
     return { totalMilkKg, totalMilkAmount, totalPayable, totalReceived, remaining };
   },
 
+  /**
+   * Record a payment for a customer.
+   * Replace with: POST /api/customers/:id/payments
+   */
   addPayment: async (payload: AddPaymentPayload): Promise<CustomerPayment> => {
-    await customerService.settleAll(
-      payload.customerId,
-      mapMethodToApi(payload.method),
-      payload.amount,
-    );
-    return {
+    await delay(400);
+    const newPayment: CustomerPayment = {
       id: `pmt-${Date.now()}`,
       date: payload.date,
       amount: payload.amount,
       method: payload.method,
       notes: payload.notes,
-      receivedBy: localStorage.getItem('userName') || 'System',
+      receivedBy: 'System Admin',
     };
+    const key = `${payload.customerId}-${payload.month}-${payload.year}`;
+    if (!_paymentStore[key]) _paymentStore[key] = [];
+    _paymentStore[key].push(newPayment);
+    return newPayment;
   },
 
+  /**
+   * Generate and download a PDF statement.
+   * Uses jsPDF (already in project dependencies).
+   */
   generateStatementPDF: async (stmt: MonthlyStatement, calc: CalculatedStatement): Promise<void> => {
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
@@ -136,6 +222,7 @@ export const customerMilkReportService = {
     const monthLabel = new Date(stmt.year, stmt.month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
     const fmtRs = (n: number) => `Rs. ${Math.round(n).toLocaleString()}`;
 
+    // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Gujar Milk Shop', 14, 18);
@@ -143,13 +230,18 @@ export const customerMilkReportService = {
     doc.setFont('helvetica', 'normal');
     doc.text('Monthly Milk Statement', 14, 25);
 
+    // Customer info
     doc.setFontSize(10);
     doc.text(`Customer: ${stmt.customerName}`, 14, 34);
     doc.text(`Phone: ${stmt.customerPhone || '—'}`, 14, 40);
     doc.text(`Month: ${monthLabel}`, 14, 46);
     doc.text(`Rate: Rs. ${stmt.milkRatePerKg}/kg`, 14, 52);
 
+    // Calendar table — 7 columns for the month
+    const daysInMonth = stmt.dailyEntries.length;
     const firstDay = new Date(stmt.year, stmt.month, 1).getDay();
+
+    // Build calendar rows
     const calRows: string[][] = [];
     let cells: string[] = Array(firstDay).fill('');
     stmt.dailyEntries.forEach((entry) => {
@@ -177,15 +269,19 @@ export const customerMilkReportService = {
     });
 
     const afterTable = (doc as any).lastAutoTable.finalY + 8;
+
+    // Financial Summary
+    const summaryData = [
+      ['Milk', `${calc.totalMilkKg} kg`],
+      ['Previous', fmtRs(stmt.previousBalance)],
+      ['Current', fmtRs(calc.totalMilkAmount)],
+      ['Total', fmtRs(calc.totalPayable)],
+      ['Received', fmtRs(calc.totalReceived)],
+      ['Remaining', fmtRs(calc.remaining)],
+    ];
+
     autoTable(doc, {
-      body: [
-        ['Milk', `${calc.totalMilkKg} kg`],
-        ['Previous', fmtRs(stmt.previousBalance)],
-        ['Current', fmtRs(calc.totalMilkAmount)],
-        ['Total', fmtRs(calc.totalPayable)],
-        ['Received', fmtRs(calc.totalReceived)],
-        ['Remaining', fmtRs(calc.remaining)],
-      ],
+      body: summaryData,
       startY: afterTable,
       styles: { fontSize: 10, cellPadding: 3 },
       columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 }, 1: { halign: 'right' } },
@@ -193,19 +289,22 @@ export const customerMilkReportService = {
     });
 
     const afterSummary = (doc as any).lastAutoTable.finalY + 8;
+
+    // Payment History
     if (stmt.payments.length > 0) {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('Payments Received', 14, afterSummary);
+      const pmtData = stmt.payments.map(p => [
+        new Date(p.date).toLocaleDateString(),
+        fmtRs(p.amount),
+        p.method,
+        p.notes || '—',
+        p.receivedBy,
+      ]);
       autoTable(doc, {
         head: [['Date', 'Amount', 'Method', 'Notes', 'Received By']],
-        body: stmt.payments.map((p) => [
-          new Date(p.date).toLocaleDateString(),
-          fmtRs(p.amount),
-          p.method,
-          p.notes || '—',
-          p.receivedBy,
-        ]),
+        body: pmtData,
         startY: afterSummary + 4,
         styles: { fontSize: 8 },
         headStyles: { fillColor: [100, 116, 139] },

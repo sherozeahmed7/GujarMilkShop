@@ -75,14 +75,13 @@ function filterKey(f: DateFilterType): string {
   return `${f.label}|${s}|${e}`;
 }
 
-export function useDashboardData(dateFilter: DateFilterType): DashboardData & { refetch: () => void } {
+export function useDashboardData(dateFilter: DateFilterType): DashboardData {
   const [metrics, setMetrics]         = useState<DashboardMetrics>(EMPTY_METRICS);
   const [recentSales, setRecentSales] = useState<RecentSaleRow[]>([]);
   const [khataCustomers, setKhata]    = useState<KhataCustomer[]>([]);
   const [revenueChart, setRevenue]    = useState<RevenueDataPoint[]>([]);
   const [isLoading, setIsLoading]     = useState(false);
   const [error, setError]             = useState<string | null>(null);
-  const [refreshTick, setRefreshTick] = useState(0);
 
   const key = filterKey(dateFilter);
 
@@ -130,10 +129,9 @@ export function useDashboardData(dateFilter: DateFilterType): DashboardData & { 
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, refreshTick]);
+  }, [key]);
 
   const meta = getPeriodMeta(dateFilter);
-  const refetch = () => setRefreshTick((t) => t + 1);
 
-  return { metrics, recentSales, khataCustomers, revenueChart, isLoading, error, refetch, ...meta };
+  return { metrics, recentSales, khataCustomers, revenueChart, isLoading, error, ...meta };
 }

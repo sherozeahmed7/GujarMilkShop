@@ -18,7 +18,6 @@ export interface ExpenseRecord {
   soldRecovery: number;
   netExpense: number;
   reason?: string;
-  period?: 'once' | 'weekly' | 'monthly';
   addedBy: string;
   createdAt: string; // ISO string
 }

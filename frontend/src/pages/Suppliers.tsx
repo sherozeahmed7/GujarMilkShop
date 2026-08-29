@@ -76,13 +76,9 @@ export const Suppliers: React.FC = () => {
           <div className="w-px h-10 bg-slate-200"></div>
           <div className="flex flex-col items-end">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Next-Cycle Credit</span>
-            <span className="text-lg font-bold text-emerald-600">{formatCurrency(suppliers.reduce((sum, s) => sum + (s.guaranteedAdvance || 0), 0))}</span>
+            <span className="text-lg font-bold text-emerald-600">{formatCurrency(0)}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => fetchData()}
-            className="ml-2 p-2 h-fit bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 shadow-sm transition-colors"
-          >
+          <button className="ml-2 p-2 h-fit bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 shadow-sm transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>

@@ -8,16 +8,11 @@ const money = (value: number) => Math.round(value * 100) / 100;
 function shape(supplier: any, collections: any[] = [], payments: any[] = []) {
   const purchased = collections.reduce((sum, item) => sum + item.amount, 0);
   const paid = payments.reduce((sum, item) => sum + item.amount, 0);
-  const advance = Number(supplier.guaranteedAdvance) || 0;
-  // Guaranteed advance reduces what we owe this supplier
-  const payableBalance = money(Math.max(0, purchased - paid - advance));
   return {
     id: String(supplier.id), name: supplier.name, code: supplier.code, phone: supplier.phone || '',
     defaultRate: supplier.defaultRate, cowRate: supplier.cowRate, buffaloRate: supplier.buffaloRate,
-    cycleType: supplier.cycleType, isActive: supplier.isActive, guaranteedAdvance: advance,
-    grossPayable: money(purchased - paid),
-    payableBalance,
-    nextCycleCredit: advance,
+    cycleType: supplier.cycleType, isActive: supplier.isActive, guaranteedAdvance: supplier.guaranteedAdvance,
+    payableBalance: money(purchased - paid),
   };
 }
 
@@ -129,14 +124,7 @@ export class SupplierService {
     if (!Number.isFinite(amount) || amount <= 0) return { success: false, statusCode: 400, message: 'Payment amount must be greater than zero.' };
     const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, include: { collections: true, payments: true } });
     if (!supplier) return { success: false, statusCode: 404, message: 'Supplier not found.' };
-    const balance = money(
-      Math.max(
-        0,
-        supplier.collections.reduce((s, c) => s + c.amount, 0) -
-          supplier.payments.reduce((s, p) => s + p.amount, 0) -
-          (Number(supplier.guaranteedAdvance) || 0)
-      )
-    );
+    const balance = money(supplier.collections.reduce((s, c) => s + c.amount, 0) - supplier.payments.reduce((s, p) => s + p.amount, 0));
     if (amount > balance) return { success: false, statusCode: 400, message: `Payment cannot exceed payable balance of Rs. ${balance}.` };
     const method = payload.method || 'cash';
     if (!['cash', 'bank_transfer', 'jazzcash'].includes(method)) return { success: false, statusCode: 400, message: 'Invalid supplier payment method.' };

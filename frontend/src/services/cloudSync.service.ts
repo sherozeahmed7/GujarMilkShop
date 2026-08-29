@@ -1,5 +1,3 @@
-import { apiClient } from './apiClient';
-
 export type SyncStatus = 'Online' | 'Offline' | 'Connecting' | 'Syncing' | 'Error' | 'Disconnected';
 
 export interface SyncItem {
@@ -22,199 +20,122 @@ export interface CloudStatusData {
   failedCount: number;
 }
 
-const STORAGE_KEY = 'gujar_cloud_sync_state';
-const SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+// Internal mock state
+let currentStatus: SyncStatus = 'Disconnected';
+let mockQueue: SyncItem[] = [
+  { id: '1', record: 'Sale #BILL-1025', module: 'POS', action: 'CREATE', createdAt: '15 Aug 2026 07:32 PM', status: 'Pending' },
+  { id: '2', record: 'Customer #C-102', module: 'Customers', action: 'UPDATE', createdAt: '15 Aug 2026 07:30 PM', status: 'Pending' },
+  { id: '3', record: 'Expense #EXP-221', module: 'Expenses', action: 'CREATE', createdAt: '15 Aug 2026 07:25 PM', status: 'Failed' },
+  { id: '4', record: 'Product #P-05', module: 'Inventory', action: 'UPDATE', createdAt: '15 Aug 2026 06:15 PM', status: 'Failed' },
+];
 
-type PersistedState = {
-  status: SyncStatus;
-  lastChecked: string | null;
-  lastSuccessfulSync: string | null;
-  deviceId: string;
-};
+let lastChecked = '15 Aug 2026, 07:40 PM';
+let lastSuccessfulSync = '15 Aug 2026, 07:38 PM';
+const vpsUrl = 'https://api.gujarmilkshop.com/sync';
+const deviceId = 'LOCAL-DEVICE-01';
+const shopName = 'Gujar Milk Shop';
 
-function loadState(): PersistedState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
-  return {
-    status: 'Disconnected',
-    lastChecked: null,
-    lastSuccessfulSync: null,
-    deviceId: `LOCAL-${Date.now().toString(36).toUpperCase()}`,
-  };
-}
-
-function saveState(state: PersistedState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-let state = loadState();
-let intervalId: number | null = null;
-let pendingQueue: SyncItem[] = [];
-
-const fmtNow = () =>
-  new Date().toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  });
-
-/** Mark that local data changed — next sync cycle will push. */
-export function markLocalChange(module: string, record: string, action: SyncItem['action'] = 'UPDATE') {
-  if (state.status === 'Disconnected') return;
-  pendingQueue.unshift({
-    id: `q-${Date.now()}`,
-    record,
-    module,
-    action,
-    createdAt: fmtNow(),
-    status: 'Pending',
-  });
-  pendingQueue = pendingQueue.slice(0, 50);
-}
-
-async function pingBackend(): Promise<boolean> {
-  try {
-    await apiClient.get('/status');
-    return true;
-  } catch {
-    try {
-      const res = await fetch(`${(await import('./apiClient')).API_BASE_URL.replace(/\/api$/, '')}/api/status`);
-      return res.ok;
-    } catch {
-      return navigator.onLine;
-    }
-  }
-}
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const cloudSyncService = {
   getStatus: async (): Promise<CloudStatusData> => {
-    state = loadState();
+    await delay(300);
+    const pendingCount = mockQueue.filter(i => i.status === 'Pending').length;
+    const failedCount = mockQueue.filter(i => i.status === 'Failed').length;
+    
     return {
-      status: state.status,
-      vpsUrl: 'local-backend-sync',
-      deviceId: state.deviceId,
-      shopName: 'Gujar Milk Shop',
-      lastChecked: state.lastChecked,
-      lastSuccessfulSync: state.lastSuccessfulSync,
-      pendingCount: pendingQueue.filter((i) => i.status === 'Pending').length,
-      failedCount: pendingQueue.filter((i) => i.status === 'Failed').length,
+      status: currentStatus,
+      vpsUrl,
+      deviceId,
+      shopName,
+      lastChecked,
+      lastSuccessfulSync,
+      pendingCount,
+      failedCount,
     };
   },
 
   checkRegistration: async (): Promise<boolean> => {
-    const online = await pingBackend();
-    state = {
-      ...loadState(),
-      status: online ? 'Online' : 'Offline',
-      lastChecked: fmtNow(),
-    };
-    saveState(state);
-    cloudSyncService.startAutoSync();
-    return online;
+    await delay(800);
+    currentStatus = 'Online';
+    lastChecked = new Date().toLocaleString('en-GB', { 
+      day: '2-digit', month: 'short', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit', hour12: true 
+    });
+    return true; // Successfully registered
   },
 
   disconnect: async (): Promise<void> => {
-    cloudSyncService.stopAutoSync();
-    state = { ...loadState(), status: 'Disconnected' };
-    saveState(state);
+    await delay(500);
+    currentStatus = 'Disconnected';
   },
 
   getPendingItems: async (): Promise<SyncItem[]> => {
-    return [...pendingQueue];
+    await delay(200);
+    return [...mockQueue];
   },
 
-  syncNow: async (): Promise<{ success: boolean; message: string }> => {
-    state = loadState();
-    if (state.status === 'Disconnected') {
-      return { success: false, message: 'Connect cloud sync first.' };
-    }
-    if (!navigator.onLine) {
-      state = { ...state, status: 'Offline', lastChecked: fmtNow() };
-      saveState(state);
-      return { success: false, message: 'No internet — sync paused.' };
+  syncNow: async (): Promise<{ success: boolean, message: string }> => {
+    await delay(1500);
+    
+    if (currentStatus === 'Disconnected' || currentStatus === 'Offline') {
+      return { success: false, message: 'Cannot sync while offline or disconnected.' };
     }
 
-    state = { ...state, status: 'Syncing', lastChecked: fmtNow() };
-    saveState(state);
-
-    const ok = await pingBackend();
-    if (!ok) {
-      state = { ...state, status: 'Offline', lastChecked: fmtNow() };
-      saveState(state);
-      return { success: false, message: 'Backend unreachable. Will retry in 10 minutes.' };
+    const pending = mockQueue.filter(i => i.status === 'Pending');
+    
+    if (pending.length === 0) {
+      return { success: true, message: 'No pending items to sync.' };
     }
 
-    // Local POS: clearing pending means changes are confirmed against live backend
-    const cleared = pendingQueue.length;
-    pendingQueue = [];
-    state = {
-      ...state,
-      status: 'Online',
-      lastChecked: fmtNow(),
-      lastSuccessfulSync: fmtNow(),
-    };
-    saveState(state);
-
-    return {
-      success: true,
-      message: cleared
-        ? `Synced ${cleared} local change(s) with server.`
-        : 'Connected — no pending local changes.',
-    };
-  },
-
-  startAutoSync: () => {
-    if (intervalId != null) return;
-    intervalId = window.setInterval(() => {
-      const s = loadState();
-      if (s.status === 'Disconnected') return;
-      if (!navigator.onLine) {
-        state = { ...s, status: 'Offline', lastChecked: fmtNow() };
-        saveState(state);
-        return;
+    // Process all pending items (mock logic: 90% chance of success per item)
+    mockQueue = mockQueue.map(item => {
+      if (item.status === 'Pending') {
+        const success = Math.random() > 0.1;
+        if (!success) {
+          return { ...item, status: 'Failed' };
+        }
+        return { ...item, status: 'Synced' as any }; // Will be filtered out
       }
-      cloudSyncService.syncNow().catch(() => undefined);
-    }, SYNC_INTERVAL_MS);
-  },
+      return item;
+    }).filter(item => item.status !== ('Synced' as any));
 
-  stopAutoSync: () => {
-    if (intervalId != null) {
-      window.clearInterval(intervalId);
-      intervalId = null;
+    lastSuccessfulSync = new Date().toLocaleString('en-GB', { 
+      day: '2-digit', month: 'short', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit', hour12: true 
+    });
+
+    const newFailedCount = mockQueue.filter(i => i.status === 'Failed').length;
+    
+    if (newFailedCount > 0) {
+       return { success: false, message: 'Sync completed with some errors.' };
     }
+    
+    return { success: true, message: 'Sync completed successfully.' };
   },
 
   retryItem: async (id: string): Promise<void> => {
-    pendingQueue = pendingQueue.map((i) =>
-      i.id === id ? { ...i, status: 'Pending' } : i
-    );
-    await cloudSyncService.syncNow();
-  },
-
-  restoreFromCloud: async (): Promise<{ success: boolean; message: string; records?: number }> => {
-    const ok = await pingBackend();
-    return ok
-      ? { success: true, message: 'Local database is already the source of truth on this device.', records: 0 }
-      : { success: false, message: 'Cannot reach server.', records: 0 };
-  },
-
-  restoreCloudData: async (): Promise<{ success: boolean; message: string; records?: number }> => {
-    return cloudSyncService.restoreFromCloud();
+    await delay(400);
+    mockQueue = mockQueue.map(item => {
+      if (item.id === id && item.status === 'Failed') {
+        return { ...item, status: 'Pending' }; // Move back to pending
+      }
+      return item;
+    });
   },
 
   retryAll: async (): Promise<void> => {
-    pendingQueue = pendingQueue.map((i) =>
-      i.status === 'Failed' ? { ...i, status: 'Pending' as const } : i
-    );
-    await cloudSyncService.syncNow();
+    await delay(500);
+    mockQueue = mockQueue.map(item => {
+      if (item.status === 'Failed') {
+        return { ...item, status: 'Pending' };
+      }
+      return item;
+    });
   },
-};
 
-// Resume auto-sync if previously connected
-if (typeof window !== 'undefined') {
-  const s = loadState();
-  if (s.status === 'Online' || s.status === 'Syncing' || s.status === 'Offline') {
-    cloudSyncService.startAutoSync();
+  restoreCloudData: async (): Promise<{ success: boolean, records: number }> => {
+    await delay(2000);
+    return { success: true, records: 14025 };
   }
-}
+};

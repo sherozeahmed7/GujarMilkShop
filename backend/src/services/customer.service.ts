@@ -314,11 +314,8 @@ export class CustomerService {
         prisma.$queryRaw<Array<{ accounts: number; outstanding: number | null }>>`
           SELECT COUNT(*) as accounts,
                  COALESCE(SUM(
-                   max(0,
-                     (SELECT COALESCE(SUM(c.amount), 0) FROM SupplierCollection c WHERE c.supplierId = s.id) -
-                     (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p WHERE p.supplierId = s.id) -
-                     COALESCE(s.guaranteedAdvance, 0)
-                   )
+                   (SELECT COALESCE(SUM(c.amount), 0) FROM SupplierCollection c WHERE c.supplierId = s.id) -
+                   (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p WHERE p.supplierId = s.id)
                  ), 0) as outstanding
           FROM Supplier s
           WHERE s.isActive = 1
@@ -330,8 +327,7 @@ export class CustomerService {
       statusCode: 200,
       data: {
         khataAccounts,
-        // Customer khata dues only — do NOT mix with supplier payables
-        totalOutstanding: money(outstandingAgg._sum.remainingBalance || 0),
+        totalOutstanding: money((outstandingAgg._sum.remainingBalance || 0) + Number(supplierStats[0]?.outstanding || 0)),
         collectedToday: money(collectedAgg._sum.amount || 0),
         pendingCount,
         paidCount,

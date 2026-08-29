@@ -36,11 +36,6 @@ import {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
-function productNames(s: SaleRecord): string {
-  if (!s.items?.length) return 'Not Available';
-  return s.items.map((i) => i.itemName.charAt(0).toUpperCase() + i.itemName.slice(1)).join(', ');
-}
-
 
 
 function getThisWeekFilter(): DateFilterType {
@@ -266,7 +261,6 @@ export const SalesReport: React.FC = () => {
     time: new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 
     customer: s.customerName || (s.saleType === 'walk_in' ? 'Walk-in' : s.saleType === 'split' ? 'Split' : 'Not Available'),
-    products: productNames(s),
 
     saleType: saleTypeLabel(s.saleType),
 
@@ -309,8 +303,6 @@ export const SalesReport: React.FC = () => {
           { header: 'Time', dataKey: 'time' },
 
           { header: 'Customer', dataKey: 'customer' },
-
-          { header: 'Products', dataKey: 'products' },
 
           { header: 'Sale Type', dataKey: 'saleType' },
 
@@ -551,8 +543,6 @@ export const SalesReport: React.FC = () => {
 
                       'Customer',
 
-                      'Products',
-
                       'Sale Type',
 
                       'Payment',
@@ -639,13 +629,7 @@ export const SalesReport: React.FC = () => {
 
                         </td>
 
-                                                <td className="px-4 py-3 text-sm text-slate-600">
-
-                          {productNames(s)}
-
-                        </td>
-
-<td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 text-sm text-slate-600">
 
                           {saleTypeLabel(s.saleType)}
 

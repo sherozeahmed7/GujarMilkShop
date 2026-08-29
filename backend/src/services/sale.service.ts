@@ -84,43 +84,20 @@ function localDateKey(d: Date): string {
 
 async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput[], userId?: number) {
   const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' } });
-
-  // Aggregate by itemName so 3×10kg lines deduct 30kg (one movement per product per sale)
-  const aggregated = new Map<string, number>();
   for (const item of items) {
-    const key = item.itemName.trim().toLowerCase();
-    aggregated.set(key, money((aggregated.get(key) || 0) + item.quantity));
-  }
-
-  for (const [itemName, quantity] of aggregated) {
-    const code = itemName.toUpperCase();
-    const product =
-      (await tx.inventoryProduct.findFirst({ where: { code } })) ||
-      (await tx.inventoryProduct.findFirst({
-        where: { OR: [{ name: itemName }, { name: { contains: itemName } }] },
-      }));
-
-    if (!product) {
-      throw new Error(
-        `Inventory product not found for "${itemName}". Add it under Inventory before selling.`
-      );
-    }
-
-    const reference = `sale-${saleId}-${itemName}`;
+    const product = await tx.inventoryProduct.findFirst({
+      where: { OR: [{ code: item.itemName.toUpperCase() }, { name: { equals: item.itemName } }] }
+    });
+    if (!product) continue;
+    const reference = `sale-${saleId}-${item.itemName}`;
     const existing = await tx.inventoryMovement.findUnique({ where: { reference } });
     if (existing) continue;
-
-    // Allow stock to go minus — shop continues sales; UI shows low-stock ribbon
+    const stock = (await tx.inventoryMovement.aggregate({ where: { productId: product.id }, _sum: { quantity: true } }))._sum.quantity || 0;
+    if (stock - item.quantity < 0) {
+      throw new Error(`Insufficient inventory for ${item.itemName}. Available: ${stock}.`);
+    }
     await tx.inventoryMovement.create({
-      data: {
-        productId: product.id,
-        quantity: money(-quantity),
-        movementType: 'SALE',
-        source: 'Point of Sale',
-        reference,
-        userId,
-        shiftId: shift?.id,
-      },
+      data: { productId: product.id, quantity: money(-item.quantity), movementType: 'SALE', source: 'Point of Sale', reference, userId, shiftId: shift?.id }
     });
   }
 }

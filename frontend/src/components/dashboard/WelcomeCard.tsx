@@ -8,8 +8,6 @@ interface WelcomeCardProps {
   refunds: number;
   netSales: number;
   periodSummary: string;
-  onRefresh?: () => void;
-  isRefreshing?: boolean;
 }
 
 export const WelcomeCard: React.FC<WelcomeCardProps> = ({
@@ -18,8 +16,6 @@ export const WelcomeCard: React.FC<WelcomeCardProps> = ({
   refunds,
   netSales,
   periodSummary,
-  onRefresh,
-  isRefreshing,
 }) => {
   const fmt = (n: number) =>
     n >= 100000 ? `Rs. ${(n / 100000).toFixed(1)}L` : `Rs. ${n.toLocaleString()}`;
@@ -44,13 +40,8 @@ export const WelcomeCard: React.FC<WelcomeCardProps> = ({
             <span className="font-medium text-slate-700">{dateFilter.label.toLowerCase()}</span>'s shift.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        <button className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+          <RefreshCw className="w-4 h-4" />
           <span>Refresh</span>
         </button>
       </div>

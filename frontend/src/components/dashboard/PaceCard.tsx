@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
 import { DateFilterType } from '../../types';
 
@@ -10,8 +9,6 @@ interface PaceCardProps {
 }
 
 export const PaceCard: React.FC<PaceCardProps> = ({ dateFilter, billsServed, averageBill }) => {
-  const navigate = useNavigate();
-
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
       <div className="mb-4">
@@ -27,11 +24,7 @@ export const PaceCard: React.FC<PaceCardProps> = ({ dateFilter, billsServed, ave
           </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => navigate('/pos')}
-        className="w-full bg-[#1F7A6A] hover:bg-[#196356] text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 shadow-md"
-      >
+      <button className="w-full bg-[#1F7A6A] hover:bg-[#196356] text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 shadow-md">
         <ShoppingCart className="w-5 h-5" />
         <span>New Sale &rarr;</span>
       </button>

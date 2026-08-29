@@ -40,17 +40,9 @@ export const ButterSection: React.FC<Props> = ({ stock, onAddProduction, onOpenC
         <div>
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
             Butter
-            <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">~4 day shelf</span>
-            {stock.butterExpired && (
-              <span className="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Expired — convert or discard</span>
-            )}
+            <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Persistent</span>
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Carries forward up to 4 days
-            {typeof stock.butterAgeDays === 'number' && stock.butterClosing > 0
-              ? ` · age ${stock.butterAgeDays} day(s)`
-              : ''}
-          </p>
+          <p className="text-xs text-slate-500 mt-0.5">Stock carries forward to the next day</p>
         </div>
       </div>
       

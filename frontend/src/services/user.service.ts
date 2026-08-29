@@ -1,6 +1,11 @@
+import { mockUserRepository } from '../repositories/mock-user.repository';
 import { apiClient } from './apiClient';
 import { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { activityLogger } from './activityLogger';
+
+// For now, hardcode mock repository.
+// Later, this can switch to apiUserRepository.
+const repository = mockUserRepository;
 
 export const userService = {
   getUsers: async (filters?: { name?: string; role?: string; status?: string }): Promise<User[]> => {
@@ -14,8 +19,7 @@ export const userService = {
   },
 
   getUserById: async (id: string): Promise<User | null> => {
-    const users = await userService.getUsers();
-    return users.find((u) => String(u.id) === String(id)) || null;
+    return repository.getUserById(id);
   },
 
   /**

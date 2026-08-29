@@ -105,10 +105,7 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 font-semibold mb-1">Quantity</p>
-                  <p className="text-sm font-medium text-slate-800">
-                    {viewExpense.quantity > 0 ? `${viewExpense.quantity}` : '—'}
-                    {viewExpense.period ? ` · ${viewExpense.period}` : ''}
-                  </p>
+                  <p className="text-sm font-medium text-slate-800">{viewExpense.quantity} kg</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 font-semibold mb-1">Unit Cost</p>

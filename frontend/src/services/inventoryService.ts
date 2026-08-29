@@ -17,14 +17,7 @@ const mapMovement = (movement: any): StockMovement => ({
   id: String(movement.id),
   productId: String(movement.productId),
   date: new Date(movement.date).toISOString(),
-  movementType: movement.movementType === 'STOCK_IN' ? 'Stock In'
-    : movement.movementType === 'SALE' ? 'Sale'
-    : movement.movementType === 'RETURN' ? 'Return'
-    : movement.movementType === 'WASTAGE' ? 'Wastage'
-    : movement.movementType === 'CONVERSION' ? 'Conversion'
-    : movement.movementType === 'OPENING' ? 'Opening'
-    : movement.movementType === 'ADJUSTMENT' ? 'Adjustment'
-    : movement.movementType || 'Adjustment',
+  movementType: movement.movementType === 'STOCK_IN' ? 'Stock In' : movement.movementType === 'SALE' ? 'Sale' : movement.movementType === 'RETURN' ? 'Return' : movement.movementType === 'WASTAGE' ? 'Adjustment' : 'Adjustment',
   quantity: Number(movement.quantity),
   previousStock: Number(movement.previousStock || 0),
   newStock: Number(movement.newStock || 0),
@@ -85,12 +78,5 @@ export const inventoryService = {
     const delta = type === 'Add Stock' ? quantity : type === 'Remove Stock' ? -quantity : quantity - product.stock;
     if (!Number.isFinite(delta) || delta === 0) throw new Error('Stock adjustment must change stock by a non-zero amount.');
     await apiClient.post('/inventory/movements', { productId: Number(productId), quantity: delta, movementType: 'ADJUSTMENT', source: 'Manual Adjustment', reference: `adjustment-${productId}-${Date.now()}`, notes: reason });
-  },
-  async assignMilkToYogurt(milkQty: number, yogurtQty?: number): Promise<{ milkQty: number; yogurtQty: number }> {
-    const response = await apiClient.post('/inventory/assign-milk-to-yogurt', {
-      milkQty,
-      yogurtQty: yogurtQty ?? milkQty,
-    });
-    return response.data as { milkQty: number; yogurtQty: number };
   },
 };

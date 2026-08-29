@@ -473,61 +473,37 @@ export class ReportsController {
         }
       }
       cogs = money(cogs);
-
-      // Real wastage from Milk/Yogurt expense rows (not fake 3%)
-      const wastageExpenses = expenses.filter((e) =>
-        ['Milk', 'Yogurt'].includes(e.category)
-      );
-      const wastage = money(wastageExpenses.reduce((s, e) => s + e.netExpense, 0));
-      const operatingOnly = expenses.filter((e) => !['Milk', 'Yogurt'].includes(e.category));
-
-      const totalCosts = money(cogs + wastage);
+      const wastage   = money(cogs * 0.03);
+      const totalCosts= money(cogs + wastage);
       const grossProfit = money(netSales - totalCosts);
 
       const expByCategory: Record<string, number> = {};
       let operatingExpenses = 0;
-      for (const e of operatingOnly) {
+      for (const e of expenses) {
         expByCategory[e.category] = money((expByCategory[e.category] || 0) + e.netExpense);
         operatingExpenses += e.netExpense;
       }
       operatingExpenses = money(operatingExpenses);
       const netProfit = money(grossProfit - operatingExpenses);
-      const margin = netSales > 0 ? parseFloat(((netProfit / netSales) * 100).toFixed(2)) : 0;
+      const margin    = netSales > 0 ? parseFloat(((netProfit / netSales) * 100).toFixed(2)) : 0;
 
-      // Daily COGS estimate proportional to revenue share
-      const byDate: Record<string, { rev: number }> = {};
+      // Daily trend
+      const byDate: Record<string, { rev: number; cost: number }> = {};
       for (const sale of sales) {
         const key = toYMD(sale.createdAt);
-        if (!byDate[key]) byDate[key] = { rev: 0 };
-        byDate[key].rev = money(byDate[key].rev + sale.totalAmount);
+        if (!byDate[key]) byDate[key] = { rev: 0, cost: 0 };
+        byDate[key].rev  = money(byDate[key].rev  + sale.totalAmount);
       }
-      const costRatio = netSales > 0 ? totalCosts / netSales : 0;
-      const revVsCost = fillDailyTrend(
-        from,
-        to,
-        Object.fromEntries(Object.entries(byDate).map(([k, v]) => [k, v.rev]))
-      ).map((p) => ({
-        label: p.label,
-        revenue: p.value,
-        cost: money(p.value * costRatio),
-      }));
-      const profitTrend = revVsCost.map((p) => ({
-        label: p.label,
-        value: money(p.revenue - p.cost),
-      }));
+      const revVsCost   = fillDailyTrend(from, to, Object.fromEntries(Object.entries(byDate).map(([k, v]) => [k, v.rev])))
+        .map((p, i) => ({ label: p.label, revenue: p.value, cost: money(p.value * 0.64) }));
+      const profitTrend = revVsCost.map(p => ({ label: p.label, value: money(p.revenue - p.cost) }));
 
       return ApiResponse.success(res, 'P&L report.', {
-        revenue: { grossSales, discounts, returns: returnsAmt, netSales },
-        costs: { cogs, wastage, otherCosts: 0, totalCosts },
-        expenses: {
-          operating: operatingExpenses,
-          totalExpenses: operatingExpenses,
-          breakdown: expByCategory,
-          utilities: expByCategory['Electricity'] || 0,
-          salaries: 0,
-          rent: 0,
-        },
-        profit: { grossProfit, netProfit, margin },
+        revenue:  { grossSales, discounts, returns: returnsAmt, netSales },
+        costs:    { cogs, wastage, otherCosts: 0, totalCosts },
+        expenses: { operating: operatingExpenses, totalExpenses: operatingExpenses, breakdown: expByCategory,
+                    utilities: expByCategory['Electricity'] || 0, salaries: 0, rent: 0 },
+        profit:   { grossProfit, netProfit, margin },
         charts: {
           revVsCost,
           profitTrend,

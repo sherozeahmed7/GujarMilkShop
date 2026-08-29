@@ -38,7 +38,7 @@ export const Dashboard: React.FC = () => {
   const data = useDashboardData(dateFilter);
   const { metrics, recentSales, khataCustomers,
           chartTitleSuffix, chartSubtitle, periodLabel, periodSummary,
-          revenueChart, isLoading, error, refetch } = data;
+          revenueChart, isLoading, error } = data;
 
   useEffect(() => {
     if (showCustomPicker && buttonRef.current && popupRef.current) {
@@ -149,8 +149,6 @@ export const Dashboard: React.FC = () => {
             refunds={metrics.refunds}
             netSales={metrics.netSales}
             periodSummary={periodSummary}
-            onRefresh={refetch}
-            isRefreshing={isLoading}
           />
         </div>
         <div>

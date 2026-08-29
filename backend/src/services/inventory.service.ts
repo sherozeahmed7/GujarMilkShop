@@ -59,122 +59,17 @@ export class InventoryService {
   }
 
   static async createProduct(payload: any) {
-    if (!payload.code?.trim() || !payload.name?.trim() || !payload.unit?.trim()) {
-      return { success: false, statusCode: 400, message: 'Product code, name, and unit are required.' };
-    }
+    if (!payload.code?.trim() || !payload.name?.trim() || !payload.unit?.trim()) return { success: false, statusCode: 400, message: 'Product code, name, and unit are required.' };
     const rate = await this.currentRate();
-    const sellPrice = rateFor(payload.name, rate);
-    if (sellPrice <= 0) {
-      return { success: false, statusCode: 422, message: 'Selling price is not configured in Daily Rates for this product.' };
-    }
-
-    const supplierCost = await averageSupplierCost(payload.name);
-    const manualCost = Number(payload.cost) || 0;
-    const unitCost = supplierCost > 0 ? supplierCost : manualCost;
-    if (unitCost <= 0) {
-      return {
-        success: false,
-        statusCode: 422,
-        message: 'No supplier cost available. Enter cost manually to proceed.',
-      };
-    }
-
+    if (rateFor(payload.name, rate) <= 0) return { success: false, statusCode: 422, message: 'Selling price is not configured in Daily Rates for this product.' };
+    if (await averageSupplierCost(payload.name) <= 0) return { success: false, statusCode: 422, message: 'No supplier cost is available for this product.' };
     try {
-      const product = await prisma.inventoryProduct.create({
-        data: {
-          code: payload.code.trim().toUpperCase(),
-          name: payload.name.trim().toLowerCase().includes('yogurt')
-            ? 'yogurt'
-            : payload.name.trim(),
-          description: payload.description?.trim() || null,
-          category: payload.category?.trim() || 'Dairy',
-          unit: payload.unit.trim(),
-          tax: payload.tax?.trim() || 'Exempt',
-          lowStockThreshold: Number(payload.lowStockThreshold) || 10,
-          isLocked: Boolean(payload.isLocked),
-        },
-      });
-
-      // Seed cost via OPENING movement so yogurt/non-supplier products have a cost basis
-      if (supplierCost <= 0 && manualCost > 0) {
-        await prisma.inventoryMovement.create({
-          data: {
-            productId: product.id,
-            quantity: 0,
-            movementType: 'OPENING',
-            source: 'Manual cost on create',
-            reference: `opening-cost-${product.id}`,
-            unitCost: money(manualCost),
-          },
-        });
-      }
-
-      const movements = await prisma.inventoryMovement.findMany({
-        where: { productId: product.id },
-        select: { quantity: true, unitCost: true },
-      });
-      return { success: true, statusCode: 201, data: await this.productView(product, movements, rate) };
+      const product = await prisma.inventoryProduct.create({ data: { code: payload.code.trim().toUpperCase(), name: payload.name.trim(), description: payload.description?.trim() || null, category: payload.category?.trim() || 'Dairy', unit: payload.unit.trim(), tax: payload.tax?.trim() || 'Exempt', lowStockThreshold: Number(payload.lowStockThreshold) || 0, isLocked: Boolean(payload.isLocked) } });
+      return { success: true, statusCode: 201, data: await this.productView(product, [], rate) };
     } catch (error: any) {
       if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'Product code already exists.' };
       throw error;
     }
-  }
-
-  /** Convert milk stock into yogurt stock (milk minus, yogurt plus) */
-  static async assignMilkToYogurt(milkQty: number, yogurtQty: number, userId?: number) {
-    const qtyMilk = money(Number(milkQty) || 0);
-    const qtyYogurt = money(Number(yogurtQty) || qtyMilk);
-    if (qtyMilk <= 0 || qtyYogurt <= 0) {
-      return { success: false, statusCode: 400, message: 'Milk and yogurt quantities must be greater than 0.' };
-    }
-
-    const milk =
-      (await prisma.inventoryProduct.findFirst({ where: { code: 'MILK' } })) ||
-      (await prisma.inventoryProduct.findFirst({ where: { name: { contains: 'milk' } } }));
-    let yogurt =
-      (await prisma.inventoryProduct.findFirst({ where: { code: 'YOGURT' } })) ||
-      (await prisma.inventoryProduct.findFirst({ where: { name: { contains: 'yogurt' } } }));
-
-    if (!milk) return { success: false, statusCode: 404, message: 'Milk product not found in inventory.' };
-
-    if (!yogurt) {
-      yogurt = await prisma.inventoryProduct.create({
-        data: {
-          code: 'YOGURT',
-          name: 'yogurt',
-          category: 'Dairy',
-          unit: 'kg',
-          tax: 'Exempt',
-          lowStockThreshold: 10,
-        },
-      });
-    }
-
-    const stamp = Date.now();
-    await prisma.$transaction([
-      prisma.inventoryMovement.create({
-        data: {
-          productId: milk.id,
-          quantity: money(-qtyMilk),
-          movementType: 'CONVERSION',
-          source: 'Milk → Yogurt',
-          reference: `milk-to-yogurt-out-${stamp}`,
-          userId,
-        },
-      }),
-      prisma.inventoryMovement.create({
-        data: {
-          productId: yogurt.id,
-          quantity: qtyYogurt,
-          movementType: 'CONVERSION',
-          source: 'Milk → Yogurt',
-          reference: `milk-to-yogurt-in-${stamp}`,
-          userId,
-        },
-      }),
-    ]);
-
-    return { success: true, statusCode: 200, data: { milkQty: qtyMilk, yogurtQty: qtyYogurt } };
   }
 
   static async pricing(name: string) {
@@ -219,17 +114,9 @@ export class InventoryService {
     if (!product) return { success: false, statusCode: 404, message: 'Product not found.' };
     const existing = await prisma.inventoryMovement.findUnique({ where: { reference: String(payload.reference || '') } });
     if (existing) return { success: true, statusCode: 200, data: existing };
+    const current = (await prisma.inventoryMovement.aggregate({ where: { productId }, _sum: { quantity: true } }))._sum.quantity || 0;
+    if (current + quantity < 0) return { success: false, statusCode: 422, message: 'Stock cannot become negative.' };
     const movement = await prisma.inventoryMovement.create({ data: { productId, quantity: money(quantity), movementType: payload.movementType, source: payload.source || payload.movementType, reference: String(payload.reference || `inventory-${Date.now()}`), unitCost: payload.unitCost !== undefined ? Number(payload.unitCost) : null, supplierId: payload.supplierId ? Number(payload.supplierId) : null, shiftId: payload.shiftId ? Number(payload.shiftId) : null, userId, date: payload.date ? new Date(payload.date) : new Date() } });
-    try {
-      const { writeActivityLog } = await import('./activityLog.service');
-      await writeActivityLog({
-        userId,
-        module: 'Inventory',
-        action: 'ADJUST',
-        description: `${payload.movementType} ${quantity} on product #${productId} (${payload.source || payload.notes || 'manual'})`,
-        entityId: String(productId),
-      });
-    } catch { /* ignore */ }
     return { success: true, statusCode: 201, data: movement };
   }
 }
