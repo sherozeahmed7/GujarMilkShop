@@ -14,6 +14,7 @@ export const SCREEN_PERMISSIONS = {
     'Receipt Audit',
     'Shifts',
     'Cash Register',
+    'Cashbook',
     'Expenses',
   ],
   SETTINGS: [

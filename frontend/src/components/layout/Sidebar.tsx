@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Truck, UserSquare2,
   BookOpen, Undo2, Receipt, LogOut, Moon, Clock, Monitor,
   Database, Wallet, FileText, Settings, ChevronDown, ChevronRight,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, BookMarked
 } from 'lucide-react';
 import { BrandLogo } from '../BrandLogo';
 
@@ -21,8 +21,11 @@ const mainNavItems = [
   { name: 'Receipt Audit', path: '/audit', icon: Receipt },
   { name: 'Shifts', path: '/shifts', icon: Clock },
   { name: 'Cash Register', path: '/register', icon: Monitor },
+  { name: 'Cashbook', path: '/register/cashbook', icon: BookMarked },
   { name: 'Expenses', path: '/expenses', icon: Wallet },
 ];
+
+
 
 const reportItems = [
   { name: 'Sales Report', path: '/reports/sales' },
@@ -160,6 +163,7 @@ export const Sidebar: React.FC = () => {
               <li key={item.path}>
                 <NavLink
                   to={item.path}
+                  end={item.path === '/register'}
                   title={isCollapsed ? item.name : undefined}
                   className={({ isActive }) =>
                     `flex items-center rounded-lg transition-all ${
@@ -180,6 +184,8 @@ export const Sidebar: React.FC = () => {
                 </NavLink>
               </li>
             ))}
+
+
 
             {/* Reports Collapsible */}
             {visibleReportItems.length > 0 && (

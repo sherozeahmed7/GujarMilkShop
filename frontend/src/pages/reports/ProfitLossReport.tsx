@@ -6,11 +6,13 @@ import { ReportHeader } from '../../components/reports/ReportHeader';
 import { ReportFilters } from '../../components/reports/ReportFilters';
 import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, EmptyState, ErrorState } from '../../components/reports/ReportStates';
-import { TrendingUp, TrendingDown, DollarSign, BarChart2, Percent } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, BarChart2, Percent, BookOpen, Info } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
+import { getCashbookSummary } from '../../services/cashbook.service';
+import { CashbookSummary } from '../../types/cashbook';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
@@ -24,13 +26,18 @@ export const ProfitLossReport: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cashbookSummary, setCashbookSummary] = useState<CashbookSummary | null>(null);
 
   const loadReport = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getProfitAndLossReport(filter);
+      const [result, cbSummary] = await Promise.all([
+        getProfitAndLossReport(filter),
+        getCashbookSummary(),
+      ]);
       setData(result);
+      setCashbookSummary(cbSummary);
     } catch (e) {
       setError('Failed to load Profit & Loss report.');
       console.error(e);
@@ -218,6 +225,39 @@ export const ProfitLossReport: React.FC = () => {
               <p className="text-sm text-slate-500 mt-1">Net Profit / (Loss)</p>
             </div>
           </div>
+
+          {/* ─── Cashbook — Informational Only ───────────────────────────────────────
+              These values are sourced from the Cashbook module.
+              They do NOT affect Revenue, Expenses, COGS, Net Profit, or Net Loss.
+              They are displayed here for informational/reference purposes only.
+          ─────────────────────────────────────────────────────────────────────── */}
+          {cashbookSummary && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                <h3 className="font-bold text-blue-800">Cashbook — Informational Only</h3>
+              </div>
+              <div className="flex items-start gap-1.5 mb-5">
+                <Info className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-600">
+                  These values are from the Cashbook module and are <strong>not included</strong> in the Revenue, Expenses, or Net Profit/Loss calculations above.
+                  They are reference figures only.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl border border-blue-100 p-5">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cashbook Receivable</p>
+                  <p className="text-2xl font-bold text-blue-700">{fmt(cashbookSummary.totalToReceive)}</p>
+                  <p className="text-xs text-slate-400 mt-1">How much people owe us (Cashbook debtors)</p>
+                </div>
+                <div className="bg-white rounded-xl border border-blue-100 p-5">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cashbook Payable</p>
+                  <p className="text-2xl font-bold text-rose-600">{fmt(cashbookSummary.totalToPay)}</p>
+                  <p className="text-xs text-slate-400 mt-1">How much we owe people (Cashbook creditors)</p>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

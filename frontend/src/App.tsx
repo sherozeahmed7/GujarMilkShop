@@ -29,6 +29,8 @@ import { Shifts } from './pages/Shifts';
 import { CashRegister } from './pages/CashRegister';
 import { ZReport } from './pages/ZReport';
 import { Expenses } from './pages/Expenses';
+import { Cashbook } from './pages/cashbook/Cashbook';
+import { CashPersonLedger } from './pages/cashbook/CashPersonLedger';
 
 // Reports Imports
 import { SalesReport } from './pages/reports/SalesReport';
@@ -104,7 +106,11 @@ function App() {
             <Route path="returns" element={<Returns />} />
             <Route path="audit" element={<ReceiptAudit />} />
             <Route path="shifts" element={<Shifts />} />
-            <Route path="register" element={<CashRegister />} />
+            <Route path="register">
+              <Route index element={<CashRegister />} />
+              <Route path="cashbook" element={<Cashbook />} />
+              <Route path="cashbook/ledger/:personId" element={<CashPersonLedger />} />
+            </Route>
             <Route path="zreport" element={<ZReport />} />
             <Route path="sales" element={<Sales />} />
 
