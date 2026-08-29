@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ApiCustomer } from '../../types/customer';
 import { saleService, SaleRecord } from '../../services/sale.service';
+import { getReturns } from '../../services/returnsService';
+import { ReturnRecord } from '../../types/returns';
 import { SplitKhataModal } from '../customers/SplitKhataModal';
 
 interface KhataLedgerModalProps {
@@ -13,6 +15,7 @@ export const KhataLedgerModal: React.FC<KhataLedgerModalProps> = ({
   onClose,
 }) => {
   const [sales, setSales] = useState<SaleRecord[]>([]);
+  const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,10 +24,14 @@ export const KhataLedgerModal: React.FC<KhataLedgerModalProps> = ({
     setLoading(true);
     setError(null);
 
-    saleService
-      .listSales({ customerId: customer.id })
-      .then((list) => {
-        if (!cancelled) setSales(list);
+    Promise.all([
+      saleService.listSales({ customerId: customer.id }),
+      getReturns({ customerId: customer.id }),
+    ])
+      .then(([saleList, returnList]) => {
+        if (cancelled) return;
+        setSales(saleList);
+        setReturns(returnList);
       })
       .catch((err: any) => {
         if (!cancelled) setError(err?.message || 'Failed to load ledger');
@@ -70,6 +77,7 @@ export const KhataLedgerModal: React.FC<KhataLedgerModalProps> = ({
       title={customer.name}
       phone={customer.phone}
       sales={sales}
+      returns={returns}
       mode="ledger"
       onClose={onClose}
     />

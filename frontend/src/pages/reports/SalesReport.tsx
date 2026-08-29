@@ -136,6 +136,22 @@ function saleTypeLabel(saleType: string): string {
 
 
 
+function saleCustomerLabel(s: SaleRecord): string {
+
+  const name = s.customerName || s.customer?.name;
+
+  if (name?.trim()) return name;
+
+  if (s.saleType === 'walk_in') return 'Walk-in';
+
+  if (s.saleType === 'split') return 'Split';
+
+  return 'Not Available';
+
+}
+
+
+
 function statusLabel(status: string): string {
 
   if (status === 'paid') return 'Paid';
@@ -153,6 +169,34 @@ function statusLabel(status: string): string {
 function toInvoiceNo(id: number): string {
 
   return `INV-${String(id).padStart(5, '0')}`;
+
+}
+
+
+
+function productsLabel(sale: SaleRecord): string {
+
+  const items = sale.items || [];
+
+  if (items.length === 0) return '—';
+
+  return items
+
+    .map((item) => {
+
+      const name = item.itemName
+
+        ? item.itemName.charAt(0).toUpperCase() + item.itemName.slice(1)
+
+        : 'Item';
+
+      const qty = Number(item.quantity) || 0;
+
+      return `${name} (${qty} kg)`;
+
+    })
+
+    .join(', ');
 
 }
 
@@ -260,7 +304,9 @@ export const SalesReport: React.FC = () => {
 
     time: new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 
-    customer: s.customerName || (s.saleType === 'walk_in' ? 'Walk-in' : s.saleType === 'split' ? 'Split' : 'Not Available'),
+    customer: saleCustomerLabel(s),
+
+    products: productsLabel(s),
 
     saleType: saleTypeLabel(s.saleType),
 
@@ -303,6 +349,8 @@ export const SalesReport: React.FC = () => {
           { header: 'Time', dataKey: 'time' },
 
           { header: 'Customer', dataKey: 'customer' },
+
+          { header: 'Products', dataKey: 'products' },
 
           { header: 'Sale Type', dataKey: 'saleType' },
 
@@ -543,6 +591,8 @@ export const SalesReport: React.FC = () => {
 
                       'Customer',
 
+                      'Products',
+
                       'Sale Type',
 
                       'Payment',
@@ -607,25 +657,25 @@ export const SalesReport: React.FC = () => {
 
                           <div>
 
-                            {s.customerName ||
-
-                              (s.saleType === 'walk_in'
-
-                                ? 'Walk-in'
-
-                                : s.saleType === 'split'
-
-                                  ? 'Split'
-
-                                  : 'Not Available')}
+                            {saleCustomerLabel(s)}
 
                           </div>
 
-                          {s.customerPhone && (
+                          {(s.customerPhone || s.customer?.phone) && (
 
-                            <div className="text-xs text-slate-400">{s.customerPhone}</div>
+                            <div className="text-xs text-slate-400">{s.customerPhone || s.customer?.phone}</div>
 
                           )}
+
+                        </td>
+
+                        <td className="px-4 py-3 text-sm text-slate-700 max-w-[220px]">
+
+                          <div className="truncate" title={productsLabel(s)}>
+
+                            {productsLabel(s)}
+
+                          </div>
 
                         </td>
 

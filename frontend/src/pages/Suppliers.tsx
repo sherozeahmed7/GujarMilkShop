@@ -33,13 +33,17 @@ export const Suppliers: React.FC = () => {
   const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId);
 
   // Quick stats - Calculate from ALL suppliers, not just filtered ones
-  const totalPayables = suppliers.reduce((acc, sup) => acc + sup.payableBalance, 0);
+  const totalPayables = suppliers.reduce((acc, sup) => acc + Math.max(0, Number(sup.payableBalance) || 0), 0);
   const todayStr = localDateKey(new Date());
   const todaysMilk = collections
     .filter((collection) => collection.date === todayStr)
     .reduce((total, collection) => total + collection.quantity, 0);
 
-  const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+  const formatCurrency = (amount: number) => {
+    const n = Number(amount) || 0;
+    if (n < 0) return `Rs. −${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+    return `Rs. ${n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -76,7 +80,9 @@ export const Suppliers: React.FC = () => {
           <div className="w-px h-10 bg-slate-200"></div>
           <div className="flex flex-col items-end">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Next-Cycle Credit</span>
-            <span className="text-lg font-bold text-emerald-600">{formatCurrency(0)}</span>
+            <span className="text-lg font-bold text-emerald-600">
+              {formatCurrency(suppliers.reduce((sum, s) => sum + (s.guaranteedAdvance || 0), 0))}
+            </span>
           </div>
           <button className="ml-2 p-2 h-fit bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 shadow-sm transition-colors">
             <RefreshCw className="w-4 h-4" />

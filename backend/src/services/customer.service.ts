@@ -10,6 +10,15 @@ function money(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Start of current billing period for a ledger customer (local calendar). */
+function customerPeriodStart(customerType: string, now = new Date()): Date {
+  if (customerType === 'daily_ledger') {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  }
+  // monthly_ledger (and fallback)
+  return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+}
+
 export interface CreateCustomerPayload {
   name: string;
   phone?: string;
@@ -73,7 +82,10 @@ export class CustomerService {
    * - duesStatus: pending | paid (Paid/Pending filter; preferred over dues)
    * - customerType: daily_ledger | monthly_ledger
    * - status: active | inactive (default: active)
-   * Each row includes totalDue and lastSaleDate.
+   * Each row includes currentDue, previousDue, totalDue, and lastSaleDate.
+   * currentDue = open remaining in this period (today for daily, this month for monthly).
+   * previousDue = open remaining from before this period.
+   * totalDue = currentDue + previousDue.
    */
   static async listCustomers(filters?: {
     status?: string;
@@ -140,6 +152,8 @@ export class CustomerService {
           orderBy: { createdAt: 'desc' },
           select: {
             remainingBalance: true,
+            totalAmount: true,
+            paidAmount: true,
             createdAt: true,
             status: true
           }
@@ -147,20 +161,43 @@ export class CustomerService {
       }
     });
 
+    const now = new Date();
     const data = customers.map((c) => {
-      const openSales = c.sales.filter(
-        (s) =>
-          (s.status === 'pending' || s.status === 'partial') && s.remainingBalance > 0
-      );
-      const totalDue = money(
-        openSales.reduce((sum, s) => sum + s.remainingBalance, 0)
-      );
+      const periodStart = customerPeriodStart(c.customerType, now);
+      let currentAmount = 0;
+      let previousAmount = 0;
+      let paidAmount = 0;
+      let remainingBalance = 0;
+
+      for (const sale of c.sales) {
+        paidAmount += sale.paidAmount || 0;
+        if (
+          (sale.status === 'pending' || sale.status === 'partial') &&
+          sale.remainingBalance > 0
+        ) {
+          remainingBalance += sale.remainingBalance;
+        }
+        if (sale.createdAt >= periodStart) currentAmount += sale.totalAmount || 0;
+        else previousAmount += sale.totalAmount || 0;
+      }
+
+      currentAmount = money(currentAmount);
+      previousAmount = money(previousAmount);
+      paidAmount = money(paidAmount);
+      remainingBalance = money(remainingBalance);
+      const totalAmount = money(currentAmount + previousAmount);
       const lastSale = c.sales[0];
 
       const { sales: _sales, ...rest } = c;
       return {
         ...rest,
-        totalDue,
+        currentDue: currentAmount,
+        previousDue: previousAmount,
+        totalAmount,
+        paidAmount,
+        remainingBalance,
+        /** Open dues — same as remainingBalance */
+        totalDue: remainingBalance,
         lastSaleDate: lastSale ? lastSale.createdAt.toISOString() : null
       };
     });
@@ -315,7 +352,8 @@ export class CustomerService {
           SELECT COUNT(*) as accounts,
                  COALESCE(SUM(
                    (SELECT COALESCE(SUM(c.amount), 0) FROM SupplierCollection c WHERE c.supplierId = s.id) -
-                   (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p WHERE p.supplierId = s.id)
+                   (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p WHERE p.supplierId = s.id) -
+                   COALESCE(s.guaranteedAdvance, 0)
                  ), 0) as outstanding
           FROM Supplier s
           WHERE s.isActive = 1
@@ -327,11 +365,13 @@ export class CustomerService {
       statusCode: 200,
       data: {
         khataAccounts,
-        totalOutstanding: money((outstandingAgg._sum.remainingBalance || 0) + Number(supplierStats[0]?.outstanding || 0)),
+        // Customer dues only — supplier balances are separate (supplierPayables)
+        totalOutstanding: money(outstandingAgg._sum.remainingBalance || 0),
         collectedToday: money(collectedAgg._sum.amount || 0),
         pendingCount,
         paidCount,
         supplierAccounts: Number(supplierStats[0]?.accounts || 0),
+        // Signed: can be negative when advance credit remains
         supplierPayables: money(Number(supplierStats[0]?.outstanding || 0))
       }
     };

@@ -87,8 +87,11 @@ export class InventoryService {
   static async deleteProduct(id: number) {
     const product = await prisma.inventoryProduct.findUnique({ where: { id } });
     if (!product) return { success: false, statusCode: 404, message: 'Product not found.' };
-    await prisma.inventoryProduct.update({ where: { id }, data: { isActive: false } });
-    return { success: true, statusCode: 200, data: null };
+    // Core shop items (and all inventory rows) must stay — stock is adjusted, not deleted
+    if (product.isLocked) {
+      return { success: false, statusCode: 403, message: 'This product is locked and cannot be deleted.' };
+    }
+    return { success: false, statusCode: 403, message: 'Inventory products cannot be deleted. Adjust stock instead.' };
   }
 
   static async movements(productId?: number) {

@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
-import { Search, PlusCircle, Edit2, Lock, Trash2 } from 'lucide-react';
+import { Search, PlusCircle, Edit2, Lock } from 'lucide-react';
 import { Product } from '../../types/inventory';
 
 interface ProductsTabProps {
   products: Product[];
   onAddStockClick: (productId: string) => void;
   onEditClick: (product: Product) => void;
-  onDeleteClick: (product: Product) => void;
 }
 
 export const ProductsTab: React.FC<ProductsTabProps> = ({
   products,
   onAddStockClick,
   onEditClick,
-  onDeleteClick
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -100,15 +98,9 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
                     <button onClick={() => onEditClick(product)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    {product.isLocked ? (
-                      <button className="p-1.5 text-slate-400 hover:bg-slate-100 rounded cursor-not-allowed" title="Locked">
-                        <Lock className="w-4 h-4" />
-                      </button>
-                    ) : (
-                      <button onClick={() => onDeleteClick(product)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded" title="Delete">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button className="p-1.5 text-slate-400 hover:bg-slate-100 rounded cursor-not-allowed" title="Cannot delete">
+                      <Lock className="w-4 h-4" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -116,7 +108,7 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
             {filteredProducts.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-4 py-8 text-center text-slate-500 text-sm">
-                  {products.length === 0 ? "No products available. Add a product to get started." : "No products found matching your filters."}
+                  {products.length === 0 ? "Loading core products..." : "No products found matching your filters."}
                 </td>
               </tr>
             )}

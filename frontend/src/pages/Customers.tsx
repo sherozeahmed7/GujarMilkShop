@@ -11,7 +11,9 @@ import { SplitKhataModal } from '../components/customers/SplitKhataModal';
 import { CollectConfirmModal } from '../components/customers/CollectConfirmModal';
 import { customerService, CustomerSummaryStats } from '../services/customer.service';
 import { saleService, SaleRecord } from '../services/sale.service';
+import { getReturns } from '../services/returnsService';
 import { ApiCustomer, CustomerTableRow } from '../types/customer';
+import { ReturnRecord } from '../types/returns';
 import { useDebounce } from '../hooks/useDebounce';
 
 function normalizePhone(phone: string | null | undefined): string {
@@ -23,6 +25,12 @@ function ledgerTypeLabel(t: ApiCustomer['customerType']): string {
 }
 
 function mapLedgerRow(c: ApiCustomer): CustomerTableRow {
+  const remaining =
+    typeof c.remainingBalance === 'number'
+      ? c.remainingBalance
+      : typeof c.totalDue === 'number'
+        ? c.totalDue
+        : 0;
   return {
     key: `ledger-${c.id}`,
     kind: 'ledger',
@@ -32,7 +40,11 @@ function mapLedgerRow(c: ApiCustomer): CustomerTableRow {
     address: c.address,
     typeLabel: ledgerTypeLabel(c.customerType),
     customerType: c.customerType,
-    balance: typeof c.totalDue === 'number' ? c.totalDue : 0,
+    currentDue: typeof c.currentDue === 'number' ? c.currentDue : 0,
+    previousDue: typeof c.previousDue === 'number' ? c.previousDue : 0,
+    totalAmount: typeof c.totalAmount === 'number' ? c.totalAmount : remaining,
+    paidAmount: typeof c.paidAmount === 'number' ? c.paidAmount : 0,
+    balance: remaining,
     lastSaleDate: c.lastSaleDate ?? null,
     status: c.status,
     paymentType: 'Khata',
@@ -49,6 +61,10 @@ function mapWalkInRow(sale: SaleRecord): CustomerTableRow {
     phone: sale.customerPhone,
     address: null,
     typeLabel: 'Walk-in',
+    currentDue: null,
+    previousDue: null,
+    totalAmount: null,
+    paidAmount: null,
     balance: 0,
     lastSaleDate: sale.createdAt,
     status: sale.status,
@@ -87,6 +103,10 @@ function mapSplitGroups(splits: SaleRecord[]): CustomerTableRow[] {
       phone: latest.customerPhone,
       address: null,
       typeLabel: 'Split',
+      currentDue: null,
+      previousDue: null,
+      totalAmount: null,
+      paidAmount: null,
       balance: totalRemaining,
       lastSaleDate: latest.createdAt,
       status: totalRemaining > 0 ? 'partial' : 'paid',
@@ -115,6 +135,7 @@ export const Customers: React.FC = () => {
 
   const [khataRow, setKhataRow] = useState<CustomerTableRow | null>(null);
   const [khataSales, setKhataSales] = useState<SaleRecord[]>([]);
+  const [khataReturns, setKhataReturns] = useState<ReturnRecord[]>([]);
   const [collectRow, setCollectRow] = useState<CustomerTableRow | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -264,18 +285,23 @@ export const Customers: React.FC = () => {
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
       );
+      setKhataReturns([]);
       setKhataRow(row);
       return;
     }
 
     if (row.kind === 'ledger') {
       try {
-        const list = await saleService.listSales({ customerId: row.id });
+        const [list, returnList] = await Promise.all([
+          saleService.listSales({ customerId: row.id }),
+          getReturns({ customerId: row.id }),
+        ]);
         setKhataSales(
           [...list].sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )
         );
+        setKhataReturns(returnList);
         setKhataRow(row);
       } catch (err: any) {
         setError(err?.message || 'Failed to load khata');
@@ -407,10 +433,12 @@ export const Customers: React.FC = () => {
           title={khataRow.name}
           phone={khataRow.phone}
           sales={khataSales}
+          returns={khataReturns}
           mode={khataRow.kind === 'ledger' ? 'ledger' : 'split'}
           onClose={() => {
             setKhataRow(null);
             setKhataSales([]);
+            setKhataReturns([]);
           }}
         />
       )}

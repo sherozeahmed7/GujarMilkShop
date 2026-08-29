@@ -70,8 +70,10 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
   };
 
   const setItemQty = (itemId: string, qty: number, max: number) => {
-    const clamped = Math.max(1, Math.min(qty, max));
-    setSelectedItems((prev) => ({ ...prev, [itemId]: clamped }));
+    // Allow decimal kg (e.g. 0.5, 1.25); clamp to (0, max]
+    const clamped = Math.min(Math.max(qty, 0.01), max);
+    const rounded = Math.round(clamped * 100) / 100;
+    setSelectedItems((prev) => ({ ...prev, [itemId]: rounded }));
   };
 
   // When return type is Full Return, auto-select all items at full qty
@@ -292,11 +294,18 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                               <input
                                 id={`qty-input-${item.id}`}
                                 type="number"
-                                min={1}
+                                min={0.01}
                                 max={item.quantity}
+                                step="0.01"
                                 value={selectedItems[item.id]}
-                                onChange={(e) => setItemQty(item.id, parseInt(e.target.value) || 1, item.quantity)}
-                                className="w-14 text-right border border-blue-300 rounded-lg px-2 py-1 text-sm font-semibold text-blue-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                onChange={(e) =>
+                                  setItemQty(
+                                    item.id,
+                                    parseFloat(e.target.value) || 0.01,
+                                    item.quantity
+                                  )
+                                }
+                                className="w-16 text-right border border-blue-300 rounded-lg px-2 py-1 text-sm font-semibold text-blue-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                               />
                             ) : (
                               <span className="text-slate-400">—</span>

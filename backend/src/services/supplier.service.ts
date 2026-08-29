@@ -5,14 +5,64 @@ const SHIFTS = ['Morning', 'Evening'];
 const MILK_TYPES = ['Mixed', 'Cow', 'Buffalo'];
 const money = (value: number) => Math.round(value * 100) / 100;
 
+function localDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** YYYY-MM-DD start of current cycle for a supplier (local calendar). */
+function supplierPeriodStart(cycleType: string, now = new Date()): string {
+  if (cycleType === '1-Day Cycle') {
+    return localDateKey(now);
+  }
+  if (cycleType === 'Weekly Cycle') {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dow = d.getDay(); // 0 = Sun
+    const offset = dow === 0 ? 6 : dow - 1; // Monday start
+    d.setDate(d.getDate() - offset);
+    return localDateKey(d);
+  }
+  // Monthly Cycle (default)
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
 function shape(supplier: any, collections: any[] = [], payments: any[] = []) {
   const purchased = collections.reduce((sum, item) => sum + item.amount, 0);
   const paid = payments.reduce((sum, item) => sum + item.amount, 0);
+  const advance = Number(supplier.guaranteedAdvance) || 0;
+
+  const periodStart = supplierPeriodStart(supplier.cycleType);
+  let prevPurchased = 0;
+  let currPurchased = 0;
+  for (const item of collections) {
+    if (String(item.date) < periodStart) prevPurchased += item.amount;
+    else currPurchased += item.amount;
+  }
+
+  // Period columns = purchases only (not net of payments)
+  const currentAmount = money(currPurchased);
+  const previousAmount = money(prevPurchased);
+  // Amount we have to pay after advance (before payments)
+  const totalAmount = money(purchased - advance);
+  const paidAmount = money(paid);
+  // Remaining = Total to Pay − Paid (= purchased − paid − advance)
+  const remainingBalance = money(totalAmount - paidAmount);
+
   return {
     id: String(supplier.id), name: supplier.name, code: supplier.code, phone: supplier.phone || '',
     defaultRate: supplier.defaultRate, cowRate: supplier.cowRate, buffaloRate: supplier.buffaloRate,
-    cycleType: supplier.cycleType, isActive: supplier.isActive, guaranteedAdvance: supplier.guaranteedAdvance,
-    payableBalance: money(purchased - paid),
+    cycleType: supplier.cycleType, isActive: supplier.isActive, guaranteedAdvance: advance,
+    grossPayable: money(purchased - paid),
+    currentAmount,
+    previousAmount,
+    totalAmount,
+    paidAmount,
+    remainingBalance,
+    /** @deprecated alias of remainingBalance */
+    payableBalance: remainingBalance,
+    nextCycleCredit: advance,
   };
 }
 
@@ -124,8 +174,18 @@ export class SupplierService {
     if (!Number.isFinite(amount) || amount <= 0) return { success: false, statusCode: 400, message: 'Payment amount must be greater than zero.' };
     const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, include: { collections: true, payments: true } });
     if (!supplier) return { success: false, statusCode: 404, message: 'Supplier not found.' };
-    const balance = money(supplier.collections.reduce((s, c) => s + c.amount, 0) - supplier.payments.reduce((s, p) => s + p.amount, 0));
-    if (amount > balance) return { success: false, statusCode: 400, message: `Payment cannot exceed payable balance of Rs. ${balance}.` };
+    const shaped = shape(supplier, supplier.collections, supplier.payments);
+    const balance = Math.max(0, shaped.payableBalance);
+    if (balance <= 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: shaped.payableBalance < 0
+          ? `Nothing to pay — advance credit of Rs. ${Math.abs(shaped.payableBalance)} is still available.`
+          : 'Payable balance is zero.',
+      };
+    }
+    if (amount > balance) return { success: false, statusCode: 400, message: `Payment cannot exceed payable balance of Rs. ${balance} (after Rs. ${shaped.guaranteedAdvance} advance).` };
     const method = payload.method || 'cash';
     if (!['cash', 'bank_transfer', 'jazzcash'].includes(method)) return { success: false, statusCode: 400, message: 'Invalid supplier payment method.' };
     const payment = await prisma.supplierPayment.create({ data: { supplierId, date: payload.date || new Date().toISOString().slice(0, 10), amount, method, notes: payload.notes?.trim() || null, createdById: userId } });

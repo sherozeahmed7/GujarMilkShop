@@ -17,7 +17,7 @@ export const MilkProducts: React.FC<{
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [stock, setStock] = useState<MilkProductsDailyStock | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoadingStock, setIsLoadingStock] = useState(false);
+  const [isLoadingStock, setIsLoadingStock] = useState(true);
   
   const [milkInput, setMilkInput] = useState('');
   
@@ -87,6 +87,13 @@ export const MilkProducts: React.FC<{
     </div>
   );
 
+  if (!stock) return (
+    <div className="p-8 flex items-center justify-center gap-2 text-slate-400 text-sm">
+      <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+      Loading stock data…
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
@@ -127,13 +134,13 @@ export const MilkProducts: React.FC<{
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <MilkSummary stock={stock!} />
+          <MilkSummary stock={stock} />
           
           {/* Changed to flex wrap to ensure cards don't squish */}
           <div className="flex flex-wrap gap-6 items-stretch">
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <LassiSection 
-                stock={stock!} 
+                stock={stock} 
                 onAddProduction={handleLassiProd} 
                 onOpenDayEnd={() => setIsLassiModalOpen(true)}
                 onAddToCart={onAddToCart}
@@ -141,7 +148,7 @@ export const MilkProducts: React.FC<{
             </div>
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <ButterSection 
-                stock={stock!} 
+                stock={stock} 
                 onAddProduction={handleButterProd} 
                 onOpenConversion={() => setIsConversionModalOpen(true)}
                 onAddToCart={onAddToCart}
@@ -149,7 +156,7 @@ export const MilkProducts: React.FC<{
             </div>
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <GheeSection 
-                stock={stock!} 
+                stock={stock} 
                 onAddProduction={handleGheeProd}
                 onAddToCart={onAddToCart}
               />
@@ -163,7 +170,7 @@ export const MilkProducts: React.FC<{
       {isConversionModalOpen && (
         <ButterGheeConversionModal
           date={selectedDate}
-          availableButter={stock!.butterClosing}
+          availableButter={stock.butterClosing}
           onClose={() => setIsConversionModalOpen(false)}
           onSuccess={loadData}
         />
@@ -172,7 +179,7 @@ export const MilkProducts: React.FC<{
       {isLassiModalOpen && (
         <DayEndLassiModal
           date={selectedDate}
-          currentSold={stock!.lassiSold}
+          currentSold={stock.lassiSold}
           onClose={() => setIsLassiModalOpen(false)}
           onSuccess={loadData}
         />

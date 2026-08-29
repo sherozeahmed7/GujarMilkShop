@@ -16,14 +16,28 @@ function formatLastSale(date: string | null): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 }
 
-function formatBalance(balance: number | null): React.ReactNode {
+function formatDueAmount(amount: number | null): React.ReactNode {
+  if (amount === null || amount === undefined) {
+    return <span className="text-sm text-slate-400">—</span>;
+  }
+  if (amount > 0) {
+    return (
+      <span className="font-bold text-sm text-rose-600">
+        Rs. {Math.round(amount).toLocaleString()}
+      </span>
+    );
+  }
+  return <span className="text-sm font-medium text-slate-400">Rs. 0</span>;
+}
+
+function formatTotalDue(balance: number | null): React.ReactNode {
   if (balance === null || balance === undefined) {
     return <span className="text-sm text-slate-400">{NA}</span>;
   }
   if (balance > 0) {
     return (
       <span className="font-bold text-sm text-rose-600">
-        Rs. {balance.toLocaleString()}
+        Rs. {Math.round(balance).toLocaleString()}
       </span>
     );
   }
@@ -71,8 +85,26 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
           <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
             Payment Type
           </th>
+          <th
+            className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100"
+            title="Billed this month (monthly) or today (daily)"
+          >
+            Current Month / Day
+          </th>
+          <th
+            className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100"
+            title="Billed before the current period"
+          >
+            Previous Month / Day
+          </th>
           <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
-            Balance
+            Total to Pay
+          </th>
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+            Paid
+          </th>
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+            Remaining Balance
           </th>
           <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
             Last Sale
@@ -85,7 +117,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
       <tbody className="divide-y divide-slate-100">
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
+            <td colSpan={11} className="px-5 py-12 text-center text-slate-500">
               No customers found. Try adjusting your search or filters.
             </td>
           </tr>
@@ -167,7 +199,19 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
       <td className="px-5 py-3 text-sm font-medium text-slate-700">
         {displayText(row.paymentType)}
       </td>
-      <td className="px-5 py-3">{formatBalance(row.balance)}</td>
+      <td className="px-5 py-3">{formatDueAmount(row.currentDue)}</td>
+      <td className="px-5 py-3">{formatDueAmount(row.previousDue)}</td>
+      <td className="px-5 py-3">{formatDueAmount(row.totalAmount)}</td>
+      <td className="px-5 py-3">
+        {row.paidAmount === null || row.paidAmount === undefined ? (
+          <span className="text-sm text-slate-400">—</span>
+        ) : (
+          <span className="font-semibold text-sm text-emerald-600">
+            Rs. {Math.round(row.paidAmount).toLocaleString()}
+          </span>
+        )}
+      </td>
+      <td className="px-5 py-3">{formatTotalDue(row.balance)}</td>
       <td className="px-5 py-3 text-sm text-slate-500">
         {formatLastSale(row.lastSaleDate)}
       </td>

@@ -15,7 +15,26 @@ import { apiClient } from '../services/apiClient';
 class ApiMilkProductsRepository implements IMilkProductsRepository {
   async getDailyStock(date: string): Promise<MilkProductsDailyStock> {
     const res = await apiClient.get('/milk-products/stock', { date });
-    return res.data as MilkProductsDailyStock;
+    const data = res.data;
+    if (!data) {
+      return {
+        date,
+        milkTotal: 0,
+        lassiProduced: 0,
+        lassiSold: 0,
+        lassiRemaining: 0,
+        butterOpening: 0,
+        butterProduced: 0,
+        butterSold: 0,
+        butterConverted: 0,
+        butterClosing: 0,
+        gheeOpening: 0,
+        gheeProduced: 0,
+        gheeSold: 0,
+        gheeClosing: 0,
+      };
+    }
+    return data as MilkProductsDailyStock;
   }
 
   async getTransactions(date: string): Promise<MilkProductTransaction[]> {

@@ -43,13 +43,36 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payable Balance</span>
-              <span className="text-2xl font-bold text-amber-600">Rs. {supplier.payableBalance.toLocaleString()}</span>
+            <div className="flex items-end gap-4">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total to Pay</span>
+                <span className="text-sm font-bold text-slate-700">
+                  Rs. {(supplier.totalAmount ?? (supplier.currentAmount ?? 0) + (supplier.previousAmount ?? 0)).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Paid</span>
+                <span className="text-sm font-bold text-emerald-600">
+                  Rs. {(supplier.paidAmount ?? 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Remaining</span>
+                <span
+                  className={`text-2xl font-bold ${
+                    supplier.payableBalance < 0 ? 'text-emerald-600' : 'text-amber-600'
+                  }`}
+                >
+                  {supplier.payableBalance < 0
+                    ? `Rs. −${Math.abs(supplier.payableBalance).toLocaleString()}`
+                    : `Rs. ${supplier.payableBalance.toLocaleString()}`}
+                </span>
+              </div>
             </div>
             <button 
               onClick={() => setIsPaymentModalOpen(true)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all active:scale-95"
+              disabled={supplier.payableBalance <= 0}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <CreditCard className="w-5 h-5" />
               Pay
@@ -75,7 +98,9 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
           <div className="w-px h-6 bg-slate-200"></div>
           <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100">
             <AlertCircle className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">Advance: Rs. {supplier.guaranteedAdvance.toLocaleString()}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Advance: −Rs. {(supplier.guaranteedAdvance || 0).toLocaleString()}
+            </span>
           </div>
         </div>
       </div>

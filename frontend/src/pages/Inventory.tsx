@@ -8,7 +8,6 @@ import { StockMovementsTab } from '../components/inventory/StockMovementsTab';
 import { AddProductModal } from '../components/inventory/AddProductModal';
 import { EditProductModal } from '../components/inventory/EditProductModal';
 import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
-import { DeleteConfirmModal } from '../components/inventory/DeleteConfirmModal';
 import { Product } from '../types/inventory';
 
 export const Inventory: React.FC = () => {
@@ -19,7 +18,6 @@ export const Inventory: React.FC = () => {
     summary,
     addProduct,
     updateProduct,
-    deleteProduct,
     adjustStock,
     isLoading,
     error
@@ -31,7 +29,6 @@ export const Inventory: React.FC = () => {
   // Modals state
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [adjustingStockProduct, setAdjustingStockProduct] = useState<Product | null>(null);
 
   const handleAction = (message: string) => {
@@ -104,7 +101,6 @@ export const Inventory: React.FC = () => {
               if (product) setAdjustingStockProduct(product);
             }}
             onEditClick={(product) => setEditingProduct(product)}
-            onDeleteClick={(product) => setDeletingProduct(product)}
           />
         )}
         
@@ -140,17 +136,6 @@ export const Inventory: React.FC = () => {
           onClose={() => setEditingProduct(null)}
           onSave={(id, updates) => {
             updateProduct(id, updates).then(() => handleAction('Product updated successfully')).catch(() => undefined);
-          }}
-        />
-      )}
-
-      {deletingProduct && (
-        <DeleteConfirmModal
-          title="Delete Product"
-          message={`Are you sure you want to delete ${deletingProduct.name}? This action cannot be undone.`}
-          onClose={() => setDeletingProduct(null)}
-          onConfirm={() => {
-            deleteProduct(deletingProduct.id).then(() => handleAction('Product deleted successfully')).catch(() => undefined);
           }}
         />
       )}

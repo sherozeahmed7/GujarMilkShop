@@ -13,7 +13,21 @@ export interface Supplier {
   cycleType: CycleType;
   isActive: boolean;
   guaranteedAdvance: number;
+  /** Purchases − payments (before advance) */
+  grossPayable?: number;
+  /** Purchases in current cycle (month / week / day) */
+  currentAmount?: number;
+  /** Purchases before current cycle */
+  previousAmount?: number;
+  /** Current + Previous — amount we have to pay (before paid/advance) */
+  totalAmount?: number;
+  /** Sum of payments made to supplier */
+  paidAmount?: number;
+  /** totalAmount − paid − advance */
+  remainingBalance?: number;
+  /** Alias of remainingBalance (can be negative = advance credit left) */
   payableBalance: number;
+  nextCycleCredit?: number;
 }
 
 export interface MilkCollection {

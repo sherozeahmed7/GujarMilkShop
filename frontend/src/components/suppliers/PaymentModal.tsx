@@ -6,34 +6,44 @@ import { X, CreditCard, DollarSign } from 'lucide-react';
 interface PaymentModalProps {
   supplier: Supplier;
   onClose: () => void;
+  /** Fired only after payment is saved (not on cancel) */
+  onPaid?: () => void | Promise<void>;
 }
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose }) => {
+export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, onPaid }) => {
   const { addPayment } = useSupplierStore();
   const [amount, setAmount] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [method, setMethod] = useState('cash');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const todayStr = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState<string>(todayStr);
 
   const numAmount = parseFloat(amount) || 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (numAmount <= 0) return;
+    if (numAmount <= 0 || submitting) return;
 
-    addPayment({
-      supplierId: supplier.id,
-      date,
-      amount: numAmount,
-      method,
-      notes
-    });
-    
-    // In a real app we'd show a toast here. 
-    // "Payment of Rs. X successful"
-    onClose();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await addPayment({
+        supplierId: supplier.id,
+        date,
+        amount: numAmount,
+        method,
+        notes
+      });
+      await onPaid?.();
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Payment failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -59,9 +69,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose })
 
         <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-5">
           
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex justify-between items-center">
-            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Current Payable Balance</span>
-            <span className="text-lg font-bold text-amber-700">Rs. {supplier.payableBalance.toLocaleString()}</span>
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-amber-800/70 uppercase tracking-wider">Gross purchases − paid</span>
+              <span className="text-sm font-semibold text-slate-700">
+                Rs. {(supplier.grossPayable ?? supplier.payableBalance + (supplier.guaranteedAdvance || 0)).toLocaleString()}
+              </span>
+            </div>
+            {(supplier.guaranteedAdvance || 0) > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Advance</span>
+                <span className="text-sm font-bold text-emerald-700">
+                  −Rs. {supplier.guaranteedAdvance.toLocaleString()}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-2 border-t border-amber-200/80">
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Payable now</span>
+              <span className={`text-lg font-bold ${supplier.payableBalance < 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {supplier.payableBalance < 0
+                  ? `Rs. −${Math.abs(supplier.payableBalance).toLocaleString()}`
+                  : `Rs. ${supplier.payableBalance.toLocaleString()}`}
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -74,12 +104,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose })
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
+                placeholder={String(supplier.payableBalance || 0)}
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xl font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                 autoFocus
                 required
               />
             </div>
+            {(supplier.guaranteedAdvance || 0) > 0 && (
+              <p className="text-[11px] text-slate-500">
+                Advance (−Rs. {supplier.guaranteedAdvance.toLocaleString()}) is already deducted from payable above.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -114,20 +149,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose })
             />
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+              {error}
+            </div>
+          )}
+
           <div className="flex gap-3 mt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors"
+              disabled={submitting}
+              className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={numAmount <= 0}
+              disabled={numAmount <= 0 || submitting}
               className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Confirm Payment
+              {submitting ? 'Saving…' : 'Confirm Payment'}
             </button>
           </div>
         </form>

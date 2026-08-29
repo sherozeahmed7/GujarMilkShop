@@ -80,13 +80,30 @@ export const KhataLedger: React.FC = () => {
     }
   }, [debouncedSearch, filterMode]);
 
+  const loadSuppliers = useCallback(async () => {
+    try {
+      const list = await supplierService.list();
+      setSuppliers(list);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load suppliers');
+      setSuppliers([]);
+    }
+  }, []);
+
+  const refreshAfterAction = useCallback(async () => {
+    await Promise.all([
+      loadData(),
+      partyMode === 'suppliers' ? loadSuppliers() : Promise.resolve(),
+    ]);
+  }, [loadData, loadSuppliers, partyMode]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   useEffect(() => {
-    if (partyMode === 'suppliers') supplierService.list().then(setSuppliers).catch((err: any) => setError(err?.message || 'Failed to load suppliers'));
-  }, [partyMode]);
+    if (partyMode === 'suppliers') loadSuppliers();
+  }, [partyMode, loadSuppliers]);
 
   const cycleFilter = () => {
     setFilterMode((prev) =>
@@ -100,7 +117,7 @@ export const KhataLedger: React.FC = () => {
     }
     try {
       await customerService.deleteCustomer(c.id);
-      await loadData();
+      await refreshAfterAction();
     } catch (err: any) {
       setError(err?.message || 'Failed to delete customer');
     }
@@ -118,12 +135,27 @@ export const KhataLedger: React.FC = () => {
 
   const handleExcelExport = () => {
     const rows = [
-      ['Name', 'Phone', 'Customer Type', 'Balance', 'Address', 'Last Sale'],
+      [
+        'Name',
+        'Phone',
+        'Customer Type',
+        'Current Month/Day',
+        'Previous Month/Day',
+        'Total to Pay',
+        'Paid',
+        'Remaining Balance',
+        'Address',
+        'Last Sale',
+      ],
       ...customers.map((c) => [
         c.name,
         c.phone || 'Not Available',
         typeBadge(c.customerType),
-        String(c.totalDue ?? 0),
+        String(c.currentDue ?? 0),
+        String(c.previousDue ?? 0),
+        String(c.totalAmount ?? 0),
+        String(c.paidAmount ?? 0),
+        String(c.remainingBalance ?? c.totalDue ?? 0),
         c.address || 'Not Available',
         c.lastSaleDate
           ? new Date(c.lastSaleDate).toLocaleDateString()
@@ -160,16 +192,25 @@ export const KhataLedger: React.FC = () => {
           <p>Gujar Milk Shop — ${new Date().toLocaleString()}</p>
           <p>Accounts: ${summary.khataAccounts} · Outstanding: Rs. ${Math.round(summary.totalOutstanding).toLocaleString()} · Collected today: Rs. ${Math.round(summary.collectedToday).toLocaleString()}</p>
           <table>
-            <thead><tr><th>Name</th><th>Phone</th><th>Customer Type</th><th>Balance</th><th>Last Sale</th></tr></thead>
+            <thead><tr><th>Name</th><th>Phone</th><th>Customer Type</th><th>Current Month/Day</th><th>Previous Month/Day</th><th>Total to Pay</th><th>Paid</th><th>Remaining</th><th>Last Sale</th></tr></thead>
             <tbody>
               ${customers
                 .map((c) => {
-                  const bal = c.totalDue ?? 0;
+                  const current = c.currentDue ?? 0;
+                  const previous = c.previousDue ?? 0;
+                  const totalPay = c.totalAmount ?? current + previous;
+                  const paid = c.paidAmount ?? 0;
+                  const bal = c.remainingBalance ?? c.totalDue ?? 0;
+                  const fmt = (n: number) => 'Rs. ' + Math.round(n).toLocaleString();
                   return `<tr>
                 <td>${c.name}</td>
                 <td>${c.phone || 'Not Available'}</td>
                 <td>${typeBadge(c.customerType)}</td>
-                <td class="${bal > 0 ? 'bal' : 'clear'}">${bal > 0 ? 'Rs. ' + Math.round(bal).toLocaleString() : 'Clear'}</td>
+                <td>${fmt(current)}</td>
+                <td>${fmt(previous)}</td>
+                <td>${fmt(totalPay)}</td>
+                <td>${fmt(paid)}</td>
+                <td class="${bal > 0 ? 'bal' : 'clear'}">${bal > 0 ? fmt(bal) : 'Clear'}</td>
                 <td>${c.lastSaleDate ? new Date(c.lastSaleDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Not Available'}</td>
               </tr>`;
                 })
@@ -203,7 +244,7 @@ export const KhataLedger: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             type="button"
-            onClick={loadData}
+            onClick={refreshAfterAction}
             disabled={loading}
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors disabled:opacity-50"
             title="Refresh"
@@ -292,22 +333,34 @@ export const KhataLedger: React.FC = () => {
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
-                <th className="w-[22%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Name
                 </th>
-                <th className="w-[16%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Phone
                 </th>
-                <th className="w-[14%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                  Customer Type
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Type
                 </th>
-                <th className="w-[14%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                  Balance
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Current Month / Day
                 </th>
-                <th className="w-[12%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Previous Month / Day
+                </th>
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Total to Pay
+                </th>
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Paid
+                </th>
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Remaining Balance
+                </th>
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Last Sale
                 </th>
-                <th className="w-[22%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
                   Actions
                 </th>
               </tr>
@@ -315,13 +368,13 @@ export const KhataLedger: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {loading && customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center text-sm text-slate-400">
+                  <td colSpan={10} className="px-5 py-16 text-center text-sm text-slate-400">
                     Loading customers…
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center">
+                  <td colSpan={10} className="px-5 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <CheckCircle2 className="w-10 h-10 text-slate-200" />
                       <p className="text-sm font-medium">No customers found</p>
@@ -331,7 +384,11 @@ export const KhataLedger: React.FC = () => {
                 </tr>
               ) : (
                 customers.map((c) => {
-                  const balance = c.totalDue ?? 0;
+                  const currentDue = c.currentDue ?? 0;
+                  const previousDue = c.previousDue ?? 0;
+                  const totalToPay = c.totalAmount ?? currentDue + previousDue;
+                  const paid = c.paidAmount ?? 0;
+                  const balance = c.remainingBalance ?? c.totalDue ?? 0;
                   const initials = c.name
                     .split(' ')
                     .map((n) => n[0])
@@ -339,10 +396,18 @@ export const KhataLedger: React.FC = () => {
                     .substring(0, 2)
                     .toUpperCase();
                   const isMonthly = c.customerType === 'monthly_ledger';
+                  const fmtAmt = (n: number) =>
+                    n > 0 ? (
+                      <span className="font-bold text-sm text-slate-700">
+                        Rs. {Math.round(n).toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-slate-400">Rs. 0</span>
+                    );
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/70 transition-colors group">
-                      <td className="px-5 py-3">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
                             {initials}
@@ -363,10 +428,10 @@ export const KhataLedger: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-sm text-slate-600 truncate">
+                      <td className="px-4 py-3 text-sm text-slate-600 truncate">
                         {c.phone?.trim() ? c.phone : 'Not Available'}
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-4 py-3">
                         <span
                           className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
                             isMonthly
@@ -377,7 +442,15 @@ export const KhataLedger: React.FC = () => {
                           {typeBadge(c.customerType)}
                         </span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-4 py-3">{fmtAmt(currentDue)}</td>
+                      <td className="px-4 py-3">{fmtAmt(previousDue)}</td>
+                      <td className="px-4 py-3">{fmtAmt(totalToPay)}</td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold text-sm text-emerald-600">
+                          Rs. {Math.round(paid).toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
                         {balance > 0 ? (
                           <span className="font-bold text-sm text-rose-600">
                             Rs. {Math.round(balance).toLocaleString()}
@@ -388,7 +461,7 @@ export const KhataLedger: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-sm text-slate-500">
+                      <td className="px-4 py-3 text-sm text-slate-500">
                         {c.lastSaleDate
                           ? new Date(c.lastSaleDate).toLocaleDateString('en-GB', {
                               day: '2-digit',
@@ -396,7 +469,7 @@ export const KhataLedger: React.FC = () => {
                             })
                           : 'Not Available'}
                       </td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1 flex-wrap opacity-100 lg:opacity-60 lg:group-hover:opacity-100 transition-opacity">
                           <button
                             type="button"
@@ -454,7 +527,107 @@ export const KhataLedger: React.FC = () => {
       </div> : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center gap-3"><div className="relative w-56 flex-shrink-0"><button type="button" onClick={() => setPartyPickerOpen((open) => !open)} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm" aria-haspopup="listbox" aria-expanded={partyPickerOpen}>Suppliers<ChevronDown className="w-4 h-4 text-slate-400" /></button>{partyPickerOpen && <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"><div className="relative mb-2"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input autoFocus type="search" value={partySearch} onChange={(e) => setPartySearch(e.target.value)} placeholder="Search party type..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none focus:border-blue-500" /></div>{(['customers', 'suppliers'] as const).filter((mode) => mode.includes(partySearch.toLowerCase().trim())).map((mode) => <button key={mode} type="button" onClick={() => { setPartyMode(mode); setPartySearch(''); setPartyPickerOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${partyMode === mode ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>{mode === 'customers' ? 'Customers' : 'Suppliers'}</button>)}</div>}</div><div className="relative max-w-lg flex-1"><Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input type="text" placeholder="Search suppliers by name or code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div></div>
-          <div className="flex-1 overflow-auto custom-scrollbar"><table className="w-full text-left"><thead className="bg-slate-50"><tr><th className="px-5 py-3 text-xs uppercase text-slate-500">Supplier</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Code</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Cycle</th><th className="px-5 py-3 text-xs uppercase text-slate-500">Payable</th><th className="px-5 py-3 text-right text-xs uppercase text-slate-500">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{suppliers.filter((s) => `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())).map((supplier) => <tr key={supplier.id} className="hover:bg-slate-50"><td className="px-5 py-3 font-semibold text-slate-800"><button type="button" onClick={() => navigate(`/ledger/suppliers/${supplier.id}`)} className="text-blue-600 hover:text-blue-800 hover:underline">{supplier.name}</button></td><td className="px-5 py-3 text-sm text-slate-500">{supplier.code}</td><td className="px-5 py-3 text-sm text-slate-500">{supplier.cycleType}</td><td className="px-5 py-3 font-bold text-amber-600">Rs. {Math.round(supplier.payableBalance).toLocaleString()}</td><td className="px-5 py-3 text-right"><button onClick={() => setLedgerSupplier(supplier)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200">Ledger</button></td></tr>)}</tbody></table></div>
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Supplier</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Code</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Cycle</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Advance</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500" title="Purchases in current month, week, or day">
+                    Current Month / Week / Day
+                  </th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500" title="Purchases before current cycle">
+                    Previous Month / Week / Day
+                  </th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Total to Pay</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Paid</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Remaining Balance</th>
+                  <th className="px-4 py-3 text-right text-xs uppercase text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {suppliers
+                  .filter((s) =>
+                    `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((supplier) => {
+                    const current = supplier.currentAmount ?? 0;
+                    const previous = supplier.previousAmount ?? 0;
+                    const totalToPay = supplier.totalAmount ?? current + previous;
+                    const paid = supplier.paidAmount ?? 0;
+                    const remaining = supplier.remainingBalance ?? supplier.payableBalance;
+                    const fmtAmt = (n: number) => {
+                      if (n < 0) {
+                        return (
+                          <span className="font-bold text-emerald-600">
+                            Rs. −{Math.abs(Math.round(n)).toLocaleString()}
+                          </span>
+                        );
+                      }
+                      if (n === 0) {
+                        return <span className="text-sm font-medium text-slate-400">Rs. 0</span>;
+                      }
+                      return (
+                        <span className="font-bold text-slate-700">
+                          Rs. {Math.round(n).toLocaleString()}
+                        </span>
+                      );
+                    };
+                    return (
+                      <tr key={supplier.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-semibold text-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/ledger/suppliers/${supplier.id}`)}
+                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            {supplier.name}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-500">{supplier.code}</td>
+                        <td className="px-4 py-3 text-sm text-slate-500">{supplier.cycleType}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-emerald-600">
+                          {(supplier.guaranteedAdvance || 0) > 0
+                            ? `−Rs. ${Math.round(supplier.guaranteedAdvance).toLocaleString()}`
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3">{fmtAmt(current)}</td>
+                        <td className="px-4 py-3">{fmtAmt(previous)}</td>
+                        <td className="px-4 py-3">{fmtAmt(totalToPay)}</td>
+                        <td className="px-4 py-3">
+                          <span className="font-semibold text-sm text-emerald-600">
+                            Rs. {Math.round(paid).toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {remaining < 0 ? (
+                            <span className="font-bold text-emerald-600">
+                              Rs. −{Math.abs(Math.round(remaining)).toLocaleString()}
+                            </span>
+                          ) : remaining === 0 ? (
+                            <span className="text-sm font-medium text-slate-400">Rs. 0</span>
+                          ) : (
+                            <span className="font-bold text-amber-600">
+                              Rs. {Math.round(remaining).toLocaleString()}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => setLedgerSupplier(supplier)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200"
+                          >
+                            Ledger
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
           <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 text-xs font-medium text-slate-500">Showing {suppliers.length} suppliers</div>
         </div>
       )}
@@ -463,23 +636,45 @@ export const KhataLedger: React.FC = () => {
         <KhataCustomerFormModal
           customer={formCustomer}
           onClose={() => setIsFormOpen(false)}
-          onSaved={loadData}
+          onSaved={refreshAfterAction}
         />
       )}
       {collectCustomer && (
         <KhataCashCollectModal
           customer={collectCustomer}
           onClose={() => setCollectCustomer(null)}
-          onCollected={loadData}
+          onCollected={refreshAfterAction}
         />
       )}
       {ledgerCustomer && (
         <KhataLedgerModal
           customer={ledgerCustomer}
-          onClose={() => setLedgerCustomer(null)}
+          onClose={() => {
+            setLedgerCustomer(null);
+            refreshAfterAction();
+          }}
         />
       )}
-      {ledgerSupplier && <SupplierLedgerModal supplier={ledgerSupplier} onClose={() => setLedgerSupplier(null)} />}
+      {ledgerSupplier && (
+        <SupplierLedgerModal
+          supplier={ledgerSupplier}
+          onClose={() => setLedgerSupplier(null)}
+          onPaid={async () => {
+            const list = await supplierService.list();
+            setSuppliers(list);
+            setLedgerSupplier((prev) => {
+              if (!prev) return null;
+              return list.find((s) => s.id === prev.id) ?? prev;
+            });
+            try {
+              const ledgerSummary = await customerService.getLedgerSummary();
+              setSummary(ledgerSummary);
+            } catch {
+              /* summary is best-effort */
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -27,7 +27,24 @@ export const CycleReport: React.FC<CycleReportProps> = ({ supplier }) => {
     amount: -p.amount, // Payments decrease payable balance
   }));
 
-  const ledger = [...supplierCollections, ...supplierPayments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const advanceEntry =
+    supplier.guaranteedAdvance > 0
+      ? [
+          {
+            id: 'advance',
+            date: '',
+            type: 'Advance' as const,
+            description: 'Guaranteed advance (reduces payable)',
+            amount: -supplier.guaranteedAdvance,
+          },
+        ]
+      : [];
+
+  const ledger = [...supplierCollections, ...supplierPayments, ...advanceEntry].sort((a, b) => {
+    if (!a.date) return -1;
+    if (!b.date) return 1;
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
 
   return (
     <div className="flex flex-col gap-4 p-4 h-full">
@@ -58,7 +75,9 @@ export const CycleReport: React.FC<CycleReportProps> = ({ supplier }) => {
               {ledger.map((entry) => (
                 <tr key={`${entry.type}-${entry.id}`} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 whitespace-nowrap text-slate-600 font-medium">
-                    {new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {entry.date
+                      ? new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                      : '—'}
                   </td>
                   <td className="px-4 py-3 text-slate-800">
                     <div className="flex items-center gap-2">

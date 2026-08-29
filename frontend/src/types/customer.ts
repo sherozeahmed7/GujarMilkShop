@@ -8,7 +8,17 @@ export interface ApiCustomer {
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
-  /** Present on list responses — sum of open remaining balances */
+  /** Open remaining in current period (today / this month) — billed amount */
+  currentDue?: number;
+  /** Billed amount from before current period */
+  previousDue?: number;
+  /** currentDue + previousDue (total billed) */
+  totalAmount?: number;
+  /** Sum of payments received */
+  paidAmount?: number;
+  /** Still outstanding */
+  remainingBalance?: number;
+  /** Alias of remainingBalance (open dues) */
   totalDue?: number;
   lastSaleDate?: string | null;
 }
@@ -29,7 +39,15 @@ export interface CustomerTableRow {
   /** Display label for Type column */
   typeLabel: string;
   customerType?: 'daily_ledger' | 'monthly_ledger';
-  /** null = Not Available */
+  /** Billed in current period; null = N/A (walk-in) */
+  currentDue: number | null;
+  /** Billed before current period; null = N/A */
+  previousDue: number | null;
+  /** Total billed (current + previous) */
+  totalAmount: number | null;
+  /** Amount already paid/collected */
+  paidAmount: number | null;
+  /** Remaining outstanding (legacy alias: balance) */
   balance: number | null;
   /** ISO date or null */
   lastSaleDate: string | null;

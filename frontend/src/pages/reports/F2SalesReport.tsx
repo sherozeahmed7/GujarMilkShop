@@ -45,6 +45,14 @@ function saleTypeLabel(saleType: string): string {
   return saleType;
 }
 
+function saleCustomerLabel(s: { customerName?: string | null; customer?: { name?: string } | null; saleType: string }): string {
+  const name = s.customerName || s.customer?.name;
+  if (name?.trim()) return name;
+  if (s.saleType === 'walk_in') return 'Walk-in';
+  if (s.saleType === 'split') return 'Split';
+  return 'Not Available';
+}
+
 function toInvoiceNo(id: number): string {
   return `INV-${String(id).padStart(5, '0')}`;
 }
@@ -89,7 +97,7 @@ export const F2SalesReport: React.FC = () => {
     id: toInvoiceNo(s.id),
     date: new Date(s.createdAt).toLocaleDateString(),
     time: new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    customer: s.customerName || (s.saleType === 'walk_in' ? 'Walk-in' : s.saleType === 'split' ? 'Split' : 'Not Available'),
+    customer: saleCustomerLabel(s),
     saleType: saleTypeLabel(s.saleType),
     paymentMethod: paymentLabel(s),
     total: s.totalAmount,
@@ -246,7 +254,7 @@ export const F2SalesReport: React.FC = () => {
                             {new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-bold">{sale.customerName || 'Walk-in'}</td>
+                        <td className="px-6 py-4 font-bold">{saleCustomerLabel(sale)}</td>
                         <td className="px-6 py-4">
                           <span className="text-xs uppercase font-semibold text-slate-500">{paymentLabel(sale)}</span>
                         </td>

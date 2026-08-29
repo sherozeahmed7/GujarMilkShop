@@ -311,15 +311,15 @@ export class MilkProductsService {
     const updates: any = {};
     if (lassiQty > 0) {
       updates.lassiSold = money(existing.lassiSold + lassiQty);
-      updates.lassiRemaining = money(Math.max(0, existing.lassiRemaining - lassiQty));
+      updates.lassiRemaining = money(existing.lassiRemaining - lassiQty);
     }
     if (butterQty > 0) {
       updates.butterSold = money(existing.butterSold + butterQty);
-      updates.butterClosing = money(Math.max(0, existing.butterClosing - butterQty));
+      updates.butterClosing = money(existing.butterClosing - butterQty);
     }
     if (gheeQty > 0) {
       updates.gheeSold = money(existing.gheeSold + gheeQty);
-      updates.gheeClosing = money(Math.max(0, existing.gheeClosing - gheeQty));
+      updates.gheeClosing = money(existing.gheeClosing - gheeQty);
     }
 
     if (Object.keys(updates).length > 0) {
@@ -327,7 +327,7 @@ export class MilkProductsService {
     }
   }
 
-  /** Stock check — called before creating a sale with F2 items */
+  /** Stock check — optional helper; sales no longer block on zero F2 stock */
   static async checkF2Stock(dateStr: string, lassiQty: number, butterQty: number, gheeQty: number) {
     const existing = await prisma.milkProductDailyStock.findFirst({
       where: {
@@ -338,38 +338,6 @@ export class MilkProductsService {
       },
     });
 
-    if (!existing) {
-      return {
-        ok: false,
-        statusCode: 422,
-        message: 'No F2 stock record found for today. Please initialise stock before selling F2 items.',
-      };
-    }
-
-    if (lassiQty > existing.lassiRemaining) {
-      return {
-        ok: false,
-        statusCode: 422,
-        message: `Insufficient Lassi stock. Requested: ${lassiQty} kg, Available: ${existing.lassiRemaining} kg.`,
-      };
-    }
-
-    if (butterQty > existing.butterClosing) {
-      return {
-        ok: false,
-        statusCode: 422,
-        message: `Insufficient Butter stock. Requested: ${butterQty} kg, Available: ${existing.butterClosing} kg.`,
-      };
-    }
-
-    if (gheeQty > existing.gheeClosing) {
-      return {
-        ok: false,
-        statusCode: 422,
-        message: `Insufficient Ghee stock. Requested: ${gheeQty} kg, Available: ${existing.gheeClosing} kg.`,
-      };
-    }
-
-    return { ok: true, record: existing };
+    return { ok: true as const, record: existing };
   }
 }

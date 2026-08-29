@@ -6,7 +6,6 @@ import { heldCartService, HeldCartRecord } from '../services/heldCart.service';
 import { customerService } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
 import { MilkProducts } from './inventory/MilkProducts';
-import { ConfirmSaleModal } from '../components/pos/ConfirmSaleModal';
 
 interface CartItem {
   id: string;
@@ -72,7 +71,6 @@ export const POS: React.FC = () => {
 
   const [milkCustomAmount, setMilkCustomAmount] = useState('');
   const [yogurtCustomAmount, setYogurtCustomAmount] = useState('');
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   // Ref to trigger F2 stock refresh after a successful sale
   const refreshF2StockRef = React.useRef<(() => void) | null>(null);
@@ -180,15 +178,46 @@ export const POS: React.FC = () => {
   const finalTotal = Math.max(0, money(subtotal - (discount || 0)));
 
   const addToCart = (name: string, quantity: number, unit: 'kg' | 'rs', total: number, pricePerKg: number) => {
-    const newItem: CartItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      quantity,
-      unit,
-      total,
-      pricePerKg
-    };
-    setCart([...cart, newItem]);
+    setCart((prev) => {
+      const qtyAdd = money(quantity);
+      // Prefer daily rate; if missing (0), derive from preset total / kg so price is never stuck at 0
+      const derivedRate =
+        pricePerKg > 0
+          ? pricePerKg
+          : qtyAdd > 0 && total > 0
+            ? money(total / qtyAdd)
+            : 0;
+
+      const existing = prev.find((item) => item.name === name);
+      if (existing) {
+        const rate = derivedRate > 0 ? derivedRate : existing.pricePerKg;
+        const newQty = money(existing.quantity + qtyAdd);
+        return prev.map((item) =>
+          item.name === name
+            ? {
+                ...item,
+                quantity: newQty,
+                total: money(newQty * rate),
+                pricePerKg: rate,
+                unit: 'kg',
+              }
+            : item
+        );
+      }
+
+      const rate = derivedRate;
+      return [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          name,
+          quantity: qtyAdd,
+          unit: 'kg',
+          total: money(rate > 0 ? qtyAdd * rate : total),
+          pricePerKg: rate,
+        },
+      ];
+    });
     setCheckoutError(null);
     setCheckoutSuccess(null);
   };
@@ -221,10 +250,11 @@ export const POS: React.FC = () => {
         if (isNaN(newQuantity) || newQuantity < 0) {
           return { ...item, quantity: 0, total: 0 };
         }
+        const qty = money(newQuantity);
         return {
           ...item,
-          quantity: newQuantity,
-          total: newQuantity * item.pricePerKg
+          quantity: qty,
+          total: money(qty * item.pricePerKg),
         };
       }
       return item;
@@ -240,7 +270,6 @@ export const POS: React.FC = () => {
     setCustomerPhone('');
     setSelectedKhataCustomer(null);
     setKhataFilter('');
-    setIsConfirmModalOpen(false);
   };
 
   const holdCurrentBill = async () => {
@@ -316,13 +345,7 @@ export const POS: React.FC = () => {
       setCheckoutError('Add items to the cart before completing the sale.');
       return;
     }
-
-    const hasF2 = cart.some((item) => ['Lassi', 'Butter', 'Ghee'].includes(item.name));
-    if (hasF2) {
-      setIsConfirmModalOpen(true);
-    } else {
-      handleCheckout();
-    }
+    handleCheckout();
   };
 
   const handleCheckout = async () => {
@@ -430,8 +453,6 @@ export const POS: React.FC = () => {
       const hadF2 = cart.some((item) => ['Lassi', 'Butter', 'Ghee'].includes(item.name));
       if (hadF2) refreshF2StockRef.current?.();
     } catch (err: any) {
-      // Close confirm modal so the error message is visible to the user
-      setIsConfirmModalOpen(false);
       setCheckoutError(err?.message || 'Failed to save sale');
     } finally {
       setSubmitting(false);
@@ -961,26 +982,6 @@ export const POS: React.FC = () => {
             )}
 
             <div className="space-y-3">
-              {paymentMethod === 'cash' && (
-                <button
-                  type="button"
-                  onClick={handleCheckoutClick}
-                  disabled={submitting}
-                  className="w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl p-4 flex justify-between items-center transition-colors disabled:opacity-50"
-                >
-                  <div className="text-left">
-                    <div className="font-bold text-sm">FAST CASH SALE</div>
-                    <div className="text-[10px] text-emerald-600/80 mt-0.5">
-                      {submitting ? 'Saving…' : 'No cash entry needed.'}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[10px] font-bold text-emerald-600/80 uppercase">Bill</div>
-                    <div className="font-black text-lg">Rs. {finalTotal.toFixed(0)}</div>
-                  </div>
-                </button>
-              )}
-
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -1006,21 +1007,6 @@ export const POS: React.FC = () => {
           )}
         </div>
       </div>
-
-      {isConfirmModalOpen && (
-        <ConfirmSaleModal
-          cart={cart}
-          discount={discount || 0}
-          finalTotal={finalTotal}
-          paymentMethod={paymentMethod}
-          customerName={customerName}
-          customerPhone={customerPhone}
-          selectedKhataCustomer={selectedKhataCustomer}
-          onConfirm={handleCheckout}
-          onCancel={() => setIsConfirmModalOpen(false)}
-          isProcessing={submitting}
-        />
-      )}
     </div>
   );
 };

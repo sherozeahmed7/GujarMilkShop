@@ -42,6 +42,8 @@ export interface SaleRecord {
   customerId: number | null;
   customerName: string | null;
   customerPhone: string | null;
+  /** Present when API includes customer relation */
+  customer?: { id: number; name: string; phone?: string | null } | null;
   totalAmount: number;
   paidAmount: number;
   remainingBalance: number;

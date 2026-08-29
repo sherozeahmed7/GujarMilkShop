@@ -11,7 +11,11 @@ export const KhataSummaryCards: React.FC<KhataSummaryCardsProps> = ({
   summary,
   loading,
 }) => {
-  const formatCurrency = (amount: number) => `Rs. ${Math.round(amount).toLocaleString()}`;
+  const formatCurrency = (amount: number) => {
+    const n = Math.round(Number(amount) || 0);
+    if (n < 0) return `Rs. −${Math.abs(n).toLocaleString()}`;
+    return `Rs. ${n.toLocaleString()}`;
+  };
 
   return (
     <div className="grid grid-cols-3 gap-5">
@@ -56,7 +60,13 @@ export const KhataSummaryCards: React.FC<KhataSummaryCardsProps> = ({
         </div>
         <div>
           <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Supplier Payables</p>
-          <h3 className="text-2xl font-bold text-amber-600 mt-1">{loading ? '…' : formatCurrency(summary.supplierPayables || 0)}</h3>
+          <h3
+            className={`text-2xl font-bold mt-1 ${
+              (summary.supplierPayables || 0) < 0 ? 'text-emerald-600' : 'text-amber-600'
+            }`}
+          >
+            {loading ? '…' : formatCurrency(summary.supplierPayables || 0)}
+          </h3>
         </div>
       </div>
     </div>

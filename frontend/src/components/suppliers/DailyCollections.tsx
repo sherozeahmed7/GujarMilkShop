@@ -184,6 +184,11 @@ const ShiftCard: React.FC<ShiftCardProps> = ({ supplier, date, shift }) => {
           <div className="flex flex-col">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Amount</span>
             <span className="text-xl font-bold text-blue-700">Rs. {totalAmount.toLocaleString()}</span>
+            {supplier.guaranteedAdvance > 0 && (
+              <span className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                Advance −Rs. {supplier.guaranteedAdvance.toLocaleString()} cuts payable after save
+              </span>
+            )}
           </div>
           
           <div className="flex gap-2">

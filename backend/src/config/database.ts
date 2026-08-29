@@ -84,6 +84,71 @@ async function seedSuperAdmin() {
   }
 }
 
+/** Core shop items — always present in inventory; locked so they cannot be deleted. */
+const CORE_INVENTORY_PRODUCTS = [
+  { code: 'MILK', name: 'Milk', description: 'Fresh milk', unit: 'kg', lowStockThreshold: 10 },
+  { code: 'YOGURT', name: 'Yogurt', description: 'Yogurt / dahi', unit: 'kg', lowStockThreshold: 5 },
+  { code: 'BUTTER', name: 'Butter', description: 'Butter', unit: 'kg', lowStockThreshold: 2 },
+  { code: 'LASSI', name: 'Lassi', description: 'Lassi', unit: 'kg', lowStockThreshold: 5 },
+  { code: 'GHEE', name: 'Ghee', description: 'Ghee', unit: 'kg', lowStockThreshold: 2 },
+] as const;
+
+async function seedCoreInventoryProducts() {
+  try {
+    for (const item of CORE_INVENTORY_PRODUCTS) {
+      await prisma.inventoryProduct.upsert({
+        where: { code: item.code },
+        update: {
+          name: item.name,
+          description: item.description,
+          category: 'Dairy',
+          unit: item.unit,
+          tax: 'Exempt',
+          lowStockThreshold: item.lowStockThreshold,
+          isActive: true,
+          isLocked: true,
+        },
+        create: {
+          code: item.code,
+          name: item.name,
+          description: item.description,
+          category: 'Dairy',
+          unit: item.unit,
+          tax: 'Exempt',
+          lowStockThreshold: item.lowStockThreshold,
+          isActive: true,
+          isLocked: true,
+        },
+      });
+    }
+    console.log('📦 Core inventory ready: Milk, Yogurt, Butter, Lassi, Ghee');
+  } catch (error) {
+    console.error('⚠️ Error seeding core inventory products:', error);
+  }
+}
+
+/** Seed starter daily rates only when the table is empty (so POS prices are not Rs. 0). */
+async function seedDefaultDailyRates() {
+  try {
+    const count = await prisma.dailyRate.count();
+    if (count > 0) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    await prisma.dailyRate.create({
+      data: {
+        milkRate: 200,
+        yogurtRate: 180,
+        updatedByRole: SUPER_ADMIN_ROLE,
+        date: today,
+      },
+    });
+    console.log('💰 Default daily rates seeded: Milk Rs. 200/kg, Yogurt Rs. 180/kg (edit in Daily Rates)');
+  } catch (error) {
+    console.error('⚠️ Error seeding default daily rates:', error);
+  }
+}
+
 /**
  * Connects to the database and logs status details
  */
@@ -95,6 +160,8 @@ export async function connectDB() {
 
     // Auto-seed default super_admin user
     await seedSuperAdmin();
+    await seedCoreInventoryProducts();
+    await seedDefaultDailyRates();
   } catch (error) {
     console.error('❌ Failed to connect to the database:', error);
     process.exit(1);

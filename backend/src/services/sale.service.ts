@@ -84,20 +84,39 @@ function localDateKey(d: Date): string {
 
 async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput[], userId?: number) {
   const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' } });
+
+  // Merge same itemName into one stock movement
+  const byName = new Map<string, number>();
   for (const item of items) {
-    const product = await tx.inventoryProduct.findFirst({
-      where: { OR: [{ code: item.itemName.toUpperCase() }, { name: { equals: item.itemName } }] }
+    const key = item.itemName.toLowerCase();
+    byName.set(key, money((byName.get(key) || 0) + item.quantity));
+  }
+
+  for (const [itemName, quantity] of byName) {
+    let product = await tx.inventoryProduct.findFirst({
+      where: { code: itemName.toUpperCase() },
     });
+    if (!product) {
+      const all = await tx.inventoryProduct.findMany({ where: { isActive: true } });
+      product = all.find((p: any) => String(p.name).toLowerCase() === itemName) || null;
+    }
     if (!product) continue;
-    const reference = `sale-${saleId}-${item.itemName}`;
+
+    const reference = `sale-${saleId}-${itemName}`;
     const existing = await tx.inventoryMovement.findUnique({ where: { reference } });
     if (existing) continue;
-    const stock = (await tx.inventoryMovement.aggregate({ where: { productId: product.id }, _sum: { quantity: true } }))._sum.quantity || 0;
-    if (stock - item.quantity < 0) {
-      throw new Error(`Insufficient inventory for ${item.itemName}. Available: ${stock}.`);
-    }
+
+    // Allow sale at zero / negative stock — balance just goes further down
     await tx.inventoryMovement.create({
-      data: { productId: product.id, quantity: money(-item.quantity), movementType: 'SALE', source: 'Point of Sale', reference, userId, shiftId: shift?.id }
+      data: {
+        productId: product.id,
+        quantity: money(-quantity),
+        movementType: 'SALE',
+        source: 'Point of Sale',
+        reference,
+        userId,
+        shiftId: shift?.id,
+      },
     });
   }
 }
@@ -300,11 +319,16 @@ async function deductF2Stock(
   const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-  const stock = await tx.milkProductDailyStock.findFirst({
+  let stock = await tx.milkProductDailyStock.findFirst({
     where: { date: { gte: dayStart, lte: dayEnd } }
   });
 
-  if (!stock) return; // Already checked earlier; this is a safety guard
+  // Create today's F2 row if missing so sale can still deduct (including from 0)
+  if (!stock) {
+    stock = await tx.milkProductDailyStock.create({
+      data: { date: dayStart },
+    });
+  }
 
   let lassiSoldDelta = 0;
   let butterSoldDelta = 0;
@@ -320,6 +344,7 @@ async function deductF2Stock(
     where: { id: stock.id },
     data: {
       lassiSold: money(stock.lassiSold + lassiSoldDelta),
+      // Can go below zero when selling with no / low stock
       lassiRemaining: money(stock.lassiRemaining - lassiSoldDelta),
       butterSold: money(stock.butterSold + butterSoldDelta),
       butterClosing: money(stock.butterClosing - butterSoldDelta),
@@ -426,59 +451,10 @@ export class SaleService {
       };
     }
 
-    // ========== F2 STOCK CHECK ==========
-    const hasF2 = normalizedItems.some((i) => (F2_ITEMS as readonly string[]).includes(i.itemName));
-
-    if (hasF2) {
-      // Get today's date range in local time
-      const today = new Date();
-      const dayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-      const dayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-
-      const stock = await prisma.milkProductDailyStock.findFirst({
-        where: { date: { gte: dayStart, lte: dayEnd } }
-      });
-
-      if (!stock) {
-        return {
-          success: false,
-          statusCode: 422,
-          message: 'No F2 stock record found for today. Please initialise today\'s stock on the Items F2 page before selling Lassi, Butter, or Ghee.'
-        };
-      }
-
-      // Aggregate quantities per F2 product
-      const f2Qty: Record<string, number> = { lassi: 0, butter: 0, ghee: 0 };
-      for (const item of normalizedItems) {
-        if (item.itemName === 'lassi') f2Qty.lassi = money(f2Qty.lassi + item.quantity);
-        if (item.itemName === 'butter') f2Qty.butter = money(f2Qty.butter + item.quantity);
-        if (item.itemName === 'ghee') f2Qty.ghee = money(f2Qty.ghee + item.quantity);
-      }
-
-      if (f2Qty.lassi > 0 && f2Qty.lassi > stock.lassiRemaining) {
-        return {
-          success: false,
-          statusCode: 422,
-          message: `Insufficient Lassi stock. Requested: ${f2Qty.lassi} kg, Available: ${stock.lassiRemaining} kg.`
-        };
-      }
-      if (f2Qty.butter > 0 && f2Qty.butter > stock.butterClosing) {
-        return {
-          success: false,
-          statusCode: 422,
-          message: `Insufficient Butter stock. Requested: ${f2Qty.butter} kg, Available: ${stock.butterClosing} kg.`
-        };
-      }
-      if (f2Qty.ghee > 0 && f2Qty.ghee > stock.gheeClosing) {
-        return {
-          success: false,
-          statusCode: 422,
-          message: `Insufficient Ghee stock. Requested: ${f2Qty.ghee} kg, Available: ${stock.gheeClosing} kg.`
-        };
-      }
-
-      // Stock OK — deduct will happen atomically inside each sale-type branch via deductF2Stock()
-    }
+    // ========== F2 STOCK ==========
+    // Lassi/Butter/Ghee may sell at zero stock — balances just go down (can be negative).
+    // Deduction happens inside the sale transaction via deductF2Stock().
+    // No pre-check that blocks the sale.
 
     // ========== WALK-IN ==========
     if (saleType === 'walk_in') {
@@ -666,8 +642,8 @@ export class SaleService {
           data: {
             saleType: saleType as SaleType,
             customerId: customer.id,
-            customerName: null,
-            customerPhone: null,
+            customerName: customer.name,
+            customerPhone: customer.phone || null,
             totalAmount: total,
             paidAmount: 0,
             remainingBalance: total,
@@ -742,17 +718,27 @@ export class SaleService {
       return {
         success: true,
         statusCode: 200,
-        data: sales
+        data: sales.map((s) => ({
+          ...s,
+          // Ledger sales store name on Customer relation, not customerName column
+          customerName: s.customerName || s.customer?.name || null,
+          customerPhone: s.customerPhone || s.customer?.phone || null,
+        })),
       };
     }
 
     const analytics = buildSalesAnalytics(sales, start, end);
+    const shaped = sales.map((s) => ({
+      ...s,
+      customerName: s.customerName || s.customer?.name || null,
+      customerPhone: s.customerPhone || s.customer?.phone || null,
+    }));
 
     return {
       success: true,
       statusCode: 200,
       data: {
-        sales,
+        sales: shaped,
         analytics
       }
     };
@@ -782,7 +768,11 @@ export class SaleService {
     return {
       success: true,
       statusCode: 200,
-      data: sale
+      data: {
+        ...sale,
+        customerName: sale.customerName || sale.customer?.name || null,
+        customerPhone: sale.customerPhone || sale.customer?.phone || null,
+      }
     };
   }
 
