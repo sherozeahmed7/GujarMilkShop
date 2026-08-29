@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Printer } from 'lucide-react';
 import { ReturnRecord, ReturnType } from '../../types';
+import { BrandLogo } from '../BrandLogo';
 
 const returnTypeColors: Record<ReturnType, string> = {
   'Full Return': 'bg-rose-100 text-rose-700',
@@ -62,8 +63,9 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({ record, on
         <div id="print-receipt-content" className="flex-1 overflow-y-auto custom-scrollbar p-5">
           <div className="border-2 border-dashed border-slate-300 rounded-xl p-5 font-mono text-sm space-y-3">
             {/* Shop name */}
-            <div className="text-center space-y-0.5">
-              <p className="font-bold text-base text-slate-800">Gujar Milk Shop</p>
+            <div className="text-center flex flex-col items-center space-y-0.5">
+              <BrandLogo variant="receipt" />
+              <p className="font-bold text-base text-slate-800">GUJJAR MILK SHOP</p>
               <p className="text-xs text-slate-500">Return / Refund Receipt</p>
               <p className="text-xs text-slate-400">━━━━━━━━━━━━━━━━━━━━━━━</p>
             </div>

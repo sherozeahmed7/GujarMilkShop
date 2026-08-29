@@ -8,6 +8,7 @@ import {
   Database, Wallet, FileText, Settings, ChevronDown, ChevronRight,
   PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
+import { BrandLogo } from '../BrandLogo';
 
 const mainNavItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -144,9 +145,7 @@ export const Sidebar: React.FC = () => {
       >
         {/* Header / Logo */}
         <div className={`p-5 flex items-center shrink-0 ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
-          <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 flex items-center justify-center font-serif italic font-bold text-slate-800">
-            G
-          </div>
+          <BrandLogo variant="sidebar" />
           <span className={`text-sm font-semibold tracking-tight text-slate-800 whitespace-nowrap transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
             Gujar Milk Shop
           </span>
