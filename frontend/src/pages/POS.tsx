@@ -559,6 +559,31 @@ export const POS: React.FC = () => {
                     </button>
                   ))}
                 </div>
+
+                <div className="mt-4">
+                  <p className="text-xs font-bold text-emerald-700/70 uppercase tracking-wider mb-2 px-0.5">
+                    By Amount (RS)
+                  </p>
+                  <div className="rounded-xl border-2 border-emerald-200 bg-white p-2 grid grid-cols-4 gap-2">
+                    {(prices?.milkByAmount ?? []).map((preset) => (
+                      <button
+                        key={`milk-rs-${preset.amount}`}
+                        type="button"
+                        onClick={() =>
+                          addToCart('Milk', preset.weight, 'kg', preset.amount, milkRatePerKg)
+                        }
+                        className="aspect-square rounded-lg border border-emerald-100 bg-emerald-50/60 hover:bg-emerald-100 hover:border-emerald-400 flex flex-col items-center justify-center transition-colors group"
+                      >
+                        <span className="font-bold text-emerald-800 group-hover:text-emerald-900 text-base sm:text-lg">
+                          {preset.amount}
+                        </span>
+                        <span className="text-[10px] text-emerald-600/80 font-medium mt-0.5">
+                          {preset.weight > 0 ? `${preset.weight} kg` : 'Rs'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="hidden lg:block w-px bg-slate-100"></div>

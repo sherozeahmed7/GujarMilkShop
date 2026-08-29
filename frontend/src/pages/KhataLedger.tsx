@@ -4,12 +4,13 @@ import { KhataSummaryCards } from '../components/khata/KhataSummaryCards';
 import { KhataCashCollectModal } from '../components/khata/KhataCashCollectModal';
 import { KhataLedgerModal } from '../components/khata/KhataLedgerModal';
 import { KhataCustomerFormModal } from '../components/khata/KhataCustomerFormModal';
+import { ReportFilters } from '../components/reports/ReportFilters';
 import {
   customerService,
   LedgerSummaryStats,
 } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
-import { Supplier } from '../types';
+import { DateFilterType, Supplier, CycleType } from '../types';
 import { supplierService } from '../services/supplier.service';
 import { SupplierLedgerModal } from '../components/khata/SupplierLedgerModal';
 import { useDebounce } from '../hooks/useDebounce';
@@ -17,6 +18,7 @@ import {
   Search, Download, FileText, Printer, Filter, Plus, ChevronDown,
   DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw
 } from 'lucide-react';
+import { CustomerTypeFilter } from '../components/customers/CustomerToolbar';
 
 const EMPTY_SUMMARY: LedgerSummaryStats = {
   khataAccounts: 0,
@@ -25,6 +27,14 @@ const EMPTY_SUMMARY: LedgerSummaryStats = {
   pendingCount: 0,
   paidCount: 0,
 };
+
+const ALL_TIME_FILTER: DateFilterType = {
+  label: 'All Time',
+  startDate: null,
+  endDate: null,
+};
+
+type SupplierCycleFilter = 'All' | CycleType;
 
 function typeBadge(t: ApiCustomer['customerType']) {
   return t === 'monthly_ledger' ? 'Monthly' : 'Daily';
@@ -48,6 +58,11 @@ export const KhataLedger: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'All' | 'Paid' | 'Pending'>('All');
+  const [customerTypeFilter, setCustomerTypeFilter] =
+    useState<CustomerTypeFilter>('All');
+  const [supplierCycleFilter, setSupplierCycleFilter] =
+    useState<SupplierCycleFilter>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilterType>(ALL_TIME_FILTER);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,11 +75,24 @@ export const KhataLedger: React.FC = () => {
       const duesStatus =
         filterMode === 'Pending' ? 'pending' : filterMode === 'Paid' ? 'paid' : undefined;
 
+      const ledgerType =
+        customerTypeFilter === 'daily_ledger' ||
+        customerTypeFilter === 'monthly_ledger'
+          ? customerTypeFilter
+          : undefined;
+
       const [list, ledgerSummary] = await Promise.all([
         customerService.getCustomers({
           status: 'active',
           search: debouncedSearch.trim() || undefined,
           duesStatus,
+          customerType: ledgerType,
+          ...(dateFilter.startDate
+            ? { fromDate: dateFilter.startDate.toISOString() }
+            : {}),
+          ...(dateFilter.endDate
+            ? { toDate: dateFilter.endDate.toISOString() }
+            : {}),
         }),
         customerService.getLedgerSummary(),
       ]);
@@ -78,17 +106,27 @@ export const KhataLedger: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filterMode]);
+  }, [debouncedSearch, filterMode, dateFilter, customerTypeFilter]);
 
   const loadSuppliers = useCallback(async () => {
     try {
-      const list = await supplierService.list();
+      const list = await supplierService.list({
+        ...(supplierCycleFilter !== 'All'
+          ? { cycleType: supplierCycleFilter }
+          : {}),
+        ...(dateFilter.startDate
+          ? { fromDate: dateFilter.startDate.toISOString() }
+          : {}),
+        ...(dateFilter.endDate
+          ? { toDate: dateFilter.endDate.toISOString() }
+          : {}),
+      });
       setSuppliers(list);
     } catch (err: any) {
       setError(err?.message || 'Failed to load suppliers');
       setSuppliers([]);
     }
-  }, []);
+  }, [supplierCycleFilter, dateFilter]);
 
   const refreshAfterAction = useCallback(async () => {
     await Promise.all([
@@ -308,6 +346,18 @@ export const KhataLedger: React.FC = () => {
         <KhataSummaryCards summary={summary} loading={loading} />
       </div>
 
+      {(partyMode === 'customers' || partyMode === 'suppliers') && (
+        <div className="flex-shrink-0">
+          <ReportFilters
+            currentFilter={dateFilter}
+            onFilterChange={setDateFilter}
+            onRefresh={refreshAfterAction}
+            isLoading={loading}
+            allowAllTime
+          />
+        </div>
+      )}
+
       {partyMode === 'customers' ? <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex-shrink-0 flex items-center gap-3">
           <div className="relative w-56 flex-shrink-0">
@@ -327,6 +377,22 @@ export const KhataLedger: React.FC = () => {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
+          <select
+            value={
+              customerTypeFilter === 'daily_ledger' ||
+              customerTypeFilter === 'monthly_ledger'
+                ? customerTypeFilter
+                : 'All'
+            }
+            onChange={(e) =>
+              setCustomerTypeFilter(e.target.value as CustomerTypeFilter)
+            }
+            className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+          >
+            <option value="All">All Types</option>
+            <option value="daily_ledger">Daily Ledger</option>
+            <option value="monthly_ledger">Monthly Ledger</option>
+          </select>
         </div>
 
         <div className="flex-1 overflow-auto custom-scrollbar">
@@ -522,11 +588,85 @@ export const KhataLedger: React.FC = () => {
           <p className="text-xs font-medium text-slate-500">
             Showing {customers.length} of {totalCount} customers
             {filterMode !== 'All' && ` · Filter: ${filterMode}`}
+            {customerTypeFilter !== 'All' &&
+              ` · Type: ${
+                customerTypeFilter === 'daily_ledger' ? 'Daily' : 'Monthly'
+              }`}
           </p>
         </div>
       </div> : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center gap-3"><div className="relative w-56 flex-shrink-0"><button type="button" onClick={() => setPartyPickerOpen((open) => !open)} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm" aria-haspopup="listbox" aria-expanded={partyPickerOpen}>Suppliers<ChevronDown className="w-4 h-4 text-slate-400" /></button>{partyPickerOpen && <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"><div className="relative mb-2"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input autoFocus type="search" value={partySearch} onChange={(e) => setPartySearch(e.target.value)} placeholder="Search party type..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none focus:border-blue-500" /></div>{(['customers', 'suppliers'] as const).filter((mode) => mode.includes(partySearch.toLowerCase().trim())).map((mode) => <button key={mode} type="button" onClick={() => { setPartyMode(mode); setPartySearch(''); setPartyPickerOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${partyMode === mode ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>{mode === 'customers' ? 'Customers' : 'Suppliers'}</button>)}</div>}</div><div className="relative max-w-lg flex-1"><Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input type="text" placeholder="Search suppliers by name or code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div></div>
+          <div className="p-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
+            <div className="relative w-56 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setPartyPickerOpen((open) => !open)}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm"
+                aria-haspopup="listbox"
+                aria-expanded={partyPickerOpen}
+              >
+                Suppliers
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+              {partyPickerOpen && (
+                <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      autoFocus
+                      type="search"
+                      value={partySearch}
+                      onChange={(e) => setPartySearch(e.target.value)}
+                      placeholder="Search party type..."
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  {(['customers', 'suppliers'] as const)
+                    .filter((mode) => mode.includes(partySearch.toLowerCase().trim()))
+                    .map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setPartyMode(mode);
+                          setPartySearch('');
+                          setPartyPickerOpen(false);
+                        }}
+                        className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${
+                          partyMode === mode
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {mode === 'customers' ? 'Customers' : 'Suppliers'}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div className="relative max-w-lg flex-1 min-w-[180px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search suppliers by name or code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <select
+              value={supplierCycleFilter}
+              onChange={(e) =>
+                setSupplierCycleFilter(e.target.value as SupplierCycleFilter)
+              }
+              className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+            >
+              <option value="All">All Types</option>
+              <option value="Monthly Cycle">Monthly Cycle</option>
+              <option value="Weekly Cycle">Weekly Cycle</option>
+              <option value="1-Day Cycle">1-Day Cycle</option>
+            </select>
+          </div>
           <div className="flex-1 overflow-auto custom-scrollbar">
             <table className="w-full text-left">
               <thead className="bg-slate-50">
@@ -628,7 +768,11 @@ export const KhataLedger: React.FC = () => {
               </tbody>
             </table>
           </div>
-          <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 text-xs font-medium text-slate-500">Showing {suppliers.length} suppliers</div>
+          <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 text-xs font-medium text-slate-500">
+            Showing {suppliers.filter((s) => `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())).length} suppliers
+            {supplierCycleFilter !== 'All' && ` · Type: ${supplierCycleFilter}`}
+            {dateFilter.label !== 'All Time' && ` · ${dateFilter.label}`}
+          </div>
         </div>
       )}
 

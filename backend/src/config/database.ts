@@ -139,11 +139,16 @@ async function seedDefaultDailyRates() {
       data: {
         milkRate: 200,
         yogurtRate: 180,
+        lassiRate: 120,
+        butterRate: 800,
+        gheeRate: 1200,
         updatedByRole: SUPER_ADMIN_ROLE,
         date: today,
       },
     });
-    console.log('💰 Default daily rates seeded: Milk Rs. 200/kg, Yogurt Rs. 180/kg (edit in Daily Rates)');
+    console.log(
+      '💰 Default daily rates seeded: Milk 200, Yogurt 180, Lassi 120, Butter 800, Ghee 1200 (edit in Daily Rates)'
+    );
   } catch (error) {
     console.error('⚠️ Error seeding default daily rates:', error);
   }

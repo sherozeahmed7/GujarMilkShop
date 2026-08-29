@@ -6,6 +6,8 @@ export interface CreateCustomerPayload {
   phone?: string;
   address?: string;
   customerType: 'daily_ledger' | 'monthly_ledger';
+  /** Optional existing dues — shows in Previous column */
+  openingBalance?: number;
 }
 
 export interface UpdateCustomerPayload {
@@ -23,6 +25,8 @@ export interface CustomerListFilters {
   dues?: boolean;
   /** pending | paid | all — Paid/Pending filter for Khata Ledger */
   duesStatus?: 'pending' | 'paid' | 'all';
+  fromDate?: string;
+  toDate?: string;
 }
 
 export interface CustomerSummaryStats {
@@ -68,6 +72,8 @@ export const customerService = {
     if (filters?.search?.trim()) params.search = filters.search.trim();
     if (filters?.dues) params.dues = 'true';
     if (filters?.duesStatus) params.duesStatus = filters.duesStatus;
+    if (filters?.fromDate) params.fromDate = filters.fromDate;
+    if (filters?.toDate) params.toDate = filters.toDate;
 
     const response = await apiClient.get(
       '/customers',
@@ -109,11 +115,13 @@ export const customerService = {
   settleAll: async (
     id: number,
     paymentMethod: 'cash' | 'online',
-    amount?: number
+    amount?: number,
+    discount?: number
   ): Promise<unknown> => {
     const response = await apiClient.post(`/customers/${id}/settle-all`, {
       paymentMethod,
       ...(amount !== undefined ? { amount } : {}),
+      ...(discount !== undefined && discount > 0 ? { discount } : {}),
     });
     return response.data;
   },

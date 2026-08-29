@@ -3,10 +3,22 @@ import { prisma } from '../config/database';
 const MOVEMENT_TYPES = ['OPENING', 'STOCK_IN', 'SALE', 'RETURN', 'WASTAGE', 'ADJUSTMENT', 'CONVERSION'];
 const money = (value: number) => Math.round(value * 100) / 100;
 
-function rateFor(name: string, rate: { milkRate: number; yogurtRate: number } | null) {
+function rateFor(
+  name: string,
+  rate: {
+    milkRate: number;
+    yogurtRate: number;
+    lassiRate?: number;
+    butterRate?: number;
+    gheeRate?: number;
+  } | null
+) {
   const normalized = name.trim().toLowerCase();
   if (normalized.includes('milk')) return rate?.milkRate || 0;
   if (normalized.includes('yogurt') || normalized === 'yog') return rate?.yogurtRate || 0;
+  if (normalized.includes('lassi')) return rate?.lassiRate || 0;
+  if (normalized.includes('butter')) return rate?.butterRate || 0;
+  if (normalized.includes('ghee')) return rate?.gheeRate || 0;
   return 0;
 }
 
@@ -20,7 +32,16 @@ async function averageSupplierCost(name: string) {
 
 export class InventoryService {
   static async currentRate() {
-    return prisma.dailyRate.findFirst({ orderBy: { id: 'desc' }, select: { milkRate: true, yogurtRate: true } });
+    return prisma.dailyRate.findFirst({
+      orderBy: { id: 'desc' },
+      select: {
+        milkRate: true,
+        yogurtRate: true,
+        lassiRate: true,
+        butterRate: true,
+        gheeRate: true,
+      },
+    });
   }
 
   static async productView(product: any, movements: any[] = [], rate: any = null) {

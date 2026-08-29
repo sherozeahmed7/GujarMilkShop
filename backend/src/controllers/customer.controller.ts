@@ -37,11 +37,11 @@ export class CustomerController {
 
   /**
    * GET /api/customers
-   * Query: search, dues (true|false), duesStatus (pending|paid|all), customerType, status
+   * Query: search, dues, duesStatus, customerType, status, fromDate, toDate
    */
   static async listCustomers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { status, customerType, search, dues, duesStatus } = req.query;
+      const { status, customerType, search, dues, duesStatus, fromDate, toDate } = req.query;
       const duesFlag =
         typeof dues === 'string' &&
         ['true', '1', 'yes'].includes(dues.toLowerCase());
@@ -51,7 +51,9 @@ export class CustomerController {
         customerType: customerType as string | undefined,
         search: search as string | undefined,
         dues: duesFlag,
-        duesStatus: duesStatus as string | undefined
+        duesStatus: duesStatus as string | undefined,
+        fromDate: typeof fromDate === 'string' ? fromDate : undefined,
+        toDate: typeof toDate === 'string' ? toDate : undefined
       });
 
       if (!result.success) {
@@ -187,8 +189,8 @@ export class CustomerController {
         return ApiResponse.error(res, 'Invalid customer id.', 400);
       }
 
-      const { paymentMethod, amount } = req.body;
-      const result = await CustomerService.settleAllDues(id, paymentMethod, amount);
+      const { paymentMethod, amount, discount } = req.body;
+      const result = await CustomerService.settleAllDues(id, paymentMethod, amount, discount);
 
       if (!result.success) {
         return ApiResponse.error(res, result.message!, result.statusCode);

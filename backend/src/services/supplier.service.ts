@@ -28,17 +28,24 @@ function supplierPeriodStart(cycleType: string, now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
-function shape(supplier: any, collections: any[] = [], payments: any[] = []) {
+function shape(
+  supplier: any,
+  collections: any[] = [],
+  payments: any[] = [],
+  rangeStart?: string | null,
+  rangeEnd?: string | null
+) {
   const purchased = collections.reduce((sum, item) => sum + item.amount, 0);
   const paid = payments.reduce((sum, item) => sum + item.amount, 0);
   const advance = Number(supplier.guaranteedAdvance) || 0;
 
-  const periodStart = supplierPeriodStart(supplier.cycleType);
+  const periodStart = rangeStart || supplierPeriodStart(supplier.cycleType);
   let prevPurchased = 0;
   let currPurchased = 0;
   for (const item of collections) {
-    if (String(item.date) < periodStart) prevPurchased += item.amount;
-    else currPurchased += item.amount;
+    const d = String(item.date);
+    if (d < periodStart) prevPurchased += item.amount;
+    else if (!rangeEnd || d <= rangeEnd) currPurchased += item.amount;
   }
 
   // Period columns = purchases only (not net of payments)
@@ -67,12 +74,45 @@ function shape(supplier: any, collections: any[] = [], payments: any[] = []) {
 }
 
 export class SupplierService {
-  static async list() {
-    const suppliers = await prisma.supplier.findMany({
+  static async list(filters?: {
+    cycleType?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    const where: any = {};
+    if (filters?.cycleType && CYCLE_TYPES.includes(filters.cycleType)) {
+      where.cycleType = filters.cycleType;
+    }
+
+    let suppliers = await prisma.supplier.findMany({
+      where,
       orderBy: { id: 'desc' },
       include: { collections: true, payments: true },
     });
-    return suppliers.map((s) => shape(s, s.collections, s.payments));
+
+    let rangeStart: string | null = null;
+    let rangeEnd: string | null = null;
+    if (filters?.fromDate) {
+      const d = new Date(filters.fromDate);
+      if (!Number.isNaN(d.getTime())) rangeStart = localDateKey(d);
+    }
+    if (filters?.toDate) {
+      const d = new Date(filters.toDate);
+      if (!Number.isNaN(d.getTime())) rangeEnd = localDateKey(d);
+    }
+
+    if (rangeStart || rangeEnd) {
+      suppliers = suppliers.filter((s) =>
+        s.collections.some((c) => {
+          const date = String(c.date);
+          if (rangeStart && date < rangeStart) return false;
+          if (rangeEnd && date > rangeEnd) return false;
+          return true;
+        })
+      );
+    }
+
+    return suppliers.map((s) => shape(s, s.collections, s.payments, rangeStart, rangeEnd));
   }
 
   static async get(id: number) {
@@ -170,10 +210,24 @@ export class SupplierService {
   }
 
   static async addPayment(userId: number, supplierId: number, payload: any) {
-    const amount = Number(payload.amount);
-    if (!Number.isFinite(amount) || amount <= 0) return { success: false, statusCode: 400, message: 'Payment amount must be greater than zero.' };
-    const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, include: { collections: true, payments: true } });
+    const amount = Number(payload.amount ?? 0);
+    const discount = Number(payload.discount ?? 0);
+    if (!Number.isFinite(amount) || amount < 0) {
+      return { success: false, statusCode: 400, message: 'Payment amount must be a valid number.' };
+    }
+    if (!Number.isFinite(discount) || discount < 0) {
+      return { success: false, statusCode: 400, message: 'Discount must be a valid number.' };
+    }
+    if (amount <= 0 && discount <= 0) {
+      return { success: false, statusCode: 400, message: 'Enter a payment amount and/or a discount greater than zero.' };
+    }
+
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: supplierId },
+      include: { collections: true, payments: true },
+    });
     if (!supplier) return { success: false, statusCode: 404, message: 'Supplier not found.' };
+
     const shaped = shape(supplier, supplier.collections, supplier.payments);
     const balance = Math.max(0, shaped.payableBalance);
     if (balance <= 0) {
@@ -185,10 +239,57 @@ export class SupplierService {
           : 'Payable balance is zero.',
       };
     }
-    if (amount > balance) return { success: false, statusCode: 400, message: `Payment cannot exceed payable balance of Rs. ${balance} (after Rs. ${shaped.guaranteedAdvance} advance).` };
+
+    const totalClear = Math.round((amount + discount) * 100) / 100;
+    if (totalClear > balance) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: `Payment + discount (Rs. ${totalClear}) cannot exceed payable Rs. ${balance} (after Rs. ${shaped.guaranteedAdvance} advance).`,
+      };
+    }
+
     const method = payload.method || 'cash';
-    if (!['cash', 'bank_transfer', 'jazzcash'].includes(method)) return { success: false, statusCode: 400, message: 'Invalid supplier payment method.' };
-    const payment = await prisma.supplierPayment.create({ data: { supplierId, date: payload.date || new Date().toISOString().slice(0, 10), amount, method, notes: payload.notes?.trim() || null, createdById: userId } });
-    return { success: true, statusCode: 201, data: payment };
+    if (amount > 0 && !['cash', 'bank_transfer', 'jazzcash'].includes(method)) {
+      return { success: false, statusCode: 400, message: 'Invalid supplier payment method.' };
+    }
+
+    const date = payload.date || new Date().toISOString().slice(0, 10);
+    const notes = payload.notes?.trim() || null;
+
+    const created = await prisma.$transaction(async (tx) => {
+      const rows = [];
+      if (amount > 0) {
+        rows.push(
+          await tx.supplierPayment.create({
+            data: { supplierId, date, amount, method, notes, createdById: userId },
+          })
+        );
+      }
+      if (discount > 0) {
+        const discountNotes = notes
+          ? `Discount write-off. ${notes}`
+          : 'Discount write-off (balance discarded)';
+        rows.push(
+          await tx.supplierPayment.create({
+            data: {
+              supplierId,
+              date,
+              amount: discount,
+              method: 'discount',
+              notes: discountNotes,
+              createdById: userId,
+            },
+          })
+        );
+      }
+      return rows;
+    });
+
+    return {
+      success: true,
+      statusCode: 201,
+      data: created.length === 1 ? created[0] : created,
+    };
   }
 }

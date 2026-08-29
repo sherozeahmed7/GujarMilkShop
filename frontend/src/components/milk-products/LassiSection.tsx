@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import { Plus } from 'lucide-react';
 
@@ -7,13 +7,29 @@ interface Props {
   onAddProduction: (qty: number) => void;
   onOpenDayEnd: () => void;
   onAddToCart?: (name: string, qty: number, unitPrice: number) => void;
+  /** Daily rate Rs/kg from Settings — prefills sell price (still editable) */
+  defaultRatePerKg?: number;
 }
 
-export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onOpenDayEnd, onAddToCart }) => {
+export const LassiSection: React.FC<Props> = ({
+  stock,
+  onAddProduction,
+  onOpenDayEnd,
+  onAddToCart,
+  defaultRatePerKg = 0,
+}) => {
   const [prodInput, setProdInput] = useState('');
   const [saleQty, setSaleQty] = useState('');
-  const [salePrice, setSalePrice] = useState('');
+  const [salePrice, setSalePrice] = useState(
+    defaultRatePerKg > 0 ? String(defaultRatePerKg) : ''
+  );
   const [saleError, setSaleError] = useState('');
+
+  useEffect(() => {
+    if (defaultRatePerKg > 0) {
+      setSalePrice(String(defaultRatePerKg));
+    }
+  }, [defaultRatePerKg]);
 
   const handleProd = () => {
     const q = parseFloat(prodInput);
@@ -31,7 +47,7 @@ export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onOpenDa
     setSaleError('');
     onAddToCart?.('Lassi', qty, price);
     setSaleQty('');
-    setSalePrice('');
+    setSalePrice(defaultRatePerKg > 0 ? String(defaultRatePerKg) : '');
   };
 
   return (
@@ -40,12 +56,14 @@ export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onOpenDa
         <div>
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
             Lassi
-            <span className="bg-cyan-100 text-cyan-800 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Daily Product</span>
+            <span className="bg-cyan-100 text-cyan-800 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+              Daily Product
+            </span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">Stock resets to zero the next day</p>
         </div>
       </div>
-      
+
       <div className="p-4 flex-1 flex flex-col gap-4">
         <div className="flex justify-between text-sm">
           <span className="text-slate-500">Produced:</span>
@@ -62,33 +80,51 @@ export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onOpenDa
 
         <div className="mt-auto space-y-3 pt-4">
           <div className="flex items-center gap-2">
-            <input 
-              type="number" 
+            <input
+              type="number"
               placeholder="Production (kg)"
               className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500"
               value={prodInput}
-              onChange={e => setProdInput(e.target.value)}
+              onChange={(e) => setProdInput(e.target.value)}
             />
-            <button onClick={handleProd} className="bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg border border-cyan-200 text-sm font-medium transition-colors"><Plus className="w-4 h-4"/></button>
+            <button
+              onClick={handleProd}
+              className="bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg border border-cyan-200 text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
 
           {onAddToCart && (
             <div className="space-y-2 border-t border-slate-100 pt-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sell → Add to Cart</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Sell → Add to Cart
+                {defaultRatePerKg > 0 && (
+                  <span className="ml-1 font-normal normal-case text-cyan-600">
+                    (rate Rs. {defaultRatePerKg}/kg)
+                  </span>
+                )}
+              </p>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   placeholder="Qty (kg)"
                   className={`flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500 ${saleError ? 'border-red-400' : 'border-slate-200'}`}
                   value={saleQty}
-                  onChange={e => { setSaleQty(e.target.value); setSaleError(''); }}
+                  onChange={(e) => {
+                    setSaleQty(e.target.value);
+                    setSaleError('');
+                  }}
                 />
                 <input
                   type="number"
                   placeholder="Rs/kg"
                   className={`w-24 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500 ${saleError ? 'border-red-400' : 'border-slate-200'}`}
                   value={salePrice}
-                  onChange={e => { setSalePrice(e.target.value); setSaleError(''); }}
+                  onChange={(e) => {
+                    setSalePrice(e.target.value);
+                    setSaleError('');
+                  }}
                 />
                 <button
                   onClick={handleAddToCart}
@@ -100,8 +136,8 @@ export const LassiSection: React.FC<Props> = ({ stock, onAddProduction, onOpenDa
               {saleError && <p className="text-xs text-red-500">{saleError}</p>}
             </div>
           )}
-          
-          <button 
+
+          <button
             onClick={onOpenDayEnd}
             className="w-full mt-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg py-2 text-sm font-bold transition-colors"
           >

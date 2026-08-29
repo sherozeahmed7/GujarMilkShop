@@ -18,22 +18,48 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState<string>('');
+  const [discountAmount, setDiscountAmount] = useState<string>('');
 
   const totalAmount = customer.totalDue ?? 0;
+  const parsedDiscount = discountAmount.trim() === '' ? 0 : Number(discountAmount);
+  const parsedCollect = customAmount.trim() === '' ? null : Number(customAmount);
+  const effectiveCollect =
+    parsedCollect === null
+      ? Math.max(0, Math.round((totalAmount - (Number.isFinite(parsedDiscount) ? parsedDiscount : 0)) * 100) / 100)
+      : parsedCollect;
+  const combined =
+    (Number.isFinite(effectiveCollect) ? effectiveCollect : 0) +
+    (Number.isFinite(parsedDiscount) ? parsedDiscount : 0);
 
   const handleConfirm = async () => {
     setError(null);
 
+    const discount = discountAmount.trim() === '' ? 0 : Number(discountAmount);
+    if (Number.isNaN(discount) || discount < 0) {
+      setError('Please enter a valid discount (0 or more).');
+      return;
+    }
+
     if (customAmount.trim() !== '') {
       const parsed = Number(customAmount);
-      if (Number.isNaN(parsed) || parsed <= 0) {
-        setError('Please enter a valid amount greater than zero.');
+      if (Number.isNaN(parsed) || parsed < 0) {
+        setError('Please enter a valid collection amount.');
         return;
       }
-      if (parsed > totalAmount) {
-        setError(`Amount cannot exceed the outstanding balance of Rs. ${totalAmount}.`);
+      if (parsed <= 0 && discount <= 0) {
+        setError('Enter a collection amount and/or a discount greater than zero.');
         return;
       }
+      if (parsed + discount > totalAmount) {
+        setError(`Cash + discount cannot exceed outstanding Rs. ${totalAmount}.`);
+        return;
+      }
+    } else if (discount > totalAmount) {
+      setError(`Discount cannot exceed outstanding Rs. ${totalAmount}.`);
+      return;
+    } else if (discount <= 0 && totalAmount <= 0) {
+      setError('Nothing to collect.');
+      return;
     }
 
     setSubmitting(true);
@@ -41,7 +67,8 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
       await customerService.settleAll(
         customer.id,
         paymentMethod,
-        customAmount.trim() === '' ? undefined : Number(customAmount)
+        customAmount.trim() === '' ? undefined : Number(customAmount),
+        discount > 0 ? discount : undefined
       );
       onCollected();
       onClose();
@@ -51,6 +78,14 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
       setSubmitting(false);
     }
   };
+
+  const canSubmit =
+    totalAmount > 0 &&
+    !Number.isNaN(parsedDiscount) &&
+    parsedDiscount >= 0 &&
+    (parsedCollect === null || (!Number.isNaN(parsedCollect) && parsedCollect >= 0)) &&
+    combined > 0 &&
+    combined <= totalAmount + 1e-9;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
@@ -106,11 +141,29 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
               step="1"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
-              placeholder={`Full amount: ${totalAmount}`}
+              placeholder={`Full after discount: ${Math.max(0, totalAmount - (Number.isFinite(parsedDiscount) ? parsedDiscount : 0))}`}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
             />
             <p className="text-[11px] text-slate-500">
-              Leave blank to clear the full outstanding balance. Any remaining amount stays on khata.
+              Leave blank to clear the full outstanding balance (minus any discount). Any remaining stays on khata.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Discount amount
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={discountAmount}
+              onChange={(e) => setDiscountAmount(e.target.value)}
+              placeholder="0"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+            />
+            <p className="text-[11px] text-slate-500">
+              Written off from remaining — discarded permanently (not counted as cash collected).
             </p>
           </div>
 
@@ -155,10 +208,14 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={submitting || totalAmount <= 0 || (customAmount.trim() !== '' && Number(customAmount) > totalAmount)}
+            disabled={submitting || !canSubmit}
             className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-40"
           >
-            {submitting ? 'Collecting…' : customAmount.trim() === '' ? 'Confirm Collect' : 'Collect Partial'}
+            {submitting
+              ? 'Collecting…'
+              : customAmount.trim() === '' && discountAmount.trim() === ''
+                ? 'Confirm Collect'
+                : 'Confirm'}
           </button>
         </div>
       </div>

@@ -393,8 +393,18 @@ export class ReportsController {
         const stock     = p.movements.reduce((s, m) => s + m.quantity, 0);
         const costRows  = p.movements.filter(m => m.unitCost && m.unitCost > 0);
         const costPrice = costRows.length ? money(costRows.reduce((s, m) => s + (m.unitCost || 0), 0) / costRows.length) : 0;
-        const salePrice = p.name.toLowerCase().includes('milk') ? (rate?.milkRate || 0)
-          : p.name.toLowerCase().includes('yogurt') ? (rate?.yogurtRate || 0) : costPrice;
+        const name = p.name.toLowerCase();
+        const salePrice = name.includes('milk')
+          ? rate?.milkRate || 0
+          : name.includes('yogurt')
+            ? rate?.yogurtRate || 0
+            : name.includes('lassi')
+              ? rate?.lassiRate || 0
+              : name.includes('butter')
+                ? rate?.butterRate || 0
+                : name.includes('ghee')
+                  ? rate?.gheeRate || 0
+                  : costPrice;
         const stockStatus = stock <= 0 ? 'Out of Stock' : stock <= p.lowStockThreshold ? 'Low Stock' : 'In Stock';
         const lastMove  = p.movements.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
         return {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import { Plus } from 'lucide-react';
 
@@ -6,13 +6,27 @@ interface Props {
   stock: MilkProductsDailyStock;
   onAddProduction: (qty: number) => void;
   onAddToCart?: (name: string, qty: number, unitPrice: number) => void;
+  defaultRatePerKg?: number;
 }
 
-export const GheeSection: React.FC<Props> = ({ stock, onAddProduction, onAddToCart }) => {
+export const GheeSection: React.FC<Props> = ({
+  stock,
+  onAddProduction,
+  onAddToCart,
+  defaultRatePerKg = 0,
+}) => {
   const [prodInput, setProdInput] = useState('');
   const [saleQty, setSaleQty] = useState('');
-  const [salePrice, setSalePrice] = useState('');
+  const [salePrice, setSalePrice] = useState(
+    defaultRatePerKg > 0 ? String(defaultRatePerKg) : ''
+  );
   const [saleError, setSaleError] = useState('');
+
+  useEffect(() => {
+    if (defaultRatePerKg > 0) {
+      setSalePrice(String(defaultRatePerKg));
+    }
+  }, [defaultRatePerKg]);
 
   const handleProd = () => {
     const q = parseFloat(prodInput);
@@ -30,7 +44,7 @@ export const GheeSection: React.FC<Props> = ({ stock, onAddProduction, onAddToCa
     setSaleError('');
     onAddToCart?.('Ghee', qty, price);
     setSaleQty('');
-    setSalePrice('');
+    setSalePrice(defaultRatePerKg > 0 ? String(defaultRatePerKg) : '');
   };
 
   return (
@@ -39,12 +53,14 @@ export const GheeSection: React.FC<Props> = ({ stock, onAddProduction, onAddToCa
         <div>
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
             Desi Ghee
-            <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Persistent</span>
+            <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+              Persistent
+            </span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">Stock carries forward to the next day</p>
         </div>
       </div>
-      
+
       <div className="p-4 flex-1 flex flex-col gap-3">
         <div className="flex justify-between text-sm">
           <span className="text-slate-500">Opening:</span>
@@ -65,33 +81,51 @@ export const GheeSection: React.FC<Props> = ({ stock, onAddProduction, onAddToCa
 
         <div className="mt-auto space-y-3 pt-4">
           <div className="flex items-center gap-2">
-            <input 
-              type="number" 
+            <input
+              type="number"
               placeholder="Production (kg)"
               className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
               value={prodInput}
-              onChange={e => setProdInput(e.target.value)}
+              onChange={(e) => setProdInput(e.target.value)}
             />
-            <button onClick={handleProd} className="bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200 text-sm font-medium transition-colors"><Plus className="w-4 h-4"/></button>
+            <button
+              onClick={handleProd}
+              className="bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200 text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
 
           {onAddToCart && (
             <div className="space-y-2 border-t border-slate-100 pt-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sell → Add to Cart</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Sell → Add to Cart
+                {defaultRatePerKg > 0 && (
+                  <span className="ml-1 font-normal normal-case text-orange-600">
+                    (rate Rs. {defaultRatePerKg}/kg)
+                  </span>
+                )}
+              </p>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   placeholder="Qty (kg)"
                   className={`flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 ${saleError ? 'border-red-400' : 'border-slate-200'}`}
                   value={saleQty}
-                  onChange={e => { setSaleQty(e.target.value); setSaleError(''); }}
+                  onChange={(e) => {
+                    setSaleQty(e.target.value);
+                    setSaleError('');
+                  }}
                 />
                 <input
                   type="number"
                   placeholder="Rs/kg"
                   className={`w-24 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 ${saleError ? 'border-red-400' : 'border-slate-200'}`}
                   value={salePrice}
-                  onChange={e => { setSalePrice(e.target.value); setSaleError(''); }}
+                  onChange={(e) => {
+                    setSalePrice(e.target.value);
+                    setSaleError('');
+                  }}
                 />
                 <button
                   onClick={handleAddToCart}

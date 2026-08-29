@@ -24,6 +24,8 @@ export interface CreateCustomerPayload {
   phone?: string;
   address?: string;
   customerType: string;
+  /** Optional existing dues to seed as Previous balance */
+  openingBalance?: number;
 }
 
 export interface UpdateCustomerPayload {
@@ -35,10 +37,12 @@ export interface UpdateCustomerPayload {
 
 export class CustomerService {
   /**
-   * Create a registered ledger customer
+   * Create a registered ledger customer.
+   * Optional openingBalance creates a pending sale dated before the current
+   * period so it appears in Previous and can be collected like normal dues.
    */
   static async createCustomer(payload: CreateCustomerPayload) {
-    const { name, phone, address, customerType } = payload;
+    const { name, phone, address, customerType, openingBalance } = payload;
 
     if (!name || !name.trim()) {
       return {
@@ -56,14 +60,62 @@ export class CustomerService {
       };
     }
 
-    const customer = await prisma.customer.create({
-      data: {
-        name: name.trim(),
-        phone: phone?.trim() || null,
-        address: address?.trim() || null,
-        customerType,
-        status: 'active'
+    const opening = money(Number(openingBalance) || 0);
+    if (opening < 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'openingBalance cannot be negative.'
+      };
+    }
+
+    const customer = await prisma.$transaction(async (tx) => {
+      const created = await tx.customer.create({
+        data: {
+          name: name.trim(),
+          phone: phone?.trim() || null,
+          address: address?.trim() || null,
+          customerType,
+          status: 'active'
+        }
+      });
+
+      if (opening > 0) {
+        const saleType =
+          customerType === 'monthly_ledger' ? 'ledger_monthly' : 'ledger_daily';
+        // One second before current period → always counts as Previous
+        const periodStart = customerPeriodStart(customerType);
+        const openingAt = new Date(periodStart.getTime() - 1000);
+
+        await tx.sale.create({
+          data: {
+            saleType,
+            customerId: created.id,
+            customerName: created.name,
+            customerPhone: created.phone,
+            totalAmount: opening,
+            paidAmount: 0,
+            remainingBalance: opening,
+            status: 'pending',
+            createdAt: openingAt,
+            items: {
+              create: [
+                {
+                  itemName: 'Opening Balance',
+                  quantity: 1,
+                  unitPrice: opening,
+                  totalPrice: opening
+                }
+              ]
+            },
+            payments: {
+              create: { method: 'cash', amount: 0, status: 'pending' }
+            }
+          }
+        });
       }
+
+      return created;
     });
 
     return {
@@ -82,10 +134,10 @@ export class CustomerService {
    * - duesStatus: pending | paid (Paid/Pending filter; preferred over dues)
    * - customerType: daily_ledger | monthly_ledger
    * - status: active | inactive (default: active)
+   * - fromDate / toDate (ISO): only customers with sales in range; period split uses fromDate
    * Each row includes currentDue, previousDue, totalDue, and lastSaleDate.
-   * currentDue = open remaining in this period (today for daily, this month for monthly).
-   * previousDue = open remaining from before this period.
-   * totalDue = currentDue + previousDue.
+   * currentDue = billed in current period (or in selected date range).
+   * previousDue = billed before that period / range start.
    */
   static async listCustomers(filters?: {
     status?: string;
@@ -93,8 +145,11 @@ export class CustomerService {
     search?: string;
     dues?: boolean;
     duesStatus?: string;
+    fromDate?: string;
+    toDate?: string;
   }) {
     const where: any = {};
+    const andFilters: any[] = [];
 
     // Default to active customers unless status is explicitly provided
     where.status = filters?.status?.trim() || 'active';
@@ -133,15 +188,43 @@ export class CustomerService {
     };
 
     if (duesStatus === 'pending' || filters?.dues) {
-      where.sales = openDuesFilter;
+      andFilters.push({ sales: openDuesFilter });
     } else if (duesStatus === 'paid') {
-      where.sales = noOpenDuesFilter;
+      andFilters.push({ sales: noOpenDuesFilter });
     } else if (duesStatus && duesStatus !== 'all') {
       return {
         success: false,
         statusCode: 400,
         message: 'Invalid duesStatus. Allowed: pending, paid, all.'
       };
+    }
+
+    let rangeStart: Date | null = null;
+    let rangeEnd: Date | null = null;
+    if (filters?.fromDate) {
+      rangeStart = new Date(filters.fromDate);
+      if (Number.isNaN(rangeStart.getTime())) {
+        return { success: false, statusCode: 400, message: 'Invalid fromDate.' };
+      }
+    }
+    if (filters?.toDate) {
+      rangeEnd = new Date(filters.toDate);
+      if (Number.isNaN(rangeEnd.getTime())) {
+        return { success: false, statusCode: 400, message: 'Invalid toDate.' };
+      }
+    }
+
+    if (rangeStart || rangeEnd) {
+      const createdAt: any = {};
+      if (rangeStart) createdAt.gte = rangeStart;
+      if (rangeEnd) createdAt.lte = rangeEnd;
+      andFilters.push({ sales: { some: { createdAt } } });
+    }
+
+    if (andFilters.length === 1) {
+      Object.assign(where, andFilters[0]);
+    } else if (andFilters.length > 1) {
+      where.AND = andFilters;
     }
 
     const customers = await prisma.customer.findMany({
@@ -163,7 +246,9 @@ export class CustomerService {
 
     const now = new Date();
     const data = customers.map((c) => {
-      const periodStart = customerPeriodStart(c.customerType, now);
+      // When a date range is selected, "current" = sales inside that range
+      const periodStart =
+        rangeStart || customerPeriodStart(c.customerType, now);
       let currentAmount = 0;
       let previousAmount = 0;
       let paidAmount = 0;
@@ -177,8 +262,14 @@ export class CustomerService {
         ) {
           remainingBalance += sale.remainingBalance;
         }
-        if (sale.createdAt >= periodStart) currentAmount += sale.totalAmount || 0;
-        else previousAmount += sale.totalAmount || 0;
+
+        const inCurrent =
+          sale.createdAt >= periodStart &&
+          (!rangeEnd || sale.createdAt <= rangeEnd);
+
+        if (inCurrent) currentAmount += sale.totalAmount || 0;
+        else if (sale.createdAt < periodStart) previousAmount += sale.totalAmount || 0;
+        // sales after rangeEnd (when filtering) are ignored for period columns
       }
 
       currentAmount = money(currentAmount);
@@ -556,21 +647,15 @@ export class CustomerService {
   }
 
   /**
-   * Settle ALL pending/partial sales for a ledger customer in one go.
-   * Edge cases:
-   * - No pending dues → 200 OK with message (not an error)
-   * - Double settlement → individual sales already paid are skipped by query
-   * - Requires paymentMethod for the lump-sum settlement
+   * Settle pending/partial sales. Optional discount permanently writes off dues
+   * (reduces totalAmount + remainingBalance) so they do not reappear as Previous/Remaining.
    */
-  static async settleAllDues(customerId: number, paymentMethod: string, amount?: number) {
-    if (!paymentMethod || !(PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
-      return {
-        success: false,
-        statusCode: 400,
-        message: `paymentMethod is required. Allowed: ${PAYMENT_METHODS.join(', ')}`
-      };
-    }
-
+  static async settleAllDues(
+    customerId: number,
+    paymentMethod: string,
+    amount?: number,
+    discount?: number
+  ) {
     const customer = await prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) {
       return {
@@ -598,6 +683,7 @@ export class CustomerService {
           customer,
           settledCount: 0,
           totalSettled: 0,
+          totalDiscount: 0,
           sales: []
         }
       };
@@ -607,7 +693,22 @@ export class CustomerService {
       pendingSales.reduce((sum, s) => sum + s.remainingBalance, 0)
     );
 
-    const requestedAmount = amount === undefined || amount === null ? totalOutstanding : money(Number(amount));
+    const discountAmount =
+      discount === undefined || discount === null ? 0 : money(Number(discount));
+
+    if (Number.isNaN(discountAmount) || discountAmount < 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'Discount must be a valid number greater than or equal to zero.'
+      };
+    }
+
+    // Blank collect amount = clear everything left after discount via cash
+    const requestedAmount =
+      amount === undefined || amount === null
+        ? money(totalOutstanding - discountAmount)
+        : money(Number(amount));
 
     if (Number.isNaN(requestedAmount)) {
       return {
@@ -617,34 +718,57 @@ export class CustomerService {
       };
     }
 
-    if (requestedAmount <= 0) {
+    if (requestedAmount < 0) {
       return {
         success: false,
         statusCode: 400,
-        message: 'Collection amount must be greater than zero.'
+        message: 'Collection amount cannot be negative.'
       };
     }
 
-    if (requestedAmount > totalOutstanding) {
+    if (requestedAmount <= 0 && discountAmount <= 0) {
       return {
         success: false,
         statusCode: 400,
-        message: `Amount cannot exceed the customer outstanding balance of Rs. ${totalOutstanding}.`
+        message: 'Enter a collection amount and/or a discount greater than zero.'
       };
+    }
+
+    if (money(requestedAmount + discountAmount) > totalOutstanding) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: `Cash + discount (Rs. ${money(requestedAmount + discountAmount)}) cannot exceed outstanding Rs. ${totalOutstanding}.`
+      };
+    }
+
+    if (requestedAmount > 0) {
+      if (!paymentMethod || !(PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `paymentMethod is required. Allowed: ${PAYMENT_METHODS.join(', ')}`
+        };
+      }
     }
 
     const settledSales = await prisma.$transaction(async (tx) => {
-      const results = [];
+      const resultsById = new Map<number, any>();
       let remainingToApply = requestedAmount;
+      let remainingDiscount = discountAmount;
 
-      for (const sale of pendingSales) {
-        if (sale.status === 'paid' || sale.remainingBalance <= 0 || remainingToApply <= 0) {
-          continue;
-        }
+      // Working copy of balances after cash / write-off steps
+      const working = pendingSales.map((s) => ({
+        id: s.id,
+        paidAmount: money(s.paidAmount),
+        remainingBalance: money(s.remainingBalance),
+        totalAmount: money(s.totalAmount),
+      }));
 
-        const currentRemaining = money(sale.remainingBalance);
-        const applied = money(Math.min(currentRemaining, remainingToApply));
+      for (const sale of working) {
+        if (sale.remainingBalance <= 0 || remainingToApply <= 0) continue;
 
+        const applied = money(Math.min(sale.remainingBalance, remainingToApply));
         if (applied <= 0) continue;
 
         await tx.payment.updateMany({
@@ -664,34 +788,70 @@ export class CustomerService {
           }
         });
 
-        const newRemaining = money(currentRemaining - applied);
-        const updated = await tx.sale.update({
-          where: { id: sale.id },
-          data: {
-            paidAmount: money(sale.paidAmount + applied),
-            remainingBalance: newRemaining,
-            status: newRemaining <= 0 ? 'paid' : 'partial'
-          },
-          include: { items: true, payments: true }
-        });
-
-        results.push(updated);
+        sale.paidAmount = money(sale.paidAmount + applied);
+        sale.remainingBalance = money(sale.remainingBalance - applied);
         remainingToApply = money(remainingToApply - applied);
       }
 
-      return results;
+      // Write-off: cut bill total + remaining so dues never reappear as Previous
+      for (const sale of working) {
+        if (sale.remainingBalance <= 0 || remainingDiscount <= 0) continue;
+
+        const writeOff = money(Math.min(sale.remainingBalance, remainingDiscount));
+        if (writeOff <= 0) continue;
+
+        await tx.payment.create({
+          data: {
+            saleId: sale.id,
+            method: 'discount',
+            amount: writeOff,
+            status: 'completed'
+          }
+        });
+
+        sale.totalAmount = money(sale.totalAmount - writeOff);
+        sale.remainingBalance = money(sale.remainingBalance - writeOff);
+        remainingDiscount = money(remainingDiscount - writeOff);
+      }
+
+      for (const sale of working) {
+        const original = pendingSales.find((s) => s.id === sale.id)!;
+        const changed =
+          sale.paidAmount !== money(original.paidAmount) ||
+          sale.remainingBalance !== money(original.remainingBalance) ||
+          sale.totalAmount !== money(original.totalAmount);
+
+        if (!changed) continue;
+
+        const updated = await tx.sale.update({
+          where: { id: sale.id },
+          data: {
+            paidAmount: sale.paidAmount,
+            remainingBalance: sale.remainingBalance,
+            totalAmount: sale.totalAmount,
+            status: sale.remainingBalance <= 0 ? 'paid' : 'partial'
+          },
+          include: { items: true, payments: true }
+        });
+        resultsById.set(sale.id, updated);
+      }
+
+      return Array.from(resultsById.values());
     });
 
+    const cleared = money(requestedAmount + discountAmount);
     return {
       success: true,
       statusCode: 200,
-      message: requestedAmount === totalOutstanding
-        ? `Settled ${settledSales.length} sale(s) successfully.`
-        : `Collected Rs. ${requestedAmount} and updated the remaining khata balance.`,
+      message:
+        cleared === totalOutstanding
+          ? `Settled ${settledSales.length} sale(s) successfully.`
+          : `Collected Rs. ${requestedAmount}${discountAmount > 0 ? ` and wrote off Rs. ${discountAmount}` : ''}; remaining khata updated.`,
       data: {
         customer,
         settledCount: settledSales.length,
         totalSettled: requestedAmount,
+        totalDiscount: discountAmount,
         sales: settledSales
       }
     };

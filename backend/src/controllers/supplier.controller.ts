@@ -5,7 +5,19 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 const idOf = (value: string) => Number(value);
 export class SupplierController {
-  static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { return ApiResponse.success(res, 'Suppliers fetched successfully', await SupplierService.list()); } catch (e) { next(e); } }
+  static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { cycleType, fromDate, toDate } = req.query;
+      const data = await SupplierService.list({
+        cycleType: typeof cycleType === 'string' ? cycleType : undefined,
+        fromDate: typeof fromDate === 'string' ? fromDate : undefined,
+        toDate: typeof toDate === 'string' ? toDate : undefined,
+      });
+      return ApiResponse.success(res, 'Suppliers fetched successfully', data);
+    } catch (e) {
+      next(e);
+    }
+  }
   static async create(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.create(req.body); return r.success ? ApiResponse.success(res, 'Supplier created successfully', r.data, r.statusCode) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }
   static async get(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.get(idOf(req.params.id)); return r.success ? ApiResponse.success(res, 'Supplier fetched successfully', r.data) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }
   static async update(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.update(idOf(req.params.id), req.body); return r.success ? ApiResponse.success(res, 'Supplier updated successfully', r.data) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }

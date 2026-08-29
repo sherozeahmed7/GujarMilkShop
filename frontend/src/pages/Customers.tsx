@@ -309,12 +309,21 @@ export const Customers: React.FC = () => {
     }
   };
 
-  const handleCollectConfirm = async (paymentMethod: 'cash' | 'online', amount?: number) => {
+  const handleCollectConfirm = async (
+    paymentMethod: 'cash' | 'online',
+    amount?: number,
+    discount?: number
+  ) => {
     if (!collectRow) return;
 
     if (collectRow.kind === 'ledger') {
-      await customerService.settleAll(collectRow.id, paymentMethod, amount);
+      await customerService.settleAll(collectRow.id, paymentMethod, amount, discount);
     } else if (collectRow.kind === 'split') {
+      if (discount && discount > 0) {
+        throw new Error(
+          'Discount write-off for split customers is not supported. Collect without discount, or use Khata Cash Collect for ledger customers.'
+        );
+      }
       const key = normalizePhone(collectRow.phone) || `sale-${collectRow.id}`;
       const list = splitSalesByPhone[key] || [];
       const openSales = list.filter(
@@ -322,7 +331,6 @@ export const Customers: React.FC = () => {
       );
 
       if (openSales.length === 0 && collectRow.saleIds?.length) {
-        // Fallback: settle by sale ids on the row
         for (const saleId of collectRow.saleIds) {
           try {
             await saleService.settleSale(saleId, paymentMethod, amount);

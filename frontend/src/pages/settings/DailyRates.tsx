@@ -32,8 +32,16 @@ function todayDateString(): string {
 export const DailyRates: React.FC = () => {
   const [milkRate, setMilkRate] = useState('');
   const [yogurtRate, setYogurtRate] = useState('');
-  const [savedMilkRate, setSavedMilkRate] = useState('');
-  const [savedYogurtRate, setSavedYogurtRate] = useState('');
+  const [lassiRate, setLassiRate] = useState('');
+  const [butterRate, setButterRate] = useState('');
+  const [gheeRate, setGheeRate] = useState('');
+  const [saved, setSaved] = useState({
+    milk: '',
+    yogurt: '',
+    lassi: '',
+    butter: '',
+    ghee: '',
+  });
   const [history, setHistory] = useState<RateHistoryEntry[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [lastUpdatedBy, setLastUpdatedBy] = useState<string | null>(null);
@@ -44,7 +52,11 @@ export const DailyRates: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const hasChanges =
-    milkRate !== savedMilkRate || yogurtRate !== savedYogurtRate;
+    milkRate !== saved.milk ||
+    yogurtRate !== saved.yogurt ||
+    lassiRate !== saved.lassi ||
+    butterRate !== saved.butter ||
+    gheeRate !== saved.ghee;
 
   const loadRates = useCallback(async () => {
     setLoading(true);
@@ -53,10 +65,15 @@ export const DailyRates: React.FC = () => {
       const data = await rateService.getRates();
       const milk = String(data.currentMilkRate || '');
       const yogurt = String(data.currentYogurtRate || '');
+      const lassi = String(data.currentLassiRate || '');
+      const butter = String(data.currentButterRate || '');
+      const ghee = String(data.currentGheeRate || '');
       setMilkRate(milk);
       setYogurtRate(yogurt);
-      setSavedMilkRate(milk);
-      setSavedYogurtRate(yogurt);
+      setLassiRate(lassi);
+      setButterRate(butter);
+      setGheeRate(ghee);
+      setSaved({ milk, yogurt, lassi, butter, ghee });
       setHistory(data.history || []);
       setLastUpdated(data.lastUpdated);
       setLastUpdatedBy(data.history?.[0]?.updatedByRole ?? null);
@@ -77,9 +94,23 @@ export const DailyRates: React.FC = () => {
 
     const milk = parseFloat(milkRate);
     const yogurt = parseFloat(yogurtRate);
+    const lassi = lassiRate.trim() === '' ? 0 : parseFloat(lassiRate);
+    const butter = butterRate.trim() === '' ? 0 : parseFloat(butterRate);
+    const ghee = gheeRate.trim() === '' ? 0 : parseFloat(gheeRate);
 
     if (Number.isNaN(milk) || milk <= 0 || Number.isNaN(yogurt) || yogurt <= 0) {
       setError('Milk and yogurt rates must be numbers greater than 0.');
+      return;
+    }
+    if (
+      Number.isNaN(lassi) ||
+      lassi < 0 ||
+      Number.isNaN(butter) ||
+      butter < 0 ||
+      Number.isNaN(ghee) ||
+      ghee < 0
+    ) {
+      setError('Lassi, butter, and ghee rates must be 0 or greater.');
       return;
     }
 
@@ -88,6 +119,9 @@ export const DailyRates: React.FC = () => {
       await rateService.updateRates({
         milkRate: milk,
         yogurtRate: yogurt,
+        lassiRate: lassi,
+        butterRate: butter,
+        gheeRate: ghee,
         date: todayDateString(),
       });
       setSuccessMsg('Rates updated successfully.');
@@ -99,13 +133,17 @@ export const DailyRates: React.FC = () => {
     }
   };
 
+  const rateInputClass =
+    'w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-2xl md:text-3xl font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-70 tabular-nums';
+
   return (
     <div className="flex flex-col h-full gap-6 min-h-0">
-      {/* Header */}
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Daily Rates Configuration</h1>
-          <p className="text-slate-500 text-sm mt-1">Set milk &amp; yogurt rates per kg. POS boxes update from these rates.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            Set milk, yogurt, lassi, butter &amp; ghee rates per kg. POS uses these automatically.
+          </p>
         </div>
         <button
           onClick={loadRates}
@@ -128,17 +166,15 @@ export const DailyRates: React.FC = () => {
         </div>
       )}
 
-      {/* Current rates card — inspired by dark rates panel */}
       <div className="flex-shrink-0 rounded-2xl bg-slate-900 text-white p-6 md:p-8 shadow-lg border border-slate-800">
         {loading && history.length === 0 ? (
           <div className="py-10 text-center text-slate-400 text-sm">Loading rates…</div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-              {/* Milk */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
               <div>
-                <div className="text-lg font-bold text-white mb-1">Milk</div>
-                <div className="text-sm text-slate-400 mb-3">Milk Rate (Rs/kg)</div>
+                <div className="text-base font-bold text-white mb-1">Milk</div>
+                <div className="text-xs text-slate-400 mb-2">Rs/kg</div>
                 <input
                   type="number"
                   min="0"
@@ -149,15 +185,14 @@ export const DailyRates: React.FC = () => {
                     setSuccessMsg(null);
                   }}
                   disabled={saving}
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-4 text-3xl md:text-4xl font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-70 tabular-nums"
+                  className={rateInputClass}
                   placeholder="0"
                 />
               </div>
 
-              {/* Yogurt */}
               <div>
-                <div className="text-lg font-bold text-white mb-1">Yogurt</div>
-                <div className="text-sm text-slate-400 mb-3">Yogurt Rate (Rs/kg)</div>
+                <div className="text-base font-bold text-white mb-1">Yogurt</div>
+                <div className="text-xs text-slate-400 mb-2">Rs/kg</div>
                 <input
                   type="number"
                   min="0"
@@ -168,7 +203,61 @@ export const DailyRates: React.FC = () => {
                     setSuccessMsg(null);
                   }}
                   disabled={saving}
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-4 text-3xl md:text-4xl font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-70 tabular-nums"
+                  className={rateInputClass}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <div className="text-base font-bold text-white mb-1">Lassi</div>
+                <div className="text-xs text-slate-400 mb-2">Rs/kg (F2)</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={lassiRate}
+                  onChange={(e) => {
+                    setLassiRate(e.target.value);
+                    setSuccessMsg(null);
+                  }}
+                  disabled={saving}
+                  className={rateInputClass}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <div className="text-base font-bold text-white mb-1">Butter</div>
+                <div className="text-xs text-slate-400 mb-2">Rs/kg (F2)</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={butterRate}
+                  onChange={(e) => {
+                    setButterRate(e.target.value);
+                    setSuccessMsg(null);
+                  }}
+                  disabled={saving}
+                  className={rateInputClass}
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <div className="text-base font-bold text-white mb-1">Ghee</div>
+                <div className="text-xs text-slate-400 mb-2">Rs/kg (F2)</div>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={gheeRate}
+                  onChange={(e) => {
+                    setGheeRate(e.target.value);
+                    setSuccessMsg(null);
+                  }}
+                  disabled={saving}
+                  className={rateInputClass}
                   placeholder="0"
                 />
               </div>
@@ -195,7 +284,6 @@ export const DailyRates: React.FC = () => {
         )}
       </div>
 
-      {/* Rate History */}
       <div className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <h2 className="text-lg font-bold text-slate-800">Rate History</h2>
@@ -206,21 +294,24 @@ export const DailyRates: React.FC = () => {
             <thead className="sticky top-0 bg-slate-50 border-b border-slate-100">
               <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                 <th className="px-5 py-3">Date &amp; Time</th>
-                <th className="px-5 py-3">Milk Rate</th>
-                <th className="px-5 py-3">Yogurt Rate</th>
+                <th className="px-5 py-3">Milk</th>
+                <th className="px-5 py-3">Yogurt</th>
+                <th className="px-5 py-3">Lassi</th>
+                <th className="px-5 py-3">Butter</th>
+                <th className="px-5 py-3">Ghee</th>
                 <th className="px-5 py-3">Updated By</th>
               </tr>
             </thead>
             <tbody>
               {loading && history.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
                     Loading history…
                   </td>
                 </tr>
               ) : history.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
                     No rate history yet. Update rates to create the first entry.
                   </td>
                 </tr>
@@ -235,6 +326,15 @@ export const DailyRates: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
                       {row.yogurtRate}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                      {row.lassiRate ?? 0}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                      {row.butterRate ?? 0}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                      {row.gheeRate ?? 0}
                     </td>
                     <td className="px-5 py-3.5 text-slate-600">
                       {formatRoleLabel(row.updatedByRole)}

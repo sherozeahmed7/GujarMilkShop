@@ -15,8 +15,12 @@ export interface StandardAmountBox {
 export interface StandardPrices {
   milkRatePerKg: number;
   yogurtRatePerKg: number;
+  lassiRatePerKg: number;
+  butterRatePerKg: number;
+  gheeRatePerKg: number;
   lastUpdated: string | null;
   milk: StandardPriceBox[];
+  milkByAmount: StandardAmountBox[];
   yogurtByWeight: StandardPriceBox[];
   yogurtByAmount: StandardAmountBox[];
 }
@@ -25,6 +29,9 @@ export interface RateHistoryEntry {
   id: number;
   milkRate: number;
   yogurtRate: number;
+  lassiRate?: number;
+  butterRate?: number;
+  gheeRate?: number;
   updatedByRole: string;
   date: string;
   createdAt: string;
@@ -34,12 +41,18 @@ export interface RatesData {
   history: RateHistoryEntry[];
   currentMilkRate: number;
   currentYogurtRate: number;
+  currentLassiRate: number;
+  currentButterRate: number;
+  currentGheeRate: number;
   lastUpdated: string | null;
 }
 
 export interface UpdateRatesPayload {
   milkRate: number;
   yogurtRate: number;
+  lassiRate?: number;
+  butterRate?: number;
+  gheeRate?: number;
   date: string; // YYYY-MM-DD or ISO date
 }
 

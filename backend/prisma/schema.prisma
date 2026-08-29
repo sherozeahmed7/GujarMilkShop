@@ -153,6 +153,9 @@ model DailyRate {
   id            Int      @id @default(autoincrement())
   milkRate      Float
   yogurtRate    Float
+  lassiRate     Float    @default(0)
+  butterRate    Float    @default(0)
+  gheeRate      Float    @default(0)
   updatedByRole String   // Role of the user who made the update (e.g., "super_admin")
   date          DateTime // The effective date of the rate
   createdAt     DateTime @default(now())

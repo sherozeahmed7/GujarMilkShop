@@ -49,4 +49,6 @@ export interface SupplierPayment {
   amount: number;
   method?: string;
   notes?: string;
+  /** Optional write-off sent with addPayment — creates a separate discount payment row */
+  discount?: number;
 }

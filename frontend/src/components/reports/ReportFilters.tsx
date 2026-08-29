@@ -9,9 +9,11 @@ interface ReportFiltersProps {
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
   isLoading?: boolean;
+  /** Show All Time preset (null dates) — for Khata Ledger etc. */
+  allowAllTime?: boolean;
 }
 
-const presets = [
+const BASE_PRESETS = [
   { label: 'Today' },
   { label: 'Yesterday' },
   { label: 'This Week' },
@@ -26,11 +28,15 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   onRefresh,
   searchTerm,
   onSearchChange,
-  isLoading
+  isLoading,
+  allowAllTime = false,
 }) => {
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const presets = allowAllTime
+    ? [{ label: 'All Time' }, ...BASE_PRESETS]
+    : BASE_PRESETS;
 
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +71,12 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   };
 
   const handlePresetClick = (label: string) => {
+    if (label === 'All Time') {
+      onFilterChange({ label: 'All Time', startDate: null, endDate: null });
+      setShowCustomPicker(false);
+      return;
+    }
+
     const start = new Date();
     start.setHours(0,0,0,0);
     const end = new Date();
