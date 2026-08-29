@@ -30,6 +30,21 @@ async function averageSupplierCost(name: string) {
   return costs.length ? money(costs.reduce((sum, cost) => sum + cost, 0) / costs.length) : 0;
 }
 
+/** Only core Milk / Yogurt stock losses feed the Expenses screen. */
+function milkOrYogurtExpenseCategory(name: string): 'Milk' | 'Yogurt' | null {
+  const normalized = name.trim().toLowerCase();
+  if (normalized === 'milk') return 'Milk';
+  if (normalized === 'yogurt' || normalized === 'yog') return 'Yogurt';
+  return null;
+}
+
+function toDateOnly(value: Date): string {
+  const yyyy = value.getFullYear();
+  const mm = String(value.getMonth() + 1).padStart(2, '0');
+  const dd = String(value.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export class InventoryService {
   static async currentRate() {
     return prisma.dailyRate.findFirst({
@@ -133,14 +148,86 @@ export class InventoryService {
 
   static async record(userId: number, payload: any) {
     const productId = Number(payload.productId), quantity = Number(payload.quantity);
-    if (!productId || !Number.isFinite(quantity) || quantity === 0 || !MOVEMENT_TYPES.includes(payload.movementType)) return { success: false, statusCode: 400, message: 'Valid product, non-zero quantity, and movement type are required.' };
+    if (!productId || !Number.isFinite(quantity) || quantity === 0 || !MOVEMENT_TYPES.includes(payload.movementType)) {
+      return { success: false, statusCode: 400, message: 'Valid product, non-zero quantity, and movement type are required.' };
+    }
     const product = await prisma.inventoryProduct.findUnique({ where: { id: productId } });
     if (!product) return { success: false, statusCode: 404, message: 'Product not found.' };
     const existing = await prisma.inventoryMovement.findUnique({ where: { reference: String(payload.reference || '') } });
     if (existing) return { success: true, statusCode: 200, data: existing };
     const current = (await prisma.inventoryMovement.aggregate({ where: { productId }, _sum: { quantity: true } }))._sum.quantity || 0;
     if (current + quantity < 0) return { success: false, statusCode: 422, message: 'Stock cannot become negative.' };
-    const movement = await prisma.inventoryMovement.create({ data: { productId, quantity: money(quantity), movementType: payload.movementType, source: payload.source || payload.movementType, reference: String(payload.reference || `inventory-${Date.now()}`), unitCost: payload.unitCost !== undefined ? Number(payload.unitCost) : null, supplierId: payload.supplierId ? Number(payload.supplierId) : null, shiftId: payload.shiftId ? Number(payload.shiftId) : null, userId, date: payload.date ? new Date(payload.date) : new Date() } });
+
+    const movementDate = payload.date ? new Date(payload.date) : new Date();
+    const reference = String(payload.reference || `inventory-${Date.now()}`);
+    const movementType = payload.movementType as string;
+    const lostQty = quantity < 0 ? money(Math.abs(quantity)) : 0;
+    const expenseCategory =
+      lostQty > 0 && (movementType === 'ADJUSTMENT' || movementType === 'WASTAGE')
+        ? milkOrYogurtExpenseCategory(product.name)
+        : null;
+
+    let unitCostForLoss = 0;
+    if (expenseCategory) {
+      unitCostForLoss = await averageSupplierCost(product.name);
+      if (unitCostForLoss <= 0) {
+        const rate = await this.currentRate();
+        unitCostForLoss = money((rateFor(product.name, rate) || 0) * 0.65);
+      }
+    }
+
+    const user =
+      expenseCategory && userId
+        ? await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
+        : null;
+    const addedBy = user?.email || user?.name || 'inventory';
+
+    const movement = await prisma.$transaction(async (tx) => {
+      const created = await tx.inventoryMovement.create({
+        data: {
+          productId,
+          quantity: money(quantity),
+          movementType,
+          source: payload.source || movementType,
+          reference,
+          unitCost: payload.unitCost !== undefined ? Number(payload.unitCost) : null,
+          supplierId: payload.supplierId ? Number(payload.supplierId) : null,
+          shiftId: payload.shiftId ? Number(payload.shiftId) : null,
+          userId,
+          date: movementDate,
+        },
+      });
+
+      // Milk / Yogurt stock removed = wastage loss → appear on Expenses screen
+      if (expenseCategory && lostQty > 0) {
+        const grossLoss = money(lostQty * unitCostForLoss);
+        const reasonText =
+          (typeof payload.notes === 'string' && payload.notes.trim()) ||
+          (typeof payload.reason === 'string' && payload.reason.trim()) ||
+          'Stock adjustment (lost / discarded)';
+
+        await tx.expense.create({
+          data: {
+            date: toDateOnly(movementDate),
+            category: expenseCategory,
+            description: `${expenseCategory} stock loss — ${lostQty} kg removed from inventory`,
+            quantity: lostQty,
+            unitCost: unitCostForLoss,
+            grossLoss,
+            soldRecovery: 0,
+            netExpense: grossLoss,
+            amount: grossLoss,
+            paidAmount: 0,
+            remaining: grossLoss,
+            reason: reasonText,
+            addedBy,
+          },
+        });
+      }
+
+      return created;
+    });
+
     return { success: true, statusCode: 201, data: movement };
   }
 }

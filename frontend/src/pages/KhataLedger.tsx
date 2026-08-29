@@ -13,6 +13,7 @@ import { ApiCustomer } from '../types/customer';
 import { DateFilterType, Supplier, CycleType } from '../types';
 import { supplierService } from '../services/supplier.service';
 import { SupplierLedgerModal } from '../components/khata/SupplierLedgerModal';
+import { SupplierDailyLedgerModal } from '../components/khata/SupplierDailyLedgerModal';
 import { useDebounce } from '../hooks/useDebounce';
 import {
   Search, Download, FileText, Printer, Filter, Plus, ChevronDown,
@@ -48,6 +49,7 @@ export const KhataLedger: React.FC = () => {
   const [partyPickerOpen, setPartyPickerOpen] = useState(false);
   const [partySearch, setPartySearch] = useState('');
   const [ledgerSupplier, setLedgerSupplier] = useState<Supplier | null>(null);
+  const [dailyLedgerOpen, setDailyLedgerOpen] = useState(false);
   const [summary, setSummary] = useState<LedgerSummaryStats>(EMPTY_SUMMARY);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -666,6 +668,14 @@ export const KhataLedger: React.FC = () => {
               <option value="Weekly Cycle">Weekly Cycle</option>
               <option value="1-Day Cycle">1-Day Cycle</option>
             </select>
+            <button
+              type="button"
+              onClick={() => setDailyLedgerOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm flex-shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              Download Ledgers
+            </button>
           </div>
           <div className="flex-1 overflow-auto custom-scrollbar">
             <table className="w-full text-left">
@@ -818,6 +828,9 @@ export const KhataLedger: React.FC = () => {
             }
           }}
         />
+      )}
+      {dailyLedgerOpen && (
+        <SupplierDailyLedgerModal onClose={() => setDailyLedgerOpen(false)} />
       )}
     </div>
   );

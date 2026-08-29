@@ -70,7 +70,12 @@ async function withRelations(id: number) {
   });
 }
 
-async function expectedCash(shift: { openingCash: number; openedAt: Date; closedAt?: Date | null }) {
+async function expectedCash(shift: {
+  id: number;
+  openingCash: number;
+  openedAt: Date;
+  closedAt?: Date | null;
+}) {
   const payments = await prisma.payment.findMany({
     where: {
       method: 'cash',
@@ -80,7 +85,18 @@ async function expectedCash(shift: { openingCash: number; openedAt: Date; closed
     },
     select: { amount: true },
   });
-  return money(shift.openingCash + payments.reduce((sum, payment) => sum + payment.amount, 0));
+
+  // Cash paid out for expenses during this shift (shop purchases / partial clears)
+  const expenseCashOut = await prisma.expensePayment.aggregate({
+    where: { shiftId: shift.id },
+    _sum: { amount: true },
+  });
+
+  return money(
+    shift.openingCash +
+      payments.reduce((sum, payment) => sum + payment.amount, 0) -
+      (expenseCashOut._sum.amount || 0)
+  );
 }
 
 export class ShiftService {

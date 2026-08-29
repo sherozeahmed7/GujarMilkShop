@@ -3,9 +3,37 @@ import { prisma } from '../config/database';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
-function money(n: number) { return Math.round(n * 100) / 100; }
+function money(n: number) {
+  return Math.round(n * 100) / 100;
+}
 
-// GET /api/expenses?fromDate=&toDate=&category=
+function mapExpense(e: any) {
+  const amount = money(e.amount || e.netExpense || 0);
+  const paidAmount = money(e.paidAmount || 0);
+  const remaining = money(
+    e.remaining !== undefined && e.remaining !== null
+      ? e.remaining
+      : Math.max(0, amount - paidAmount)
+  );
+  return {
+    ...e,
+    id: String(e.id),
+    amount,
+    paidAmount,
+    remaining,
+    netExpense: money(e.netExpense || amount),
+  };
+}
+
+async function openShiftId(): Promise<number | null> {
+  const open = await prisma.shift.findFirst({
+    where: { status: 'Open' },
+    orderBy: { openedAt: 'asc' },
+    select: { id: true },
+  });
+  return open?.id ?? null;
+}
+
 export class ExpenseController {
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
@@ -15,43 +43,184 @@ export class ExpenseController {
       if (fromDate || toDate) {
         where.date = {};
         if (fromDate) where.date.gte = fromDate;
-        if (toDate)   where.date.lte = toDate;
+        if (toDate) where.date.lte = toDate;
       }
-      const expenses = await prisma.expense.findMany({ where, orderBy: { date: 'desc' } });
-      // Map DB id (Int) → string for frontend compatibility
-      return ApiResponse.success(res, 'Expenses fetched.', expenses.map(e => ({ ...e, id: String(e.id) })));
-    } catch (e) { next(e); }
+      const expenses = await prisma.expense.findMany({
+        where,
+        orderBy: [{ date: 'desc' }, { id: 'desc' }],
+        include: { payments: { orderBy: { id: 'desc' } } },
+      });
+      return ApiResponse.success(
+        res,
+        'Expenses fetched.',
+        expenses.map((e) => mapExpense(e))
+      );
+    } catch (e) {
+      next(e);
+    }
   }
 
   static async getOne(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const expense = await prisma.expense.findUnique({ where: { id } });
+      const expense = await prisma.expense.findUnique({
+        where: { id },
+        include: { payments: { orderBy: { id: 'desc' } } },
+      });
       if (!expense) return ApiResponse.error(res, 'Expense not found.', 404);
-      return ApiResponse.success(res, 'Expense fetched.', { ...expense, id: String(expense.id) });
-    } catch (e) { next(e); }
+      return ApiResponse.success(res, 'Expense fetched.', mapExpense(expense));
+    } catch (e) {
+      next(e);
+    }
   }
 
+  /**
+   * Simple expense: { date, product/category (text), amount, paidAmount? }
+   * Legacy wastage fields still accepted for inventory auto-create.
+   * Cash paid out is linked to the currently open shift (expected cash −= paid).
+   */
   static async create(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { date, category, description, quantity, unitCost, grossLoss, soldRecovery, netExpense, reason } = req.body;
-      if (!date || !category) return ApiResponse.error(res, 'date and category are required.', 400);
+      const body = req.body || {};
+      const date = body.date;
+      const productText = String(body.product || body.category || body.description || '').trim();
+      if (!date || !productText) {
+        return ApiResponse.error(res, 'date and product are required.', 400);
+      }
+
       const addedBy = req.user?.email || 'unknown';
-      const expense = await prisma.expense.create({
-        data: {
-          date, category,
-          description: description || null,
-          quantity:    money(Number(quantity)    || 0),
-          unitCost:    money(Number(unitCost)    || 0),
-          grossLoss:   money(Number(grossLoss)   || 0),
-          soldRecovery:money(Number(soldRecovery)|| 0),
-          netExpense:  money(Number(netExpense)  || 0),
-          reason: reason || null,
-          addedBy,
+
+      // Prefer simple amount; fall back to netExpense / grossLoss for legacy/inventory
+      let amount = money(Number(body.amount));
+      if (!Number.isFinite(amount) || amount <= 0) {
+        amount = money(Number(body.netExpense) || Number(body.grossLoss) || 0);
+      }
+      if (!Number.isFinite(amount) || amount < 0) {
+        return ApiResponse.error(res, 'amount must be a valid number.', 400);
+      }
+
+      // paidAmount: if provided use it; else full amount for simple cash expenses;
+      // inventory sends paidAmount: 0 explicitly or omits amount with only netExpense — treat as unpaid cash
+      const hasExplicitPaid = body.paidAmount !== undefined && body.paidAmount !== null && body.paidAmount !== '';
+      const isInventoryStyle =
+        body.source === 'inventory' ||
+        (Number(body.quantity) > 0 && !hasExplicitPaid && body.amount === undefined);
+
+      let paidAmount = hasExplicitPaid
+        ? money(Number(body.paidAmount) || 0)
+        : isInventoryStyle
+          ? 0
+          : amount;
+
+      if (paidAmount < 0) paidAmount = 0;
+      if (paidAmount > amount) {
+        return ApiResponse.error(res, 'Paid amount cannot exceed total amount.', 400);
+      }
+
+      const remaining = money(Math.max(0, amount - paidAmount));
+      const quantity = money(Number(body.quantity) || 0);
+      const unitCost = money(Number(body.unitCost) || 0);
+      const grossLoss = money(Number(body.grossLoss) || amount);
+      const soldRecovery = money(Number(body.soldRecovery) || 0);
+      const netExpense = money(Number(body.netExpense) || amount);
+      const description =
+        body.description?.trim() ||
+        (quantity > 0 ? `${productText} — ${quantity} kg` : productText);
+      const reason = body.reason?.trim() || null;
+
+      const shiftId = paidAmount > 0 ? await openShiftId() : null;
+
+      const expense = await prisma.$transaction(async (tx) => {
+        const created = await tx.expense.create({
+          data: {
+            date,
+            category: productText,
+            description,
+            quantity,
+            unitCost,
+            grossLoss,
+            soldRecovery,
+            netExpense,
+            amount,
+            paidAmount,
+            remaining,
+            reason,
+            addedBy,
+          },
+        });
+
+        if (paidAmount > 0) {
+          await tx.expensePayment.create({
+            data: {
+              expenseId: created.id,
+              amount: paidAmount,
+              shiftId,
+              date,
+              addedBy,
+            },
+          });
         }
+
+        return created;
       });
-      return ApiResponse.success(res, 'Expense created.', { ...expense, id: String(expense.id) }, 201);
-    } catch (e) { next(e); }
+
+      const full = await prisma.expense.findUnique({
+        where: { id: expense.id },
+        include: { payments: true },
+      });
+
+      return ApiResponse.success(res, 'Expense created.', mapExpense(full), 201);
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  /** POST /expenses/:id/pay — pay toward remaining balance (cash out of open shift) */
+  static async pay(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const payNow = money(Number(req.body?.amount));
+      if (!id || !Number.isFinite(payNow) || payNow <= 0) {
+        return ApiResponse.error(res, 'Payment amount must be greater than zero.', 400);
+      }
+
+      const existing = await prisma.expense.findUnique({ where: { id } });
+      if (!existing) return ApiResponse.error(res, 'Expense not found.', 404);
+
+      const amount = money(existing.amount || existing.netExpense || 0);
+      const alreadyPaid = money(existing.paidAmount || 0);
+      const remaining = money(Math.max(0, amount - alreadyPaid));
+      if (payNow > remaining) {
+        return ApiResponse.error(
+          res,
+          `Payment cannot exceed remaining Rs. ${remaining}.`,
+          400
+        );
+      }
+
+      const addedBy = req.user?.email || 'unknown';
+      const date =
+        (typeof req.body?.date === 'string' && req.body.date) ||
+        new Date().toISOString().slice(0, 10);
+      const shiftId = await openShiftId();
+
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.expensePayment.create({
+          data: { expenseId: id, amount: payNow, shiftId, date, addedBy },
+        });
+        const newPaid = money(alreadyPaid + payNow);
+        const newRemaining = money(Math.max(0, amount - newPaid));
+        return tx.expense.update({
+          where: { id },
+          data: { paidAmount: newPaid, remaining: newRemaining },
+          include: { payments: { orderBy: { id: 'desc' } } },
+        });
+      });
+
+      return ApiResponse.success(res, 'Payment recorded.', mapExpense(updated));
+    } catch (e) {
+      next(e);
+    }
   }
 
   static async update(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -59,23 +228,55 @@ export class ExpenseController {
       const id = Number(req.params.id);
       const existing = await prisma.expense.findUnique({ where: { id } });
       if (!existing) return ApiResponse.error(res, 'Expense not found.', 404);
-      const { date, category, description, quantity, unitCost, grossLoss, soldRecovery, netExpense, reason } = req.body;
+
+      const body = req.body || {};
+      const productText =
+        body.product !== undefined
+          ? String(body.product).trim()
+          : body.category !== undefined
+            ? String(body.category).trim()
+            : undefined;
+
+      let amount =
+        body.amount !== undefined ? money(Number(body.amount)) : money(existing.amount || existing.netExpense || 0);
+      if (body.netExpense !== undefined && body.amount === undefined) {
+        amount = money(Number(body.netExpense));
+      }
+
+      const paidAmount = money(existing.paidAmount || 0);
+      if (amount < paidAmount) {
+        return ApiResponse.error(
+          res,
+          `Total amount cannot be less than already paid Rs. ${paidAmount}.`,
+          400
+        );
+      }
+      const remaining = money(Math.max(0, amount - paidAmount));
+
       const updated = await prisma.expense.update({
         where: { id },
         data: {
-          ...(date        ? { date }              : {}),
-          ...(category    ? { category }          : {}),
-          ...(description !== undefined ? { description: description || null } : {}),
-          ...(quantity    !== undefined ? { quantity:    money(Number(quantity))     } : {}),
-          ...(unitCost    !== undefined ? { unitCost:    money(Number(unitCost))     } : {}),
-          ...(grossLoss   !== undefined ? { grossLoss:   money(Number(grossLoss))    } : {}),
-          ...(soldRecovery!== undefined ? { soldRecovery:money(Number(soldRecovery)) } : {}),
-          ...(netExpense  !== undefined ? { netExpense:  money(Number(netExpense))   } : {}),
-          ...(reason      !== undefined ? { reason: reason || null }                  : {}),
-        }
+          ...(body.date ? { date: body.date } : {}),
+          ...(productText ? { category: productText } : {}),
+          ...(body.description !== undefined ? { description: body.description || null } : {}),
+          ...(body.quantity !== undefined ? { quantity: money(Number(body.quantity)) } : {}),
+          ...(body.unitCost !== undefined ? { unitCost: money(Number(body.unitCost)) } : {}),
+          ...(body.grossLoss !== undefined ? { grossLoss: money(Number(body.grossLoss)) } : {}),
+          ...(body.soldRecovery !== undefined
+            ? { soldRecovery: money(Number(body.soldRecovery)) }
+            : {}),
+          ...(body.reason !== undefined ? { reason: body.reason || null } : {}),
+          amount,
+          remaining,
+          netExpense: money(body.netExpense !== undefined ? Number(body.netExpense) : amount),
+        },
+        include: { payments: true },
       });
-      return ApiResponse.success(res, 'Expense updated.', { ...updated, id: String(updated.id) });
-    } catch (e) { next(e); }
+
+      return ApiResponse.success(res, 'Expense updated.', mapExpense(updated));
+    } catch (e) {
+      next(e);
+    }
   }
 
   static async remove(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -85,37 +286,53 @@ export class ExpenseController {
       if (!existing) return ApiResponse.error(res, 'Expense not found.', 404);
       await prisma.expense.delete({ where: { id } });
       return ApiResponse.success(res, 'Expense deleted.', null);
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   }
 
-  // GET /api/expenses/summary
   static async summary(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const expenses = await prisma.expense.findMany();
-      const grossLoss  = money(expenses.reduce((s, e) => s + e.grossLoss,   0));
-      const netExpense = money(expenses.reduce((s, e) => s + e.netExpense,  0));
-      return ApiResponse.success(res, 'Summary fetched.', { stock: 0, avgCost: 0, grossLoss, netExpense });
-    } catch (e) { next(e); }
+      const grossLoss = money(expenses.reduce((s, e) => s + (e.amount || e.grossLoss || 0), 0));
+      const netExpense = money(expenses.reduce((s, e) => s + (e.amount || e.netExpense || 0), 0));
+      const paid = money(expenses.reduce((s, e) => s + (e.paidAmount || 0), 0));
+      const remaining = money(expenses.reduce((s, e) => s + (e.remaining || 0), 0));
+      return ApiResponse.success(res, 'Summary fetched.', {
+        stock: 0,
+        avgCost: 0,
+        grossLoss,
+        netExpense,
+        paid,
+        remaining,
+      });
+    } catch (e) {
+      next(e);
+    }
   }
 
-  // GET /api/expenses/breakdown
   static async breakdown(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const now = new Date();
       const yyyyMM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const expenses = await prisma.expense.findMany({
-        where: { date: { startsWith: yyyyMM } }
+        where: { date: { startsWith: yyyyMM } },
       });
-      const totalAmount = money(expenses.reduce((s, e) => s + e.netExpense, 0));
+      const totalAmount = money(expenses.reduce((s, e) => s + (e.amount || e.netExpense || 0), 0));
       const cats: Record<string, number> = {};
-      expenses.forEach(e => { cats[e.category] = money((cats[e.category] || 0) + e.netExpense); });
+      expenses.forEach((e) => {
+        cats[e.category] = money((cats[e.category] || 0) + (e.amount || e.netExpense || 0));
+      });
       const result = Object.entries(cats)
         .map(([category, amount]) => ({
-          category, amount,
-          percentage: totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0
+          category,
+          amount,
+          percentage: totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0,
         }))
         .sort((a, b) => b.amount - a.amount);
       return ApiResponse.success(res, 'Breakdown fetched.', result);
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   }
 }

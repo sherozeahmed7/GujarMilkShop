@@ -25,17 +25,19 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
 
   const totalAmount = row.balance ?? 0;
   const parsedDiscount = discountAmount.trim() === '' ? 0 : Number(discountAmount);
-  const parsedCollect = customAmount.trim() === '' ? null : Number(customAmount);
-  const effectiveCollect =
-    parsedCollect === null
-      ? Math.max(0, Math.round((totalAmount - (Number.isFinite(parsedDiscount) ? parsedDiscount : 0)) * 100) / 100)
-      : parsedCollect;
+  const amountBlank = customAmount.trim() === '';
+  const parsedCollect = amountBlank ? NaN : Number(customAmount);
   const combined =
-    (Number.isFinite(effectiveCollect) ? effectiveCollect : 0) +
+    (Number.isFinite(parsedCollect) ? parsedCollect : 0) +
     (Number.isFinite(parsedDiscount) ? parsedDiscount : 0);
 
   const handleConfirm = async () => {
     setError(null);
+
+    if (amountBlank) {
+      setError('Enter the amount to collect before confirming.');
+      return;
+    }
 
     const discount = discountAmount.trim() === '' ? 0 : Number(discountAmount);
     if (Number.isNaN(discount) || discount < 0) {
@@ -43,32 +45,23 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
       return;
     }
 
-    if (customAmount.trim() !== '') {
-      const parsed = Number(customAmount);
-      if (Number.isNaN(parsed) || parsed < 0) {
-        setError('Please enter a valid amount.');
-        return;
-      }
-      if (parsed <= 0 && discount <= 0) {
-        setError('Enter a collection amount and/or a discount greater than zero.');
-        return;
-      }
-      if (parsed + discount > totalAmount) {
-        setError(`Cash + discount cannot exceed outstanding Rs. ${totalAmount}.`);
-        return;
-      }
-    } else if (discount > totalAmount) {
-      setError(`Discount cannot exceed outstanding Rs. ${totalAmount}.`);
+    const parsed = Number(customAmount);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setError('Please enter a valid amount.');
+      return;
+    }
+    if (parsed <= 0 && discount <= 0) {
+      setError('Enter a collection amount and/or a discount greater than zero.');
+      return;
+    }
+    if (parsed + discount > totalAmount) {
+      setError(`Cash + discount cannot exceed outstanding Rs. ${totalAmount}.`);
       return;
     }
 
     setSubmitting(true);
     try {
-      await onConfirm(
-        paymentMethod,
-        customAmount.trim() === '' ? undefined : Number(customAmount),
-        discount > 0 ? discount : undefined
-      );
+      await onConfirm(paymentMethod, parsed, discount > 0 ? discount : undefined);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to collect payment');
@@ -79,9 +72,11 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
 
   const canSubmit =
     totalAmount > 0 &&
+    !amountBlank &&
+    Number.isFinite(parsedCollect) &&
+    parsedCollect >= 0 &&
     !Number.isNaN(parsedDiscount) &&
     parsedDiscount >= 0 &&
-    (parsedCollect === null || (!Number.isNaN(parsedCollect) && parsedCollect >= 0)) &&
     combined > 0 &&
     combined <= totalAmount + 1e-9;
 
@@ -112,10 +107,9 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
           <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-900">
-              <p className="font-bold">Clear all outstanding bills?</p>
+              <p className="font-bold">Collect payment toward outstanding bills</p>
               <p className="mt-1 text-amber-800/90">
-                This will mark every unpaid / partial bill for this customer as fully paid.
-                This cannot be undone from the UI.
+                Enter how much you are collecting now. You cannot confirm without an amount.
               </p>
             </div>
           </div>
@@ -129,19 +123,21 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Optional amount to collect now
+              Amount to collect now <span className="text-rose-500">*</span>
             </label>
             <input
               type="number"
               min="0"
               step="1"
+              required
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
-              placeholder={`Full after discount: ${Math.max(0, totalAmount - (Number.isFinite(parsedDiscount) ? parsedDiscount : 0))}`}
+              placeholder={`Max: ${Math.round(totalAmount)}`}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+              autoFocus
             />
             <p className="text-[11px] text-slate-500">
-              Leave blank to collect the full outstanding balance (minus any discount). Any unpaid amount stays on khata.
+              Required. Type the exact amount. Any unpaid balance stays on khata.
             </p>
           </div>
 
@@ -223,11 +219,7 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
             disabled={submitting || !canSubmit}
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50"
           >
-            {submitting
-              ? 'Collecting…'
-              : customAmount.trim() === '' && discountAmount.trim() === ''
-                ? 'Yes, Clear All Bills'
-                : 'Confirm'}
+            {submitting ? 'Collecting…' : 'Confirm Collect'}
           </button>
         </div>
       </div>

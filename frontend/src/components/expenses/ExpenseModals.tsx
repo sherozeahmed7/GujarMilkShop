@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useExpenseStore } from '../../store/expenseStore';
-import { ExpenseCategory, ExpenseRecord } from '../../types';
+import { ExpenseRecord } from '../../types';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface ExpenseModalsProps {
@@ -10,6 +10,8 @@ interface ExpenseModalsProps {
   onCloseEdit: () => void;
   deleteExpenseId: string | null;
   onCloseDelete: () => void;
+  payExpense: ExpenseRecord | null;
+  onClosePay: () => void;
 }
 
 export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
@@ -18,56 +20,81 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
   editExpense,
   onCloseEdit,
   deleteExpenseId,
-  onCloseDelete
+  onCloseDelete,
+  payExpense,
+  onClosePay,
 }) => {
-  const { updateExpense, deleteExpense, isSaving } = useExpenseStore();
+  const { updateExpense, deleteExpense, payExpense: recordPay, isSaving } = useExpenseStore();
 
-  // Edit State
   const [editDate, setEditDate] = useState('');
-  const [editCategory, setEditCategory] = useState<ExpenseCategory>('Milk');
-  const [editQty, setEditQty] = useState('');
-  const [editRecovery, setEditRecovery] = useState('');
-  const [editReason, setEditReason] = useState('');
-  
+  const [editProduct, setEditProduct] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [payAmount, setPayAmount] = useState('');
+  const [payError, setPayError] = useState<string | null>(null);
+
   useEffect(() => {
     if (editExpense) {
       setEditDate(editExpense.date);
-      setEditCategory(editExpense.category);
-      setEditQty(editExpense.quantity.toString());
-      setEditRecovery(editExpense.soldRecovery.toString());
-      setEditReason(editExpense.reason || '');
+      setEditProduct(editExpense.category);
+      setEditAmount(String(editExpense.amount ?? editExpense.netExpense ?? 0));
+      setEditNotes(editExpense.reason || '');
     }
   }, [editExpense]);
+
+  useEffect(() => {
+    if (payExpense) {
+      const rem = payExpense.remaining ?? Math.max(0, (payExpense.amount || 0) - (payExpense.paidAmount || 0));
+      setPayAmount(String(rem));
+      setPayError(null);
+    }
+  }, [payExpense]);
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editExpense) return;
-
-    const qty = parseFloat(editQty);
-    const recovery = parseFloat(editRecovery);
-    
-    if (!editDate || isNaN(qty) || qty <= 0 || isNaN(recovery) || recovery < 0) {
-      alert("Please ensure quantity > 0 and recovery >= 0.");
+    const amount = parseFloat(editAmount);
+    if (!editDate || !editProduct.trim() || !Number.isFinite(amount) || amount <= 0) {
+      alert('Date, product, and amount > 0 are required.');
       return;
     }
-
-    const calculatedGross = qty * editExpense.unitCost;
-    let calculatedNet = calculatedGross - recovery;
-    if (calculatedNet < 0) calculatedNet = 0;
-
     try {
       await updateExpense(editExpense.id, {
         date: editDate,
-        category: editCategory,
-        quantity: qty,
-        grossLoss: calculatedGross,
-        soldRecovery: recovery,
-        netExpense: calculatedNet,
-        reason: editReason
+        category: editProduct.trim(),
+        description: editProduct.trim(),
+        amount,
+        netExpense: amount,
+        grossLoss: amount,
+        reason: editNotes,
       });
       onCloseEdit();
-    } catch (err) {
-      alert("Unable to update expense.");
+    } catch {
+      alert('Unable to update expense.');
+    }
+  };
+
+  const handlePaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payExpense) return;
+    setPayError(null);
+    const amount = parseFloat(payAmount);
+    const rem =
+      payExpense.remaining ??
+      Math.max(0, (payExpense.amount || 0) - (payExpense.paidAmount || 0));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPayError('Enter a payment greater than zero.');
+      return;
+    }
+    if (amount > rem) {
+      setPayError(`Cannot exceed remaining Rs. ${Math.round(rem).toLocaleString()}.`);
+      return;
+    }
+    try {
+      await recordPay(payExpense.id, amount);
+      onClosePay();
+    } catch (err: any) {
+      setPayError(err?.message || 'Unable to record payment.');
     }
   };
 
@@ -76,20 +103,22 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
     try {
       await deleteExpense(deleteExpenseId);
       onCloseDelete();
-    } catch (err) {
-      alert("Unable to delete expense.");
+    } catch {
+      alert('Unable to delete expense.');
     }
   };
 
   return (
     <>
-      {/* View Modal */}
       {viewExpense && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-slate-800">Expense Details</h3>
-              <button onClick={onCloseView} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button
+                onClick={onCloseView}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -97,47 +126,58 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-slate-500 font-semibold mb-1">Date</p>
-                  <p className="text-sm font-medium text-slate-800">{new Date(viewExpense.date).toLocaleDateString()}</p>
+                  <p className="text-sm font-medium text-slate-800">
+                    {new Date(viewExpense.date).toLocaleDateString()}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Category</p>
+                  <p className="text-xs text-slate-500 font-semibold mb-1">Product</p>
                   <p className="text-sm font-medium text-slate-800">{viewExpense.category}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Quantity</p>
-                  <p className="text-sm font-medium text-slate-800">{viewExpense.quantity} kg</p>
+                  <p className="text-xs text-slate-500 font-semibold mb-1">Total</p>
+                  <p className="text-sm font-bold text-slate-800">
+                    Rs. {(viewExpense.amount ?? viewExpense.netExpense).toLocaleString()}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Unit Cost</p>
-                  <p className="text-sm font-medium text-slate-800">Rs. {viewExpense.unitCost.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500 font-semibold mb-1">Paid</p>
+                  <p className="text-sm font-bold text-emerald-700">
+                    Rs. {(viewExpense.paidAmount || 0).toLocaleString()}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Gross Loss</p>
-                  <p className="text-sm font-medium text-rose-600">Rs. {viewExpense.grossLoss.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500 font-semibold mb-1">Remaining</p>
+                  <p className="text-sm font-bold text-amber-600">
+                    Rs.{' '}
+                    {(
+                      viewExpense.remaining ??
+                      Math.max(
+                        0,
+                        (viewExpense.amount || 0) - (viewExpense.paidAmount || 0)
+                      )
+                    ).toLocaleString()}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Sold Recovery</p>
-                  <p className="text-sm font-medium text-emerald-600">Rs. {viewExpense.soldRecovery.toLocaleString()}</p>
-                </div>
-              </div>
-              
-              <div className="pt-2 border-t border-slate-100">
-                <p className="text-xs text-slate-500 font-semibold mb-1">Net Expense</p>
-                <p className="text-lg font-bold text-rose-700">Rs. {viewExpense.netExpense.toLocaleString()}</p>
               </div>
 
               <div>
-                <p className="text-xs text-slate-500 font-semibold mb-1">Reason / Notes</p>
-                <p className="text-sm text-slate-700 bg-slate-50 p-2 rounded">{viewExpense.reason || 'None'}</p>
+                <p className="text-xs text-slate-500 font-semibold mb-1">Notes</p>
+                <p className="text-sm text-slate-700 bg-slate-50 p-2 rounded">
+                  {viewExpense.reason || viewExpense.description || 'None'}
+                </p>
               </div>
-              
+
               <div className="flex justify-between items-center text-xs text-slate-400 pt-2 border-t border-slate-100">
                 <span>Added by: {viewExpense.addedBy}</span>
                 <span>{new Date(viewExpense.createdAt).toLocaleString()}</span>
               </div>
             </div>
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button onClick={onCloseView} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+              <button
+                onClick={onCloseView}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50"
+              >
                 Close
               </button>
             </div>
@@ -145,59 +185,75 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
         </div>
       )}
 
-      {/* Edit Modal */}
       {editExpense && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <h3 className="font-bold text-slate-800">Edit Expense</h3>
-              <button onClick={onCloseEdit} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={onCloseEdit} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="p-5 flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Date</label>
-                  <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} required
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Category</label>
-                  <select value={editCategory} onChange={e => setEditCategory(e.target.value as ExpenseCategory)}
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="Milk">Milk</option>
-                    <option value="Yogurt">Yogurt</option>
-                    <option value="Electricity">Electricity</option>
-                    <option value="Gas">Gas</option>
-                    <option value="Water">Water</option>
-                    <option value="Packaging">Packaging</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Qty</label>
-                  <input type="number" step="0.01" value={editQty} onChange={e => setEditQty(e.target.value)} required
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-600">Recovery</label>
-                  <input type="number" step="0.01" value={editRecovery} onChange={e => setEditRecovery(e.target.value)}
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Date</label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  required
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Reason / Notes</label>
-                <input type="text" value={editReason} onChange={e => setEditReason(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                <label className="text-xs font-semibold text-slate-600">Product</label>
+                <input
+                  type="text"
+                  value={editProduct}
+                  onChange={(e) => setEditProduct(e.target.value)}
+                  required
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
               </div>
-              
-              <div className="mt-4 flex justify-end gap-2">
-                <button type="button" onClick={onCloseEdit} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Total amount</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  required
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Already paid: Rs. {(editExpense.paidAmount || 0).toLocaleString()} (cannot go
+                  below this)
+                </p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Notes</label>
+                <input
+                  type="text"
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onCloseEdit}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={isSaving} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-70">
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-70"
+                >
+                  {isSaving ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -205,7 +261,69 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {payExpense && (
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="font-bold text-slate-800">Pay remaining</h3>
+              <button onClick={onClosePay} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handlePaySubmit} className="p-5 space-y-4">
+              <p className="text-sm text-slate-600">
+                <span className="font-semibold text-slate-800">{payExpense.category}</span>
+                {' · '}
+                Remaining{' '}
+                <span className="font-bold text-amber-600">
+                  Rs.{' '}
+                  {Math.round(
+                    payExpense.remaining ??
+                      Math.max(0, (payExpense.amount || 0) - (payExpense.paidAmount || 0))
+                  ).toLocaleString()}
+                </span>
+              </p>
+              <p className="text-[11px] text-slate-500">
+                This payment is deducted from the currently open shift expected cash.
+              </p>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-600">Amount to pay</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  autoFocus
+                />
+              </div>
+              {payError && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  {payError}
+                </div>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={onClosePay}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg disabled:opacity-70"
+                >
+                  {isSaving ? 'Saving…' : 'Confirm Pay'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {deleteExpenseId && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
@@ -218,11 +336,18 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                 Are you sure you want to delete this expense? This action cannot be undone.
               </p>
               <div className="flex w-full gap-3">
-                <button onClick={onCloseDelete} className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                <button
+                  onClick={onCloseDelete}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                >
                   Cancel
                 </button>
-                <button onClick={handleDeleteConfirm} disabled={isSaving} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors disabled:opacity-70">
-                  {isSaving ? 'Deleting...' : 'Delete'}
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isSaving}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg disabled:opacity-70"
+                >
+                  {isSaving ? 'Deleting…' : 'Delete'}
                 </button>
               </div>
             </div>

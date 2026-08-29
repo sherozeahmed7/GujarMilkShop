@@ -10,6 +10,7 @@ router.get('/breakdown', ExpenseController.breakdown);
 router.get('/',          ExpenseController.list);
 router.get('/:id',       ExpenseController.getOne);
 router.post('/',         ExpenseController.create);
+router.post('/:id/pay',  ExpenseController.pay);
 router.put('/:id',       ExpenseController.update);
 router.delete('/:id',    ExpenseController.remove);
 

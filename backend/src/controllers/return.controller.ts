@@ -21,9 +21,6 @@ export class ReturnController {
         saleIds: parsedSaleIds,
       });
 
-      if (!result.success) {
-        return ApiResponse.error(res, result.message || 'Failed to list returns.', result.statusCode);
-      }
       return ApiResponse.success(res, 'Returns fetched.', result.data);
     } catch (e) {
       next(e);

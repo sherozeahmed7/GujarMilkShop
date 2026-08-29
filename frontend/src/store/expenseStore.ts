@@ -14,6 +14,7 @@ interface ExpenseStore {
   fetchExpenses: () => Promise<void>;
   createExpense: (data: Omit<ExpenseRecord, 'id' | 'createdAt'>) => Promise<void>;
   updateExpense: (id: string, data: Partial<ExpenseRecord>) => Promise<void>;
+  payExpense: (id: string, amount: number) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
   clearError: () => void;
 }
@@ -60,6 +61,18 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
       set({ isSaving: false });
     } catch (error: any) {
       set({ error: error.message || 'Failed to update expense', isSaving: false });
+      throw error;
+    }
+  },
+
+  payExpense: async (id, amount) => {
+    set({ isSaving: true, error: null });
+    try {
+      await expenseApi.payExpense(id, amount);
+      await get().fetchExpenses();
+      set({ isSaving: false });
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to record payment', isSaving: false });
       throw error;
     }
   },

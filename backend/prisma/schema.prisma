@@ -259,21 +259,43 @@ model ButterGheeConversion {
   createdAt    DateTime @default(now())
 }
 
-// Expense / wastage / loss records
+// Expense / shop costs / wastage records
 model Expense {
   id           Int      @id @default(autoincrement())
   date         String   // YYYY-MM-DD
-  category     String   // 'Milk' | 'Yogurt' | 'Electricity' | 'Gas' | 'Water' | 'Packaging' | 'Other'
+  category     String   // product label or Milk/Yogurt/Other
   description  String?
   quantity     Float    @default(0)
   unitCost     Float    @default(0)
   grossLoss    Float    @default(0)
   soldRecovery Float    @default(0)
   netExpense   Float    @default(0)
+  /** Total bill / cost of this expense */
+  amount       Float    @default(0)
+  /** Cash paid out of drawer so far */
+  paidAmount   Float    @default(0)
+  /** amount − paidAmount */
+  remaining    Float    @default(0)
   reason       String?
   addedBy      String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  payments     ExpensePayment[]
+}
+
+/** Cash paid toward an expense (links to open shift for expected-cash deduction) */
+model ExpensePayment {
+  id        Int      @id @default(autoincrement())
+  expenseId Int
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  amount    Float
+  shiftId   Int?
+  date      String   // YYYY-MM-DD
+  addedBy   String
+  createdAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([expenseId])
 }
 
 // Return / refund records linked to an original sale

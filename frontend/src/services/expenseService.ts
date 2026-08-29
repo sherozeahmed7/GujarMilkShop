@@ -42,6 +42,18 @@ export const updateExpense = async (
   return res.data as ExpenseRecord;
 };
 
+export const payExpense = async (
+  id: string,
+  amount: number,
+  date?: string
+): Promise<ExpenseRecord> => {
+  const res = await apiClient.post(`/expenses/${id}/pay`, {
+    amount,
+    ...(date ? { date } : {}),
+  });
+  return res.data as ExpenseRecord;
+};
+
 export const deleteExpense = async (id: string): Promise<void> => {
   await apiClient.delete(`/expenses/${id}`);
 };
