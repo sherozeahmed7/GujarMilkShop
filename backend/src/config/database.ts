@@ -25,6 +25,7 @@ export const ALL_SCREENS = [
   'Receipt Audit',
   'Shifts',
   'Cash Register',
+  'Cashbook',
   'Expenses',
 
   // Reports
