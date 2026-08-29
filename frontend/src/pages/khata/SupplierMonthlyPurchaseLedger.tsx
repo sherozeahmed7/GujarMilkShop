@@ -165,8 +165,11 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
           .section-title { font-size: 13px; font-weight: bold; margin: 20px 0 8px; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }
         </style>
       </head><body>
-        <h2>GUJJAR MILK SHOP</h2>
-        <h3>Supplier Monthly Purchase Statement</h3>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="/logo.png" alt="Gujjar Milk Shop" style="height: 64px; object-fit: contain; margin-bottom: 10px;" />
+          <h2 style="margin: 0;">GUJJAR MILK SHOP</h2>
+          <h3 style="margin-top: 5px; color: #555;">Supplier Monthly Purchase Statement</h3>
+        </div>
         <div class="meta">
           <p><strong>Supplier:</strong> ${supplier?.name ?? 'Unknown'}</p>
           <p><strong>Phone:</strong> ${supplier?.phone ?? 'N/A'}</p>

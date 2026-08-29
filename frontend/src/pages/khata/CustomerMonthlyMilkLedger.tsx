@@ -151,8 +151,11 @@ export const CustomerMonthlyMilkLedger: React.FC = () => {
           </style>
         </head>
         <body>
-          <h2>GUJJAR MILK SHOP</h2>
-          <h3>Customer Milk Statement</h3>
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="/logo.png" alt="Gujjar Milk Shop" style="height: 64px; object-fit: contain; margin-bottom: 10px;" />
+            <h2 style="margin: 0;">GUJJAR MILK SHOP</h2>
+            <h3 style="margin-top: 5px; color: #555;">Customer Milk Statement</h3>
+          </div>
           <div class="header-info">
             <p><strong>Customer:</strong> ${customer?.name || 'Unknown'}</p>
             <p><strong>Phone:</strong> ${customer?.phone || 'N/A'}</p>

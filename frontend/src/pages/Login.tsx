@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { apiClient } from '../services/apiClient';
 import { Lock, Mail, Store, Eye, EyeOff, Loader2, Droplets, Leaf, CheckCircle2 } from 'lucide-react';
-
+import { BrandLogo } from '../components/BrandLogo';
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,14 +87,8 @@ export const Login: React.FC = () => {
           }} />
 
           <div className="relative w-full max-w-xl rounded-[36px] border border-white/70 bg-white/20 backdrop-blur-sm p-8 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
-            <div className="flex items-center gap-3 mb-10">
-              <div className="w-14 h-14 rounded-2xl bg-[#1f2d3d] flex items-center justify-center shadow-md">
-                <Store className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-500">Fresh dairy</div>
-                <div className="text-3xl font-black text-slate-800">Gujar Milk Shop</div>
-              </div>
+            <div className="flex items-center justify-center mb-10">
+              <BrandLogo variant="login" />
             </div>
 
             <div className="relative mx-auto mb-8 flex h-72 w-72 items-center justify-center">
@@ -143,10 +137,8 @@ export const Login: React.FC = () => {
         <div className="flex min-h-screen items-center justify-center bg-white px-6 py-10 sm:px-8 lg:px-10">
           <div className="w-full max-w-md">
             <div className="flex flex-col items-center mb-8 lg:hidden">
-              <div className="w-14 h-14 rounded-2xl bg-[#1f2d3d] flex items-center justify-center mb-4 shadow-sm">
-                <Store className="w-7 h-7 text-white" />
-              </div>
-              <h1 className="text-2xl font-black text-slate-800">Gujar Milk Shop</h1>
+              <BrandLogo variant="login" className="mb-4" />
+              <h1 className="text-2xl font-black text-slate-800 mt-2">Gujar Milk Shop</h1>
               <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mt-1">POS Management System</p>
               <p className="text-sm text-slate-500 mt-3">Sign in to continue</p>
             </div>
