@@ -32,10 +32,18 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
       try {
         const pricing = await inventoryService.getPricing(name);
         setFormData((current) => ({ ...current, cost: pricing.averageCost ? String(pricing.averageCost) : '', sellPrice: pricing.sellingPrice ? String(pricing.sellingPrice) : '' }));
-        setErrors((current) => ({ ...current, cost: pricing.averageCost ? '' : 'No supplier cost available', sellPrice: pricing.sellingPrice ? '' : 'Selling price is not configured in Daily Rates' }));
+        setErrors((current) => ({
+          ...current,
+          cost: pricing.averageCost ? '' : 'No supplier cost — enter manually to proceed',
+          sellPrice: pricing.sellingPrice ? '' : 'Selling price is not configured in Daily Rates',
+        }));
       } catch {
-        setFormData((current) => ({ ...current, cost: '', sellPrice: '' }));
-        setErrors((current) => ({ ...current, cost: 'Supplier cost unavailable', sellPrice: 'Selling price is not configured in Daily Rates' }));
+        setFormData((current) => ({ ...current, cost: current.cost || '', sellPrice: '' }));
+        setErrors((current) => ({
+          ...current,
+          cost: 'Enter cost manually to proceed',
+          sellPrice: 'Selling price is not configured in Daily Rates',
+        }));
       }
     }, 300);
     return () => window.clearTimeout(timer);
@@ -51,7 +59,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
       newErrors.sellPrice = 'Selling price is not configured in Daily Rates';
     }
     if (isNaN(Number(formData.cost)) || Number(formData.cost) <= 0) {
-      newErrors.cost = 'No supplier cost is available for this product';
+      newErrors.cost = 'Enter cost manually if no supplier cost is available';
     }
 
     setErrors(newErrors);
@@ -169,10 +177,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
                   type="number" 
                   step="0.01"
                   value={formData.cost}
-                  readOnly
-                  className={`w-full border ${errors.cost ? 'border-rose-500' : 'border-slate-200'} rounded-lg px-3 py-2 text-sm bg-slate-100 focus:outline-none`}
-                  placeholder="0.00" 
+                  onChange={(e) => {
+                    setFormData({ ...formData, cost: e.target.value });
+                    setErrors((current) => ({ ...current, cost: '' }));
+                  }}
+                  className={`w-full border ${errors.cost ? 'border-rose-500' : 'border-slate-200'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="Enter cost if no supplier price" 
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Auto-filled from supplier when available. For yogurt, enter manually.</p>
                 {errors.cost && <p className="text-xs text-rose-500 mt-1">{errors.cost}</p>}
               </div>
               <div>

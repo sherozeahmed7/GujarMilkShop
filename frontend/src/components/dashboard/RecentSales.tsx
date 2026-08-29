@@ -3,11 +3,6 @@ import { Activity } from 'lucide-react';
 import { DateFilterType } from '../../types';
 import { RecentSaleRow } from '../../hooks/useDashboardData';
 
-const mockSales = [
-  { id: 1, type: 'Walk-in', time: '11:40', amount: 'Rs. 240', payment: 'CASH' },
-  { id: 2, type: 'Walk-in', time: '11:32', amount: 'Rs. 1,000', payment: 'CASH' },
-];
-
 interface RecentSalesProps {
   dateFilter: DateFilterType;
   sales: RecentSaleRow[];

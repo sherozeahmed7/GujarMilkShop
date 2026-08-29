@@ -2,23 +2,29 @@ export interface MilkProductsDailyStock {
   date: string; // YYYY-MM-DD
   milkTotal: number;
   
-  // Lassi (Daily - resets to 0 next day)
   lassiProduced: number;
   lassiSold: number;
   lassiRemaining: number;
+  lassiDiscarded?: number;
   
-  // Butter (Persistent)
   butterOpening: number;
   butterProduced: number;
   butterSold: number;
   butterConverted: number;
   butterClosing: number;
+  butterDiscarded?: number;
+  butterOldestDate?: string | null;
+  butterAgeDays?: number;
+  butterExpired?: boolean;
   
-  // Ghee (Persistent)
   gheeOpening: number;
   gheeProduced: number;
   gheeSold: number;
   gheeClosing: number;
+  gheeDiscarded?: number;
+  gheeOldestDate?: string | null;
+  gheeAgeDays?: number;
+  gheeExpired?: boolean;
 }
 
 export type TransactionType = 

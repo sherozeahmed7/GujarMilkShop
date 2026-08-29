@@ -17,10 +17,10 @@ export const RestoreCloudDataModal: React.FC<RestoreCloudDataModalProps> = ({ on
     try {
       const result = await cloudSyncService.restoreCloudData();
       if (result.success) {
-        onSuccess(`Successfully restored ${result.records} records from the cloud.`);
+        onSuccess(result.message || 'Restore completed.');
         onClose();
       } else {
-        setError('Failed to restore cloud data.');
+        setError(result.message || 'Failed to restore cloud data.');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to restore cloud data.');

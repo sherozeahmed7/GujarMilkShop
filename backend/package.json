@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "prisma:generate": "prisma generate",
+    "db:reset": "node scripts/reset-db.js",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc"

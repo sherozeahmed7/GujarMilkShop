@@ -6,17 +6,27 @@
 export const API_BASE_URL = 'http://localhost:5000/api';
 
 /**
- * Called whenever any API response returns 401 Unauthorized.
+ * Called whenever any API response returns 401 Unauthorized (except login).
  * Clears the stored session and notifies the app to show a session-expired modal.
  */
 const handleUnauthorized = () => {
-  // Clear all auth state
   localStorage.removeItem('token');
   localStorage.removeItem('userId');
   localStorage.removeItem('role');
   localStorage.removeItem('assignedScreens');
-  // Fire a global event — the SessionExpiredModal in App.tsx listens for this
   window.dispatchEvent(new CustomEvent('session-expired'));
+};
+
+/** Login 401 = wrong password — do not treat as session expiry */
+const isAuthLoginEndpoint = (endpoint: string) =>
+  endpoint === '/auth/login' || endpoint.endsWith('/auth/login');
+
+const handle401 = (endpoint: string, data: any) => {
+  if (isAuthLoginEndpoint(endpoint)) {
+    throw new Error(data?.message || 'Invalid email or password');
+  }
+  handleUnauthorized();
+  throw new Error('Session expired. Please log in again.');
 };
 
 /**
@@ -42,7 +52,7 @@ export const apiClient = {
         headers: getHeaders(),
       });
       const data = await response.json();
-      if (response.status === 401) { handleUnauthorized(); throw new Error('Session expired. Please log in again.'); }
+      if (response.status === 401) handle401(endpoint, data);
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
@@ -61,7 +71,7 @@ export const apiClient = {
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      if (response.status === 401) { handleUnauthorized(); throw new Error('Session expired. Please log in again.'); }
+      if (response.status === 401) handle401(endpoint, data);
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
@@ -80,7 +90,7 @@ export const apiClient = {
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      if (response.status === 401) { handleUnauthorized(); throw new Error('Session expired. Please log in again.'); }
+      if (response.status === 401) handle401(endpoint, data);
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
@@ -99,7 +109,7 @@ export const apiClient = {
         body: JSON.stringify(payload),
       });
       const data = await response.json();
-      if (response.status === 401) { handleUnauthorized(); throw new Error('Session expired. Please log in again.'); }
+      if (response.status === 401) handle401(endpoint, data);
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
@@ -117,7 +127,7 @@ export const apiClient = {
         headers: getHeaders(),
       });
       const data = await response.json();
-      if (response.status === 401) { handleUnauthorized(); throw new Error('Session expired. Please log in again.'); }
+      if (response.status === 401) handle401(endpoint, data);
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }

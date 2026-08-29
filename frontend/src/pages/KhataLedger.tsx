@@ -14,7 +14,7 @@ import { supplierService } from '../services/supplier.service';
 import { SupplierLedgerModal } from '../components/khata/SupplierLedgerModal';
 import { useDebounce } from '../hooks/useDebounce';
 import {
-  Search, Download, FileText, Printer, Filter, Plus, ChevronDown,
+  Search, Download, FileText, Printer, Plus, ChevronDown,
   DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw
 } from 'lucide-react';
 
@@ -87,12 +87,6 @@ export const KhataLedger: React.FC = () => {
   useEffect(() => {
     if (partyMode === 'suppliers') supplierService.list().then(setSuppliers).catch((err: any) => setError(err?.message || 'Failed to load suppliers'));
   }, [partyMode]);
-
-  const cycleFilter = () => {
-    setFilterMode((prev) =>
-      prev === 'All' ? 'Pending' : prev === 'Pending' ? 'Paid' : 'All'
-    );
-  };
 
   const handleDelete = async (c: ApiCustomer) => {
     if (!window.confirm(`Remove ${c.name} from Khata? They will be marked inactive.`)) {
@@ -186,13 +180,6 @@ export const KhataLedger: React.FC = () => {
     }
   };
 
-  const filterLabel =
-    filterMode === 'All'
-      ? 'Paid / Pending'
-      : filterMode === 'Pending'
-        ? `Pending (${summary.pendingCount})`
-        : `Paid (${summary.paidCount})`;
-
   return (
     <div className="flex flex-col h-full gap-5 overflow-hidden">
       <div className="flex items-start justify-between flex-shrink-0">
@@ -234,18 +221,26 @@ export const KhataLedger: React.FC = () => {
             <Printer className="w-4 h-4 text-amber-600" />
             Daily Print
           </button>
-          <button
-            type="button"
-            onClick={cycleFilter}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border shadow-sm transition-colors ${
-              filterMode !== 'All'
-                ? 'bg-amber-500 text-white border-amber-500'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <Filter className="w-4 h-4" />
-            {filterLabel}
-          </button>
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setFilterMode('All')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                filterMode === 'All' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('Pending')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                filterMode === 'Pending' ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              Dues ({summary.pendingCount})
+            </button>
+          </div>
           <button
             type="button"
             onClick={handleOpenAdd}
@@ -280,7 +275,7 @@ export const KhataLedger: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name or phone…"
+              placeholder="Search by name, phone, or ID…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -292,22 +287,25 @@ export const KhataLedger: React.FC = () => {
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
-                <th className="w-[22%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="w-[20%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Name
                 </th>
-                <th className="w-[16%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="w-[14%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Phone
                 </th>
-                <th className="w-[14%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                  Customer Type
+                <th className="w-[10%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  ID
                 </th>
-                <th className="w-[14%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="w-[12%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Type
+                </th>
+                <th className="w-[12%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Balance
                 </th>
                 <th className="w-[12%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Last Sale
                 </th>
-                <th className="w-[22%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
+                <th className="w-[20%] px-5 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
                   Actions
                 </th>
               </tr>
@@ -315,13 +313,13 @@ export const KhataLedger: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {loading && customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center text-sm text-slate-400">
+                  <td colSpan={7} className="px-5 py-16 text-center text-sm text-slate-400">
                     Loading customers…
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center">
+                  <td colSpan={7} className="px-5 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <CheckCircle2 className="w-10 h-10 text-slate-200" />
                       <p className="text-sm font-medium">No customers found</p>
@@ -366,6 +364,9 @@ export const KhataLedger: React.FC = () => {
                       <td className="px-5 py-3 text-sm text-slate-600 truncate">
                         {c.phone?.trim() ? c.phone : 'Not Available'}
                       </td>
+                      <td className="px-5 py-3 text-sm font-semibold text-slate-700">
+                        {c.id}
+                      </td>
                       <td className="px-5 py-3">
                         <span
                           className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
@@ -409,7 +410,7 @@ export const KhataLedger: React.FC = () => {
                             }`}
                           >
                             <DollarSign className="w-3.5 h-3.5" />
-                            Cash Collect
+                            Collect
                           </button>
                           <button
                             type="button"

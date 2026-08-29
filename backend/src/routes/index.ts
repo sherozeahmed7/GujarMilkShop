@@ -15,6 +15,7 @@ import returnRoutes from './return.routes';
 import auditRoutes from './audit.routes';
 import dashboardRoutes from './dashboard.routes';
 import reportsRoutes from './reports.routes';
+import activityLogRoutes from './activityLog.routes';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/returns',         returnRoutes);
 router.use('/audits',          auditRoutes);
 router.use('/dashboard',       dashboardRoutes);
 router.use('/reports',         reportsRoutes);
+router.use('/activity-logs',   activityLogRoutes);
 
 export default router;

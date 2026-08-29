@@ -14,7 +14,7 @@ export const KhataSummaryCards: React.FC<KhataSummaryCardsProps> = ({
   const formatCurrency = (amount: number) => `Rs. ${Math.round(amount).toLocaleString()}`;
 
   return (
-    <div className="grid grid-cols-3 gap-5">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
         <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
           <BookOpen className="w-6 h-6" />

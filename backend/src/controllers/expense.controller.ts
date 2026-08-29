@@ -34,19 +34,21 @@ export class ExpenseController {
 
   static async create(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { date, category, description, quantity, unitCost, grossLoss, soldRecovery, netExpense, reason } = req.body;
+      const { date, category, description, quantity, unitCost, grossLoss, soldRecovery, netExpense, reason, period } = req.body;
       if (!date || !category) return ApiResponse.error(res, 'date and category are required.', 400);
       const addedBy = req.user?.email || 'unknown';
+      const amount = money(Number(netExpense) || Number(grossLoss) || 0);
       const expense = await prisma.expense.create({
         data: {
           date, category,
           description: description || null,
           quantity:    money(Number(quantity)    || 0),
           unitCost:    money(Number(unitCost)    || 0),
-          grossLoss:   money(Number(grossLoss)   || 0),
+          grossLoss:   money(Number(grossLoss)   || amount),
           soldRecovery:money(Number(soldRecovery)|| 0),
-          netExpense:  money(Number(netExpense)  || 0),
+          netExpense:  amount,
           reason: reason || null,
+          period: period || 'once',
           addedBy,
         }
       });

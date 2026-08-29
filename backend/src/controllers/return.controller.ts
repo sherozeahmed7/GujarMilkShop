@@ -45,33 +45,99 @@ export class ReturnController {
 
       const processedBy = req.user?.email || 'unknown';
 
-      // Try to find original sale by id (billNumber is the numeric sale id)
       const saleId = parseInt(billNumber, 10);
       const saleExists = !isNaN(saleId) && await prisma.sale.findUnique({ where: { id: saleId } });
 
-      const ret = await prisma.return.create({
-        data: {
-          saleId:       saleExists ? saleId : null,
-          billNumber,
-          date,
-          customer:     customer || 'Walk-in',
-          returnType,
-          refundAmount: Number(refundAmount),
-          paymentMethod: paymentMethod || 'Cash',
-          reason:       reason || '',
-          status:       status || 'Completed',
-          processedBy,
-          items: {
-            create: (items || []).map((i: any) => ({
-              itemId:      String(i.itemId || ''),
-              name:        i.name || '',
-              returnQty:   Number(i.returnQty  || 0),
-              unitPrice:   Number(i.unitPrice  || 0),
-              refundAmount:Number(i.refundAmount|| 0),
-            }))
+      const ret = await prisma.$transaction(async (tx) => {
+        const created = await tx.return.create({
+          data: {
+            saleId: saleExists ? saleId : null,
+            billNumber,
+            date,
+            customer: customer || 'Walk-in',
+            returnType,
+            refundAmount: Number(refundAmount),
+            paymentMethod: paymentMethod || 'Cash',
+            reason: reason || '',
+            status: status || 'Completed',
+            processedBy,
+            items: {
+              create: (items || []).map((i: any) => ({
+                itemId: String(i.itemId || ''),
+                name: i.name || '',
+                returnQty: Number(i.returnQty || 0),
+                unitPrice: Number(i.unitPrice || 0),
+                refundAmount: Number(i.refundAmount || 0),
+              })),
+            },
+          },
+          include: { items: true },
+        });
+
+        // Restock inventory for milk/yogurt (and known F2 names as inventory if present)
+        for (const item of created.items) {
+          const qty = Number(item.returnQty) || 0;
+          if (qty <= 0) continue;
+          const nameKey = (item.name || '').trim().toLowerCase();
+          if (!nameKey) continue;
+
+          const code = nameKey.toUpperCase();
+          const product =
+            (await tx.inventoryProduct.findFirst({ where: { code } })) ||
+            (await tx.inventoryProduct.findFirst({
+              where: { OR: [{ name: nameKey }, { name: { contains: nameKey } }] },
+            }));
+
+          if (product) {
+            await tx.inventoryMovement.create({
+              data: {
+                productId: product.id,
+                quantity: Math.round(qty * 100) / 100,
+                movementType: 'RETURN',
+                source: 'Customer Return',
+                reference: `return-${created.id}-${product.id}-${Date.now()}`,
+                userId: req.user?.userId,
+              },
+            });
           }
-        },
-        include: { items: true },
+
+          // F2 daily stock bump for lassi/butter/ghee
+          if (['lassi', 'butter', 'ghee'].includes(nameKey)) {
+            const dayStart = new Date(date + 'T00:00:00');
+            if (!isNaN(dayStart.getTime())) {
+              const stock = await tx.milkProductDailyStock.findUnique({ where: { date: dayStart } });
+              if (stock) {
+                if (nameKey === 'lassi') {
+                  await tx.milkProductDailyStock.update({
+                    where: { date: dayStart },
+                    data: {
+                      lassiSold: { decrement: qty },
+                      lassiRemaining: { increment: qty },
+                    },
+                  });
+                } else if (nameKey === 'butter') {
+                  await tx.milkProductDailyStock.update({
+                    where: { date: dayStart },
+                    data: {
+                      butterSold: { decrement: qty },
+                      butterClosing: { increment: qty },
+                    },
+                  });
+                } else if (nameKey === 'ghee') {
+                  await tx.milkProductDailyStock.update({
+                    where: { date: dayStart },
+                    data: {
+                      gheeSold: { decrement: qty },
+                      gheeClosing: { increment: qty },
+                    },
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        return created;
       });
 
       return ApiResponse.success(res, 'Return created.', formatReturn(ret), 201);

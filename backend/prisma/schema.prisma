@@ -230,6 +230,11 @@ model MilkProductDailyStock {
   gheeProduced    Float    @default(0)
   gheeSold        Float    @default(0)
   gheeClosing     Float    @default(0)
+  lassiDiscarded  Float    @default(0)
+  butterDiscarded Float    @default(0)
+  gheeDiscarded   Float    @default(0)
+  butterOldestDate String? // YYYY-MM-DD — oldest batch for 4-day shelf life
+  gheeOldestDate   String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -260,7 +265,7 @@ model ButterGheeConversion {
 model Expense {
   id           Int      @id @default(autoincrement())
   date         String   // YYYY-MM-DD
-  category     String   // 'Milk' | 'Yogurt' | 'Electricity' | 'Gas' | 'Water' | 'Packaging' | 'Other'
+  category     String   // 'Milk' | 'Yogurt' | 'Electricity' | 'Gas' | 'Water' | 'Packaging' | 'Other' | 'Weekly' | 'Monthly'
   description  String?
   quantity     Float    @default(0)
   unitCost     Float    @default(0)
@@ -268,6 +273,7 @@ model Expense {
   soldRecovery Float    @default(0)
   netExpense   Float    @default(0)
   reason       String?
+  period       String   @default("once") // 'once' | 'weekly' | 'monthly'
   addedBy      String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -317,4 +323,21 @@ model AuditRecord {
   notes             String   @default("")
   auditedBy         String
   createdAt         DateTime @default(now())
+}
+
+// System activity log — rate changes, stock adjusts, etc.
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int?
+  userName    String   @default("System")
+  userRole    String   @default("")
+  module      String
+  action      String
+  description String
+  entityId    String?
+  status      String   @default("Success") // Success | Warning | Error
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([module])
 }

@@ -180,15 +180,33 @@ export const POS: React.FC = () => {
   const finalTotal = Math.max(0, money(subtotal - (discount || 0)));
 
   const addToCart = (name: string, quantity: number, unit: 'kg' | 'rs', total: number, pricePerKg: number) => {
-    const newItem: CartItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      quantity,
-      unit,
-      total,
-      pricePerKg
-    };
-    setCart([...cart, newItem]);
+    setCart((prev) => {
+      const existing = prev.find(
+        (item) => item.name === name && item.unit === unit && item.pricePerKg === pricePerKg
+      );
+      if (existing) {
+        return prev.map((item) =>
+          item.id === existing.id
+            ? {
+                ...item,
+                quantity: money(item.quantity + quantity),
+                total: money(item.total + total),
+              }
+            : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          name,
+          quantity,
+          unit,
+          total,
+          pricePerKg,
+        },
+      ];
+    });
     setCheckoutError(null);
     setCheckoutSuccess(null);
   };
@@ -246,6 +264,10 @@ export const POS: React.FC = () => {
   const holdCurrentBill = async () => {
     if (cart.length === 0) {
       setCheckoutError('Add items to the cart before holding the bill.');
+      return;
+    }
+    if (heldCarts.length >= 3) {
+      setCheckoutError('Maximum 3 held bills allowed. Resume or delete one first.');
       return;
     }
 
@@ -961,26 +983,6 @@ export const POS: React.FC = () => {
             )}
 
             <div className="space-y-3">
-              {paymentMethod === 'cash' && (
-                <button
-                  type="button"
-                  onClick={handleCheckoutClick}
-                  disabled={submitting}
-                  className="w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl p-4 flex justify-between items-center transition-colors disabled:opacity-50"
-                >
-                  <div className="text-left">
-                    <div className="font-bold text-sm">FAST CASH SALE</div>
-                    <div className="text-[10px] text-emerald-600/80 mt-0.5">
-                      {submitting ? 'Saving…' : 'No cash entry needed.'}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[10px] font-bold text-emerald-600/80 uppercase">Bill</div>
-                    <div className="font-black text-lg">Rs. {finalTotal.toFixed(0)}</div>
-                  </div>
-                </button>
-              )}
-
               <div className="flex gap-3">
                 <button
                   type="button"

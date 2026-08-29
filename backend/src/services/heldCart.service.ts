@@ -23,6 +23,12 @@ export class HeldCartService {
       return { success: false, message: 'Cannot hold an empty cart.', statusCode: 400 };
     }
 
+    // Max 3 held bills per user
+    const existingCount = await prisma.heldCart.count({ where: { userId } });
+    if (existingCount >= 3) {
+      return { success: false, message: 'Maximum 3 held bills allowed. Resume or delete one first.', statusCode: 400 };
+    }
+
     const heldCart = await prisma.heldCart.create({
       data: {
         userId,
@@ -34,6 +40,13 @@ export class HeldCartService {
   }
 
   static async list(userId: number) {
+    // Clear held bills from previous calendar days (day-end rule)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    await prisma.heldCart.deleteMany({
+      where: { userId, createdAt: { lt: startOfToday } },
+    });
+
     const heldCarts = await prisma.heldCart.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },

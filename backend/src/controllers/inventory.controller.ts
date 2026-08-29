@@ -15,4 +15,18 @@ export class InventoryController {
   static async movements(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { return ApiResponse.success(res, 'Inventory movements fetched successfully', await InventoryService.movements(req.query.productId ? id(String(req.query.productId)) : undefined)); } catch (error) { next(error); } }
   static async stockIn(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { return ApiResponse.success(res, 'Inventory stock-in fetched successfully', await InventoryService.stockIn(req.query.productId ? id(String(req.query.productId)) : undefined)); } catch (error) { next(error); } }
   static async record(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const result = await InventoryService.record(req.user!.userId, req.body); return result.success ? ApiResponse.success(res, 'Inventory movement recorded successfully', result.data, result.statusCode) : ApiResponse.error(res, result.message!, result.statusCode); } catch (error) { next(error); } }
+  static async assignMilkToYogurt(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await InventoryService.assignMilkToYogurt(
+        Number(req.body.milkQty),
+        Number(req.body.yogurtQty),
+        req.user?.userId
+      );
+      return result.success
+        ? ApiResponse.success(res, 'Milk assigned to yogurt successfully', result.data, result.statusCode)
+        : ApiResponse.error(res, result.message!, result.statusCode);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
