@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, X, Search, UserRound, ChevronLeft, PauseCircle, RotateCcw, Trash2 } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { rateService, StandardPrices } from '../services/rate.service';
 import { saleService, CreateSalePayload, SaleItemPayload } from '../services/sale.service';
 import { heldCartService, HeldCartRecord } from '../services/heldCart.service';
 import { customerService } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
 import { MilkProducts } from './inventory/MilkProducts';
+import { posConfigService, POSConfigData } from '../services/posConfig.service';
+import { buildReceipt } from '../utils/escposBuilder';
 
 interface CartItem {
   id: string;
@@ -94,6 +97,11 @@ export const POS: React.FC = () => {
   const [checkoutSuccess, setCheckoutSuccess] = useState<string | null>(null);
   const [heldCarts, setHeldCarts] = useState<HeldCartRecord[]>([]);
   const [heldCartsLoading, setHeldCartsLoading] = useState(false);
+  
+  const [posConfig, setPosConfig] = useState<POSConfigData | null>(null);
+  const [lastSaleDetails, setLastSaleDetails] = useState<any>(null);
+  // Duplicate-print protection: track which sale IDs have already been sent to the printer
+  const printedSaleIds = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +119,17 @@ export const POS: React.FC = () => {
       }
     };
 
+    const loadConfig = async () => {
+      try {
+        const conf = await posConfigService.getPOSConfig();
+        if (!cancelled) setPosConfig(conf);
+      } catch (e) {
+        console.error('Failed to load POS config', e);
+      }
+    };
+
     loadPrices();
+    loadConfig();
     return () => { cancelled = true; };
   }, []);
 
@@ -448,10 +466,53 @@ export const POS: React.FC = () => {
         label = `Khata sale #${sale.id} saved for ${selectedKhataCustomer?.name}. Due Rs. ${sale.remainingBalance}.`;
       }
       setCheckoutSuccess(label);
+      setLastSaleDetails({
+        ...sale,
+        subtotal: subtotal,
+        discount: discount,
+        paymentMethod: paymentMethod === 'khata' ? 'KHATA' : paymentMethod
+      });
       resetAfterSale();
       // Refresh F2 stock display if the sale contained F2 items
       const hadF2 = cart.some((item) => ['Lassi', 'Butter', 'Ghee'].includes(item.name));
       if (hadF2) refreshF2StockRef.current?.();
+
+      // ── Silent native ESC/POS print (post-sale, non-blocking) ──────────────
+      if (posConfig?.printReceiptAutomatically && posConfig?.printerEnabled) {
+        const saleId: number = sale.id;
+        if (!printedSaleIds.current.has(saleId)) {
+          printedSaleIds.current.add(saleId);
+          const receiptBytes = buildReceipt({
+            id: sale.id,
+            shopName: posConfig.shopName || 'Gujar Milk Shop',
+            createdAt: sale.createdAt,
+            customerName: sale.customerName ?? selectedKhataCustomer?.name ?? null,
+            items: sale.items?.map((i: any) => ({
+              itemName: i.itemName,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              totalPrice: i.totalPrice,
+            })) ?? [],
+            totalAmount: sale.totalAmount,
+            discountAmount: discount > 0 ? discount : undefined,
+            paidAmount: sale.paidAmount,
+            remainingBalance: sale.remainingBalance,
+            paymentMethod: paymentMethod === 'khata' ? 'KHATA' : paymentMethod,
+            footerText: posConfig.receiptFooterText,
+            autoCutter: posConfig.autoCutter,
+          });
+          // Fire-and-forget: printing MUST NOT affect the committed sale
+          invoke<boolean>('print_raw_bytes', {
+            printerName: posConfig.printerName,
+            data: receiptBytes,
+          }).catch((printErr) => {
+            console.error('[PRINT] Failed to print receipt:', printErr);
+            setCheckoutError(`Receipt printing failed: ${printErr}. Sale #${sale.id} was saved successfully.`);
+            // Remove from set so a manual retry is possible
+            printedSaleIds.current.delete(saleId);
+          });
+        }
+      }
     } catch (err: any) {
       setCheckoutError(err?.message || 'Failed to save sale');
     } finally {
@@ -1044,8 +1105,41 @@ export const POS: React.FC = () => {
               </div>
             )}
             {checkoutSuccess && (
-              <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 px-3 py-2 text-xs font-medium">
-                {checkoutSuccess}
+              <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium flex justify-between items-center">
+                <span className="text-emerald-700">{checkoutSuccess}</span>
+                {lastSaleDetails && posConfig?.printerEnabled && (
+                  <button
+                    onClick={() => {
+                      if (!lastSaleDetails || !posConfig) return;
+                      const bytes = buildReceipt({
+                        id: lastSaleDetails.id,
+                        shopName: posConfig.shopName || 'Gujar Milk Shop',
+                        createdAt: lastSaleDetails.createdAt,
+                        customerName: lastSaleDetails.customerName ?? null,
+                        items: lastSaleDetails.items?.map((i: any) => ({
+                          itemName: i.itemName,
+                          quantity: i.quantity,
+                          unitPrice: i.unitPrice,
+                          totalPrice: i.totalPrice,
+                        })) ?? [],
+                        totalAmount: lastSaleDetails.totalAmount,
+                        discountAmount: lastSaleDetails.discount > 0 ? lastSaleDetails.discount : undefined,
+                        paidAmount: lastSaleDetails.paidAmount,
+                        remainingBalance: lastSaleDetails.remainingBalance,
+                        paymentMethod: lastSaleDetails.paymentMethod,
+                        footerText: posConfig.receiptFooterText,
+                        autoCutter: posConfig.autoCutter,
+                      });
+                      invoke<boolean>('print_raw_bytes', {
+                        printerName: posConfig.printerName,
+                        data: bytes,
+                      }).catch((e) => console.error('[PRINT] Manual reprint failed:', e));
+                    }}
+                    className="ml-2 px-3 py-1 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-100 rounded shadow-sm text-xs"
+                  >
+                    🖨 Reprint
+                  </button>
+                )}
               </div>
             )}
 
@@ -1074,7 +1168,7 @@ export const POS: React.FC = () => {
           </div>
           )}
         </div>
-      </div>
+        </div>
     </div>
   );
 };

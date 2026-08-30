@@ -17,6 +17,7 @@ import dashboardRoutes from './dashboard.routes';
 import reportsRoutes from './reports.routes';
 import neonRoutes from './neon.routes';
 import syncRoutes from './sync.routes';
+import posConfigRoutes from './posConfig.routes';
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use('/dashboard',       dashboardRoutes);
 router.use('/reports',         reportsRoutes);
 router.use('/neon',            neonRoutes);
 router.use('/sync',            syncRoutes);
+router.use('/pos-config',      posConfigRoutes);
 
 export default router;

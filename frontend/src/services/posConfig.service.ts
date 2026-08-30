@@ -13,6 +13,12 @@ export interface POSConfigData {
   receiptFooterText: string;
   receiptWidth: '58mm' | '80mm';
 
+  // Printer Settings
+  printerEnabled: boolean;
+  printerName: string;
+  autoCutter: boolean;
+  cashDrawer: boolean;
+
   // Sale Behaviour
   requireCustomerName: boolean;
   allowDiscount: boolean;
@@ -35,7 +41,11 @@ let mockConfig: POSConfigData = {
   printReceiptAutomatically: true,
   showLogoOnReceipt: false,
   receiptFooterText: 'Thank you for your visit!',
-  receiptWidth: '58mm',
+  receiptWidth: '80mm',
+  printerEnabled: true,
+  printerName: 'Black Copper BC-105',
+  autoCutter: true,
+  cashDrawer: false,
   requireCustomerName: false,
   allowDiscount: true,
   maxDiscountPercent: 10,
@@ -48,38 +58,29 @@ let mockConfig: POSConfigData = {
 
 export const posConfigService = {
   getPOSConfig: async (): Promise<POSConfigData> => {
-    // return (await apiClient.get('/settings/pos-config')).data;
-    
-    // Simulate network delay
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ ...mockConfig });
-      }, 400);
-    });
+    try {
+      const res = await apiClient.get('/pos-config');
+      // If the backend wraps in `.data`, use it; otherwise assume `res` itself is the config.
+      // If it's somehow undefined, fall back to mockConfig.
+      const config = res.data || res;
+      if (!config || typeof config !== 'object' || !config.shopName) {
+        return { ...mockConfig };
+      }
+      return config;
+    } catch {
+      // Fall back to in-memory config when backend is unavailable
+      return { ...mockConfig };
+    }
   },
 
   updatePOSConfig: async (payload: POSConfigData): Promise<POSConfigData> => {
-    // return (await apiClient.put('/settings/pos-config', payload)).data;
-    
-    // Simulate network delay
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (!payload.shopName.trim()) {
-          reject(new Error('Shop Name is required'));
-          return;
-        }
-        if (payload.taxRate < 0) {
-          reject(new Error('Tax Rate cannot be negative'));
-          return;
-        }
-        if (payload.maxDiscountPercent < 0 || payload.maxDiscountPercent > 100) {
-          reject(new Error('Max Discount Percent must be between 0 and 100'));
-          return;
-        }
-        
-        mockConfig = { ...payload };
-        resolve({ ...mockConfig });
-      }, 600);
-    });
+    try {
+      const res = await apiClient.put('/pos-config', payload);
+      return res.data || res || { ...mockConfig };
+    } catch {
+      // Persist locally when backend is unavailable
+      mockConfig = { ...payload };
+      return { ...mockConfig };
+    }
   },
 };

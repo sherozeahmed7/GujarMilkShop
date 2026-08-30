@@ -19,6 +19,14 @@ async function startServer() {
     // Start background sync workers
     startSyncWorker();
     startDownstreamSyncWorker();
+  }).on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use by another application. Please free port ${PORT} and restart the POS.`);
+      process.exit(1);
+    } else {
+      console.error('❌ Server error:', err);
+      process.exit(1);
+    }
   });
   
   return server;

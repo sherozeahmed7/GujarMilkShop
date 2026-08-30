@@ -1,25 +1,41 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Printer } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { posConfigService, POSConfigData } from '../../services/posConfig.service';
+import { buildTestPage } from '../../utils/escposBuilder';
+
+// Tauri invoke — safe lazy wrapper, avoids top-level await which breaks React module loading
+async function safeInvoke<T>(cmd: string, args?: unknown): Promise<T> {
+  const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+  if (!isTauri) {
+    throw new Error('You are viewing the app in a web browser. Printer testing only works inside the Desktop App.');
+  }
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<T>(cmd, args as Record<string, unknown>);
+}
 
 export const POSConfig: React.FC = () => {
   const [config, setConfig] = useState<POSConfigData>({
-    shopName: '',
+    shopName: 'Gujar Milk Shop',
     taxRate: 0,
-    currencySymbol: '',
-    lowStockAlertThreshold: 10,
+    currencySymbol: 'Rs.',
+    lowStockAlertThreshold: 5,
     printReceiptAutomatically: false,
     showLogoOnReceipt: false,
-    receiptFooterText: '',
-    receiptWidth: '58mm',
+    receiptFooterText: 'Thank you for your visit!',
+    receiptWidth: '80mm',
+    printerEnabled: true,
+    printerName: '',
+    autoCutter: true,
+    cashDrawer: false,
     requireCustomerName: false,
-    allowDiscount: false,
-    maxDiscountPercent: 0,
+    allowDiscount: true,
+    maxDiscountPercent: 10,
     defaultPaymentMethod: 'cash',
-    showDailyRateOnPOS: false,
-    showCartSubtotal: false,
+    showDailyRateOnPOS: true,
+    showCartSubtotal: true,
     confirmBeforeSale: false,
-    autoClearCartAfterSale: false,
+    autoClearCartAfterSale: false
   });
 
   const [savedConfig, setSavedConfig] = useState<POSConfigData | null>(null);
@@ -28,6 +44,7 @@ export const POSConfig: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [availablePrinters, setAvailablePrinters] = useState<string[]>([]);
 
   const hasChanges = JSON.stringify(config) !== JSON.stringify(savedConfig);
 
@@ -45,9 +62,21 @@ export const POSConfig: React.FC = () => {
     }
   }, []);
 
+  const loadPrinters = useCallback(async () => {
+    try {
+      const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+      if (!isTauri) return;
+      const printers = await safeInvoke<string[]>('list_printers');
+      setAvailablePrinters(printers);
+    } catch (err) {
+      console.error('Failed to load printers', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
+    loadPrinters();
+  }, [loadConfig, loadPrinters]);
 
   const handleUpdate = async () => {
     setSuccessMsg(null);
@@ -346,7 +375,105 @@ export const POSConfig: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+            {/* Section 5 - Printer Settings */}
+            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800">Thermal Printer Settings</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Configure the BC-105 (or any ESC/POS printer) for silent automatic receipt printing.</p>
+              </div>
+              <div className="p-6 flex flex-col gap-6">
+                {/* Enable / Disable printer */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.printerEnabled}
+                    onChange={(e) => handleChange('printerEnabled', e.target.checked)}
+                    className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-slate-700">Printer Enabled</span>
+                    <p className="text-xs text-slate-400">Must be ON for automatic printing to work.</p>
+                  </div>
+                </label>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Select Windows Printer
+                  </label>
+                  {availablePrinters.length > 0 ? (
+                    <select
+                      disabled={!config.printerEnabled}
+                      value={config.printerName}
+                      onChange={(e) => handleChange('printerName', e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:opacity-50 disabled:bg-slate-50"
+                    >
+                      <option value="">-- Select Printer --</option>
+                      {availablePrinters.map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      disabled={!config.printerEnabled}
+                      value={config.printerName}
+                      onChange={(e) => handleChange('printerName', e.target.value)}
+                      placeholder="e.g. BC-105"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:opacity-50 disabled:bg-slate-50"
+                    />
+                  )}
+                  <p className="text-xs text-slate-400 mt-1">Install the printer in Windows first, then it will appear here automatically.</p>
+                </div>
+
+                {/* Auto cutter */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    disabled={!config.printerEnabled}
+                    checked={config.autoCutter}
+                    onChange={(e) => handleChange('autoCutter', e.target.checked)}
+                    className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600 disabled:opacity-50"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-slate-700">Auto Cutter</span>
+                    <p className="text-xs text-slate-400">Send ESC/POS cut command after each receipt (BC-105 supports this).</p>
+                  </div>
+                </label>
+
+                {/* Cash Drawer - disabled for now */}
+                <label className="flex items-center gap-3 cursor-not-allowed opacity-50">
+                  <input type="checkbox" disabled checked={false} className="w-5 h-5 rounded border-slate-300 accent-emerald-600" />
+                  <div>
+                    <span className="text-sm font-medium text-slate-700">Cash Drawer Kick</span>
+                    <p className="text-xs text-slate-400">Not implemented — requires hardware confirmation.</p>
+                  </div>
+                </label>
+                
+                {/* Test Printer Button */}
+                <div className="pt-4 border-t border-slate-100 flex justify-end">
+                  <button
+                    type="button"
+                    disabled={!config.printerEnabled || !config.printerName}
+                    onClick={async () => {
+                      try {
+                        const bytes = buildTestPage(config.printerName, config.autoCutter);
+                        await safeInvoke('print_raw_bytes', {
+                          printerName: config.printerName,
+                          data: bytes
+                        });
+                        toast.success('Test print sent to printer!');
+                      } catch (err: any) {
+                        toast.error(`Print Failed: ${err}`);
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-xl hover:bg-slate-700 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    🖨 Test Printer Connection
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </>
         )}
       </div>

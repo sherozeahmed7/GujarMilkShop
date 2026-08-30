@@ -7,3 +7,26 @@
     @apply bg-gray-50 text-gray-900;
   }
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  @page {
+    margin: 0;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: white;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}

@@ -408,3 +408,30 @@ model CloudSyncSettings {
   updatedAt         DateTime @updatedAt
 }
 
+// ─── POS PRINTER & DISPLAY SETTINGS ─────────────────────────────────────────
+
+model POSConfig {
+  id                        Int      @id @default(1)
+  shopName                  String   @default("Gujar Milk Shop")
+  taxRate                   Float    @default(0)
+  currencySymbol            String   @default("Rs.")
+  lowStockAlertThreshold    Float    @default(5)
+  printReceiptAutomatically Boolean  @default(false)
+  showLogoOnReceipt         Boolean  @default(false)
+  receiptFooterText         String   @default("Thank you for your visit!")
+  receiptWidth              String   @default("80mm")
+  printerEnabled            Boolean  @default(true)
+  printerName               String   @default("Black Copper BC-105")
+  autoCutter                Boolean  @default(true)
+  cashDrawer                Boolean  @default(false)
+  requireCustomerName       Boolean  @default(false)
+  allowDiscount             Boolean  @default(true)
+  maxDiscountPercent        Float    @default(10)
+  defaultPaymentMethod      String   @default("cash")
+  showDailyRateOnPOS        Boolean  @default(true)
+  showCartSubtotal          Boolean  @default(true)
+  confirmBeforeSale         Boolean  @default(false)
+  autoClearCartAfterSale    Boolean  @default(false)
+  updatedAt                 DateTime @updatedAt
+}
+

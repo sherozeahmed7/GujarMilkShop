@@ -2,12 +2,14 @@
   "name": "gujar-milk-shop-backend",
   "version": "1.0.0",
   "description": "Backend API for Gujar Milk Shop",
-  "main": "dist/server.js",
+  "main": "dist/bootstrap.js",
+  "bin": "dist/bootstrap.js",
   "scripts": {
     "prisma:generate": "prisma generate",
-    "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc"
+    "start": "node dist/bootstrap.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/bootstrap.ts",
+    "build": "tsc",
+    "build:sidecar": "node scripts/build-sidecar.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -27,7 +29,15 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.12.11",
+    "cpx": "^1.5.0",
+    "pkg": "^5.8.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/.prisma/client/**/*",
+      "node_modules/@prisma/client/**/*"
+    ]
   }
 }

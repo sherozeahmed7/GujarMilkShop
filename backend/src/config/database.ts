@@ -1,7 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../utils/auth';
 import { SUPER_ADMIN_ROLE } from './constants';
-
 // Instantiate PrismaClient to interact with SQLite database
 export const prisma = new PrismaClient();
 

@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and role-based access control
+model User {
+  id              Int      @id @default(autoincrement())
+  name            String?  // Optional display name of the user
+  email           String   @unique
+  password        String   // Hashed password string using bcrypt
+  role            String   @default("user") // User role (e.g. "admin", "cashier", "manager")
+  status          String   @default("active") // Account status: "active" or "inactive"
+  
+  // We store assigned screen names as a JSON array string (e.g. '["POS", "Dashboard"]').
+  assignedScreens String   @default("[]") 
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  openedShifts     Shift[]  @relation("ShiftOpenedBy")
+  closedShifts     Shift[]  @relation("ShiftClosedBy")
+  createdSupplierCollections SupplierCollection[] @relation("CollectionCreatedBy")
+  createdSupplierPayments    SupplierPayment[]    @relation("PaymentCreatedBy")
+}
+
+model Supplier {
+  id                Int      @id @default(autoincrement())
+  name              String
+  code              String   @unique
+  phone             String?
+  defaultRate       Float    @default(0)
+  cowRate           Float    @default(0)
+  buffaloRate       Float    @default(0)
+  cycleType         String   @default("Monthly Cycle")
+  isActive          Boolean  @default(true)
+  guaranteedAdvance Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  collections       SupplierCollection[]
+  payments          SupplierPayment[]
+  inventoryMovements InventoryMovement[]
+}
+
+model InventoryProduct {
+  id              Int      @id @default(autoincrement())
+  code            String   @unique
+  name            String
+  description     String?
+  category        String   @default("Dairy")
+  unit            String   @default("kg")
+  tax             String   @default("Exempt")
+  lowStockThreshold Float  @default(0)
+  isActive        Boolean  @default(true)
+  isLocked        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  movements      InventoryMovement[]
+}
+
+model InventoryMovement {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  product       InventoryProduct @relation(fields: [productId], references: [id])
+  quantity      Float
+  movementType  String
+  source        String
+  reference     String   @unique
+  unitCost      Float?
+  supplierId    Int?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  shiftId       Int?
+  date          DateTime @default(now())
+  userId        Int?
+  createdAt     DateTime @default(now())
+
+  @@index([productId, date])
+  @@index([movementType, date])
+}
+
+model SupplierCollection {
+  id          Int      @id @default(autoincrement())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  date        String
+  shift       String
+  milkType    String
+  quantity    Float
+  rate        Float
+  amount      Float
+  notes       String?
+  createdById Int?
+  createdBy   User?    @relation("CollectionCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([supplierId, date, shift])
+  @@index([date])
+}
+
+model SupplierPayment {
+  id          Int      @id @default(autoincrement())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  date        String
+  amount      Float
+  method      String   @default("cash")
+  notes       String?
+  createdById Int?
+  createdBy   User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+// Cash drawer session for one shop day. Only one open shift is allowed at a time.
+model Shift {
+  id             Int      @id @default(autoincrement())
+  shiftDate      String   @unique
+  openedById     Int
+  openedBy       User     @relation("ShiftOpenedBy", fields: [openedById], references: [id])
+  closedById     Int?
+  closedBy       User?    @relation("ShiftClosedBy", fields: [closedById], references: [id])
+  openedAt       DateTime @default(now())
+  closedAt       DateTime?
+  openingCash    Float
+  openingNotes   String?
+  expectedCash   Float    @default(0)
+  countedCash    Float?
+  difference     Float?
+  differenceStatus String?
+  closingNotes   String?
+  status         String   @default("Open")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([openedAt])
+}
+
+// Temporary POS bills owned by the cashier who created them
+model HeldCart {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  snapshot  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// DailyRate model for tracking historical and current prices
+model DailyRate {
+  id            Int      @id @default(autoincrement())
+  milkRate      Float
+  yogurtRate    Float
+  lassiRate     Float    @default(0)
+  butterRate    Float    @default(0)
+  gheeRate      Float    @default(0)
+  updatedByRole String   // Role of the user who made the update (e.g., "super_admin")
+  date          DateTime // The effective date of the rate
+  createdAt     DateTime @default(now())
+}
+
+// Registered ledger customers only (walk-in/split do NOT create a Customer row)
+model Customer {
+  id           Int      @id @default(autoincrement())
+  name         String
+  phone        String?
+  address      String?
+  customerType String   // "daily_ledger" | "monthly_ledger"
+  status       String   @default("active") // "active" | "inactive"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sales        Sale[]
+}
+
+// Master transaction record
+model Sale {
+  id               Int        @id @default(autoincrement())
+  saleType         String     // "walk_in" | "split" | "ledger_daily" | "ledger_monthly"
+  customerId       Int?       // NULL for walk-in/split; REQUIRED for ledger
+  customer         Customer?  @relation(fields: [customerId], references: [id])
+  customerName     String?    // optional — walk-in/split only
+  customerPhone    String?    // optional — walk-in/split only
+  totalAmount      Float
+  paidAmount       Float
+  remainingBalance Float      // totalAmount - paidAmount
+  status           String     // "paid" | "partial" | "pending"
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  items            SaleItem[]
+  payments         Payment[]
+}
+
+// Line items per sale (unitPrice locked at sale time)
+model SaleItem {
+  id         Int      @id @default(autoincrement())
+  saleId     Int
+  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  itemName   String   // "milk" | "yogurt"
+  quantity   Float    // weight in kg
+  unitPrice  Float    // price per kg at time of sale
+  totalPrice Float    // quantity × unitPrice
+  createdAt  DateTime @default(now())
+}
+
+// Payment records per sale
+model Payment {
+  id        Int      @id @default(autoincrement())
+  saleId    Int
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  method    String   // "cash" | "online"
+  amount    Float
+  status    String   // "completed" | "partial" | "pending"
+  createdAt DateTime @default(now())
+}
+
+// Daily stock record for F2 milk products (Lassi, Butter, Ghee)
+// One record per calendar date — enforced by unique constraint on date
+model MilkProductDailyStock {
+  id              Int      @id @default(autoincrement())
+  date            DateTime @unique
+  milkTotal       Float    @default(0)
+  lassiProduced   Float    @default(0)
+  lassiSold       Float    @default(0)
+  lassiRemaining  Float    @default(0)
+  butterOpening   Float    @default(0)
+  butterProduced  Float    @default(0)
+  butterSold      Float    @default(0)
+  butterConverted Float    @default(0)
+  butterClosing   Float    @default(0)
+  gheeOpening     Float    @default(0)
+  gheeProduced    Float    @default(0)
+  gheeSold        Float    @default(0)
+  gheeClosing     Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Transaction log for all F2 stock movements
+model MilkProductTransaction {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  product   String   // "Milk" | "Lassi" | "Butter" | "Ghee"
+  type      String   // "milk_added" | "lassi_produced" | "lassi_sold" | "butter_produced" | "butter_sold" | "butter_converted" | "ghee_produced" | "ghee_sold" | "opening" | "adjustment"
+  quantity  Float
+  reference String?
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+// Butter → Ghee conversion records
+model ButterGheeConversion {
+  id           Int      @id @default(autoincrement())
+  date         DateTime
+  butterUsed   Float
+  gheeProduced Float
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+// Expense / shop costs / wastage records
+model Expense {
+  id           Int      @id @default(autoincrement())
+  date         String   // YYYY-MM-DD
+  category     String   // product label or Milk/Yogurt/Other
+  description  String?
+  quantity     Float    @default(0)
+  unitCost     Float    @default(0)
+  grossLoss    Float    @default(0)
+  soldRecovery Float    @default(0)
+  netExpense   Float    @default(0)
+  /** Total bill / cost of this expense */
+  amount       Float    @default(0)
+  /** Cash paid out of drawer so far */
+  paidAmount   Float    @default(0)
+  /** amount − paidAmount */
+  remaining    Float    @default(0)
+  reason       String?
+  addedBy      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  payments     ExpensePayment[]
+}
+
+/** Cash paid toward an expense (links to open shift for expected-cash deduction) */
+model ExpensePayment {
+  id        Int      @id @default(autoincrement())
+  expenseId Int
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  amount    Float
+  shiftId   Int?
+  date      String   // YYYY-MM-DD
+  addedBy   String
+  createdAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([expenseId])
+}
+
+// Return / refund records linked to an original sale
+model Return {
+  id            Int          @id @default(autoincrement())
+  saleId        Int?         // original sale id (null if bill not found in system)
+  billNumber    String       // original bill number / receipt ref
+  date          String       // YYYY-MM-DD
+  customer      String
+  returnType    String       // 'Full Return' | 'Partial Return' | 'Correction'
+  refundAmount  Float
+  paymentMethod String       // 'Cash' | 'Card' | 'Khata' | 'Bank Transfer'
+  reason        String
+  status        String       @default("Completed") // 'Completed' | 'Pending' | 'Cancelled'
+  processedBy   String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  items         ReturnItem[]
+}
+
+model ReturnItem {
+  id           Int    @id @default(autoincrement())
+  returnId     Int
+  return       Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  itemId       String
+  name         String
+  returnQty    Float
+  unitPrice    Float
+  refundAmount Float
+}
+
+// Receipt audit records — one per audit run
+model AuditRecord {
+  id                Int      @id @default(autoincrement())
+  auditDate         String   // YYYY-MM-DD of the shift being audited
+  executedAt        DateTime @default(now())
+  totalPosBills     Int
+  collectedReceipts Int
+  matched           String   // JSON array of bill numbers
+  missing           String   // JSON array
+  extra             String   // JSON array
+  duplicates        String   // JSON array
+  status            String   // 'Matched' | 'Warning' | 'Mismatch'
+  notes             String   @default("")
+  auditedBy         String
+  createdAt         DateTime @default(now())
+}
+
+// ─── SYNCHRONIZATION INFRASTRUCTURE ─────────────────────────────────────────
+
+model LocalToCloudMapping {
+  id         Int      @id @default(autoincrement())
+  deviceId   String
+  entityType String
+  localId    Int
+  cloudUuid  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([deviceId, entityType, localId])
+  @@index([cloudUuid])
+}
+
+// Tracks the downstream sync cursor — one row per local device
+// lastCursor is the last cloud_sync_events.change_sequence successfully applied
+model DownstreamSyncState {
+  id                  Int      @id @default(1) // singleton row
+  lastCursor          BigInt   @default(0)
+  lastSuccessfulSync  DateTime?
+  lastError           String?
+  updatedAt           DateTime @updatedAt
+}
+
+// Prevents the same downstream change from being applied more than once
+model DownstreamAppliedEvent {
+  changeSequence BigInt   @id
+  eventUuid      String   @unique
+  entityType     String
+  operation      String
+  appliedAt      DateTime @default(now())
+
+  @@index([appliedAt])
+}
+
+model SyncQueue {
+  eventUuid  String   @id
+  deviceId   String
+  entityType String
+  localId    Int
+  cloudUuid  String
+  operation  String   // 'CREATE', 'UPDATE', 'DELETE'
+  payload    String   // JSON string
+  status      String   @default("PENDING") // 'PENDING', 'SYNCING', 'SYNCED', 'FAILED'
+  layer       Int      @default(0)
+  retryCount  Int      @default(0)
+  nextRetryAt DateTime?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, nextRetryAt])
+  @@index([deviceId])
+}
+
+// Tracking local cloud sync configuration state (Disconnected / Connected)
+model CloudSyncSettings {
+  id                Int      @id @default(1)
+  syncEnabled       Boolean  @default(true)
+  downstreamEnabled Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── POS PRINTER & DISPLAY SETTINGS ─────────────────────────────────────────
+
+model POSConfig {
+  id                        Int      @id @default(1)
+  shopName                  String   @default("Gujar Milk Shop")
+  taxRate                   Float    @default(0)
+  currencySymbol            String   @default("Rs.")
+  lowStockAlertThreshold    Float    @default(5)
+  printReceiptAutomatically Boolean  @default(false)
+  showLogoOnReceipt         Boolean  @default(false)
+  receiptFooterText         String   @default("Thank you for your visit!")
+  receiptWidth              String   @default("80mm")
+  printerEnabled            Boolean  @default(true)
+  printerName               String   @default("Black Copper BC-105")
+  autoCutter                Boolean  @default(true)
+  cashDrawer                Boolean  @default(false)
+  requireCustomerName       Boolean  @default(false)
+  allowDiscount             Boolean  @default(true)
+  maxDiscountPercent        Float    @default(10)
+  defaultPaymentMethod      String   @default("cash")
+  showDailyRateOnPOS        Boolean  @default(true)
+  showCartSubtotal          Boolean  @default(true)
+  confirmBeforeSale         Boolean  @default(false)
+  autoClearCartAfterSale    Boolean  @default(false)
+  updatedAt                 DateTime @updatedAt
+}
+

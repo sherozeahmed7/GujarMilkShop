@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Command } from '@tauri-apps/plugin-shell';
 import { Layout } from './components/layout/Layout';
 import { apiClient } from './services/apiClient';
 import { SessionExpiredModal } from './components/SessionExpiredModal';
@@ -71,13 +72,90 @@ const PublicOnlyRoute = () => {
 };
 
 function App() {
+  const [backendReady, setBackendReady] = useState(false);
+  const [backendError, setBackendError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Attempt to start the sidecar
+    const startSidecar = async () => {
+      try {
+        console.log('Starting sidecar...');
+        const command = Command.sidecar('bin/backend');
+        
+        command.on('close', data => {
+          if (data.code === 1) {
+            setBackendError("Port 5000 is occupied by another application. Please free port 5000 and restart the POS.");
+          }
+          console.log(`Sidecar finished with code ${data.code} and signal ${data.signal}`);
+        });
+
+        command.on('error', error => {
+          console.error(`Sidecar error: "${error}"`);
+          if (!backendReady) {
+             setBackendError(`Failed to start backend: ${error}`);
+          }
+        });
+
+        command.stdout.on('data', line => console.log(`[Backend]: ${line}`));
+        command.stderr.on('data', line => console.error(`[Backend ERR]: ${line}`));
+
+        await command.spawn();
+      } catch (err) {
+        console.error("Sidecar spawn failed:", err);
+      }
+    };
+    
+    startSidecar();
+  }, []);
+
+  useEffect(() => {
+    // Poll for health endpoint
+    if (backendReady || backendError) return;
+
+    let timeoutId: any;
+    const checkHealth = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/health');
+        if (res.ok) {
+          setBackendReady(true);
+          return;
+        }
+      } catch (e) {
+        // Not ready yet
+      }
+      timeoutId = setTimeout(checkHealth, 500);
+    };
+
+    checkHealth();
+
+    return () => clearTimeout(timeoutId);
+  }, [backendReady, backendError]);
+
   // Test connection to backend if token exists
   const token = localStorage.getItem('token');
   const { data } = useQuery({
     queryKey: ['connectionTest'],
     queryFn: () => apiClient.get('/connection-test'),
-    enabled: !!token, // Only fetch connection test if user is logged in
+    enabled: !!token && backendReady, // Only fetch connection test if user is logged in AND backend is ready
   });
+
+  if (backendError) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', color: 'red' }}>
+        <h2>Error Starting POS</h2>
+        <p>{backendError}</p>
+      </div>
+    );
+  }
+
+  if (!backendReady) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+        <h2>Starting Services...</h2>
+        <p>Please wait while the POS backend starts.</p>
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
