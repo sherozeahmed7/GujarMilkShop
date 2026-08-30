@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-
+import { SyncQueueService } from './syncQueue.service';
 const F2_ITEMS = ['lassi', 'butter', 'ghee'] as const;
 
 function money(n: number): number {
@@ -48,7 +48,7 @@ async function restoreInventory(
     const existing = await tx.inventoryMovement.findUnique({ where: { reference } });
     if (existing) continue;
 
-    await tx.inventoryMovement.create({
+    const movement = await tx.inventoryMovement.create({
       data: {
         productId: product.id,
         quantity: money(quantity), // positive = stock back in
@@ -59,6 +59,7 @@ async function restoreInventory(
         shiftId: shift?.id,
       },
     });
+    await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', movement.id, movement, 2);
   }
 }
 
@@ -83,6 +84,7 @@ async function restoreF2Stock(
   });
   if (!stock) {
     stock = await tx.milkProductDailyStock.create({ data: { date: dayStart } });
+    await SyncQueueService.createCloudMapping('MilkProductDailyStock', stock.id, undefined, tx);
   }
 
   let lassiDelta = 0;
@@ -96,7 +98,7 @@ async function restoreF2Stock(
     if (name === 'ghee') gheeDelta = money(gheeDelta + qty);
   }
 
-  await tx.milkProductDailyStock.update({
+  const updatedStock = await tx.milkProductDailyStock.update({
     where: { id: stock.id },
     data: {
       lassiSold: money(Math.max(0, stock.lassiSold - lassiDelta)),
@@ -107,6 +109,7 @@ async function restoreF2Stock(
       gheeClosing: money(stock.gheeClosing + gheeDelta),
     },
   });
+  await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updatedStock.id, updatedStock, 2, 'UPSERT');
 }
 
 function saleStatus(totalAmount: number, paidAmount: number, remainingBalance: number): string {
@@ -253,7 +256,7 @@ export class ReturnService {
           newPaid = newTotal;
           newRemaining = 0;
         }
-        await tx.sale.update({
+        const updatedSale = await tx.sale.update({
           where: { id: sale.id },
           data: {
             totalAmount: newTotal,
@@ -262,11 +265,18 @@ export class ReturnService {
             status: saleStatus(newTotal, newPaid, newRemaining),
           },
         });
+        await SyncQueueService.enqueueUpdate(tx, 'Sale', updatedSale.id, updatedSale, 1);
       }
 
       // Put stock back (core inventory + F2)
       await restoreInventory(tx, ret.id, normalizedItems, userId);
       await restoreF2Stock(tx, normalizedItems, date);
+
+      // Enqueue Return CREATE after items are created
+      await SyncQueueService.enqueueCreate(tx, 'Return', ret.id, ret, 3);
+      for (const item of ret.items) {
+        await SyncQueueService.enqueueCreate(tx, 'ReturnItem', item.id, item, 3);
+      }
 
       return ret;
     });

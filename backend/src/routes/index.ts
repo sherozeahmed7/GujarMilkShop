@@ -15,6 +15,8 @@ import returnRoutes from './return.routes';
 import auditRoutes from './audit.routes';
 import dashboardRoutes from './dashboard.routes';
 import reportsRoutes from './reports.routes';
+import neonRoutes from './neon.routes';
+import syncRoutes from './sync.routes';
 
 const router = Router();
 
@@ -36,5 +38,7 @@ router.use('/returns',         returnRoutes);
 router.use('/audits',          auditRoutes);
 router.use('/dashboard',       dashboardRoutes);
 router.use('/reports',         reportsRoutes);
+router.use('/neon',            neonRoutes);
+router.use('/sync',            syncRoutes);
 
 export default router;

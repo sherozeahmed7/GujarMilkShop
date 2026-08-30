@@ -1,4 +1,5 @@
- import { prisma } from '../config/database';
+import { prisma } from '../config/database';
+import { SyncQueueService } from './syncQueue.service';
 import { hashPassword, comparePassword } from '../utils/auth';
 
 export interface CreateUserPayload {
@@ -41,15 +42,19 @@ export class UserService {
     const screensJson = JSON.stringify(assignedScreens || []);
 
     // 5. Save the new user record into the database with status defaulting to 'active'
-    const newUser = await prisma.user.create({
-      data: {
-        name: name ? name.trim() : null,
-        email: email.toLowerCase().trim(),
-        password: hashedPassword,
-        role: userRole,
-        status: 'active',
-        assignedScreens: screensJson
-      }
+    const newUser = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: name ? name.trim() : null,
+          email: email.toLowerCase().trim(),
+          password: hashedPassword,
+          role: userRole,
+          status: 'active',
+          assignedScreens: screensJson
+        }
+      });
+      await SyncQueueService.enqueueCreate(tx, 'User', created.id, created, 0);
+      return created;
     });
 
     // 6. Parse assignedScreens JSON back into an array for the response
@@ -147,14 +152,18 @@ export class UserService {
       }
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        name: payload.name || null,
-        email: payload.email.toLowerCase().trim(),
-        role: payload.role,
-        assignedScreens: JSON.stringify(payload.assignedScreens || [])
-      }
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: {
+          name: payload.name || null,
+          email: payload.email.toLowerCase().trim(),
+          role: payload.role,
+          assignedScreens: JSON.stringify(payload.assignedScreens || [])
+        }
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'User', updated.id, updated, 0);
+      return updated;
     });
 
     let parsedScreens: string[] = [];
@@ -189,7 +198,10 @@ export class UserService {
       return { success: false, statusCode: 404, message: 'User not found.' };
     }
 
-    await prisma.user.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.user.delete({ where: { id } });
+      await SyncQueueService.enqueueUpdate(tx, 'User', id, { id }, 0, 'DELETE');
+    });
 
     return {
       success: true,
@@ -225,9 +237,13 @@ export class UserService {
       return { success: false, statusCode: 404, message: 'User not found.' };
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: { status }
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: { status }
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'User', updated.id, updated, 0);
+      return updated;
     });
 
     return {
@@ -258,9 +274,12 @@ export class UserService {
 
     const hashedPassword = await hashPassword(newPassword);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword }
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword }
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'User', updated.id, updated, 0);
     });
 
     return {
@@ -293,9 +312,12 @@ export class UserService {
 
     // 3. Update target user's password
     const hashedPassword = await hashPassword(newPassword);
-    await prisma.user.update({
-      where: { id: targetUserId },
-      data: { password: hashedPassword }
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: { password: hashedPassword }
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'User', updated.id, updated, 0);
     });
 
     return {

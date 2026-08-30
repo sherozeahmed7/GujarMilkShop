@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-
+import { SyncQueueService } from './syncQueue.service';
 function money(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -69,13 +69,14 @@ export class MilkProductsService {
 
   /** Upsert helper — finds or creates the daily stock row, applies update callback */
   private static async upsertStock(
+    tx: any,
     dateStr: string,
     updater: (current: ReturnType<typeof ZERO_STOCK>) => Partial<ReturnType<typeof ZERO_STOCK>>
   ) {
     parseDateRange(dateStr); // validate
     const dateKey = parseDateKey(dateStr);
 
-    const existing = await prisma.milkProductDailyStock.findFirst({
+    const existing = await tx.milkProductDailyStock.findFirst({
       where: {
         date: { gte: dateKey, lte: new Date(new Date(dateStr).setHours(23, 59, 59, 999)) },
       },
@@ -85,16 +86,18 @@ export class MilkProductsService {
     const updates = updater(current as any);
 
     if (existing) {
-      return prisma.milkProductDailyStock.update({
+      return tx.milkProductDailyStock.update({
         where: { id: existing.id },
         data: updates,
       });
     } else {
       const dateOnly = new Date(dateStr);
       dateOnly.setHours(0, 0, 0, 0);
-      return prisma.milkProductDailyStock.create({
+      const created = await tx.milkProductDailyStock.create({
         data: { date: dateOnly, ...updates } as any,
       });
+      await SyncQueueService.createCloudMapping('MilkProductDailyStock', created.id, undefined, tx);
+      return created;
     }
   }
 
@@ -103,16 +106,20 @@ export class MilkProductsService {
     if (!quantity || quantity <= 0) {
       return { success: false, statusCode: 400, message: 'quantity must be > 0.' };
     }
-    const record = await this.upsertStock(dateStr, (cur) => ({
-      milkTotal: money(cur.milkTotal + quantity),
-    }));
-    await prisma.milkProductTransaction.create({
-      data: {
-        date: parseDateKey(dateStr),
-        product: 'Milk',
-        type: 'milk_added',
-        quantity,
-      },
+    const record = await prisma.$transaction(async (tx) => {
+      const updated = await this.upsertStock(tx, dateStr, (cur) => ({
+        milkTotal: money(cur.milkTotal + quantity),
+      }));
+      await tx.milkProductTransaction.create({
+        data: {
+          date: parseDateKey(dateStr),
+          product: 'Milk',
+          type: 'milk_added',
+          quantity,
+        },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
     return { success: true, statusCode: 200, data: record };
   }
@@ -122,13 +129,17 @@ export class MilkProductsService {
     if (!quantity || quantity <= 0) {
       return { success: false, statusCode: 400, message: 'quantity must be > 0.' };
     }
-    const record = await this.upsertStock(dateStr, (cur) => {
-      const produced = money(cur.lassiProduced + quantity);
-      const remaining = money(produced - cur.lassiSold);
-      return { lassiProduced: produced, lassiRemaining: Math.max(0, remaining) };
-    });
-    await prisma.milkProductTransaction.create({
-      data: { date: parseDateKey(dateStr), product: 'Lassi', type: 'lassi_produced', quantity },
+    const record = await prisma.$transaction(async (tx) => {
+      const updated = await this.upsertStock(tx, dateStr, (cur) => {
+        const produced = money(cur.lassiProduced + quantity);
+        const remaining = money(produced - cur.lassiSold);
+        return { lassiProduced: produced, lassiRemaining: Math.max(0, remaining) };
+      });
+      await tx.milkProductTransaction.create({
+        data: { date: parseDateKey(dateStr), product: 'Lassi', type: 'lassi_produced', quantity },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
     return { success: true, statusCode: 200, data: record };
   }
@@ -138,13 +149,17 @@ export class MilkProductsService {
     if (!quantity || quantity <= 0) {
       return { success: false, statusCode: 400, message: 'quantity must be > 0.' };
     }
-    const record = await this.upsertStock(dateStr, (cur) => {
-      const produced = money(cur.butterProduced + quantity);
-      const closing = money(cur.butterOpening + produced - cur.butterSold - cur.butterConverted);
-      return { butterProduced: produced, butterClosing: Math.max(0, closing) };
-    });
-    await prisma.milkProductTransaction.create({
-      data: { date: parseDateKey(dateStr), product: 'Butter', type: 'butter_produced', quantity },
+    const record = await prisma.$transaction(async (tx) => {
+      const updated = await this.upsertStock(tx, dateStr, (cur) => {
+        const produced = money(cur.butterProduced + quantity);
+        const closing = money(cur.butterOpening + produced - cur.butterSold - cur.butterConverted);
+        return { butterProduced: produced, butterClosing: Math.max(0, closing) };
+      });
+      await tx.milkProductTransaction.create({
+        data: { date: parseDateKey(dateStr), product: 'Butter', type: 'butter_produced', quantity },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
     return { success: true, statusCode: 200, data: record };
   }
@@ -154,13 +169,17 @@ export class MilkProductsService {
     if (!quantity || quantity <= 0) {
       return { success: false, statusCode: 400, message: 'quantity must be > 0.' };
     }
-    const record = await this.upsertStock(dateStr, (cur) => {
-      const produced = money(cur.gheeProduced + quantity);
-      const closing = money(cur.gheeOpening + produced - cur.gheeSold);
-      return { gheeProduced: produced, gheeClosing: Math.max(0, closing) };
-    });
-    await prisma.milkProductTransaction.create({
-      data: { date: parseDateKey(dateStr), product: 'Ghee', type: 'ghee_produced', quantity },
+    const record = await prisma.$transaction(async (tx) => {
+      const updated = await this.upsertStock(tx, dateStr, (cur) => {
+        const produced = money(cur.gheeProduced + quantity);
+        const closing = money(cur.gheeOpening + produced - cur.gheeSold);
+        return { gheeProduced: produced, gheeClosing: Math.max(0, closing) };
+      });
+      await tx.milkProductTransaction.create({
+        data: { date: parseDateKey(dateStr), product: 'Ghee', type: 'ghee_produced', quantity },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
     return { success: true, statusCode: 200, data: record };
   }
@@ -237,6 +256,7 @@ export class MilkProductsService {
           },
         });
 
+        await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
         return updated;
       });
 
@@ -251,13 +271,17 @@ export class MilkProductsService {
     if (quantity === undefined || quantity === null || quantity < 0) {
       return { success: false, statusCode: 400, message: 'quantity must be >= 0.' };
     }
-    const record = await this.upsertStock(dateStr, (cur) => {
-      const sold = money(quantity);
-      const remaining = money(cur.lassiProduced - sold);
-      return { lassiSold: sold, lassiRemaining: Math.max(0, remaining) };
-    });
-    await prisma.milkProductTransaction.create({
-      data: { date: parseDateKey(dateStr), product: 'Lassi', type: 'lassi_sold', quantity },
+    const record = await prisma.$transaction(async (tx) => {
+      const updated = await this.upsertStock(tx, dateStr, (cur) => {
+        const sold = money(quantity);
+        const remaining = money(cur.lassiProduced - sold);
+        return { lassiSold: sold, lassiRemaining: Math.max(0, remaining) };
+      });
+      await tx.milkProductTransaction.create({
+        data: { date: parseDateKey(dateStr), product: 'Lassi', type: 'lassi_sold', quantity },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
     return { success: true, statusCode: 200, data: record };
   }

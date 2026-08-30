@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-
+import { SyncQueueService } from './syncQueue.service';
 const money = (value: number) => Math.round(value * 100) / 100;
 
 function formatShift(shift: any, salesAggregates?: {
@@ -124,9 +124,13 @@ export class ShiftService {
     const shiftDate = new Date().toISOString().slice(0, 10);
     const existing = await prisma.shift.findFirst({ where: { status: 'Open' } });
     if (existing) return { success: false, statusCode: 409, message: 'Close the currently open shift before opening another.' };
-    const shift = await prisma.shift.create({
-      data: { shiftDate, openedById: userId, openingCash, openingNotes: openingNotes?.trim() || null, expectedCash: openingCash },
-      include: { openedBy: true, closedBy: true },
+    const shift = await prisma.$transaction(async (tx) => {
+      const created = await tx.shift.create({
+        data: { shiftDate, openedById: userId, openingCash, openingNotes: openingNotes?.trim() || null, expectedCash: openingCash },
+        include: { openedBy: true, closedBy: true },
+      });
+      await SyncQueueService.enqueueCreate(tx, 'Shift', created.id, created, 1);
+      return created;
     });
     return { success: true, statusCode: 201, data: formatShift(shift, { billsCount: 0, grossSales: 0, cashSales: 0, onlineSales: 0, khataSales: 0 }) };
   }
@@ -141,10 +145,14 @@ export class ShiftService {
     const expected = await expectedCash({ ...current, closedAt });
     const difference = money(countedCash - expected);
     const differenceStatus = difference === 0 ? 'Balanced' : difference < 0 ? 'Short' : 'Over';
-    const updated = await prisma.shift.update({
-      where: { id: current.id },
-      data: { closedById: userId, closedAt, countedCash, expectedCash: expected, difference, differenceStatus, closingNotes: closingNotes?.trim() || null, status: 'Closed' },
-      include: { openedBy: true, closedBy: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      const closed = await tx.shift.update({
+        where: { id: current.id },
+        data: { closedById: userId, closedAt, countedCash, expectedCash: expected, difference, differenceStatus, closingNotes: closingNotes?.trim() || null, status: 'Closed' },
+        include: { openedBy: true, closedBy: true },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'Shift', closed.id, closed, 1);
+      return closed;
     });
     const salesAgg = await getSalesAggregates(current.openedAt, closedAt);
     return { success: true, statusCode: 200, data: formatShift(updated, salesAgg) };

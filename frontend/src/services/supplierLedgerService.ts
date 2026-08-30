@@ -78,7 +78,7 @@ export const supplierLedgerService = {
     try {
       const { collections } = await getEntries(supplierId);
       return collections.filter((entry) => inMonth(entry.date, month, year)).map((entry) => ({
-      id: String(entry.id), supplierId: String(entry.supplierId), date: entry.date, product: `${entry.milkType} Milk`, quantity: Number(entry.quantity), unit: 'kg', rate: Number(entry.rate), amount: Number(entry.amount), time: entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        id: String(entry.id), supplierId: String(entry.supplierId), date: entry.date, product: `${entry.milkType} Milk`, quantity: Number(entry.quantity), unit: 'kg', rate: Number(entry.rate), amount: Number(entry.amount), time: entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
       }));
     } catch { return mockSupplierEntries(supplierId, month, year); }
   },
@@ -87,7 +87,7 @@ export const supplierLedgerService = {
     try {
       const { payments } = await getEntries(supplierId);
       return payments.filter((entry) => inMonth(entry.date, month, year)).map((entry) => ({
-      id: String(entry.id), supplierId: String(entry.supplierId), date: entry.date, amount: Number(entry.amount), paymentMethod: entry.method || 'cash', reference: `PAY-${entry.id}`, addedBy: entry.createdBy?.name || 'System',
+        id: String(entry.id), supplierId: String(entry.supplierId), date: entry.date, amount: Number(entry.amount), paymentMethod: entry.method || 'cash', reference: `PAY-${entry.id}`, addedBy: entry.createdBy?.name || 'System',
       }));
     } catch { return mockSupplierPayments(supplierId, month, year); }
   },

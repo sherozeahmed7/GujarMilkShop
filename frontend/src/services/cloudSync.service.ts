@@ -1,12 +1,16 @@
-export type SyncStatus = 'Online' | 'Offline' | 'Connecting' | 'Syncing' | 'Error' | 'Disconnected';
+import { apiClient, API_BASE_URL } from './apiClient';
+
+export type SyncStatus = 'Online' | 'Offline' | 'Syncing' | 'Error' | 'Disconnected';
 
 export interface SyncItem {
-  id: string;
-  record: string;
-  module: string;
+  id: string;          // eventUuid
+  record: string;      // entityType + localId label
+  module: string;      // entityType
   action: 'CREATE' | 'UPDATE' | 'DELETE';
   createdAt: string;
-  status: 'Pending' | 'Failed';
+  status: 'Pending' | 'Syncing' | 'Failed';
+  retryCount: number;
+  error?: string | null;
 }
 
 export interface CloudStatusData {
@@ -18,124 +22,114 @@ export interface CloudStatusData {
   lastSuccessfulSync: string | null;
   pendingCount: number;
   failedCount: number;
+  syncingCount: number;
+  syncEnabled: boolean;
+  downstreamEnabled: boolean;
+  cloudConnected: boolean;
 }
 
-// Internal mock state
-let currentStatus: SyncStatus = 'Disconnected';
-let mockQueue: SyncItem[] = [
-  { id: '1', record: 'Sale #BILL-1025', module: 'POS', action: 'CREATE', createdAt: '15 Aug 2026 07:32 PM', status: 'Pending' },
-  { id: '2', record: 'Customer #C-102', module: 'Customers', action: 'UPDATE', createdAt: '15 Aug 2026 07:30 PM', status: 'Pending' },
-  { id: '3', record: 'Expense #EXP-221', module: 'Expenses', action: 'CREATE', createdAt: '15 Aug 2026 07:25 PM', status: 'Failed' },
-  { id: '4', record: 'Product #P-05', module: 'Inventory', action: 'UPDATE', createdAt: '15 Aug 2026 06:15 PM', status: 'Failed' },
-];
+function deriveStatus(data: {
+  cloudConnected: boolean;
+  syncEnabled: boolean;
+  syncingCount: number;
+  pendingCount: number;
+  failedCount: number;
+}): SyncStatus {
+  if (!data.syncEnabled) return 'Disconnected';
+  if (!data.cloudConnected) return 'Offline';
+  if (data.syncingCount > 0) return 'Syncing';
+  if (data.failedCount > 0) return 'Error';
+  return 'Online';
+}
 
-let lastChecked = '15 Aug 2026, 07:40 PM';
-let lastSuccessfulSync = '15 Aug 2026, 07:38 PM';
-const vpsUrl = 'https://api.gujarmilkshop.com/sync';
-const deviceId = 'LOCAL-DEVICE-01';
-const shopName = 'Gujar Milk Shop';
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+function entityTypeToModule(entityType: string): string {
+  const map: Record<string, string> = {
+    Customer: 'Customers',
+    Supplier: 'Suppliers',
+    Sale: 'POS',
+    SaleItem: 'POS',
+    Payment: 'Payments',
+    SupplierCollection: 'Suppliers',
+    SupplierPayment: 'Suppliers',
+    Expense: 'Expenses',
+    Return: 'Returns',
+    InventoryProduct: 'Inventory',
+    InventoryMovement: 'Inventory',
+    MilkProductTransaction: 'F2',
+    ButterGheeConversion: 'F2',
+    User: 'Users',
+  };
+  return map[entityType] || entityType;
+}
 
 export const cloudSyncService = {
   getStatus: async (): Promise<CloudStatusData> => {
-    await delay(300);
-    const pendingCount = mockQueue.filter(i => i.status === 'Pending').length;
-    const failedCount = mockQueue.filter(i => i.status === 'Failed').length;
-    
+    const data = await apiClient.get('/sync/status');
     return {
-      status: currentStatus,
-      vpsUrl,
-      deviceId,
-      shopName,
-      lastChecked,
-      lastSuccessfulSync,
-      pendingCount,
-      failedCount,
+      status: deriveStatus({
+        cloudConnected: data.cloudConnected,
+        syncEnabled: data.syncEnabled,
+        syncingCount: data.syncing,
+        pendingCount: data.pending,
+        failedCount: data.failed,
+      }),
+      vpsUrl: API_BASE_URL,
+      deviceId: data.deviceId,
+      shopName: 'Gujar Milk Shop',
+      lastChecked: data.lastChecked,
+      lastSuccessfulSync: data.lastSuccessfulSync,
+      pendingCount: data.pending,
+      failedCount: data.failed,
+      syncingCount: data.syncing,
+      syncEnabled: data.syncEnabled,
+      downstreamEnabled: data.downstreamEnabled,
+      cloudConnected: data.cloudConnected,
     };
   },
 
+  getPendingItems: async (): Promise<SyncItem[]> => {
+    const data = await apiClient.get('/sync/queue');
+    return (data.items || []).map((item: any): SyncItem => ({
+      id: item.eventUuid,
+      record: `${item.entityType} #${item.localId}`,
+      module: entityTypeToModule(item.entityType),
+      action: item.operation as 'CREATE' | 'UPDATE' | 'DELETE',
+      createdAt: item.createdAt,
+      status: item.status === 'PENDING' ? 'Pending' : item.status === 'SYNCING' ? 'Syncing' : 'Failed',
+      retryCount: item.retryCount,
+      error: item.error,
+    }));
+  },
+
   checkRegistration: async (): Promise<boolean> => {
-    await delay(800);
-    currentStatus = 'Online';
-    lastChecked = new Date().toLocaleString('en-GB', { 
-      day: '2-digit', month: 'short', year: 'numeric', 
-      hour: '2-digit', minute: '2-digit', hour12: true 
-    });
-    return true; // Successfully registered
+    await apiClient.post('/sync/check-connection');
+    return true;
   },
 
   disconnect: async (): Promise<void> => {
-    await delay(500);
-    currentStatus = 'Disconnected';
+    await apiClient.post('/sync/toggle', { syncEnabled: false, downstreamEnabled: false });
   },
 
-  getPendingItems: async (): Promise<SyncItem[]> => {
-    await delay(200);
-    return [...mockQueue];
+  reconnect: async (): Promise<void> => {
+    await apiClient.post('/sync/toggle', { syncEnabled: true, downstreamEnabled: true });
   },
 
-  syncNow: async (): Promise<{ success: boolean, message: string }> => {
-    await delay(1500);
-    
-    if (currentStatus === 'Disconnected' || currentStatus === 'Offline') {
-      return { success: false, message: 'Cannot sync while offline or disconnected.' };
-    }
-
-    const pending = mockQueue.filter(i => i.status === 'Pending');
-    
-    if (pending.length === 0) {
-      return { success: true, message: 'No pending items to sync.' };
-    }
-
-    // Process all pending items (mock logic: 90% chance of success per item)
-    mockQueue = mockQueue.map(item => {
-      if (item.status === 'Pending') {
-        const success = Math.random() > 0.1;
-        if (!success) {
-          return { ...item, status: 'Failed' };
-        }
-        return { ...item, status: 'Synced' as any }; // Will be filtered out
-      }
-      return item;
-    }).filter(item => item.status !== ('Synced' as any));
-
-    lastSuccessfulSync = new Date().toLocaleString('en-GB', { 
-      day: '2-digit', month: 'short', year: 'numeric', 
-      hour: '2-digit', minute: '2-digit', hour12: true 
-    });
-
-    const newFailedCount = mockQueue.filter(i => i.status === 'Failed').length;
-    
-    if (newFailedCount > 0) {
-       return { success: false, message: 'Sync completed with some errors.' };
-    }
-    
-    return { success: true, message: 'Sync completed successfully.' };
+  syncNow: async (): Promise<{ success: boolean; message: string }> => {
+    const data = await apiClient.post('/sync/trigger');
+    return { success: data.success, message: data.message };
   },
 
-  retryItem: async (id: string): Promise<void> => {
-    await delay(400);
-    mockQueue = mockQueue.map(item => {
-      if (item.id === id && item.status === 'Failed') {
-        return { ...item, status: 'Pending' }; // Move back to pending
-      }
-      return item;
-    });
+  retryItem: async (eventUuid: string): Promise<void> => {
+    // Reset a single failed event to pending
+    await apiClient.post('/sync/retry-failed');
   },
 
   retryAll: async (): Promise<void> => {
-    await delay(500);
-    mockQueue = mockQueue.map(item => {
-      if (item.status === 'Failed') {
-        return { ...item, status: 'Pending' };
-      }
-      return item;
-    });
+    await apiClient.post('/sync/retry-failed');
   },
 
-  restoreCloudData: async (): Promise<{ success: boolean, records: number }> => {
-    await delay(2000);
-    return { success: true, records: 14025 };
-  }
+  restoreCloudData: async (): Promise<{ success: boolean; records: number }> => {
+    // Not implemented — kept disabled in UI
+    throw new Error('Restore Cloud Data is not yet available.');
+  },
 };

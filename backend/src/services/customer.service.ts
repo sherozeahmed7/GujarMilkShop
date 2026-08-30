@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-
+import { SyncQueueService } from './syncQueue.service';
 const CUSTOMER_TYPES = ['daily_ledger', 'monthly_ledger'] as const;
 const CUSTOMER_STATUSES = ['active', 'inactive'] as const;
 const PAYMENT_METHODS = ['cash', 'online'] as const;
@@ -87,7 +87,7 @@ export class CustomerService {
         const periodStart = customerPeriodStart(customerType);
         const openingAt = new Date(periodStart.getTime() - 1000);
 
-        await tx.sale.create({
+        const newSale = await tx.sale.create({
           data: {
             saleType,
             customerId: created.id,
@@ -111,9 +111,20 @@ export class CustomerService {
             payments: {
               create: { method: 'cash', amount: 0, status: 'pending' }
             }
-          }
+          },
+          include: { items: true, payments: true }
         });
+
+        await SyncQueueService.enqueueCreate(tx, 'Sale', newSale.id, newSale, 1);
+        for (const item of newSale.items) {
+          await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+        }
+        for (const payment of newSale.payments) {
+          await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+        }
       }
+
+      await SyncQueueService.enqueueCreate(tx, 'Customer', created.id, created, 0);
 
       return created;
     });
@@ -523,14 +534,18 @@ export class CustomerService {
       };
     }
 
-    const customer = await prisma.customer.update({
-      where: { id },
-      data: {
-        ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
-        ...(payload.phone !== undefined ? { phone: payload.phone?.trim() || null } : {}),
-        ...(payload.address !== undefined ? { address: payload.address?.trim() || null } : {}),
-        ...(payload.customerType !== undefined ? { customerType: payload.customerType } : {})
-      }
+    const customer = await prisma.$transaction(async (tx) => {
+      const updated = await tx.customer.update({
+        where: { id },
+        data: {
+          ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
+          ...(payload.phone !== undefined ? { phone: payload.phone?.trim() || null } : {}),
+          ...(payload.address !== undefined ? { address: payload.address?.trim() || null } : {}),
+          ...(payload.customerType !== undefined ? { customerType: payload.customerType } : {})
+        }
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'Customer', updated.id, updated, 0);
+      return updated;
     });
 
     return {
@@ -563,9 +578,13 @@ export class CustomerService {
       };
     }
 
-    const customer = await prisma.customer.update({
-      where: { id },
-      data: { status: 'inactive' }
+    const customer = await prisma.$transaction(async (tx) => {
+      const updated = await tx.customer.update({
+        where: { id },
+        data: { status: 'inactive' }
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'Customer', updated.id, updated, 0);
+      return updated;
     });
 
     return {
@@ -597,11 +616,14 @@ export class CustomerService {
       };
     }
 
-    const customer = await prisma.customer.update({
-      where: { id },
-      data: { status }
+    const customer = await prisma.$transaction(async (tx) => {
+      const updated = await tx.customer.update({
+        where: { id },
+        data: { status }
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'Customer', updated.id, updated, 0);
+      return updated;
     });
-
     return {
       success: true,
       statusCode: 200,
@@ -771,15 +793,22 @@ export class CustomerService {
         const applied = money(Math.min(sale.remainingBalance, remainingToApply));
         if (applied <= 0) continue;
 
-        await tx.payment.updateMany({
+        const partialPayments = await tx.payment.findMany({
           where: {
             saleId: sale.id,
             status: { in: ['pending', 'partial'] }
-          },
-          data: { status: 'completed' }
+          }
         });
 
-        await tx.payment.create({
+        for (const p of partialPayments) {
+          const updatedP = await tx.payment.update({
+            where: { id: p.id },
+            data: { status: 'completed' }
+          });
+          await SyncQueueService.enqueueUpdate(tx, 'Payment', updatedP.id, updatedP, 2);
+        }
+
+        const newPay = await tx.payment.create({
           data: {
             saleId: sale.id,
             method: paymentMethod as PaymentMethod,
@@ -787,6 +816,7 @@ export class CustomerService {
             status: 'completed'
           }
         });
+        await SyncQueueService.enqueueCreate(tx, 'Payment', newPay.id, newPay, 2);
 
         sale.paidAmount = money(sale.paidAmount + applied);
         sale.remainingBalance = money(sale.remainingBalance - applied);
@@ -800,7 +830,7 @@ export class CustomerService {
         const writeOff = money(Math.min(sale.remainingBalance, remainingDiscount));
         if (writeOff <= 0) continue;
 
-        await tx.payment.create({
+        const discountPay = await tx.payment.create({
           data: {
             saleId: sale.id,
             method: 'discount',
@@ -808,6 +838,7 @@ export class CustomerService {
             status: 'completed'
           }
         });
+        await SyncQueueService.enqueueCreate(tx, 'Payment', discountPay.id, discountPay, 2);
 
         sale.totalAmount = money(sale.totalAmount - writeOff);
         sale.remainingBalance = money(sale.remainingBalance - writeOff);
@@ -833,6 +864,7 @@ export class CustomerService {
           },
           include: { items: true, payments: true }
         });
+        await SyncQueueService.enqueueUpdate(tx, 'Sale', updated.id, updated, 1);
         resultsById.set(sale.id, updated);
       }
 

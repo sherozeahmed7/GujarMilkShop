@@ -42,15 +42,15 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
   // ── Date state ──
   const today = useMemo(() => new Date(), []);
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
-  const [selectedYear, setSelectedYear]   = useState(today.getFullYear());
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
   // ── Data state ──
-  const [loading,  setLoading]  = useState(true);
+  const [loading, setLoading] = useState(true);
   const [supplier, setSupplier] = useState<SupplierInfo | null>(null);
-  const [entries,  setEntries]  = useState<PurchaseEntry[]>([]);
+  const [entries, setEntries] = useState<PurchaseEntry[]>([]);
   const [payments, setPayments] = useState<SupplierPaymentEntry[]>([]);
-  const [summary,  setSummary]  = useState<SupplierLedgerSummary | null>(null);
-  const [error,    setError]    = useState<string | null>(null);
+  const [summary, setSummary] = useState<SupplierLedgerSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // ── Modal state ──
   const [detailDate, setDetailDate] = useState<{ date: string; entries: PurchaseEntry[] } | null>(null);
@@ -88,9 +88,9 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
   // ── Calendar grid ──
   const calendarDays = useMemo(() => {
-    const daysInMonth   = new Date(selectedYear, selectedMonth, 0).getDate();
-    const firstWeekday  = new Date(selectedYear, selectedMonth - 1, 1).getDay();
-    const totalCells    = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+    const firstWeekday = new Date(selectedYear, selectedMonth - 1, 1).getDay();
+    const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
     return Array.from({ length: totalCells }, (_, i) => {
       if (i < firstWeekday || i >= firstWeekday + daysInMonth) return null;
       return i - firstWeekday + 1;
@@ -317,8 +317,8 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
                 const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const dayEntries = entriesByDate.get(dateStr) ?? [];
-                const dailyAmt   = dayEntries.reduce((s, e) => s + e.amount, 0);
-                const hasTxn     = dailyAmt > 0;
+                const dailyAmt = dayEntries.reduce((s, e) => s + e.amount, 0);
+                const hasTxn = dailyAmt > 0;
 
                 const isToday =
                   today.getDate() === day &&

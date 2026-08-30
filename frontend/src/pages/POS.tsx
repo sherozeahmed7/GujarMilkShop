@@ -526,114 +526,157 @@ export const POS: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 bg-emerald-50/40 border border-emerald-100 rounded-xl p-4 flex flex-col">
+              <div className="flex-1 bg-emerald-100/70 border border-emerald-200 rounded-xl p-4 flex flex-col">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold text-emerald-700">Milk</h2>
-                  <div className="flex items-center gap-2 bg-white rounded-lg p-1.5 border border-emerald-200 shadow-sm">
-                    <div className="text-xs font-semibold text-emerald-700 pl-1">Rs:</div>
+                  <div className="flex items-center gap-2 bg-white rounded-lg p-2 border border-emerald-300 shadow-sm">
+                    <div className="text-sm font-bold text-emerald-700 pl-1">Rs:</div>
                     <input
                       type="number"
                       value={milkCustomAmount}
                       onChange={(e) => setMilkCustomAmount(e.target.value)}
                       placeholder="Amount"
-                      className="w-24 px-2 py-1 text-sm border-none bg-slate-50 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-32 px-3 py-1.5 text-base border-none bg-slate-50 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd('milk')}
                     />
                     <button
                       onClick={() => handleCustomAdd('milk')}
-                      className="bg-emerald-500 text-white hover:bg-emerald-600 px-3 py-1 rounded-md text-xs font-bold transition-colors"
+                      className="bg-emerald-500 text-white hover:bg-emerald-600 px-4 py-1.5 rounded-md text-sm font-bold transition-colors"
                     >
                       Add
                     </button>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-                  {(prices?.milk ?? []).map((preset) => (
-                    <button
-                      key={`milk-${preset.weight}`}
-                      onClick={() => addToCart('Milk', preset.weight, 'kg', preset.price, milkRatePerKg)}
-                      className="border border-white bg-white hover:border-emerald-400 hover:bg-emerald-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
-                    >
-                      <div className="font-bold text-slate-800 group-hover:text-emerald-700 text-lg">{preset.label}</div>
-                      <div className="text-xs text-slate-500 font-medium mt-1">Rs. {preset.price}</div>
-                    </button>
-                  ))}
-                </div>
+                  {(() => {
+                    const milkPresets = prices?.milk ?? [];
+                    const amtPresets = prices?.milkByAmount ?? [];
+                    const items: Array<{ type: 'weight' | 'amount'; preset: any }> = [];
+                    const displaced: any[] = [];
+                    let milkIdx = 0;
+                    let amtIdx = 0;
 
-                <div className="mt-4">
-                  <p className="text-xs font-bold text-emerald-700/70 uppercase tracking-wider mb-2 px-0.5">
-                    By Amount (RS)
-                  </p>
-                  <div className="rounded-xl border-2 border-emerald-200 bg-white p-2 grid grid-cols-4 gap-2">
-                    {(prices?.milkByAmount ?? []).map((preset) => (
-                      <button
-                        key={`milk-rs-${preset.amount}`}
-                        type="button"
-                        onClick={() =>
-                          addToCart('Milk', preset.weight, 'kg', preset.amount, milkRatePerKg)
-                        }
-                        className="aspect-square rounded-lg border border-emerald-100 bg-emerald-50/60 hover:bg-emerald-100 hover:border-emerald-400 flex flex-col items-center justify-center transition-colors group"
-                      >
-                        <span className="font-bold text-emerald-800 group-hover:text-emerald-900 text-base sm:text-lg">
-                          {preset.amount}
-                        </span>
-                        <span className="text-[10px] text-emerald-600/80 font-medium mt-0.5">
-                          {preset.weight > 0 ? `${preset.weight} kg` : 'Rs'}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                    while (milkIdx < milkPresets.length || amtIdx < amtPresets.length) {
+                      // Col 1
+                      if (milkIdx < milkPresets.length) items.push({ type: 'weight', preset: milkPresets[milkIdx++] });
+                      else break;
+                      // Col 2
+                      if (milkIdx < milkPresets.length) items.push({ type: 'weight', preset: milkPresets[milkIdx++] });
+                      // Col 3 — amount preset if available, otherwise weight
+                      if (amtIdx < amtPresets.length) {
+                        items.push({ type: 'amount', preset: amtPresets[amtIdx++] });
+                        // Displace the kg button that was in this slot
+                        if (milkIdx < milkPresets.length) displaced.push(milkPresets[milkIdx++]);
+                      } else if (milkIdx < milkPresets.length) {
+                        items.push({ type: 'weight', preset: milkPresets[milkIdx++] });
+                      }
+                    }
+
+                    // Displaced kg buttons go to the bottom
+                    displaced.forEach(p => items.push({ type: 'weight', preset: p }));
+
+                    return items.map((item, i) =>
+                      item.type === 'weight' ? (
+                        <button
+                          key={`milk-w-${item.preset.weight}-${i}`}
+                          onClick={() => addToCart('Milk', item.preset.weight, 'kg', item.preset.price, milkRatePerKg)}
+                          className="border border-white bg-white hover:border-emerald-400 hover:bg-emerald-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                        >
+                          <div className="font-bold text-slate-800 group-hover:text-emerald-700 text-lg">{item.preset.label}</div>
+                          <div className="text-xs text-slate-500 font-medium mt-1">Rs. {item.preset.price}</div>
+                        </button>
+                      ) : (
+                        <button
+                          key={`milk-rs-${item.preset.amount}`}
+                          type="button"
+                          onClick={() => addToCart('Milk', item.preset.weight, 'kg', item.preset.amount, milkRatePerKg)}
+                          className="rounded-xl border border-white bg-white hover:border-emerald-400 hover:bg-emerald-50 p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                        >
+                          <span className="font-bold text-emerald-800 group-hover:text-emerald-900 text-base sm:text-lg">
+                            {item.preset.amount}
+                          </span>
+                          <span className="text-[10px] text-emerald-600/80 font-medium mt-0.5">
+                            {item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}
+                          </span>
+                        </button>
+                      )
+                    );
+                  })()}
                 </div>
               </div>
 
               <div className="hidden lg:block w-px bg-slate-100"></div>
 
-              <div className="flex-1 bg-blue-50/40 border border-blue-100 rounded-xl p-4 flex flex-col">
+              <div className="flex-1 bg-blue-100/70 border border-blue-200 rounded-xl p-4 flex flex-col">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold text-blue-700">Yogurt</h2>
-                  <div className="flex items-center gap-2 bg-white rounded-lg p-1.5 border border-blue-200 shadow-sm">
-                    <div className="text-xs font-semibold text-blue-700 pl-1">Rs:</div>
+                  <div className="flex items-center gap-2 bg-white rounded-lg p-2 border border-blue-300 shadow-sm">
+                    <div className="text-sm font-bold text-blue-700 pl-1">Rs:</div>
                     <input
                       type="number"
                       value={yogurtCustomAmount}
                       onChange={(e) => setYogurtCustomAmount(e.target.value)}
                       placeholder="Amount"
-                      className="w-24 px-2 py-1 text-sm border-none bg-slate-50 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-32 px-3 py-1.5 text-base border-none bg-slate-50 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                       onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd('yogurt')}
                     />
                     <button
                       onClick={() => handleCustomAdd('yogurt')}
-                      className="bg-blue-500 text-white hover:bg-blue-600 px-3 py-1 rounded-md text-xs font-bold transition-colors"
+                      className="bg-blue-500 text-white hover:bg-blue-600 px-4 py-1.5 rounded-md text-sm font-bold transition-colors"
                     >
                       Add
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                  <div className="col-span-full flex text-xs font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">
-                    <div className="flex-1">By Weight (KG)</div>
-                    <div className="flex-1 pl-3">By Amount (RS)</div>
-                  </div>
-                  {(prices?.yogurtByWeight ?? []).map((preset) => (
-                    <button
-                      key={`y-kg-${preset.weight}`}
-                      onClick={() => addToCart('Yogurt', preset.weight, 'kg', preset.price, yogurtRatePerKg)}
-                      className="border border-white bg-white hover:border-blue-400 hover:bg-blue-50 rounded-xl p-3 flex justify-between items-center transition-colors group shadow-sm"
-                    >
-                      <div className="font-bold text-slate-800 group-hover:text-blue-700">{preset.label}</div>
-                      <div className="text-xs text-slate-500 font-medium">Rs. {preset.price}</div>
-                    </button>
-                  ))}
-                  {(prices?.yogurtByAmount ?? []).map((preset) => (
-                    <button
-                      key={`y-rs-${preset.amount}`}
-                      onClick={() => addToCart('Yogurt', preset.weight, 'kg', preset.amount, yogurtRatePerKg)}
-                      className="border border-white bg-white hover:border-blue-400 hover:bg-blue-50 rounded-xl p-3 flex justify-between items-center transition-colors group shadow-sm"
-                    >
-                      <div className="font-bold text-slate-800 group-hover:text-blue-700 text-lg">{preset.label}</div>
-                      <div className="text-xs text-slate-500 font-medium">{preset.weight.toFixed(2)} kg</div>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                  {(() => {
+                    const weightPresets = prices?.yogurtByWeight ?? [];
+                    const amtPresets   = prices?.yogurtByAmount ?? [];
+                    const items: Array<{ type: 'weight' | 'amount'; preset: any }> = [];
+                    const displaced: any[] = [];
+                    let wIdx = 0;
+                    let aIdx = 0;
+
+                    while (wIdx < weightPresets.length || aIdx < amtPresets.length) {
+                      // Col 1
+                      if (wIdx < weightPresets.length) items.push({ type: 'weight', preset: weightPresets[wIdx++] });
+                      else break;
+                      // Col 2
+                      if (wIdx < weightPresets.length) items.push({ type: 'weight', preset: weightPresets[wIdx++] });
+                      // Col 3 — amount if available, else weight
+                      if (aIdx < amtPresets.length) {
+                        items.push({ type: 'amount', preset: amtPresets[aIdx++] });
+                        if (wIdx < weightPresets.length) displaced.push(weightPresets[wIdx++]);
+                      } else if (wIdx < weightPresets.length) {
+                        items.push({ type: 'weight', preset: weightPresets[wIdx++] });
+                      }
+                    }
+
+                    displaced.forEach(p => items.push({ type: 'weight', preset: p }));
+
+                    return items.map((item, i) =>
+                      item.type === 'weight' ? (
+                        <button
+                          key={`y-w-${item.preset.weight}-${i}`}
+                          onClick={() => addToCart('Yogurt', item.preset.weight, 'kg', item.preset.price, yogurtRatePerKg)}
+                          className="border border-white bg-white hover:border-blue-400 hover:bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                        >
+                          <div className="font-bold text-slate-800 group-hover:text-blue-700 text-lg">{item.preset.label}</div>
+                          <div className="text-xs text-slate-500 font-medium mt-1">Rs. {item.preset.price}</div>
+                        </button>
+                      ) : (
+                        <button
+                          key={`y-rs-${item.preset.amount}`}
+                          type="button"
+                          onClick={() => addToCart('Yogurt', item.preset.weight, 'kg', item.preset.amount, yogurtRatePerKg)}
+                          className="border border-white bg-white hover:border-blue-400 hover:bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                        >
+                          <div className="font-bold text-slate-800 group-hover:text-blue-700 text-lg">{item.preset.label}</div>
+                          <div className="text-xs text-slate-500 font-medium mt-1">{item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}</div>
+                        </button>
+                      )
+                    );
+                  })()}
                 </div>
               </div>
             </div>

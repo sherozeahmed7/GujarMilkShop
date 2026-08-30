@@ -1,6 +1,8 @@
 import app from './app';
 import dotenv from 'dotenv';
 import { connectDB } from './config/database';
+import { startSyncWorker } from './workers/syncWorker';
+import { startDownstreamSyncWorker } from './workers/downstreamSyncWorker';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -13,6 +15,10 @@ async function startServer() {
   
   const server = app.listen(PORT, () => {
     console.log(`🚀 Express server is running on port ${PORT}`);
+    
+    // Start background sync workers
+    startSyncWorker();
+    startDownstreamSyncWorker();
   });
   
   return server;

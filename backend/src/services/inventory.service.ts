@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-
+import { SyncQueueService } from './syncQueue.service';
 const MOVEMENT_TYPES = ['OPENING', 'STOCK_IN', 'SALE', 'RETURN', 'WASTAGE', 'ADJUSTMENT', 'CONVERSION'];
 const money = (value: number) => Math.round(value * 100) / 100;
 
@@ -100,7 +100,11 @@ export class InventoryService {
     if (rateFor(payload.name, rate) <= 0) return { success: false, statusCode: 422, message: 'Selling price is not configured in Daily Rates for this product.' };
     if (await averageSupplierCost(payload.name) <= 0) return { success: false, statusCode: 422, message: 'No supplier cost is available for this product.' };
     try {
-      const product = await prisma.inventoryProduct.create({ data: { code: payload.code.trim().toUpperCase(), name: payload.name.trim(), description: payload.description?.trim() || null, category: payload.category?.trim() || 'Dairy', unit: payload.unit.trim(), tax: payload.tax?.trim() || 'Exempt', lowStockThreshold: Number(payload.lowStockThreshold) || 0, isLocked: Boolean(payload.isLocked) } });
+      const product = await prisma.$transaction(async (tx) => {
+        const created = await tx.inventoryProduct.create({ data: { code: payload.code.trim().toUpperCase(), name: payload.name.trim(), description: payload.description?.trim() || null, category: payload.category?.trim() || 'Dairy', unit: payload.unit.trim(), tax: payload.tax?.trim() || 'Exempt', lowStockThreshold: Number(payload.lowStockThreshold) || 0, isLocked: Boolean(payload.isLocked) } });
+        await SyncQueueService.enqueueCreate(tx, 'InventoryProduct', created.id, created, 0);
+        return created;
+      });
       return { success: true, statusCode: 201, data: await this.productView(product, [], rate) };
     } catch (error: any) {
       if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'Product code already exists.' };
@@ -116,7 +120,11 @@ export class InventoryService {
   static async updateProduct(id: number, payload: any) {
     const existing = await prisma.inventoryProduct.findUnique({ where: { id } });
     if (!existing) return { success: false, statusCode: 404, message: 'Product not found.' };
-    const product = await prisma.inventoryProduct.update({ where: { id }, data: { ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}), ...(payload.description !== undefined ? { description: payload.description?.trim() || null } : {}), ...(payload.unit !== undefined ? { unit: String(payload.unit).trim() } : {}), ...(payload.tax !== undefined ? { tax: String(payload.tax).trim() } : {}), ...(payload.category !== undefined ? { category: String(payload.category).trim() } : {}), ...(payload.lowStockThreshold !== undefined ? { lowStockThreshold: Number(payload.lowStockThreshold) } : {}), ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}) } });
+    const product = await prisma.$transaction(async (tx) => {
+      const updated = await tx.inventoryProduct.update({ where: { id }, data: { ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}), ...(payload.description !== undefined ? { description: payload.description?.trim() || null } : {}), ...(payload.unit !== undefined ? { unit: String(payload.unit).trim() } : {}), ...(payload.tax !== undefined ? { tax: String(payload.tax).trim() } : {}), ...(payload.category !== undefined ? { category: String(payload.category).trim() } : {}), ...(payload.lowStockThreshold !== undefined ? { lowStockThreshold: Number(payload.lowStockThreshold) } : {}), ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}) } });
+      await SyncQueueService.enqueueUpdate(tx, 'InventoryProduct', updated.id, updated, 0);
+      return updated;
+    });
     return { success: true, statusCode: 200, data: await this.productView(product, await prisma.inventoryMovement.findMany({ where: { productId: id }, select: { quantity: true, unitCost: true } }), await this.currentRate()) };
   }
 
@@ -206,7 +214,7 @@ export class InventoryService {
           (typeof payload.reason === 'string' && payload.reason.trim()) ||
           'Stock adjustment (lost / discarded)';
 
-        await tx.expense.create({
+        const expense = await tx.expense.create({
           data: {
             date: toDateOnly(movementDate),
             category: expenseCategory,
@@ -223,8 +231,10 @@ export class InventoryService {
             addedBy,
           },
         });
+        await SyncQueueService.enqueueCreate(tx, 'Expense', expense.id, expense, 1);
       }
 
+      await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', created.id, created, 2);
       return created;
     });
 

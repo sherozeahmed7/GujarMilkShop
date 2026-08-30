@@ -343,3 +343,68 @@ model AuditRecord {
   auditedBy         String
   createdAt         DateTime @default(now())
 }
+
+// ─── SYNCHRONIZATION INFRASTRUCTURE ─────────────────────────────────────────
+
+model LocalToCloudMapping {
+  id         Int      @id @default(autoincrement())
+  deviceId   String
+  entityType String
+  localId    Int
+  cloudUuid  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([deviceId, entityType, localId])
+  @@index([cloudUuid])
+}
+
+// Tracks the downstream sync cursor — one row per local device
+// lastCursor is the last cloud_sync_events.change_sequence successfully applied
+model DownstreamSyncState {
+  id                  Int      @id @default(1) // singleton row
+  lastCursor          BigInt   @default(0)
+  lastSuccessfulSync  DateTime?
+  lastError           String?
+  updatedAt           DateTime @updatedAt
+}
+
+// Prevents the same downstream change from being applied more than once
+model DownstreamAppliedEvent {
+  changeSequence BigInt   @id
+  eventUuid      String   @unique
+  entityType     String
+  operation      String
+  appliedAt      DateTime @default(now())
+
+  @@index([appliedAt])
+}
+
+model SyncQueue {
+  eventUuid  String   @id
+  deviceId   String
+  entityType String
+  localId    Int
+  cloudUuid  String
+  operation  String   // 'CREATE', 'UPDATE', 'DELETE'
+  payload    String   // JSON string
+  status      String   @default("PENDING") // 'PENDING', 'SYNCING', 'SYNCED', 'FAILED'
+  layer       Int      @default(0)
+  retryCount  Int      @default(0)
+  nextRetryAt DateTime?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, nextRetryAt])
+  @@index([deviceId])
+}
+
+// Tracking local cloud sync configuration state (Disconnected / Connected)
+model CloudSyncSettings {
+  id                Int      @id @default(1)
+  syncEnabled       Boolean  @default(true)
+  downstreamEnabled Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+

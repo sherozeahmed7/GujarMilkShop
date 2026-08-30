@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../config/database';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { SyncQueueService } from '../services/syncQueue.service';
 
 function money(n: number) {
   return Math.round(n * 100) / 100;
@@ -150,7 +151,7 @@ export class ExpenseController {
         });
 
         if (paidAmount > 0) {
-          await tx.expensePayment.create({
+          const payment = await tx.expensePayment.create({
             data: {
               expenseId: created.id,
               amount: paidAmount,
@@ -159,8 +160,10 @@ export class ExpenseController {
               addedBy,
             },
           });
+          await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
         }
 
+        await SyncQueueService.enqueueCreate(tx, 'Expense', created.id, created, 1);
         return created;
       });
 
@@ -205,16 +208,19 @@ export class ExpenseController {
       const shiftId = await openShiftId();
 
       const updated = await prisma.$transaction(async (tx) => {
-        await tx.expensePayment.create({
+        const payment = await tx.expensePayment.create({
           data: { expenseId: id, amount: payNow, shiftId, date, addedBy },
         });
+        await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
         const newPaid = money(alreadyPaid + payNow);
         const newRemaining = money(Math.max(0, amount - newPaid));
-        return tx.expense.update({
+        const updatedExp = await tx.expense.update({
           where: { id },
           data: { paidAmount: newPaid, remaining: newRemaining },
           include: { payments: { orderBy: { id: 'desc' } } },
         });
+        await SyncQueueService.enqueueUpdate(tx, 'Expense', updatedExp.id, updatedExp, 1);
+        return updatedExp;
       });
 
       return ApiResponse.success(res, 'Payment recorded.', mapExpense(updated));
@@ -253,24 +259,28 @@ export class ExpenseController {
       }
       const remaining = money(Math.max(0, amount - paidAmount));
 
-      const updated = await prisma.expense.update({
-        where: { id },
-        data: {
-          ...(body.date ? { date: body.date } : {}),
-          ...(productText ? { category: productText } : {}),
-          ...(body.description !== undefined ? { description: body.description || null } : {}),
-          ...(body.quantity !== undefined ? { quantity: money(Number(body.quantity)) } : {}),
-          ...(body.unitCost !== undefined ? { unitCost: money(Number(body.unitCost)) } : {}),
-          ...(body.grossLoss !== undefined ? { grossLoss: money(Number(body.grossLoss)) } : {}),
-          ...(body.soldRecovery !== undefined
-            ? { soldRecovery: money(Number(body.soldRecovery)) }
-            : {}),
-          ...(body.reason !== undefined ? { reason: body.reason || null } : {}),
-          amount,
-          remaining,
-          netExpense: money(body.netExpense !== undefined ? Number(body.netExpense) : amount),
-        },
-        include: { payments: true },
+      const updated = await prisma.$transaction(async (tx) => {
+        const updatedExp = await tx.expense.update({
+          where: { id },
+          data: {
+            ...(body.date ? { date: body.date } : {}),
+            ...(productText ? { category: productText } : {}),
+            ...(body.description !== undefined ? { description: body.description || null } : {}),
+            ...(body.quantity !== undefined ? { quantity: money(Number(body.quantity)) } : {}),
+            ...(body.unitCost !== undefined ? { unitCost: money(Number(body.unitCost)) } : {}),
+            ...(body.grossLoss !== undefined ? { grossLoss: money(Number(body.grossLoss)) } : {}),
+            ...(body.soldRecovery !== undefined
+              ? { soldRecovery: money(Number(body.soldRecovery)) }
+              : {}),
+            ...(body.reason !== undefined ? { reason: body.reason || null } : {}),
+            amount,
+            remaining,
+            netExpense: money(body.netExpense !== undefined ? Number(body.netExpense) : amount),
+          },
+          include: { payments: true },
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'Expense', updatedExp.id, updatedExp, 1);
+        return updatedExp;
       });
 
       return ApiResponse.success(res, 'Expense updated.', mapExpense(updated));
@@ -284,7 +294,10 @@ export class ExpenseController {
       const id = Number(req.params.id);
       const existing = await prisma.expense.findUnique({ where: { id } });
       if (!existing) return ApiResponse.error(res, 'Expense not found.', 404);
-      await prisma.expense.delete({ where: { id } });
+      await prisma.$transaction(async (tx) => {
+        await tx.expense.delete({ where: { id } });
+        await SyncQueueService.enqueueUpdate(tx, 'Expense', id, { id }, 1, 'DELETE');
+      });
       return ApiResponse.success(res, 'Expense deleted.', null);
     } catch (e) {
       next(e);

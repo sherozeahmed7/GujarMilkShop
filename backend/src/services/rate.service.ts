@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-
+import { SyncQueueService } from './syncQueue.service';
 type RatePayload = {
   milkRate: number;
   yogurtRate: number;
@@ -25,16 +25,20 @@ export class RateService {
     const gheeRate =
       payload.gheeRate !== undefined ? payload.gheeRate : latest?.gheeRate ?? 0;
 
-    const newRate = await prisma.dailyRate.create({
-      data: {
-        milkRate,
-        yogurtRate,
-        lassiRate,
-        butterRate,
-        gheeRate,
-        updatedByRole,
-        date: new Date(date),
-      },
+    const newRate = await prisma.$transaction(async (tx) => {
+      const created = await tx.dailyRate.create({
+        data: {
+          milkRate,
+          yogurtRate,
+          lassiRate,
+          butterRate,
+          gheeRate,
+          updatedByRole,
+          date: new Date(date),
+        },
+      });
+      await SyncQueueService.enqueueCreate(tx, 'DailyRate', created.id, created, 0);
+      return created;
     });
 
     return {
@@ -116,14 +120,14 @@ export class RateService {
       weight: milkRate > 0 ? parseFloat((amount / milkRate).toFixed(2)) : 0,
     }));
 
-    const yogurtWeights = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+    const yogurtWeights = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0];
     const yogurtByWeight = yogurtWeights.map((weight) => ({
       weight,
-      label: `${weight.toFixed(2)} kg`,
+      label: `${weight} kg`,
       price: Math.round(weight * yogurtRate),
     }));
 
-    const yogurtAmounts = [50, 100, 150, 200, 250, 300];
+    const yogurtAmounts = [50, 100, 150, 200];
     const yogurtByAmount = yogurtAmounts.map((amount) => ({
       amount,
       label: `Rs. ${amount}`,

@@ -1,4 +1,5 @@
 import { prisma } from '../config/database';
+import { SyncQueueService } from './syncQueue.service';
 
 const SALE_TYPES = ['walk_in', 'split', 'ledger_daily', 'ledger_monthly'] as const;
 const LEDGER_TYPES = ['ledger_daily', 'ledger_monthly'] as const;
@@ -107,7 +108,7 @@ async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput
     if (existing) continue;
 
     // Allow sale at zero / negative stock — balance just goes further down
-    await tx.inventoryMovement.create({
+    const movement = await tx.inventoryMovement.create({
       data: {
         productId: product.id,
         quantity: money(-quantity),
@@ -118,6 +119,8 @@ async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput
         shiftId: shift?.id,
       },
     });
+    
+    await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', movement.id, movement, 2);
   }
 }
 
@@ -328,6 +331,7 @@ async function deductF2Stock(
     stock = await tx.milkProductDailyStock.create({
       data: { date: dayStart },
     });
+    await SyncQueueService.createCloudMapping('MilkProductDailyStock', stock.id, undefined, tx);
   }
 
   let lassiSoldDelta = 0;
@@ -340,7 +344,7 @@ async function deductF2Stock(
     if (item.itemName === 'ghee') gheeSoldDelta = money(gheeSoldDelta + item.quantity);
   }
 
-  await tx.milkProductDailyStock.update({
+  const updatedStock = await tx.milkProductDailyStock.update({
     where: { id: stock.id },
     data: {
       lassiSold: money(stock.lassiSold + lassiSoldDelta),
@@ -352,6 +356,8 @@ async function deductF2Stock(
       gheeClosing: money(stock.gheeClosing - gheeSoldDelta),
     }
   });
+
+  await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updatedStock.id, updatedStock, 2, 'UPSERT');
 }
 
 export class SaleService {
@@ -514,6 +520,15 @@ export class SaleService {
         });
         await deductF2Stock(tx, payload);
         await recordInventorySale(tx, created.id, normalizedItems, userId);
+        
+        await SyncQueueService.enqueueCreate(tx, 'Sale', created.id, created, 1);
+        for (const item of created.items) {
+          await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+        }
+        for (const payment of created.payments) {
+          await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+        }
+        
         return created;
       });
 
@@ -589,6 +604,15 @@ export class SaleService {
         });
         await deductF2Stock(tx, payload);
         await recordInventorySale(tx, created.id, normalizedItems, userId);
+        
+        await SyncQueueService.enqueueCreate(tx, 'Sale', created.id, created, 1);
+        for (const item of created.items) {
+          await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+        }
+        for (const payment of created.payments) {
+          await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+        }
+        
         return created;
       });
 
@@ -657,6 +681,15 @@ export class SaleService {
         });
         await deductF2Stock(tx, payload);
         await recordInventorySale(tx, created.id, normalizedItems, userId);
+        
+        await SyncQueueService.enqueueCreate(tx, 'Sale', created.id, created, 1);
+        for (const item of created.items) {
+          await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+        }
+        for (const payment of created.payments) {
+          await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+        }
+        
         return created;
       });
 
@@ -858,13 +891,20 @@ export class SaleService {
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      // Mark existing partial payments as completed
-      await tx.payment.updateMany({
-        where: { saleId: sale.id, status: 'partial' },
-        data: { status: 'completed' }
+      // Find affected payments first
+      const partialPayments = await tx.payment.findMany({
+        where: { saleId: sale.id, status: 'partial' }
       });
 
-      await tx.payment.create({
+      for (const p of partialPayments) {
+        const updatedP = await tx.payment.update({
+          where: { id: p.id },
+          data: { status: 'completed' }
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'Payment', updatedP.id, updatedP, 2);
+      }
+
+      const newPay = await tx.payment.create({
         data: {
           saleId: sale.id,
           method: paymentMethod as PaymentMethod,
@@ -872,11 +912,12 @@ export class SaleService {
           status: 'completed'
         }
       });
+      await SyncQueueService.enqueueCreate(tx, 'Payment', newPay.id, newPay, 2);
 
       const newRemaining = money(remaining - settleAmount);
       const newPaidAmount = money(sale.paidAmount + settleAmount);
 
-      return tx.sale.update({
+      const updatedSale = await tx.sale.update({
         where: { id: sale.id },
         data: {
           paidAmount: newPaidAmount,
@@ -885,6 +926,9 @@ export class SaleService {
         },
         include: { items: true, payments: true }
       });
+      await SyncQueueService.enqueueUpdate(tx, 'Sale', updatedSale.id, updatedSale, 1);
+
+      return updatedSale;
     });
 
     return {

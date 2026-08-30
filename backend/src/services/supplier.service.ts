@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-
+import { SyncQueueService } from './syncQueue.service';
 const CYCLE_TYPES = ['Monthly Cycle', '1-Day Cycle', 'Weekly Cycle'];
 const SHIFTS = ['Morning', 'Evening'];
 const MILK_TYPES = ['Mixed', 'Cow', 'Buffalo'];
@@ -128,12 +128,16 @@ export class SupplierService {
     if (!payload.name?.trim() || !payload.code?.trim()) return { success: false, statusCode: 400, message: 'Name and code are required.' };
     if (!CYCLE_TYPES.includes(payload.cycleType)) return { success: false, statusCode: 400, message: 'Invalid cycle type.' };
     try {
-      const supplier = await prisma.supplier.create({ data: {
-        name: payload.name.trim(), code: payload.code.trim(), phone: payload.phone?.trim() || null,
-        defaultRate: Number(payload.defaultRate) || 0, cowRate: Number(payload.cowRate) || 0,
-        buffaloRate: Number(payload.buffaloRate) || 0, cycleType: payload.cycleType,
-        isActive: payload.isActive !== false, guaranteedAdvance: Number(payload.guaranteedAdvance) || 0,
-      }});
+      const supplier = await prisma.$transaction(async (tx) => {
+        const created = await tx.supplier.create({ data: {
+          name: payload.name.trim(), code: payload.code.trim(), phone: payload.phone?.trim() || null,
+          defaultRate: Number(payload.defaultRate) || 0, cowRate: Number(payload.cowRate) || 0,
+          buffaloRate: Number(payload.buffaloRate) || 0, cycleType: payload.cycleType,
+          isActive: payload.isActive !== false, guaranteedAdvance: Number(payload.guaranteedAdvance) || 0,
+        }});
+        await SyncQueueService.enqueueCreate(tx, 'Supplier', created.id, created, 0);
+        return created;
+      });
       return { success: true, statusCode: 201, data: shape(supplier) };
     } catch (error: any) {
       if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'Supplier code already exists.' };
@@ -144,17 +148,21 @@ export class SupplierService {
   static async update(id: number, payload: any) {
     const existing = await prisma.supplier.findUnique({ where: { id } });
     if (!existing) return { success: false, statusCode: 404, message: 'Supplier not found.' };
-    const supplier = await prisma.supplier.update({ where: { id }, data: {
-      ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}),
-      ...(payload.code !== undefined ? { code: String(payload.code).trim() } : {}),
-      ...(payload.phone !== undefined ? { phone: payload.phone?.trim() || null } : {}),
-      ...(payload.defaultRate !== undefined ? { defaultRate: Number(payload.defaultRate) } : {}),
-      ...(payload.cowRate !== undefined ? { cowRate: Number(payload.cowRate) } : {}),
-      ...(payload.buffaloRate !== undefined ? { buffaloRate: Number(payload.buffaloRate) } : {}),
-      ...(payload.cycleType !== undefined ? { cycleType: payload.cycleType } : {}),
-      ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}),
-      ...(payload.guaranteedAdvance !== undefined ? { guaranteedAdvance: Number(payload.guaranteedAdvance) } : {}),
-    }});
+    const supplier = await prisma.$transaction(async (tx) => {
+      const updated = await tx.supplier.update({ where: { id }, data: {
+        ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}),
+        ...(payload.code !== undefined ? { code: String(payload.code).trim() } : {}),
+        ...(payload.phone !== undefined ? { phone: payload.phone?.trim() || null } : {}),
+        ...(payload.defaultRate !== undefined ? { defaultRate: Number(payload.defaultRate) } : {}),
+        ...(payload.cowRate !== undefined ? { cowRate: Number(payload.cowRate) } : {}),
+        ...(payload.buffaloRate !== undefined ? { buffaloRate: Number(payload.buffaloRate) } : {}),
+        ...(payload.cycleType !== undefined ? { cycleType: payload.cycleType } : {}),
+        ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}),
+        ...(payload.guaranteedAdvance !== undefined ? { guaranteedAdvance: Number(payload.guaranteedAdvance) } : {}),
+      }});
+      await SyncQueueService.enqueueUpdate(tx, 'Supplier', updated.id, updated, 0);
+      return updated;
+    });
     const [collections, payments] = await Promise.all([
       prisma.supplierCollection.findMany({ where: { supplierId: id } }),
       prisma.supplierPayment.findMany({ where: { supplierId: id } }),
@@ -183,14 +191,22 @@ export class SupplierService {
         const saved = collectionId
           ? await tx.supplierCollection.update({ where: { id: collectionId }, data })
           : await tx.supplierCollection.create({ data: { ...data, supplierId } });
+        
+        if (collectionId) {
+          await SyncQueueService.enqueueUpdate(tx, 'SupplierCollection', saved.id, saved, 1);
+        } else {
+          await SyncQueueService.enqueueCreate(tx, 'SupplierCollection', saved.id, saved, 1);
+        }
+
         const product = await tx.inventoryProduct.findFirst({ where: { code: 'MILK' } });
         const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' } });
         if (product) {
-          await tx.inventoryMovement.upsert({
+          const movement = await tx.inventoryMovement.upsert({
             where: { reference: `supplier-collection-${saved.id}` },
             create: { productId: product.id, quantity, movementType: 'STOCK_IN', source: 'Supplier Purchase', reference: `supplier-collection-${saved.id}`, unitCost: rate, supplierId, userId, shiftId: shift?.id, date: new Date(`${payload.date}T00:00:00`) },
             update: { productId: product.id, quantity, unitCost: rate, supplierId, userId, shiftId: shift?.id, date: new Date(`${payload.date}T00:00:00`) },
           });
+          await SyncQueueService.enqueueUpdate(tx, 'InventoryMovement', movement.id, movement, 2, 'UPSERT');
         }
         return saved;
       });
@@ -203,8 +219,21 @@ export class SupplierService {
 
   static async deleteCollection(id: number) {
     await prisma.$transaction(async (tx) => {
-      await tx.supplierCollection.delete({ where: { id } });
-      await tx.inventoryMovement.deleteMany({ where: { reference: `supplier-collection-${id}` } });
+      // Find them first to get IDs for sync
+      const collection = await tx.supplierCollection.findUnique({ where: { id } });
+      const movements = await tx.inventoryMovement.findMany({ where: { reference: `supplier-collection-${id}` } });
+      
+      if (collection) {
+        await tx.supplierCollection.delete({ where: { id } });
+        await SyncQueueService.enqueueUpdate(tx, 'SupplierCollection', id, { id }, 1, 'DELETE');
+      }
+      
+      if (movements.length > 0) {
+        await tx.inventoryMovement.deleteMany({ where: { reference: `supplier-collection-${id}` } });
+        for (const m of movements) {
+          await SyncQueueService.enqueueUpdate(tx, 'InventoryMovement', m.id, { id: m.id }, 2, 'DELETE');
+        }
+      }
     });
     return { success: true, statusCode: 200, data: null };
   }
@@ -260,28 +289,28 @@ export class SupplierService {
     const created = await prisma.$transaction(async (tx) => {
       const rows = [];
       if (amount > 0) {
-        rows.push(
-          await tx.supplierPayment.create({
-            data: { supplierId, date, amount, method, notes, createdById: userId },
-          })
-        );
+        const pay = await tx.supplierPayment.create({
+          data: { supplierId, date, amount, method, notes, createdById: userId },
+        });
+        await SyncQueueService.enqueueCreate(tx, 'SupplierPayment', pay.id, pay, 1);
+        rows.push(pay);
       }
       if (discount > 0) {
         const discountNotes = notes
           ? `Discount write-off. ${notes}`
           : 'Discount write-off (balance discarded)';
-        rows.push(
-          await tx.supplierPayment.create({
-            data: {
-              supplierId,
-              date,
-              amount: discount,
-              method: 'discount',
-              notes: discountNotes,
-              createdById: userId,
-            },
-          })
-        );
+        const discPay = await tx.supplierPayment.create({
+          data: {
+            supplierId,
+            date,
+            amount: discount,
+            method: 'discount',
+            notes: discountNotes,
+            createdById: userId,
+          },
+        });
+        await SyncQueueService.enqueueCreate(tx, 'SupplierPayment', discPay.id, discPay, 1);
+        rows.push(discPay);
       }
       return rows;
     });
