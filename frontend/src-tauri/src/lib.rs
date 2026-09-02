@@ -7,6 +7,8 @@ use windows::Win32::Graphics::Printing::{
     ClosePrinter, EndDocPrinter, EndPagePrinter, OpenPrinterW, StartDocPrinterW, StartPagePrinter,
     WritePrinter, DOC_INFO_1W,
 };
+use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::CommandEvent;
 
 /// List installed Windows printers via PowerShell
 #[tauri::command]
@@ -50,7 +52,7 @@ fn print_raw_bytes(printer_name: String, data: Vec<u8>) -> Result<bool, String> 
 
         if ok.is_err() || h_printer.is_invalid() {
             return Err(format!(
-                "Failed to open printer '{}'. Make sure it is installed in Windows Settings → Printers & Scanners.",
+                "Failed to open printer '{}'. Make sure it is installed in Windows Settings \u{2192} Printers & Scanners.",
                 printer_name
             ));
         }
@@ -105,12 +107,150 @@ fn print_raw_bytes(printer_name: String, data: Vec<u8>) -> Result<bool, String> 
     }
 }
 
+use std::sync::{Arc, Mutex};
+
+fn kill_port_or_orphan_backend() {
+    #[cfg(target_os = "windows")]
+    {
+        // 1. Force kill any existing backend processes by name
+        let _ = std::process::Command::new("taskkill")
+            .args(&["/F", "/IM", "backend.exe", "/T"])
+            .output();
+        let _ = std::process::Command::new("taskkill")
+            .args(&["/F", "/IM", "backend-x86_64-pc-windows-msvc.exe", "/T"])
+            .output();
+
+        // 2. Kill whatever process is occupying port 5000 using netstat/cmd for instant execution
+        let script = r#"
+            $conn = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue
+            if ($conn) {
+                $pids = $conn | Select-Object -ExpandProperty OwningProcess -Unique
+                foreach ($p in $pids) {
+                    if ($p -gt 0) {
+                        Stop-Process -Id $p -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+        "#;
+        let _ = std::process::Command::new("powershell")
+            .args(&["-NoProfile", "-NonInteractive", "-Command", script])
+            .output();
+
+        // Allow Windows socket stack a brief moment to free the port completely
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Clean up any stale backend instances from previous runs before launching
+    kill_port_or_orphan_backend();
+
+    let child_handle: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>> =
+        Arc::new(Mutex::new(None));
+    let child_handle_cleanup = Arc::clone(&child_handle);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
+        .setup(move |app| {
+            // Spawn the backend sidecar.
+            // 1. Try Tauri's official sidecar API
+            let spawned = match app.shell().sidecar("bin/backend") {
+                Ok(cmd) => cmd.spawn(),
+                Err(_) => match app.shell().sidecar("backend") {
+                    Ok(cmd) => cmd.spawn(),
+                    Err(e) => Err(e),
+                },
+            };
+
+            match spawned {
+                Ok((mut rx, child)) => {
+                    println!("[Backend] Sidecar spawned successfully (PID: {})", child.pid());
+                    
+                    if let Ok(mut lock) = child_handle.lock() {
+                        *lock = Some(child);
+                    }
+
+                    tauri::async_runtime::spawn(async move {
+                        while let Some(event) = rx.recv().await {
+                            match event {
+                                CommandEvent::Stdout(line) => {
+                                    print!("[Backend] {}", String::from_utf8_lossy(&line));
+                                }
+                                CommandEvent::Stderr(line) => {
+                                    eprint!("[Backend ERR] {}", String::from_utf8_lossy(&line));
+                                }
+                                CommandEvent::Terminated(payload) => {
+                                    println!(
+                                        "[Backend] Process terminated with code: {:?}",
+                                        payload.code
+                                    );
+                                    break;
+                                }
+                                _ => {}
+                            }
+                        }
+                    });
+                }
+                Err(e) => {
+                    eprintln!("[Backend] Tauri sidecar API failed ({}), trying direct path spawn...", e);
+                    
+                    // 2. Direct path resolution (works in production installer & dev)
+                    let mut candidate_paths = vec![
+                        std::path::PathBuf::from("src-tauri/bin/backend-x86_64-pc-windows-msvc.exe"),
+                        std::path::PathBuf::from("bin/backend-x86_64-pc-windows-msvc.exe"),
+                        std::path::PathBuf::from("backend-x86_64-pc-windows-msvc.exe"),
+                    ];
+
+                    if let Ok(current_exe) = std::env::current_exe() {
+                        if let Some(exe_dir) = current_exe.parent() {
+                            candidate_paths.push(exe_dir.join("bin/backend-x86_64-pc-windows-msvc.exe"));
+                            candidate_paths.push(exe_dir.join("backend-x86_64-pc-windows-msvc.exe"));
+                            candidate_paths.push(exe_dir.join("backend.exe"));
+                            candidate_paths.push(exe_dir.join("bin/backend.exe"));
+                        }
+                    }
+
+                    let mut fallback_started = false;
+                    for path in &candidate_paths {
+                        if path.exists() {
+                            println!("[Backend] Direct spawning from: {:?}", path);
+                            if let Ok(mut child) = std::process::Command::new(path).spawn() {
+                                println!("[Backend] Direct backend process spawned (PID: {})", child.id());
+                                fallback_started = true;
+                                std::thread::spawn(move || {
+                                    let _ = child.wait();
+                                });
+                                break;
+                            }
+                        }
+                    }
+
+                    if !fallback_started {
+                        eprintln!("[Backend] Could not find or launch backend executable in any candidate path!");
+                    }
+                }
+            }
+
+            Ok(())
+        })
+        .on_window_event(move |_window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                if let Ok(mut lock) = child_handle_cleanup.lock() {
+                    if let Some(child) = lock.take() {
+                        let _ = child.kill();
+                    }
+                }
+                kill_port_or_orphan_backend();
+            }
+        })
         .invoke_handler(tauri::generate_handler![list_printers, print_raw_bytes])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
+                kill_port_or_orphan_backend();
+            }
+        });
 }

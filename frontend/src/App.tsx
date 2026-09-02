@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { Command } from '@tauri-apps/plugin-shell';
 import { Layout } from './components/layout/Layout';
 import { apiClient } from './services/apiClient';
 import { SessionExpiredModal } from './components/SessionExpiredModal';
@@ -75,61 +74,45 @@ function App() {
   const [backendReady, setBackendReady] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
 
+  // Poll for backend health on mount or refresh
   useEffect(() => {
-    // Attempt to start the sidecar
-    const startSidecar = async () => {
-      try {
-        console.log('Starting sidecar...');
-        const command = Command.sidecar('bin/backend');
-        
-        command.on('close', data => {
-          if (data.code === 1) {
-            setBackendError("Port 5000 is occupied by another application. Please free port 5000 and restart the POS.");
-          }
-          console.log(`Sidecar finished with code ${data.code} and signal ${data.signal}`);
-        });
+    if (backendReady) return;
 
-        command.on('error', error => {
-          console.error(`Sidecar error: "${error}"`);
-          if (!backendReady) {
-             setBackendError(`Failed to start backend: ${error}`);
-          }
-        });
-
-        command.stdout.on('data', line => console.log(`[Backend]: ${line}`));
-        command.stderr.on('data', line => console.error(`[Backend ERR]: ${line}`));
-
-        await command.spawn();
-      } catch (err) {
-        console.error("Sidecar spawn failed:", err);
-      }
-    };
-    
-    startSidecar();
-  }, []);
-
-  useEffect(() => {
-    // Poll for health endpoint
-    if (backendReady || backendError) return;
-
+    let isMounted = true;
     let timeoutId: any;
+
     const checkHealth = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/health');
-        if (res.ok) {
+        const res = await fetch('http://localhost:5000/api/health', { cache: 'no-store' });
+        if (res.ok && isMounted) {
           setBackendReady(true);
+          setBackendError(null);
           return;
         }
       } catch (e) {
-        // Not ready yet
+        // Backend not ready yet
       }
-      timeoutId = setTimeout(checkHealth, 500);
+
+      if (isMounted) {
+        timeoutId = setTimeout(checkHealth, 300);
+      }
     };
 
     checkHealth();
 
-    return () => clearTimeout(timeoutId);
-  }, [backendReady, backendError]);
+    // Fallback timeout warning after 45 seconds if backend still hasn't answered
+    const warningTimeout = setTimeout(() => {
+      if (isMounted && !backendReady) {
+        setBackendError("POS backend is taking longer than usual to respond. Please ensure port 5000 is open.");
+      }
+    }, 45000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      clearTimeout(warningTimeout);
+    };
+  }, [backendReady]);
 
   // Test connection to backend if token exists
   const token = localStorage.getItem('token');
@@ -139,11 +122,24 @@ function App() {
     enabled: !!token && backendReady, // Only fetch connection test if user is logged in AND backend is ready
   });
 
+  const handleRetry = () => {
+    setBackendError(null);
+    setBackendReady(false);
+  };
+
   if (backendError) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', color: 'red' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', color: 'red', textAlign: 'center', padding: '20px' }}>
         <h2>Error Starting POS</h2>
-        <p>{backendError}</p>
+        <pre style={{ background: '#ffeeee', padding: '10px', borderRadius: '4px', maxWidth: '80%', whiteSpace: 'pre-wrap', color: '#333' }}>
+          {backendError}
+        </pre>
+        <button 
+          onClick={handleRetry}
+          style={{ marginTop: '20px', padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
+        >
+          Retry
+        </button>
       </div>
     );
   }

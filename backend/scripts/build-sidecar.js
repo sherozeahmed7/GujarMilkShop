@@ -20,6 +20,13 @@ try {
 }
 
 try {
+    // Kill any running instances to release file lock on the .exe
+    if (process.platform === 'win32') {
+        try {
+            execSync('taskkill /F /IM backend-x86_64-pc-windows-msvc.exe /T', { stdio: 'ignore' });
+            execSync('taskkill /F /IM backend.exe /T', { stdio: 'ignore' });
+        } catch (_) {}
+    }
     console.log('Running pkg...');
     execSync(`npx pkg . --target node18-win-x64 --output "${path.join(frontendBinDir, 'backend-x86_64-pc-windows-msvc.exe')}"`, { cwd: rootDir, stdio: 'inherit', env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=8192' } });
 } catch (e) {

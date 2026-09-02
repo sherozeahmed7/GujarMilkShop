@@ -22,16 +22,37 @@ async function startServer() {
   }).on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`❌ Port ${PORT} is already in use by another application. Please free port ${PORT} and restart the POS.`);
-      process.exit(1);
+      process.exit(98);
     } else {
       console.error('❌ Server error:', err);
       process.exit(1);
     }
   });
-  
+
+  const gracefulShutdown = () => {
+    console.log('Stopping POS backend server...');
+    server.close(() => {
+      console.log('HTTP server closed.');
+      process.exit(0);
+    });
+    // Force close after 2 seconds if not completed
+    setTimeout(() => {
+      process.exit(0);
+    }, 2000);
+  };
+
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
+  process.on('message', (msg) => {
+    if (msg === 'shutdown') {
+      gracefulShutdown();
+    }
+  });
+
   return server;
 }
 
 const serverPromise = startServer();
 
 export default serverPromise;
+
