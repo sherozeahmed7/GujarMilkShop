@@ -106,28 +106,28 @@ export class RateService {
     const butterRate = latestRate?.butterRate ?? 0;
     const gheeRate = latestRate?.gheeRate ?? 0;
 
-    const milkWeights = [0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10];
+    const milkWeights = [0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6];
     const milkBoxes = milkWeights.map((weight) => ({
       weight,
       label: `${weight} kg`,
       price: Math.round(weight * milkRate),
     }));
 
-    const milkAmounts = [50, 100, 150, 200];
+    const milkAmounts = [50, 100, 150, 200, 300, 400];
     const milkByAmount = milkAmounts.map((amount) => ({
       amount,
       label: `Rs. ${amount}`,
       weight: milkRate > 0 ? parseFloat((amount / milkRate).toFixed(2)) : 0,
     }));
 
-    const yogurtWeights = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0];
+    const yogurtWeights = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 3.5, 4.0];
     const yogurtByWeight = yogurtWeights.map((weight) => ({
       weight,
       label: `${weight} kg`,
       price: Math.round(weight * yogurtRate),
     }));
 
-    const yogurtAmounts = [50, 100, 150, 200];
+    const yogurtAmounts = [50, 100, 150, 200, 300, 400];
     const yogurtByAmount = yogurtAmounts.map((amount) => ({
       amount,
       label: `Rs. ${amount}`,

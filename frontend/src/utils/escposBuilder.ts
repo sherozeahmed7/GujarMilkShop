@@ -146,6 +146,13 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   push(DOUBLE_OFF);
   push(newline());
 
+  // ── Token Number (big) ────────────────────────────────────────────────────
+  push(ALIGN_CENTER);
+  push(DOUBLE_ON);
+  push(encodeText(`Token: ${sale.id}`), newline());
+  push(DOUBLE_OFF);
+  push(newline());
+
   // ── Receipt header ────────────────────────────────────────────────────────
   push(BOLD_ON);
   push(centeredLine('RECEIPT'), newline());

@@ -3,6 +3,7 @@ import { RefreshCw, Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { posConfigService, POSConfigData } from '../../services/posConfig.service';
 import { buildTestPage } from '../../utils/escposBuilder';
+import { ReceiptPreview } from '../../components/pos/ReceiptPreview';
 
 // Tauri invoke — safe lazy wrapper, avoids top-level await which breaks React module loading
 async function safeInvoke<T>(cmd: string, args?: unknown): Promise<T> {
@@ -156,12 +157,13 @@ export const POSConfig: React.FC = () => {
       )}
 
       {/* Main Content Areas */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col lg:flex-row gap-6">
         
         {loading && !savedConfig ? (
           <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading configuration...</div>
         ) : (
           <>
+            <div className="flex-1 flex flex-col gap-6">
             {/* Section 1 - General POS Settings */}
             <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100">
@@ -474,6 +476,12 @@ export const POSConfig: React.FC = () => {
               </div>
             </div>
 
+            </div>
+
+            {/* Receipt Preview Pane */}
+            <div className="w-full lg:w-96 flex-shrink-0 mb-6 lg:mb-0">
+              <ReceiptPreview config={config} />
+            </div>
           </>
         )}
       </div>
