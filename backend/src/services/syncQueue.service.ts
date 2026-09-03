@@ -134,9 +134,9 @@ export class SyncQueueService {
     layer: number = 0,
     operation: 'UPDATE' | 'DELETE' | 'UPSERT' = 'UPDATE'
   ) {
-    const cloudUuid = await this.getCloudMapping(entityType, localId, db);
+    let cloudUuid = await this.getCloudMapping(entityType, localId, db);
     if (!cloudUuid) {
-      throw new Error(`SyncQueue Error: Missing cloud mapping for ${entityType} ${localId} on ${operation}`);
+      cloudUuid = await this.createCloudMapping(entityType, localId, undefined, db);
     }
     await this.enqueue(db, entityType, localId, cloudUuid, operation, payload, layer);
     return cloudUuid;

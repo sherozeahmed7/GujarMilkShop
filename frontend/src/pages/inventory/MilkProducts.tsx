@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import { milkProductsService } from '../../services/milkProducts.service';
 import { rateService } from '../../services/rate.service';
@@ -12,7 +12,7 @@ import { ProductHistory } from '../../components/milk-products/ProductHistory';
 import { Calendar, Plus } from 'lucide-react';
 
 export const MilkProducts: React.FC<{
-  onAddToCart?: (name: string, qty: number, unitPrice: number) => void;
+  onAddToCart?: (name: string, qty: number, unitPrice: number, total?: number) => void;
   onRegisterRefresh?: (fn: () => void) => void;
 }> = ({ onAddToCart, onRegisterRefresh }) => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -43,7 +43,7 @@ export const MilkProducts: React.FC<{
           });
         }
       } catch {
-        // keep zeros — cashier can still type Rs/kg
+        // keep zeros â€” cashier can still type Rs/kg
       }
     })();
     return () => {
@@ -100,7 +100,7 @@ export const MilkProducts: React.FC<{
     return (
       <div className="p-8 flex items-center justify-center gap-2 text-slate-400 text-sm">
         <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-        Loading stock data…
+        Loading stock dataâ€¦
       </div>
     );
 
@@ -118,7 +118,7 @@ export const MilkProducts: React.FC<{
     return (
       <div className="p-8 flex items-center justify-center gap-2 text-slate-400 text-sm">
         <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-        Loading stock data…
+        Loading stock dataâ€¦
       </div>
     );
 
@@ -221,3 +221,4 @@ export const MilkProducts: React.FC<{
     </div>
   );
 };
+

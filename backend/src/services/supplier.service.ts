@@ -39,6 +39,9 @@ function shape(
   const paid = payments.reduce((sum, item) => sum + item.amount, 0);
   const advance = Number(supplier.guaranteedAdvance) || 0;
 
+  const openingCollection = collections.find((c: any) => c.notes === 'Opening Balance');
+  const openingBalance = openingCollection ? money(openingCollection.amount) : 0;
+
   const periodStart = rangeStart || supplierPeriodStart(supplier.cycleType);
   let prevPurchased = 0;
   let currPurchased = 0;
@@ -58,9 +61,17 @@ function shape(
   const remainingBalance = money(totalAmount - paidAmount);
 
   return {
-    id: String(supplier.id), name: supplier.name, code: supplier.code, phone: supplier.phone || '',
-    defaultRate: supplier.defaultRate, cowRate: supplier.cowRate, buffaloRate: supplier.buffaloRate,
-    cycleType: supplier.cycleType, isActive: supplier.isActive, guaranteedAdvance: advance,
+    id: String(supplier.id),
+    name: supplier.name,
+    code: supplier.code,
+    phone: supplier.phone || '',
+    defaultRate: supplier.defaultRate,
+    cowRate: supplier.cowRate,
+    buffaloRate: supplier.buffaloRate,
+    cycleType: supplier.cycleType,
+    isActive: supplier.isActive,
+    guaranteedAdvance: advance,
+    openingBalance,
     grossPayable: money(purchased - paid),
     currentAmount,
     previousAmount,
@@ -136,9 +147,37 @@ export class SupplierService {
           isActive: payload.isActive !== false, guaranteedAdvance: Number(payload.guaranteedAdvance) || 0,
         }});
         await SyncQueueService.enqueueCreate(tx, 'Supplier', created.id, created, 0);
+
+        if (payload.openingBalance !== undefined && Number(payload.openingBalance) > 0) {
+          const opening = money(Number(payload.openingBalance));
+          const periodStartStr = supplierPeriodStart(created.cycleType);
+          const periodStartDate = new Date(periodStartStr);
+          const openingDate = new Date(periodStartDate.getTime() - 24 * 60 * 60 * 1000);
+          const openingDateStr = localDateKey(openingDate);
+
+          const collection = await tx.supplierCollection.create({
+            data: {
+              supplierId: created.id,
+              date: openingDateStr,
+              shift: 'Morning',
+              milkType: 'Mixed',
+              quantity: 1,
+              rate: opening,
+              amount: opening,
+              notes: 'Opening Balance',
+              createdById: payload.createdById || null
+            }
+          });
+          await SyncQueueService.enqueueCreate(tx, 'SupplierCollection', collection.id, collection, 1);
+        }
+
         return created;
       });
-      return { success: true, statusCode: 201, data: shape(supplier) };
+      const [collections, payments] = await Promise.all([
+        prisma.supplierCollection.findMany({ where: { supplierId: supplier.id } }),
+        prisma.supplierPayment.findMany({ where: { supplierId: supplier.id } }),
+      ]);
+      return { success: true, statusCode: 201, data: shape(supplier, collections, payments) };
     } catch (error: any) {
       if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'Supplier code already exists.' };
       throw error;
@@ -160,6 +199,82 @@ export class SupplierService {
         ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}),
         ...(payload.guaranteedAdvance !== undefined ? { guaranteedAdvance: Number(payload.guaranteedAdvance) } : {}),
       }});
+
+      if (payload.remainingBalance !== undefined || payload.openingBalance !== undefined) {
+        const targetVal =
+          payload.remainingBalance !== undefined
+            ? Number(payload.remainingBalance)
+            : Number(payload.openingBalance);
+
+        if (!Number.isNaN(targetVal)) {
+          const target = money(targetVal);
+
+          const nonOpeningCollections = await tx.supplierCollection.findMany({
+            where: {
+              supplierId: id,
+              notes: { not: 'Opening Balance' }
+            }
+          });
+          const allPayments = await tx.supplierPayment.findMany({
+            where: { supplierId: id }
+          });
+
+          const nonOpeningPurchased = nonOpeningCollections.reduce((sum, c) => sum + c.amount, 0);
+          const totalPaid = allPayments.reduce((sum, p) => sum + p.amount, 0);
+          const adv = Number(updated.guaranteedAdvance) || 0;
+
+          // Base balance without opening balance collection
+          const baseBalance = money(nonOpeningPurchased - totalPaid - adv);
+          const requiredOpening = money(target - baseBalance);
+
+          const existingOpening = await tx.supplierCollection.findFirst({
+            where: {
+              supplierId: id,
+              notes: 'Opening Balance'
+            }
+          });
+
+          if (existingOpening) {
+            if (requiredOpening <= 0) {
+              const cloudUuid = await SyncQueueService.getCloudMapping('SupplierCollection', existingOpening.id, tx);
+              if (cloudUuid) {
+                await SyncQueueService.enqueueUpdate(tx, 'SupplierCollection', existingOpening.id, existingOpening, 1, 'DELETE');
+              }
+              await tx.supplierCollection.delete({ where: { id: existingOpening.id } });
+            } else {
+              const updatedColl = await tx.supplierCollection.update({
+                where: { id: existingOpening.id },
+                data: {
+                  rate: requiredOpening,
+                  amount: requiredOpening
+                }
+              });
+              await SyncQueueService.enqueueUpdate(tx, 'SupplierCollection', updatedColl.id, updatedColl, 1);
+            }
+          } else if (requiredOpening > 0) {
+            const periodStartStr = supplierPeriodStart(updated.cycleType);
+            const periodStartDate = new Date(periodStartStr);
+            const openingDate = new Date(periodStartDate.getTime() - 24 * 60 * 60 * 1000);
+            const openingDateStr = localDateKey(openingDate);
+
+            const collection = await tx.supplierCollection.create({
+              data: {
+                supplierId: id,
+                date: openingDateStr,
+                shift: 'Morning',
+                milkType: 'Mixed',
+                quantity: 1,
+                rate: requiredOpening,
+                amount: requiredOpening,
+                notes: 'Opening Balance',
+                createdById: payload.createdById || null
+              }
+            });
+            await SyncQueueService.enqueueCreate(tx, 'SupplierCollection', collection.id, collection, 1);
+          }
+        }
+      }
+
       await SyncQueueService.enqueueUpdate(tx, 'Supplier', updated.id, updated, 0);
       return updated;
     });

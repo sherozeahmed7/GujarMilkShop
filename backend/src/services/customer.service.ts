@@ -33,6 +33,7 @@ export interface UpdateCustomerPayload {
   phone?: string;
   address?: string;
   customerType?: string;
+  openingBalance?: number;
 }
 
 export class CustomerService {
@@ -245,11 +246,16 @@ export class CustomerService {
         sales: {
           orderBy: { createdAt: 'desc' },
           select: {
+            id: true,
             remainingBalance: true,
             totalAmount: true,
             paidAmount: true,
             createdAt: true,
-            status: true
+            status: true,
+            items: {
+              where: { itemName: 'Opening Balance' },
+              select: { totalPrice: true }
+            }
           }
         }
       }
@@ -283,6 +289,9 @@ export class CustomerService {
         // sales after rangeEnd (when filtering) are ignored for period columns
       }
 
+      const openingSale = c.sales.find((s) => s.items && s.items.length > 0);
+      const openingBalance = openingSale ? money(openingSale.totalAmount) : 0;
+
       currentAmount = money(currentAmount);
       previousAmount = money(previousAmount);
       paidAmount = money(paidAmount);
@@ -293,6 +302,7 @@ export class CustomerService {
       const { sales: _sales, ...rest } = c;
       return {
         ...rest,
+        openingBalance,
         currentDue: currentAmount,
         previousDue: previousAmount,
         totalAmount,
@@ -484,7 +494,21 @@ export class CustomerService {
    */
   static async getCustomerById(id: number) {
     const customer = await prisma.customer.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        sales: {
+          where: {
+            items: {
+              some: { itemName: 'Opening Balance' }
+            }
+          },
+          select: {
+            totalAmount: true,
+            remainingBalance: true,
+            paidAmount: true
+          }
+        }
+      }
     });
 
     if (!customer) {
@@ -495,10 +519,17 @@ export class CustomerService {
       };
     }
 
+    const { sales, ...rest } = customer;
+    const openingSale = sales[0];
+    const openingBalance = openingSale ? money(openingSale.totalAmount) : 0;
+
     return {
       success: true,
       statusCode: 200,
-      data: customer
+      data: {
+        ...rest,
+        openingBalance
+      }
     };
   }
 
@@ -534,6 +565,17 @@ export class CustomerService {
       };
     }
 
+    if (payload.openingBalance !== undefined) {
+      const opening = Number(payload.openingBalance);
+      if (Number.isNaN(opening) || opening < 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'openingBalance must be 0 or more.'
+        };
+      }
+    }
+
     const customer = await prisma.$transaction(async (tx) => {
       const updated = await tx.customer.update({
         where: { id },
@@ -544,6 +586,112 @@ export class CustomerService {
           ...(payload.customerType !== undefined ? { customerType: payload.customerType } : {})
         }
       });
+
+      if (payload.openingBalance !== undefined) {
+        const opening = money(Number(payload.openingBalance) || 0);
+        const effectiveCustomerType = payload.customerType || existing.customerType;
+        const saleType =
+          effectiveCustomerType === 'monthly_ledger' ? 'ledger_monthly' : 'ledger_daily';
+        const periodStart = customerPeriodStart(effectiveCustomerType);
+        const openingAt = new Date(periodStart.getTime() - 1000);
+
+        const existingOpeningSale = await tx.sale.findFirst({
+          where: {
+            customerId: id,
+            items: {
+              some: { itemName: 'Opening Balance' }
+            }
+          },
+          include: { items: true, payments: true }
+        });
+
+        if (existingOpeningSale) {
+          if (opening === 0 && (existingOpeningSale.paidAmount || 0) === 0) {
+            const cloudUuid = await SyncQueueService.getCloudMapping('Sale', existingOpeningSale.id, tx);
+            if (cloudUuid) {
+              await SyncQueueService.enqueueUpdate(
+                tx,
+                'Sale',
+                existingOpeningSale.id,
+                existingOpeningSale,
+                1,
+                'DELETE'
+              );
+            }
+            await tx.payment.deleteMany({ where: { saleId: existingOpeningSale.id } });
+            await tx.saleItem.deleteMany({ where: { saleId: existingOpeningSale.id } });
+            await tx.sale.delete({ where: { id: existingOpeningSale.id } });
+          } else {
+            const paid = existingOpeningSale.paidAmount || 0;
+            const remaining = Math.max(0, money(opening - paid));
+            const status = remaining === 0 ? 'completed' : paid > 0 ? 'partial' : 'pending';
+
+            const updatedSale = await tx.sale.update({
+              where: { id: existingOpeningSale.id },
+              data: {
+                totalAmount: opening,
+                remainingBalance: remaining,
+                status,
+                customerName: updated.name,
+                customerPhone: updated.phone,
+                saleType
+              }
+            });
+            await SyncQueueService.enqueueUpdate(tx, 'Sale', updatedSale.id, updatedSale, 1);
+
+            const openingItem = existingOpeningSale.items.find(
+              (i) => i.itemName === 'Opening Balance'
+            );
+            if (openingItem) {
+              const updatedItem = await tx.saleItem.update({
+                where: { id: openingItem.id },
+                data: {
+                  unitPrice: opening,
+                  totalPrice: opening
+                }
+              });
+              await SyncQueueService.enqueueUpdate(tx, 'SaleItem', updatedItem.id, updatedItem, 2);
+            }
+          }
+        } else if (opening > 0) {
+          const newSale = await tx.sale.create({
+            data: {
+              saleType,
+              customerId: updated.id,
+              customerName: updated.name,
+              customerPhone: updated.phone,
+              totalAmount: opening,
+              paidAmount: 0,
+              remainingBalance: opening,
+              status: 'pending',
+              createdAt: openingAt,
+              items: {
+                create: [
+                  {
+                    itemName: 'Opening Balance',
+                    quantity: 1,
+                    unitPrice: opening,
+                    totalPrice: opening
+                  }
+                ]
+              },
+              payments: {
+                create: { method: 'cash', amount: 0, status: 'pending' }
+              }
+            },
+            include: { items: true, payments: true }
+          });
+
+          await SyncQueueService.enqueueCreate(tx, 'Sale', newSale.id, newSale, 1);
+          for (const item of newSale.items) {
+            await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+          }
+          for (const payment of newSale.payments) {
+            await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+          }
+        }
+      }
+
       await SyncQueueService.enqueueUpdate(tx, 'Customer', updated.id, updated, 0);
       return updated;
     });

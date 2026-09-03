@@ -8,6 +8,8 @@ export interface ApiCustomer {
   status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
+  /** Seeded / edited opening dues */
+  openingBalance?: number;
   /** Open remaining in current period (today / this month) — billed amount */
   currentDue?: number;
   /** Billed amount from before current period */

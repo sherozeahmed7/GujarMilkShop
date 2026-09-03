@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, X, Search, UserRound, ChevronLeft, PauseCircle, RotateCcw, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { rateService, StandardPrices } from '../services/rate.service';
@@ -448,7 +448,7 @@ export const POS: React.FC = () => {
         customerPhone: customerPhone.trim(),
       };
     } else {
-      // khata / ledger — must pick a registered customer
+      // khata / ledger â€” must pick a registered customer
       if (!selectedKhataCustomer) {
         setCheckoutError(
           'Select a registered customer from the list. Register them first on the Customers screen if needed.'
@@ -490,7 +490,7 @@ export const POS: React.FC = () => {
       const hadF2 = cart.some((item) => ['Lassi', 'Butter', 'Ghee'].includes(item.name));
       if (hadF2) refreshF2StockRef.current?.();
 
-      // ── Silent native ESC/POS print (post-sale, non-blocking) ──────────────
+      // â”€â”€ Silent native ESC/POS print (post-sale, non-blocking) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       if (posConfig?.printReceiptAutomatically && posConfig?.printerEnabled) {
         const saleId: number = sale.id;
         if (!printedSaleIds.current.has(saleId)) {
@@ -552,8 +552,8 @@ export const POS: React.FC = () => {
         <div className="flex gap-2 mb-4">
           <button
             className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors ${activeTab === 'milk-yogurt'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
               }`}
             onClick={() => setActiveTab('milk-yogurt')}
           >
@@ -561,8 +561,8 @@ export const POS: React.FC = () => {
           </button>
           <button
             className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2 ${activeTab === 'items'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
               }`}
             onClick={() => setActiveTab('items')}
           >
@@ -573,12 +573,14 @@ export const POS: React.FC = () => {
         <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
           {activeTab === 'items' ? (
             <MilkProducts
-              onAddToCart={(name, qty, unitPrice) => addToCart(name, qty, 'kg', qty * unitPrice, unitPrice)}
+              onAddToCart={(name, qty, unitPrice, customTotal) =>
+                addToCart(name, qty, 'kg', customTotal ?? money(qty * unitPrice), unitPrice)
+              }
               onRegisterRefresh={(fn) => { refreshF2StockRef.current = fn; }}
             />
           ) : pricesLoading ? (
             <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
-              Loading standard prices…
+              Loading standard pricesâ€¦
             </div>
           ) : pricesError ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-sm">
@@ -789,7 +791,7 @@ export const POS: React.FC = () => {
                     type="text"
                     value={khataFilter}
                     onChange={(e) => setKhataFilter(e.target.value)}
-                    placeholder="Filter by name or phone…"
+                    placeholder="Filter by name or phoneâ€¦"
                     className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
                   />
@@ -799,7 +801,7 @@ export const POS: React.FC = () => {
               <div className="flex-1 overflow-y-auto custom-scrollbar bg-white min-h-0">
                 {khataLoading && (
                   <div className="h-full flex items-center justify-center text-sm text-slate-400">
-                    Loading customers…
+                    Loading customersâ€¦
                   </div>
                 )}
 
@@ -844,8 +846,8 @@ export const POS: React.FC = () => {
                           <div className="flex-shrink-0 flex flex-col items-end gap-1">
                             <span
                               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide ${isMonthly
-                                  ? 'bg-violet-100 text-violet-700'
-                                  : 'bg-sky-100 text-sky-700'
+                                ? 'bg-violet-100 text-violet-700'
+                                : 'bg-sky-100 text-sky-700'
                                 }`}
                             >
                               {isMonthly ? 'Monthly' : 'Daily'}
@@ -951,7 +953,7 @@ export const POS: React.FC = () => {
                             className="flex flex-1 items-center justify-between text-left disabled:opacity-50"
                           >
                             <span className="text-xs font-semibold text-slate-700">
-                              {heldCart.snapshot.cart.length} item{heldCart.snapshot.cart.length === 1 ? '' : 's'} · Rs. {heldCart.snapshot.cart.reduce((sum, item) => sum + item.total, 0).toFixed(0)}
+                              {heldCart.snapshot.cart.length} item{heldCart.snapshot.cart.length === 1 ? '' : 's'} Â· Rs. {heldCart.snapshot.cart.reduce((sum, item) => sum + item.total, 0).toFixed(0)}
                             </span>
                             <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-amber-700">
                               <RotateCcw className="h-3 w-3" /> Load
@@ -1024,8 +1026,8 @@ export const POS: React.FC = () => {
                         }
                       }}
                       className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${paymentMethod === method
-                          ? 'bg-white text-slate-800 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                     >
                       {method}
@@ -1090,7 +1092,7 @@ export const POS: React.FC = () => {
                       <div className="text-xs font-bold text-blue-900 truncate">{selectedKhataCustomer.name}</div>
                       <div className="text-[10px] text-blue-700 truncate">
                         {selectedKhataCustomer.phone?.trim() || 'Not Available'}
-                        {' · '}
+                        {' Â· '}
                         {selectedKhataCustomer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily'}
                       </div>
                     </div>
@@ -1161,7 +1163,7 @@ export const POS: React.FC = () => {
                         }}
                         className="ml-2 px-3 py-1 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-100 rounded shadow-sm text-xs"
                       >
-                        🖨 Reprint
+                        ðŸ–¨ Reprint
                       </button>
                     )}
                   </div>
@@ -1175,7 +1177,7 @@ export const POS: React.FC = () => {
                       disabled={submitting}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-4 font-bold tracking-wide transition-colors shadow-sm shadow-blue-600/20 disabled:opacity-50"
                     >
-                      {submitting ? 'Saving…' : primaryButtonLabel}
+                      {submitting ? 'Savingâ€¦' : primaryButtonLabel}
                     </button>
                     <button
                       type="button"
@@ -1196,3 +1198,4 @@ export const POS: React.FC = () => {
     </div>
   );
 };
+

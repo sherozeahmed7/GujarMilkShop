@@ -48,6 +48,7 @@ export interface SaleRecord {
   paidAmount: number;
   remainingBalance: number;
   status: string;
+  tokenNumber?: number;
   createdAt: string;
   updatedAt: string;
   items?: SaleItem[];

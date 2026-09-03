@@ -66,10 +66,9 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({ config }) => {
             SCAN FOR RETURN / AUDIT
           </div>
           <div className="font-bold text-xs mt-2 text-center whitespace-pre-wrap">
-            {config.receiptFooterText || 'www.noonenterprises.pk'}
+            {config.receiptFooterText || 'Thank you for your visit!'}
           </div>
         </div>
-
       </div>
     </div>
   );

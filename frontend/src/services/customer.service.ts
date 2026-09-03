@@ -15,6 +15,7 @@ export interface UpdateCustomerPayload {
   phone?: string;
   address?: string;
   customerType?: 'daily_ledger' | 'monthly_ledger';
+  openingBalance?: number;
 }
 
 export interface CustomerListFilters {

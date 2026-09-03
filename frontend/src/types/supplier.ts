@@ -13,6 +13,8 @@ export interface Supplier {
   cycleType: CycleType;
   isActive: boolean;
   guaranteedAdvance: number;
+  /** Opening / previous unpaid remaining balance */
+  openingBalance?: number;
   /** Purchases − payments (before advance) */
   grossPayable?: number;
   /** Purchases in current cycle (month / week / day) */

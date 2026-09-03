@@ -25,7 +25,11 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
   const [customerType, setCustomerType] = useState<'daily_ledger' | 'monthly_ledger'>(
     customer?.customerType || 'daily_ledger'
   );
-  const [openingBalance, setOpeningBalance] = useState('');
+  const [openingBalance, setOpeningBalance] = useState(
+    customer?.openingBalance !== undefined && customer?.openingBalance !== null
+      ? String(customer.openingBalance)
+      : ''
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +43,7 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
     }
 
     const opening = openingBalance.trim() === '' ? 0 : Number(openingBalance);
-    if (!isEdit && (Number.isNaN(opening) || opening < 0)) {
+    if (Number.isNaN(opening) || opening < 0) {
       setError('Opening balance must be a valid amount (0 or more).');
       return;
     }
@@ -52,6 +56,7 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
           phone: phone.trim() || undefined,
           address: address.trim() || undefined,
           customerType,
+          openingBalance: opening,
         });
       } else {
         const payload: CreateCustomerPayload = {
@@ -169,26 +174,24 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
             </div>
           </div>
 
-          {!isEdit && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Opening Balance{' '}
-                <span className="text-slate-400 font-normal normal-case">(optional)</span>
-              </label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={openingBalance}
-                onChange={(e) => setOpeningBalance(e.target.value)}
-                placeholder="e.g. 5000 — existing dues"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <p className="text-[11px] text-slate-400">
-                Existing dues appear in Previous Month / Day and Remaining Balance.
-              </p>
-            </div>
-          )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Opening Balance{' '}
+              <span className="text-slate-400 font-normal normal-case">(optional)</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={openingBalance}
+              onChange={(e) => setOpeningBalance(e.target.value)}
+              placeholder="e.g. 5000 — existing dues"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+            <p className="text-[11px] text-slate-400">
+              Existing dues appear in Previous Month / Day and Remaining Balance.
+            </p>
+          </div>
         </form>
 
         <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
