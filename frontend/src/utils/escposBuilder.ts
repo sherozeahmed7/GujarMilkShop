@@ -107,6 +107,7 @@ function twoCol(left: string, right: string): number[] {
 
 export interface ReceiptSale {
   id: number;
+  tokenNumber?: number;
   shopName: string;
   createdAt: string | Date;
   customerName?: string | null;
@@ -147,11 +148,13 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   push(newline());
 
   // ── Token Number (big) ────────────────────────────────────────────────────
-  push(ALIGN_CENTER);
-  push(DOUBLE_ON);
-  push(encodeText(`Token: ${sale.id}`), newline());
-  push(DOUBLE_OFF);
-  push(newline());
+  if (sale.tokenNumber !== undefined) {
+    push(ALIGN_CENTER);
+    push(DOUBLE_ON);
+    push(encodeText(`Token: ${sale.tokenNumber}`), newline());
+    push(DOUBLE_OFF);
+    push(newline());
+  }
 
   // ── Receipt header ────────────────────────────────────────────────────────
   push(BOLD_ON);

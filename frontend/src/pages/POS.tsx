@@ -497,6 +497,7 @@ export const POS: React.FC = () => {
           printedSaleIds.current.add(saleId);
           const receiptBytes = buildReceipt({
             id: sale.id,
+            tokenNumber: sale.tokenNumber,
             shopName: posConfig.shopName || 'Gujar Milk Shop',
             createdAt: sale.createdAt,
             customerName: sale.customerName ?? selectedKhataCustomer?.name ?? null,

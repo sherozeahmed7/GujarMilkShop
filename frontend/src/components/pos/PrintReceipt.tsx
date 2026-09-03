@@ -17,6 +17,7 @@ export const PrintReceipt: React.FC<PrintReceiptProps> = ({ config, sale }) => {
       </div>
       
       <div className="mb-4">
+        <div className="font-bold text-lg text-center mb-1">TOKEN {sale.tokenNumber}</div>
         <div>Bill No: {sale.id}</div>
         <div>Date: {new Date(sale.createdAt || new Date()).toLocaleDateString()}</div>
         <div>Time: {new Date(sale.createdAt || new Date()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>

@@ -360,6 +360,19 @@ async function deductF2Stock(
   await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updatedStock.id, updatedStock, 2, 'UPSERT');
 }
 
+async function getNextTokenNumber(tx: any): Promise<number> {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const lastSale = await tx.sale.findFirst({
+    where: { createdAt: { gte: startOfMonth } },
+    orderBy: { tokenNumber: 'desc' }
+  });
+
+  return lastSale ? (lastSale.tokenNumber || 0) + 1 : 1;
+}
+
 export class SaleService {
   /**
    * Creates a sale (walk_in | split | ledger_daily | ledger_monthly)
@@ -501,6 +514,7 @@ export class SaleService {
       }
 
       const sale = await prisma.$transaction(async (tx) => {
+        const tokenNumber = await getNextTokenNumber(tx);
         const created = await tx.sale.create({
           data: {
             saleType,
@@ -511,6 +525,7 @@ export class SaleService {
             paidAmount: paid,
             remainingBalance: 0,
             status: 'paid',
+            tokenNumber,
             items: { create: normalizedItems },
             payments: {
               create: { method: paymentMethod as PaymentMethod, amount: paid, status: 'completed' }
@@ -585,6 +600,7 @@ export class SaleService {
       const remaining = money(total - paid);
 
       const sale = await prisma.$transaction(async (tx) => {
+        const tokenNumber = await getNextTokenNumber(tx);
         const created = await tx.sale.create({
           data: {
             saleType,
@@ -595,6 +611,7 @@ export class SaleService {
             paidAmount: paid,
             remainingBalance: remaining,
             status: 'partial',
+            tokenNumber,
             items: { create: normalizedItems },
             payments: {
               create: { method: paymentMethod as PaymentMethod, amount: paid, status: 'partial' }
@@ -662,6 +679,7 @@ export class SaleService {
 
       // Ledger: paidAmount forced to 0; no payment method needed yet
       const sale = await prisma.$transaction(async (tx) => {
+        const tokenNumber = await getNextTokenNumber(tx);
         const created = await tx.sale.create({
           data: {
             saleType: saleType as SaleType,
@@ -672,6 +690,7 @@ export class SaleService {
             paidAmount: 0,
             remainingBalance: total,
             status: 'pending',
+            tokenNumber,
             items: { create: normalizedItems },
             payments: {
               create: { method: 'cash', amount: 0, status: 'pending' }
