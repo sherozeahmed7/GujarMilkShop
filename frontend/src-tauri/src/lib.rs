@@ -10,6 +10,23 @@ use windows::Win32::Graphics::Printing::{
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_shell::process::CommandEvent;
 
+/// Open Windows built-in on-screen keyboard (Touch Keyboard / OSK).
+#[tauri::command]
+fn open_onscreen_keyboard() -> Result<(), String> {
+    let tabtip = r"C:\Program Files\Common Files\microsoft shared\ink\TabTip.exe";
+    if std::path::Path::new(tabtip).exists() {
+        std::process::Command::new(tabtip)
+            .spawn()
+            .map_err(|e| format!("Failed to open Touch Keyboard: {e}"))?;
+        return Ok(());
+    }
+
+    std::process::Command::new("osk.exe")
+        .spawn()
+        .map_err(|e| format!("Failed to open On-Screen Keyboard: {e}"))?;
+    Ok(())
+}
+
 /// List installed Windows printers via PowerShell
 #[tauri::command]
 fn list_printers() -> Result<Vec<String>, String> {
@@ -245,7 +262,11 @@ pub fn run() {
                 kill_port_or_orphan_backend();
             }
         })
-        .invoke_handler(tauri::generate_handler![list_printers, print_raw_bytes])
+        .invoke_handler(tauri::generate_handler![
+            list_printers,
+            print_raw_bytes,
+            open_onscreen_keyboard
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
