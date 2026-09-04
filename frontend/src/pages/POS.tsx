@@ -20,8 +20,14 @@ interface CartItem {
   pricePerKg: number;
 }
 
+/** Rupee money — 2 decimal places */
 function money(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/** Weight qty — 3 decimal places (avoids Rs→kg→Rs drift at 2dp) */
+function qtyMoney(n: number): number {
+  return Math.round(n * 1000) / 1000;
 }
 
 function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number): SaleItemPayload[] {
@@ -58,10 +64,23 @@ function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number):
     });
   }
 
+  // Send qty + unitPrice such that money(qty * unitPrice) === line total (backend recomputes total that way)
   return raw.map((r, idx) => {
-    const qty = money(r.quantity);
     const line = lineTotals[idx];
-    const unitPrice = qty > 0 ? money(line / qty) : 0;
+    let qty = qtyMoney(r.quantity);
+    if (qty <= 0) qty = qtyMoney(r.quantity) || 0.001;
+    let unitPrice = qty > 0 ? money(line / qty) : 0;
+    // Fix rare 0.01 drift from rounding
+    if (qty > 0 && money(qty * unitPrice) !== line) {
+      unitPrice = money(line / qty);
+      if (money(qty * unitPrice) !== line) {
+        // Last resort: nudge qty so product matches the intended rupees
+        qty = unitPrice > 0 ? qtyMoney(line / unitPrice) : qty;
+        if (money(qty * unitPrice) !== line && qty > 0) {
+          unitPrice = money(line / qty);
+        }
+      }
+    }
     return { itemName: r.itemName, quantity: qty, unitPrice };
   });
 }
@@ -218,8 +237,7 @@ export const POS: React.FC = () => {
 
   const addToCart = (name: string, quantity: number, unit: 'kg' | 'rs', total: number, pricePerKg: number) => {
     setCart((prev) => {
-      const qtyAdd = money(quantity);
-      // Prefer daily rate; if missing (0), derive from preset total / kg so price is never stuck at 0
+      const qtyAdd = qtyMoney(quantity);
       const derivedRate =
         pricePerKg > 0
           ? pricePerKg
@@ -227,7 +245,12 @@ export const POS: React.FC = () => {
             ? money(total / qtyAdd)
             : 0;
 
-      // Combine: only increment the LAST line with this product name (leave earlier separate lines alone)
+      // RS sales: keep the entered rupees. KG sales: qty × rate.
+      const addedTotal =
+        unit === 'rs'
+          ? money(total)
+          : money(derivedRate > 0 ? qtyAdd * derivedRate : total);
+
       if (cartLineMode === 'combine') {
         let lastIdx = -1;
         for (let i = prev.length - 1; i >= 0; i--) {
@@ -239,31 +262,37 @@ export const POS: React.FC = () => {
         if (lastIdx >= 0) {
           const existing = prev[lastIdx];
           const rate = derivedRate > 0 ? derivedRate : existing.pricePerKg;
-          const newQty = money(existing.quantity + qtyAdd);
+          const newTotal = money(existing.total + addedTotal);
+          // Prefer money-preserving qty when any side was sold by Rs (or rate known)
+          const newQty =
+            rate > 0
+              ? qtyMoney(newTotal / rate)
+              : qtyMoney(existing.quantity + qtyAdd);
           return prev.map((item, idx) =>
             idx === lastIdx
               ? {
-                ...item,
-                quantity: newQty,
-                total: money(newQty * rate),
-                pricePerKg: rate,
-                unit: 'kg',
-              }
+                  ...item,
+                  quantity: newQty,
+                  total: newTotal,
+                  pricePerKg: rate,
+                  unit: unit === 'rs' || existing.unit === 'rs' ? 'rs' : 'kg',
+                }
               : item
           );
         }
       }
 
-      // New-line mode (or no matching line yet): always append a new row
       const rate = derivedRate;
+      const lineQty =
+        unit === 'rs' && rate > 0 ? qtyMoney(addedTotal / rate) : qtyAdd;
       return [
         ...prev,
         {
           id: Math.random().toString(36).substr(2, 9),
           name,
-          quantity: qtyAdd,
-          unit: 'kg',
-          total: money(rate > 0 ? qtyAdd * rate : total),
+          quantity: lineQty,
+          unit,
+          total: addedTotal,
           pricePerKg: rate,
         },
       ];
@@ -287,14 +316,15 @@ export const POS: React.FC = () => {
     let kg = 0;
 
     if (customType === 'rs') {
-      rs = parsedInput;
+      rs = money(parsedInput);
       kg = rs / pricePerKg;
+      addToCart(isMilk ? 'Milk' : 'Yogurt', kg, 'rs', rs, pricePerKg);
     } else {
       kg = parsedInput;
-      rs = kg * pricePerKg;
+      rs = money(kg * pricePerKg);
+      addToCart(isMilk ? 'Milk' : 'Yogurt', kg, 'kg', rs, pricePerKg);
     }
 
-    addToCart(isMilk ? 'Milk' : 'Yogurt', kg, 'kg', rs, pricePerKg);
     if (isMilk) setMilkCustomAmount('');
     else setYogurtCustomAmount('');
   };
@@ -310,11 +340,12 @@ export const POS: React.FC = () => {
         if (isNaN(newQuantity) || newQuantity < 0) {
           return { ...item, quantity: 0, total: 0 };
         }
-        const qty = money(newQuantity);
+        const qty = qtyMoney(newQuantity);
         return {
           ...item,
           quantity: qty,
           total: money(qty * item.pricePerKg),
+          unit: 'kg',
         };
       }
       return item;
@@ -604,7 +635,13 @@ export const POS: React.FC = () => {
           {activeTab === 'items' ? (
             <MilkProducts
               onAddToCart={(name, qty, unitPrice, customTotal) =>
-                addToCart(name, qty, 'kg', customTotal ?? money(qty * unitPrice), unitPrice)
+                addToCart(
+                  name,
+                  qty,
+                  customTotal !== undefined ? 'rs' : 'kg',
+                  customTotal ?? money(qty * unitPrice),
+                  unitPrice
+                )
               }
               onRegisterRefresh={(fn) => { refreshF2StockRef.current = fn; }}
             />
@@ -702,7 +739,7 @@ export const POS: React.FC = () => {
                         <button
                           key={`milk-rs-${item.preset.amount}`}
                           type="button"
-                          onClick={() => addToCart('Milk', item.preset.weight, 'kg', item.preset.amount, milkRatePerKg)}
+                          onClick={() => addToCart('Milk', item.preset.weight, 'rs', item.preset.amount, milkRatePerKg)}
                           className="rounded-xl border border-white bg-white hover:border-emerald-400 hover:bg-emerald-50 p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
                           <span className="font-bold text-emerald-800 group-hover:text-emerald-900 text-base sm:text-lg">
@@ -791,7 +828,7 @@ export const POS: React.FC = () => {
                         <button
                           key={`y-rs-${item.preset.amount}`}
                           type="button"
-                          onClick={() => addToCart('Yogurt', item.preset.weight, 'kg', item.preset.amount, yogurtRatePerKg)}
+                          onClick={() => addToCart('Yogurt', item.preset.weight, 'rs', item.preset.amount, yogurtRatePerKg)}
                           className="border border-white bg-white hover:border-blue-400 hover:bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
                           <div className="font-bold text-slate-800 group-hover:text-blue-700 text-lg">{item.preset.label}</div>
@@ -990,7 +1027,7 @@ export const POS: React.FC = () => {
                           />
                           <span className="text-xs text-slate-500 font-medium whitespace-nowrap">{item.unit}</span>
                         </div>
-                        <div className="font-bold text-slate-800 w-20 text-right">Rs. {item.total.toFixed(0)}</div>
+                        <div className="font-bold text-slate-800 w-24 text-right tabular-nums">Rs. {item.total.toFixed(2)}</div>
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className="text-slate-400 hover:text-rose-500 transition-colors p-1"
@@ -1047,7 +1084,7 @@ export const POS: React.FC = () => {
                 )}
                 <div className="flex justify-between items-center mb-2">
                   <div className="text-sm font-medium text-slate-600">Subtotal:</div>
-                  <div className="text-sm font-bold text-slate-800">Rs. {subtotal.toFixed(0)}</div>
+                  <div className="text-sm font-bold text-slate-800">Rs. {subtotal.toFixed(2)}</div>
                 </div>
 
                 {isDiscountOpen ? (
@@ -1077,7 +1114,7 @@ export const POS: React.FC = () => {
 
                 <div className="flex justify-between items-end mb-4">
                   <div className="text-sm font-bold text-slate-800 tracking-wider">TOTAL</div>
-                  <div className="text-3xl font-black text-emerald-500">Rs. {finalTotal.toFixed(0)}</div>
+                  <div className="text-3xl font-black text-emerald-500">Rs. {finalTotal.toFixed(2)}</div>
                 </div>
 
                 <div className="flex bg-slate-100 p-1 rounded-xl mb-4">

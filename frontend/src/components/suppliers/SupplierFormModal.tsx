@@ -20,17 +20,21 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
   const [cycleType, setCycleType] = useState<CycleType>(supplier?.cycleType || 'Monthly Cycle');
   const [isActive, setIsActive] = useState(supplier ? supplier.isActive : true);
   const [guaranteedAdvance, setGuaranteedAdvance] = useState(supplier?.guaranteedAdvance.toString() || '0');
-  const [openingBalance, setOpeningBalance] = useState(
-    supplier?.openingBalance !== undefined && supplier?.openingBalance !== null
-      ? String(supplier.openingBalance)
-      : ''
-  );
+  const [openingBalance, setOpeningBalance] = useState(() => {
+    if (!supplier) return '';
+    // Edit: match Khata — show total remaining owed, not only the opening collection row
+    const remaining = supplier.remainingBalance ?? supplier.payableBalance ?? supplier.openingBalance ?? 0;
+    return String(remaining);
+  });
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     const opening = openingBalance.trim() === '' ? 0 : Number(openingBalance);
     if (Number.isNaN(opening) || opening < 0) {
+      setError('Opening balance must be a valid amount (0 or more).');
       return;
     }
 
@@ -47,7 +51,10 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
     };
 
     if (supplier) {
-      updateSupplier(supplier.id, supplierData);
+      updateSupplier(supplier.id, {
+        ...supplierData,
+        remainingBalance: opening,
+      });
     } else {
       addSupplier({
         ...supplierData,
@@ -79,8 +86,13 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto custom-scrollbar">
+            <div className="p-5 overflow-y-auto custom-scrollbar">
           <form id="supplier-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
+            {error && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2 text-sm font-medium">
+                {error}
+              </div>
+            )}
             
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
@@ -166,26 +178,28 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
               </div>
             </div>
 
-            {!supplier && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  Opening Balance{' '}
-                  <span className="text-slate-400 font-normal normal-case">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={openingBalance}
-                  onChange={(e) => setOpeningBalance(e.target.value)}
-                  placeholder="e.g. 5000 — amount already owed to supplier"
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-[11px] text-slate-400">
-                  Use this for existing suppliers with unpaid dues before the system. Shows under Previous / Remaining.
-                </p>
-              </div>
-            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Opening Balance{' '}
+                <span className="text-slate-400 font-normal normal-case">
+                  {supplier ? '(total we owe this supplier)' : '(optional)'}
+                </span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={openingBalance}
+                onChange={(e) => setOpeningBalance(e.target.value)}
+                placeholder="e.g. 5000 — amount already owed to supplier"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-[11px] text-slate-400">
+                {supplier
+                  ? 'Set the remaining payable balance. The system adjusts the opening balance collection to match.'
+                  : 'Use this for existing suppliers with unpaid dues before the system. Shows under Previous / Remaining.'}
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
