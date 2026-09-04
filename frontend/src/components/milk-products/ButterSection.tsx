@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import { Plus, SlidersHorizontal } from 'lucide-react';
+import { NumericKeypadInput } from '../pos/NumericKeypadInput';
 
 interface Props {
   stock: MilkProductsDailyStock;
@@ -66,8 +67,8 @@ export const ButterSection: React.FC<Props> = ({
     onAddToCart?.('Butter', qty, rate, amt);
   };
 
-  const handleAddToCart = () => {
-    const qty = parseFloat(saleQty);
+  const handleAddToCart = (qtyOverride?: string) => {
+    const qty = parseFloat(qtyOverride ?? saleQty);
     const price = parseFloat(salePrice) || effectiveRate;
     if (!qty || qty <= 0 || !price || price <= 0) {
       setSaleError('Enter a valid quantity and price > 0.');
@@ -160,33 +161,40 @@ export const ButterSection: React.FC<Props> = ({
                   Custom Quantity & Rate
                 </p>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    placeholder="Qty (kg)"
-                    className={`flex-1 border rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-amber-500 ${
-                      saleError ? 'border-red-400' : 'border-slate-200'
-                    }`}
+                  <NumericKeypadInput
                     value={saleQty}
-                    onChange={(e) => {
-                      setSaleQty(e.target.value);
+                    onChange={(v) => {
+                      setSaleQty(v);
                       setSaleError('');
                     }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Rs/kg"
-                    className={`w-20 border rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                    onConfirm={(v) => handleAddToCart(v)}
+                    placeholder="Qty (kg)"
+                    title="Butter quantity"
+                    accent="amber"
+                    confirmLabel="+ Cart"
+                    className="flex-1 min-w-0"
+                    triggerClassName={`text-xs py-1.5 border rounded-lg bg-white ${
                       saleError ? 'border-red-400' : 'border-slate-200'
                     }`}
+                  />
+                  <NumericKeypadInput
                     value={salePrice}
-                    onChange={(e) => {
-                      setSalePrice(e.target.value);
+                    onChange={(v) => {
+                      setSalePrice(v);
                       setSaleError('');
                     }}
+                    placeholder="Rs/kg"
+                    title="Butter rate"
+                    accent="amber"
+                    confirmLabel="OK"
+                    className="w-24 shrink-0"
+                    triggerClassName={`text-xs py-1.5 border rounded-lg bg-white ${
+                      saleError ? 'border-red-400' : 'border-slate-200'
+                    }`}
                   />
                   <button
                     type="button"
-                    onClick={handleAddToCart}
+                    onClick={() => handleAddToCart()}
                     className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"
                   >
                     + Cart

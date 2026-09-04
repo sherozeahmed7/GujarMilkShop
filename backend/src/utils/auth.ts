@@ -10,7 +10,7 @@ export interface JwtPayload {
 
 // Fetch secret key and expiry time from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_prod';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 /**
  * Hashes a plain-text password using bcrypt with a salt round of 10.
@@ -34,7 +34,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
 
 /**
  * Generates a signed JWT access token containing the user payload.
- * Lifetime is configured to 1h by default.
+ * Lifetime is configured to 24h by default.
  * @param payload Object containing userId, email, and role
  * @returns Signed JWT string
  */

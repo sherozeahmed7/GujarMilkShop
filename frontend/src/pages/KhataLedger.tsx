@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KhataSummaryCards } from '../components/khata/KhataSummaryCards';
 import { KhataCashCollectModal } from '../components/khata/KhataCashCollectModal';
@@ -14,12 +14,23 @@ import { DateFilterType, Supplier, CycleType } from '../types';
 import { supplierService } from '../services/supplier.service';
 import { SupplierLedgerModal } from '../components/khata/SupplierLedgerModal';
 import { SupplierDailyLedgerModal } from '../components/khata/SupplierDailyLedgerModal';
+import { KhataSupplierFormModal } from '../components/khata/KhataSupplierFormModal';
 import { useDebounce } from '../hooks/useDebounce';
 import {
   Search, Download, FileText, Printer, Filter, Plus, ChevronDown,
   DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw
 } from 'lucide-react';
-import { CustomerTypeFilter } from '../components/customers/CustomerToolbar';
+import { CustomerTypeFilter, NameSortOrder } from '../components/customers/CustomerToolbar';
+
+function sortByName<T extends { name: string }>(list: T[], order: NameSortOrder): T[] {
+  if (order === 'default') return list;
+  const sorted = [...list];
+  sorted.sort((a, b) => {
+    const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    return order === 'az' ? cmp : -cmp;
+  });
+  return sorted;
+}
 
 const EMPTY_SUMMARY: LedgerSummaryStats = {
   khataAccounts: 0,
@@ -49,6 +60,7 @@ export const KhataLedger: React.FC = () => {
   const [partyPickerOpen, setPartyPickerOpen] = useState(false);
   const [partySearch, setPartySearch] = useState('');
   const [ledgerSupplier, setLedgerSupplier] = useState<Supplier | null>(null);
+  const [editSupplier, setEditSupplier] = useState<Supplier | null>(null);
   const [dailyLedgerOpen, setDailyLedgerOpen] = useState(false);
   const [summary, setSummary] = useState<LedgerSummaryStats>(EMPTY_SUMMARY);
   const [totalCount, setTotalCount] = useState(0);
@@ -64,11 +76,24 @@ export const KhataLedger: React.FC = () => {
     useState<CustomerTypeFilter>('All');
   const [supplierCycleFilter, setSupplierCycleFilter] =
     useState<SupplierCycleFilter>('All');
+  const [nameSort, setNameSort] = useState<NameSortOrder>('default');
   const [dateFilter, setDateFilter] = useState<DateFilterType>(ALL_TIME_FILTER);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 400);
+
+  const sortedCustomers = useMemo(
+    () => sortByName(customers, nameSort),
+    [customers, nameSort]
+  );
+
+  const visibleSuppliers = useMemo(() => {
+    const filtered = suppliers.filter((s) =>
+      `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    return sortByName(filtered, nameSort);
+  }, [suppliers, searchQuery, nameSort]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -395,12 +420,25 @@ export const KhataLedger: React.FC = () => {
             <option value="daily_ledger">Daily Ledger</option>
             <option value="monthly_ledger">Monthly Ledger</option>
           </select>
+          <select
+            value={nameSort}
+            onChange={(e) => setNameSort(e.target.value as NameSortOrder)}
+            className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+            title="Sort by name"
+          >
+            <option value="default">Sort: Default</option>
+            <option value="az">Name A–Z</option>
+            <option value="za">Name Z–A</option>
+          </select>
         </div>
 
         <div className="flex-1 overflow-auto custom-scrollbar">
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
+                <th className="w-14 px-3 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-center">
+                  #
+                </th>
                 <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Name
                 </th>
@@ -436,13 +474,13 @@ export const KhataLedger: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {loading && customers.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-5 py-16 text-center text-sm text-slate-400">
+                  <td colSpan={11} className="px-5 py-16 text-center text-sm text-slate-400">
                     Loading customers…
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-5 py-16 text-center">
+                  <td colSpan={11} className="px-5 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <CheckCircle2 className="w-10 h-10 text-slate-200" />
                       <p className="text-sm font-medium">No customers found</p>
@@ -451,7 +489,7 @@ export const KhataLedger: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                customers.map((c) => {
+                sortedCustomers.map((c, index) => {
                   const currentDue = c.currentDue ?? 0;
                   const previousDue = c.previousDue ?? 0;
                   const totalToPay = c.totalAmount ?? currentDue + previousDue;
@@ -475,6 +513,9 @@ export const KhataLedger: React.FC = () => {
 
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/70 transition-colors group">
+                      <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 tabular-nums">
+                        {index + 1}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
@@ -590,6 +631,7 @@ export const KhataLedger: React.FC = () => {
           <p className="text-xs font-medium text-slate-500">
             Showing {customers.length} of {totalCount} customers
             {filterMode !== 'All' && ` · Filter: ${filterMode}`}
+            {nameSort !== 'default' && ` · Sort: ${nameSort === 'az' ? 'A–Z' : 'Z–A'}`}
             {customerTypeFilter !== 'All' &&
               ` · Type: ${
                 customerTypeFilter === 'daily_ledger' ? 'Daily' : 'Monthly'
@@ -668,6 +710,16 @@ export const KhataLedger: React.FC = () => {
               <option value="Weekly Cycle">Weekly Cycle</option>
               <option value="1-Day Cycle">1-Day Cycle</option>
             </select>
+            <select
+              value={nameSort}
+              onChange={(e) => setNameSort(e.target.value as NameSortOrder)}
+              className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+              title="Sort by name"
+            >
+              <option value="default">Sort: Default</option>
+              <option value="az">Name A–Z</option>
+              <option value="za">Name Z–A</option>
+            </select>
             <button
               type="button"
               onClick={() => setDailyLedgerOpen(true)}
@@ -681,6 +733,7 @@ export const KhataLedger: React.FC = () => {
             <table className="w-full text-left">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="w-14 px-3 py-3 text-center text-xs uppercase text-slate-500">#</th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500">Supplier</th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500">Code</th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500">Cycle</th>
@@ -698,11 +751,7 @@ export const KhataLedger: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {suppliers
-                  .filter((s) =>
-                    `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((supplier) => {
+                {visibleSuppliers.map((supplier, index) => {
                     const current = supplier.currentAmount ?? 0;
                     const previous = supplier.previousAmount ?? 0;
                     const totalToPay = supplier.totalAmount ?? current + previous;
@@ -727,6 +776,9 @@ export const KhataLedger: React.FC = () => {
                     };
                     return (
                       <tr key={supplier.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 tabular-nums">
+                          {index + 1}
+                        </td>
                         <td className="px-4 py-3 font-semibold text-slate-800">
                           <button
                             type="button"
@@ -765,12 +817,23 @@ export const KhataLedger: React.FC = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setLedgerSupplier(supplier)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200"
-                          >
-                            Ledger
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setLedgerSupplier(supplier)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              Ledger
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditSupplier(supplier)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit supplier name and remaining balance"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -779,9 +842,10 @@ export const KhataLedger: React.FC = () => {
             </table>
           </div>
           <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 text-xs font-medium text-slate-500">
-            Showing {suppliers.filter((s) => `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())).length} suppliers
+            Showing {visibleSuppliers.length} suppliers
             {supplierCycleFilter !== 'All' && ` · Type: ${supplierCycleFilter}`}
             {dateFilter.label !== 'All Time' && ` · ${dateFilter.label}`}
+            {nameSort !== 'default' && ` · Sort: ${nameSort === 'az' ? 'A–Z' : 'Z–A'}`}
           </div>
         </div>
       )}
@@ -827,6 +891,13 @@ export const KhataLedger: React.FC = () => {
               /* summary is best-effort */
             }
           }}
+        />
+      )}
+      {editSupplier && (
+        <KhataSupplierFormModal
+          supplier={editSupplier}
+          onClose={() => setEditSupplier(null)}
+          onSaved={refreshAfterAction}
         />
       )}
       {dailyLedgerOpen && (

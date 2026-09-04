@@ -8,6 +8,8 @@ export type CustomerTypeFilter =
   | 'walk_in'
   | 'split';
 
+export type NameSortOrder = 'default' | 'az' | 'za';
+
 interface CustomerToolbarProps {
   searchQuery: string;
   setSearchQuery: (val: string) => void;
@@ -15,6 +17,8 @@ interface CustomerToolbarProps {
   setFilterType: (val: 'All' | 'Dues') => void;
   customerTypeFilter: CustomerTypeFilter;
   setCustomerTypeFilter: (val: CustomerTypeFilter) => void;
+  nameSort: NameSortOrder;
+  setNameSort: (val: NameSortOrder) => void;
   duesCount: number;
 }
 
@@ -25,10 +29,12 @@ export const CustomerToolbar: React.FC<CustomerToolbarProps> = ({
   setFilterType,
   customerTypeFilter,
   setCustomerTypeFilter,
+  nameSort,
+  setNameSort,
   duesCount,
 }) => {
   const hasFilters =
-    searchQuery || filterType !== 'All' || customerTypeFilter !== 'All';
+    searchQuery || filterType !== 'All' || customerTypeFilter !== 'All' || nameSort !== 'default';
 
   return (
     <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white/50 flex-shrink-0">
@@ -56,6 +62,17 @@ export const CustomerToolbar: React.FC<CustomerToolbarProps> = ({
           <option value="monthly_ledger">Monthly Ledger</option>
           <option value="walk_in">Walk-in</option>
           <option value="split">Split</option>
+        </select>
+
+        <select
+          value={nameSort}
+          onChange={(e) => setNameSort(e.target.value as NameSortOrder)}
+          className="px-3 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+          title="Sort by name"
+        >
+          <option value="default">Sort: Recent</option>
+          <option value="az">Name A–Z</option>
+          <option value="za">Name Z–A</option>
         </select>
 
         <button
@@ -87,6 +104,7 @@ export const CustomerToolbar: React.FC<CustomerToolbarProps> = ({
               setSearchQuery('');
               setFilterType('All');
               setCustomerTypeFilter('All');
+              setNameSort('default');
             }}
             className="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all ml-1"
           >

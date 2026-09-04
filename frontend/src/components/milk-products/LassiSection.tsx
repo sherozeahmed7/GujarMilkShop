@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import { Plus, SlidersHorizontal } from 'lucide-react';
+import { NumericKeypadInput } from '../pos/NumericKeypadInput';
 
 interface Props {
   stock: MilkProductsDailyStock;
@@ -68,13 +69,13 @@ export const LassiSection: React.FC<Props> = ({
   const [customType, setCustomType] = useState<'rs' | 'kg'>('kg');
   const [customAmount, setCustomAmount] = useState('');
 
-  const handleCustomAdd = () => {
+  const handleCustomAdd = (amountOverride?: string) => {
     const rate = effectiveRate;
     if (!rate || rate <= 0) {
       setSaleError('Enter a valid rate per kg first.');
       return;
     }
-    const parsed = parseFloat(customAmount);
+    const parsed = parseFloat(amountOverride ?? customAmount);
     if (!parsed || parsed <= 0) {
       setSaleError('Enter a valid amount > 0.');
       return;
@@ -146,20 +147,23 @@ export const LassiSection: React.FC<Props> = ({
                   KG
                 </button>
               </div>
-              <input
-                type="number"
+              <NumericKeypadInput
                 value={customAmount}
-                onChange={(e) => {
-                  setCustomAmount(e.target.value);
+                onChange={(v) => {
+                  setCustomAmount(v);
                   setSaleError('');
                 }}
+                onConfirm={(v) => handleCustomAdd(v)}
                 placeholder={customType === 'kg' ? 'kg amount' : 'Rs amount'}
-                className="flex-1 min-w-0 px-2.5 py-1 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd()}
+                title="Lassi amount"
+                accent="cyan"
+                confirmLabel="Add"
+                className="flex-1 min-w-0"
+                triggerClassName="text-sm py-1 border border-slate-200 rounded-lg bg-white"
               />
               <button
                 type="button"
-                onClick={handleCustomAdd}
+                onClick={() => handleCustomAdd()}
                 className="bg-cyan-600 hover:bg-cyan-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 shadow-xs"
               >
                 Add

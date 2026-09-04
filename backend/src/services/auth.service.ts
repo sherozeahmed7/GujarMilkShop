@@ -44,7 +44,7 @@ export class AuthService {
       assignedScreens = [];
     }
 
-    // 6. Generate 1-hour JWT access token embedding userId, email, and role
+    // 6. Generate a 24-hour JWT access token embedding userId, email, and role
     const accessToken = generateAccessToken({
       userId: user.id,
       email: user.email,

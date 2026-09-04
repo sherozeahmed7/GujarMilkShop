@@ -9,6 +9,7 @@ import { ApiCustomer } from '../types/customer';
 import { MilkProducts } from './inventory/MilkProducts';
 import { posConfigService, POSConfigData } from '../services/posConfig.service';
 import { buildReceipt } from '../utils/escposBuilder';
+import { NumericKeypadInput } from '../components/pos/NumericKeypadInput';
 
 interface CartItem {
   id: string;
@@ -68,6 +69,15 @@ function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number):
 export const POS: React.FC = () => {
   const [activeTab, setActiveTab] = useState('milk-yogurt');
   const [cart, setCart] = useState<CartItem[]>([]);
+  /** combine = bump last matching line only; new = always add a separate row */
+  const [cartLineMode, setCartLineMode] = useState<'combine' | 'new'>(() => {
+    try {
+      const saved = localStorage.getItem('posCartLineMode');
+      return saved === 'new' ? 'new' : 'combine';
+    } catch {
+      return 'combine';
+    }
+  });
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'split' | 'khata'>('cash');
   const [discount, setDiscount] = useState<number>(0);
   const [isDiscountOpen, setIsDiscountOpen] = useState(false);
@@ -197,6 +207,15 @@ export const POS: React.FC = () => {
   const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
   const finalTotal = Math.max(0, money(subtotal - (discount || 0)));
 
+  const setCartLineModePersisted = (mode: 'combine' | 'new') => {
+    setCartLineMode(mode);
+    try {
+      localStorage.setItem('posCartLineMode', mode);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const addToCart = (name: string, quantity: number, unit: 'kg' | 'rs', total: number, pricePerKg: number) => {
     setCart((prev) => {
       const qtyAdd = money(quantity);
@@ -208,23 +227,34 @@ export const POS: React.FC = () => {
             ? money(total / qtyAdd)
             : 0;
 
-      const existing = prev.find((item) => item.name === name);
-      if (existing) {
-        const rate = derivedRate > 0 ? derivedRate : existing.pricePerKg;
-        const newQty = money(existing.quantity + qtyAdd);
-        return prev.map((item) =>
-          item.name === name
-            ? {
-              ...item,
-              quantity: newQty,
-              total: money(newQty * rate),
-              pricePerKg: rate,
-              unit: 'kg',
-            }
-            : item
-        );
+      // Combine: only increment the LAST line with this product name (leave earlier separate lines alone)
+      if (cartLineMode === 'combine') {
+        let lastIdx = -1;
+        for (let i = prev.length - 1; i >= 0; i--) {
+          if (prev[i].name === name) {
+            lastIdx = i;
+            break;
+          }
+        }
+        if (lastIdx >= 0) {
+          const existing = prev[lastIdx];
+          const rate = derivedRate > 0 ? derivedRate : existing.pricePerKg;
+          const newQty = money(existing.quantity + qtyAdd);
+          return prev.map((item, idx) =>
+            idx === lastIdx
+              ? {
+                ...item,
+                quantity: newQty,
+                total: money(newQty * rate),
+                pricePerKg: rate,
+                unit: 'kg',
+              }
+              : item
+          );
+        }
       }
 
+      // New-line mode (or no matching line yet): always append a new row
       const rate = derivedRate;
       return [
         ...prev,
@@ -242,9 +272,9 @@ export const POS: React.FC = () => {
     setCheckoutSuccess(null);
   };
 
-  const handleCustomAdd = (type: 'milk' | 'yogurt') => {
+  const handleCustomAdd = (type: 'milk' | 'yogurt', amountOverride?: string) => {
     const isMilk = type === 'milk';
-    const input = isMilk ? milkCustomAmount : yogurtCustomAmount;
+    const input = amountOverride ?? (isMilk ? milkCustomAmount : yogurtCustomAmount);
     const pricePerKg = isMilk ? milkRatePerKg : yogurtRatePerKg;
     const customType = isMilk ? milkCustomType : yogurtCustomType;
 
@@ -619,13 +649,16 @@ export const POS: React.FC = () => {
                         KG
                       </button>
                     </div>
-                    <input
-                      type="number"
+                    <NumericKeypadInput
                       value={milkCustomAmount}
-                      onChange={(e) => setMilkCustomAmount(e.target.value)}
-                      placeholder="Amount"
-                      className="w-32 px-3 py-1.5 text-base border-none bg-slate-50 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd('milk')}
+                      onChange={setMilkCustomAmount}
+                      onConfirm={(v) => handleCustomAdd('milk', v)}
+                      placeholder={milkCustomType === 'kg' ? 'kg' : 'Rs'}
+                      title="Milk amount"
+                      accent="emerald"
+                      confirmLabel="Add"
+                      className="w-36"
+                      triggerClassName="border-none"
                     />
                     <button
                       onClick={() => handleCustomAdd('milk')}
@@ -705,13 +738,16 @@ export const POS: React.FC = () => {
                         KG
                       </button>
                     </div>
-                    <input
-                      type="number"
+                    <NumericKeypadInput
                       value={yogurtCustomAmount}
-                      onChange={(e) => setYogurtCustomAmount(e.target.value)}
-                      placeholder="Amount"
-                      className="w-32 px-3 py-1.5 text-base border-none bg-slate-50 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onKeyDown={(e) => e.key === 'Enter' && handleCustomAdd('yogurt')}
+                      onChange={setYogurtCustomAmount}
+                      onConfirm={(v) => handleCustomAdd('yogurt', v)}
+                      placeholder={yogurtCustomType === 'kg' ? 'kg' : 'Rs'}
+                      title="Yogurt amount"
+                      accent="blue"
+                      confirmLabel="Add"
+                      className="w-36"
+                      triggerClassName="border-none"
                     />
                     <button
                       onClick={() => handleCustomAdd('yogurt')}
@@ -880,23 +916,57 @@ export const POS: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">
-              <div className="p-4 bg-slate-800 text-white flex justify-between items-center flex-shrink-0">
-                <h2 className="font-bold text-sm tracking-wide">CURRENT BILL ({cart.length})</h2>
-                <div className="flex items-center gap-2">
-                  {heldCarts.length > 0 && (
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-amber-200">
-                      {heldCarts.length} held
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={holdCurrentBill}
-                    disabled={submitting || cart.length === 0}
-                    title="Hold current bill"
-                    className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <PauseCircle className="w-3.5 h-3.5" /> Hold
-                  </button>
+              <div className="p-4 bg-slate-800 text-white flex-shrink-0 space-y-3">
+                <div className="flex justify-between items-center gap-2">
+                  <h2 className="font-bold text-sm tracking-wide">CURRENT BILL ({cart.length})</h2>
+                  <div className="flex items-center gap-2">
+                    {heldCarts.length > 0 && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                        {heldCarts.length} held
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={holdCurrentBill}
+                      disabled={submitting || cart.length === 0}
+                      title="Hold current bill"
+                      className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <PauseCircle className="w-3.5 h-3.5" /> Hold
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card options: same item → new line OR combine (last line only) */}
+                <div className="rounded-xl bg-white/10 border border-white/10 px-3 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/55 mb-2">
+                    Same item click
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-white">
+                      <input
+                        type="checkbox"
+                        checked={cartLineMode === 'combine'}
+                        onChange={() => setCartLineModePersisted('combine')}
+                        className="h-4 w-4 rounded border-white/30 accent-emerald-400 cursor-pointer"
+                      />
+                      Combine
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-white">
+                      <input
+                        type="checkbox"
+                        checked={cartLineMode === 'new'}
+                        onChange={() => setCartLineModePersisted('new')}
+                        className="h-4 w-4 rounded border-white/30 accent-emerald-400 cursor-pointer"
+                      />
+                      New line
+                    </label>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-white/50 leading-snug">
+                    {cartLineMode === 'combine'
+                      ? 'Adds qty to the last matching line only — earlier separate lines stay as they are.'
+                      : 'Every click adds a new cart line, even for the same product.'}
+                  </p>
                 </div>
               </div>
 

@@ -4,6 +4,7 @@ import { CustomerSummary } from '../components/customers/CustomerSummary';
 import {
   CustomerToolbar,
   CustomerTypeFilter,
+  NameSortOrder,
 } from '../components/customers/CustomerToolbar';
 import { CustomerTable } from '../components/customers/CustomerTable';
 import { CustomerFormModal } from '../components/customers/CustomerFormModal';
@@ -142,6 +143,7 @@ export const Customers: React.FC = () => {
   const [filterType, setFilterType] = useState<'All' | 'Dues'>('All');
   const [customerTypeFilter, setCustomerTypeFilter] =
     useState<CustomerTypeFilter>('All');
+  const [nameSort, setNameSort] = useState<NameSortOrder>('default');
 
   const debouncedSearch = useDebounce(searchQuery, 400);
 
@@ -225,6 +227,12 @@ export const Customers: React.FC = () => {
       ];
 
       merged.sort((a, b) => {
+        if (nameSort === 'az') {
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        }
+        if (nameSort === 'za') {
+          return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' });
+        }
         const aTime = a.lastSaleDate ? new Date(a.lastSaleDate).getTime() : a.id;
         const bTime = b.lastSaleDate ? new Date(b.lastSaleDate).getTime() : b.id;
         return bTime - aTime;
@@ -237,7 +245,7 @@ export const Customers: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filterType, customerTypeFilter]);
+  }, [debouncedSearch, filterType, customerTypeFilter, nameSort]);
 
   useEffect(() => {
     loadData();
@@ -405,6 +413,8 @@ export const Customers: React.FC = () => {
           setFilterType={setFilterType}
           customerTypeFilter={customerTypeFilter}
           setCustomerTypeFilter={setCustomerTypeFilter}
+          nameSort={nameSort}
+          setNameSort={setNameSort}
           duesCount={summary.withDues}
         />
 
