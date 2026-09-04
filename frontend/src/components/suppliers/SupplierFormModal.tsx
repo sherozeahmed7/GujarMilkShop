@@ -20,10 +20,20 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
   const [cycleType, setCycleType] = useState<CycleType>(supplier?.cycleType || 'Monthly Cycle');
   const [isActive, setIsActive] = useState(supplier ? supplier.isActive : true);
   const [guaranteedAdvance, setGuaranteedAdvance] = useState(supplier?.guaranteedAdvance.toString() || '0');
+  const [openingBalance, setOpeningBalance] = useState(
+    supplier?.openingBalance !== undefined && supplier?.openingBalance !== null
+      ? String(supplier.openingBalance)
+      : ''
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const opening = openingBalance.trim() === '' ? 0 : Number(openingBalance);
+    if (Number.isNaN(opening) || opening < 0) {
+      return;
+    }
+
     const supplierData = {
       name,
       code,
@@ -39,7 +49,10 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
     if (supplier) {
       updateSupplier(supplier.id, supplierData);
     } else {
-      addSupplier(supplierData);
+      addSupplier({
+        ...supplierData,
+        ...(opening > 0 ? { openingBalance: opening } : {}),
+      });
     }
     onClose();
   };
@@ -152,6 +165,27 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
                 </div>
               </div>
             </div>
+
+            {!supplier && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Opening Balance{' '}
+                  <span className="text-slate-400 font-normal normal-case">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={openingBalance}
+                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  placeholder="e.g. 5000 — amount already owed to supplier"
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Use this for existing suppliers with unpaid dues before the system. Shows under Previous / Remaining.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
