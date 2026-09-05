@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, X, Search, UserRound, ChevronLeft, PauseCircle, RotateCcw, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { rateService, StandardPrices } from '../services/rate.service';
@@ -573,6 +573,8 @@ export const POS: React.FC = () => {
             paidAmount: sale.paidAmount,
             remainingBalance: sale.remainingBalance,
             paymentMethod: paymentMethod === 'khata' ? 'KHATA' : paymentMethod,
+            currencySymbol: posConfig.currencySymbol || 'Rs.',
+            receiptWidth: posConfig.receiptWidth || '80mm',
             footerText: posConfig.receiptFooterText,
             autoCutter: posConfig.autoCutter,
           });
@@ -1246,6 +1248,7 @@ export const POS: React.FC = () => {
                           if (!lastSaleDetails || !posConfig) return;
                           const bytes = buildReceipt({
                             id: lastSaleDetails.id,
+                            tokenNumber: lastSaleDetails.tokenNumber,
                             shopName: posConfig.shopName || 'Gujar Milk Shop',
                             createdAt: lastSaleDetails.createdAt,
                             customerName: lastSaleDetails.customerName ?? null,
@@ -1260,6 +1263,8 @@ export const POS: React.FC = () => {
                             paidAmount: lastSaleDetails.paidAmount,
                             remainingBalance: lastSaleDetails.remainingBalance,
                             paymentMethod: lastSaleDetails.paymentMethod,
+                            currencySymbol: posConfig.currencySymbol || 'Rs.',
+                            receiptWidth: posConfig.receiptWidth || '80mm',
                             footerText: posConfig.receiptFooterText,
                             autoCutter: posConfig.autoCutter,
                           });

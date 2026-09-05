@@ -458,12 +458,19 @@ export const POSConfig: React.FC = () => {
                     disabled={!config.printerEnabled || !config.printerName}
                     onClick={async () => {
                       try {
-                        const bytes = buildTestPage(config.printerName, config.autoCutter);
+                        const bytes = buildTestPage(
+                          config.printerName,
+                          config.autoCutter,
+                          config.shopName,
+                          config.receiptFooterText,
+                          config.currencySymbol,
+                          config.receiptWidth
+                        );
                         await safeInvoke('print_raw_bytes', {
                           printerName: config.printerName,
                           data: bytes
                         });
-                        toast.success('Test print sent to printer!');
+                        toast.success('Test receipt print sent to printer!');
                       } catch (err: any) {
                         toast.error(`Print Failed: ${err}`);
                       }

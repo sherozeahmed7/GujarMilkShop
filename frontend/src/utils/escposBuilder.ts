@@ -1,11 +1,6 @@
 /**
- * ESC/POS Byte Builder for 80mm Thermal Printers (e.g. Black Copper BC-105)
- *
- * Produces a raw byte array that can be sent directly to the Windows Print
- * Spooler via the Tauri `print_raw_bytes` command with datatype "RAW".
- *
- * Paper width : 80 mm
- * Print width : ~48 chars (standard CP437 font, 80mm paper)
+ * ESC/POS Byte Builder for Thermal Printers (58mm & 80mm)
+ * Matches the layout of POS Config Receipt Preview.
  */
 
 // ---------------------------------------------------------------------------
@@ -16,23 +11,24 @@ const GS  = 0x1d;
 const LF  = 0x0a;
 
 // Initialise printer
-const INIT           = [ESC, 0x40];
+const INIT         = [ESC, 0x40];
 
 // Alignment
-const ALIGN_LEFT     = [ESC, 0x61, 0x00];
-const ALIGN_CENTER   = [ESC, 0x61, 0x01];
-const ALIGN_RIGHT    = [ESC, 0x61, 0x02];
+const ALIGN_LEFT   = [ESC, 0x61, 0x00];
+const ALIGN_CENTER = [ESC, 0x61, 0x01];
+const ALIGN_RIGHT  = [ESC, 0x61, 0x02];
 
 // Bold
-const BOLD_ON        = [ESC, 0x45, 0x01];
-const BOLD_OFF       = [ESC, 0x45, 0x00];
+const BOLD_ON      = [ESC, 0x45, 0x01];
+const BOLD_OFF     = [ESC, 0x45, 0x00];
 
-// Double-height + double-width (big title text)
-const DOUBLE_ON      = [GS,  0x21, 0x11];
-const DOUBLE_OFF     = [GS,  0x21, 0x00];
+// Size
+const DOUBLE_ON    = [GS,  0x21, 0x11]; // Double height + Double width
+const DOUBLE_OFF   = [GS,  0x21, 0x00];
+const DBL_HEIGHT   = [GS,  0x21, 0x01]; // Double height only
 
-// Auto cut (full cut)
-const CUT            = [GS,  0x56, 0x00];
+// Auto cut
+const CUT          = [GS,  0x56, 0x00];
 
 // Line feed
 const newline = (): number[] => [LF];
@@ -40,9 +36,8 @@ const newline = (): number[] => [LF];
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-const COLS = 48; // characters per line on 80mm paper
 
-/** Encode a string to CP437-compatible bytes (ASCII safe). Non-ASCII chars → '?' */
+/** Encode a string to CP437-compatible bytes (ASCII safe) */
 function encodeText(text: string): number[] {
   const bytes: number[] = [];
   for (let i = 0; i < text.length; i++) {
@@ -60,44 +55,83 @@ function padLeft(str: string, width: number): string {
 /** Wrap a long string into multiple lines of at most `width` chars */
 function wrapText(text: string, width: number): string[] {
   const lines: string[] = [];
-  while (text.length > width) {
-    lines.push(text.slice(0, width));
-    text = text.slice(width);
+  let remaining = text;
+  while (remaining.length > width) {
+    lines.push(remaining.slice(0, width));
+    remaining = remaining.slice(width);
   }
-  if (text) lines.push(text);
+  if (remaining) lines.push(remaining);
   return lines;
 }
 
-/** Print a centered string padded to COLS */
-function centeredLine(text: string): number[] {
-  const padded = text.slice(0, COLS).padStart(Math.floor((COLS + text.length) / 2), ' ').padEnd(COLS, ' ');
-  return encodeText(padded);
+/** Print a centered string padded to columns */
+function centeredLine(text: string, cols: number): number[] {
+  const truncated = text.slice(0, cols);
+  const leftPad = Math.floor((cols - truncated.length) / 2);
+  const padded = ' '.repeat(Math.max(0, leftPad)) + truncated;
+  return encodeText(padded.padEnd(cols, ' '));
 }
 
 /** Print a separator line */
-function separator(char: string = '-'): number[] {
-  return [...encodeText(char.repeat(COLS)), ...newline()];
+function separator(char: string = '-', cols: number = 48): number[] {
+  return [...encodeText(char.repeat(cols)), ...newline()];
 }
 
 /**
  * Print a two-column row: left text and right text.
- * If the left text is too long it wraps; the right is always right-aligned.
  */
-function twoCol(left: string, right: string): number[] {
+function twoCol(left: string, right: string, cols: number): number[] {
   const rightWidth = right.length + 1; // +1 for space
-  const leftWidth  = COLS - rightWidth;
+  const leftWidth  = Math.max(1, cols - rightWidth);
   const bytes: number[] = [];
 
   const leftLines = wrapText(left, leftWidth);
   leftLines.forEach((line, idx) => {
     if (idx === leftLines.length - 1) {
-      // Last line: include the right-aligned right column
       const row = line.padEnd(leftWidth, ' ') + padLeft(right, rightWidth);
       bytes.push(...encodeText(row), ...newline());
     } else {
-      bytes.push(...encodeText(line.padEnd(COLS, ' ')), ...newline());
+      bytes.push(...encodeText(line.padEnd(cols, ' ')), ...newline());
     }
   });
+  return bytes;
+}
+
+/**
+ * Dotted leader row:
+ * "FRESH MILK ........................ Rs.840"
+ */
+function dottedRow(left: string, right: string, cols: number): number[] {
+  const rightStr = ' ' + right;
+  const maxLeftWidth = cols - rightStr.length;
+
+  if (left.length >= maxLeftWidth) {
+    const trimmed = left.slice(0, Math.max(1, maxLeftWidth - 4)) + '...';
+    const dots = Math.max(1, cols - trimmed.length - rightStr.length);
+    const row = trimmed + '.'.repeat(dots) + rightStr;
+    return [...encodeText(row), ...newline()];
+  }
+
+  const dots = Math.max(1, cols - left.length - rightStr.length);
+  const row = left + '.'.repeat(dots) + rightStr;
+  return [...encodeText(row), ...newline()];
+}
+
+/**
+ * Build ESC/POS Barcode (Code39)
+ */
+function buildBarcode(text: string): number[] {
+  const clean = text.toUpperCase().replace(/[^A-Z0-9\-\.\ \$\/\+\%]/g, '');
+  if (!clean) return [];
+
+  const bytes: number[] = [];
+  bytes.push(...ALIGN_CENTER);
+  bytes.push(GS, 0x68, 48);   // Height: 48 dots
+  bytes.push(GS, 0x77, 2);    // Width multiplier: 2
+  bytes.push(GS, 0x48, 0x00); // No automatic HRI text below
+  // ESC/POS CODE39 format 1 (Null-terminated)
+  bytes.push(GS, 0x6b, 0x04, ...encodeText(clean), 0x00);
+  bytes.push(...newline());
   return bytes;
 }
 
@@ -108,7 +142,7 @@ function twoCol(left: string, right: string): number[] {
 export interface ReceiptSale {
   id: number;
   tokenNumber?: number;
-  shopName: string;
+  shopName?: string;
   createdAt: string | Date;
   customerName?: string | null;
   cashierName?: string | null;
@@ -123,131 +157,130 @@ export interface ReceiptSale {
   paidAmount: number;
   remainingBalance: number;
   paymentMethod?: string;
+  currencySymbol?: string;
+  receiptWidth?: '58mm' | '80mm';
   footerText?: string;
   autoCutter?: boolean;
 }
 
 /**
- * Build the raw ESC/POS byte array for an 80mm receipt.
- * Returns a Uint8Array suitable for `print_raw_bytes`.
+ * Build the raw ESC/POS byte array for a receipt matching ReceiptPreview.
  */
 export function buildReceipt(sale: ReceiptSale): number[] {
   const bytes: number[] = [];
-
   const push = (...chunks: number[][]) => chunks.forEach(c => bytes.push(...c));
 
-  // ── Init ──────────────────────────────────────────────────────────────────
+  const cols = sale.receiptWidth === '58mm' ? 32 : 48;
+  const currency = sale.currencySymbol || 'Rs.';
+
+  // ── 1. Init ───────────────────────────────────────────────────────────────
   push(INIT);
   push(newline());
 
-  // ── Shop Name (big) ───────────────────────────────────────────────────────
+  // ── 2. Shop Header ────────────────────────────────────────────────────────
   push(ALIGN_CENTER);
-  push(DOUBLE_ON);
-  push(encodeText(sale.shopName.slice(0, 24)), newline());
-  push(DOUBLE_OFF);
-  push(newline());
-
-  // ── Token Number (big) ────────────────────────────────────────────────────
-  if (sale.tokenNumber !== undefined) {
-    push(ALIGN_CENTER);
-    push(DOUBLE_ON);
-    push(encodeText(`Token: ${sale.tokenNumber}`), newline());
-    push(DOUBLE_OFF);
-    push(newline());
+  if (sale.shopName) {
+    push(BOLD_ON, DOUBLE_ON);
+    push(encodeText(sale.shopName.slice(0, cols === 32 ? 16 : 24)), newline());
+    push(DOUBLE_OFF, BOLD_OFF);
   }
 
-  // ── Receipt header ────────────────────────────────────────────────────────
   push(BOLD_ON);
-  push(centeredLine('RECEIPT'), newline());
+  push(centeredLine('SALE RECEIPT', cols), newline());
   push(BOLD_OFF);
 
-  push(separator());
+  // ── 3. Token Number (Large) ───────────────────────────────────────────────
+  if (sale.tokenNumber !== undefined && sale.tokenNumber !== null) {
+    const tokenFormatted = sale.tokenNumber < 10 ? `0${sale.tokenNumber}` : `${sale.tokenNumber}`;
+    push(BOLD_ON, DOUBLE_ON);
+    push(encodeText(`TOKEN ${tokenFormatted}`), newline());
+    push(DOUBLE_OFF, BOLD_OFF);
+  }
+  push(newline());
 
-  // ── Bill info ─────────────────────────────────────────────────────────────
+  // ── 4. Bill & Date/Time ───────────────────────────────────────────────────
   push(ALIGN_LEFT);
-
   const date = new Date(sale.createdAt);
   const dateStr = date.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = date.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  push(twoCol(`Bill#: ${sale.id}`, dateStr));
-  push(twoCol('Time:', timeStr));
-
+  push(twoCol(`Bill: BILL-${sale.id}`, `${dateStr} ${timeStr}`, cols));
   if (sale.customerName) {
-    push(twoCol('Customer:', sale.customerName.slice(0, 24)));
+    push(twoCol('Customer:', sale.customerName, cols));
   }
   if (sale.cashierName) {
-    push(twoCol('Cashier:', sale.cashierName.slice(0, 24)));
+    push(twoCol('Cashier:', sale.cashierName, cols));
   }
 
-  push(separator());
-
-  // ── Items header ──────────────────────────────────────────────────────────
-  push(BOLD_ON);
-  // "Item             Qty   Price   Total"
-  const headerRow = 'Item'.padEnd(22) + 'Qty'.padEnd(6) + 'Price'.padEnd(9) + 'Total';
-  push(encodeText(headerRow), newline());
+  // ── 5. Payment Method Banner ──────────────────────────────────────────────
+  push(separator('=', cols));
+  push(ALIGN_CENTER, BOLD_ON);
+  const method = (sale.paymentMethod || 'CASH').toUpperCase();
+  push(centeredLine(`PAID: ${method}`, cols), newline());
   push(BOLD_OFF);
-  push(separator('-'));
+  push(separator('=', cols));
 
-  // ── Items ─────────────────────────────────────────────────────────────────
+  // ── 6. Items with Dotted Leader & Sub-line ─────────────────────────────────
+  push(ALIGN_LEFT);
   for (const item of sale.items) {
-    const nameLines = wrapText(item.itemName, 22);
-    const qty       = item.quantity.toFixed(2).padEnd(6);
-    const price     = item.unitPrice.toFixed(2).padEnd(9);
-    const total     = item.totalPrice.toFixed(2);
+    const itemUpper = item.itemName.toUpperCase();
+    const itemTotalStr = `${currency}${item.totalPrice}`;
+    
+    // Line 1: ITEM NAME ..................... Rs.XXX
+    push(BOLD_ON);
+    push(dottedRow(itemUpper, itemTotalStr, cols));
+    push(BOLD_OFF);
 
-    nameLines.forEach((line, idx) => {
-      if (idx === 0) {
-        push(encodeText(line.padEnd(22) + qty + price + total), newline());
-      } else {
-        push(encodeText('  ' + line), newline());
-      }
-    });
+    // Line 2: 3.5 x Rs.240
+    const subLine = `  ${item.quantity} x ${currency}${item.unitPrice}`;
+    push(encodeText(subLine), newline());
   }
 
-  push(separator('-'));
-
-  // ── Totals ────────────────────────────────────────────────────────────────
-  push(ALIGN_LEFT);
-
-  const subtotal = sale.items.reduce((s, i) => s + i.totalPrice, 0);
-  push(twoCol('Subtotal:', `Rs ${subtotal.toFixed(2)}`));
+  // ── 7. Totals Section ─────────────────────────────────────────────────────
+  push(separator('-', cols));
 
   if (sale.discountAmount && sale.discountAmount > 0) {
-    push(twoCol('Discount:', `Rs ${sale.discountAmount.toFixed(2)}`));
+    push(twoCol('Discount:', `${currency}${sale.discountAmount}`, cols));
   }
 
-  push(BOLD_ON);
-  push(twoCol('TOTAL:', `Rs ${sale.totalAmount.toFixed(2)}`));
-  push(BOLD_OFF);
+  // Large Total Row
+  push(BOLD_ON, DBL_HEIGHT);
+  push(twoCol('TOTAL', `${currency}${sale.totalAmount}`, cols));
+  push(DOUBLE_OFF, BOLD_OFF);
 
-  push(separator('-'));
+  push(separator('-', cols));
 
-  push(twoCol('Paid:', `Rs ${sale.paidAmount.toFixed(2)}`));
+  // Paid & Balance / Change
+  push(twoCol('Paid:', `${currency}${sale.paidAmount}`, cols));
 
   if (sale.remainingBalance > 0) {
-    push(twoCol('Balance:', `Rs ${sale.remainingBalance.toFixed(2)}`));
+    push(BOLD_ON);
+    push(twoCol('Balance Due:', `${currency}${sale.remainingBalance}`, cols));
+    push(BOLD_OFF);
   } else if (sale.remainingBalance < 0) {
-    push(twoCol('Change:', `Rs ${Math.abs(sale.remainingBalance).toFixed(2)}`));
+    push(twoCol('Change Return:', `${currency}${Math.abs(sale.remainingBalance)}`, cols));
   }
 
-  if (sale.paymentMethod) {
-    push(twoCol('Method:', sale.paymentMethod.toUpperCase()));
-  }
+  push(newline());
 
-  push(separator());
+  // ── 8. Barcode (Code39) ───────────────────────────────────────────────────
+  try {
+    const barcodeCode = `BILL-${sale.id}`;
+    push(buildBarcode(barcodeCode));
+    push(ALIGN_CENTER);
+    push(encodeText('SCAN FOR RETURN / AUDIT'), newline());
+  } catch (_) {}
 
-  // ── Footer ────────────────────────────────────────────────────────────────
+  // ── 9. Footer ─────────────────────────────────────────────────────────────
+  push(newline());
   push(ALIGN_CENTER);
   const footer = sale.footerText || 'Thank you for your visit!';
-  const footerLines = wrapText(footer, COLS);
-  footerLines.forEach(line => push(centeredLine(line), newline()));
+  const footerLines = wrapText(footer, cols);
+  footerLines.forEach(line => push(centeredLine(line, cols), newline()));
 
-  push(newline(), newline(), newline()); // Feed paper before cut
-
-  // ── Auto cutter ───────────────────────────────────────────────────────────
-  if (sale.autoCutter) {
+  // ── 10. Feed Paper & Cut ──────────────────────────────────────────────────
+  push(newline(), newline(), newline(), newline());
+  if (sale.autoCutter !== false) {
     push(CUT);
   }
 
@@ -255,37 +288,35 @@ export function buildReceipt(sale: ReceiptSale): number[] {
 }
 
 /**
- * Build a minimal test page for verifying the printer connection.
+ * Build a test receipt for verifying printer connection & config.
  */
-export function buildTestPage(printerName: string, autoCutter: boolean): number[] {
-  const bytes: number[] = [];
-  const push = (...chunks: number[][]) => chunks.forEach(c => bytes.push(...c));
-
-  push(INIT, newline());
-  push(ALIGN_CENTER);
-
-  push(separator('-'));
-  push(BOLD_ON, DOUBLE_ON);
-  push(encodeText('GUJAR MILK SHOP'), newline());
-  push(DOUBLE_OFF, BOLD_OFF);
-  push(separator('-'));
-  push(newline());
-  push(encodeText('PRINTER TEST'), newline());
-  push(encodeText('BC-105'), newline());
-  push(encodeText('80MM'), newline());
-  push(newline());
-  push(separator('-'));
-  push(newline());
-  push(BOLD_ON);
-  push(encodeText('TEST PRINT SUCCESSFUL'), newline());
-  push(BOLD_OFF);
-  push(newline());
-  push(separator('-'));
-  push(newline(), newline(), newline());
-
-  if (autoCutter) {
-    push(CUT);
-  }
-
-  return bytes;
+export function buildTestPage(
+  printerName: string,
+  autoCutter: boolean,
+  shopName: string = 'GUJAR MILK SHOP',
+  footerText: string = 'Thank you for your visit!',
+  currencySymbol: string = 'Rs.',
+  receiptWidth: '58mm' | '80mm' = '80mm'
+): number[] {
+  return buildReceipt({
+    id: 99999,
+    tokenNumber: 1,
+    shopName,
+    createdAt: new Date(),
+    customerName: 'Test Customer',
+    cashierName: 'Admin',
+    items: [
+      { itemName: 'FRESH MILK', quantity: 3.5, unitPrice: 240, totalPrice: 840 },
+      { itemName: 'FRESH YOGURT', quantity: 1, unitPrice: 270, totalPrice: 270 }
+    ],
+    totalAmount: 1110,
+    paidAmount: 1110,
+    remainingBalance: 0,
+    paymentMethod: 'CASH',
+    currencySymbol,
+    receiptWidth,
+    footerText,
+    autoCutter
+  });
 }
+

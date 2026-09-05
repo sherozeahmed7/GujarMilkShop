@@ -155,6 +155,25 @@ async function seedDefaultDailyRates() {
 }
 
 /**
+ * Automatically migrate SQLite schema differences on startup
+ * so existing client installations don't crash when new columns are added.
+ */
+async function runAutoMigrations() {
+  try {
+    // Check Sale table for tokenNumber
+    const saleColumns: any[] = await prisma.$queryRawUnsafe(`PRAGMA table_info("Sale")`);
+    const hasTokenNumber = saleColumns.some((col: any) => col.name === 'tokenNumber');
+    if (!hasTokenNumber) {
+      console.log('🔄 Auto-migrating: Adding tokenNumber column to Sale table...');
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Sale" ADD COLUMN "tokenNumber" INTEGER NOT NULL DEFAULT 0`);
+      console.log('✅ tokenNumber column added to Sale table successfully.');
+    }
+  } catch (error) {
+    console.error('⚠️ Auto-migration notice:', error);
+  }
+}
+
+/**
  * Connects to the database and logs status details
  */
 export async function connectDB() {
@@ -162,6 +181,9 @@ export async function connectDB() {
     // Attempt database connection
     await prisma.$connect();
     console.log('Database connected successfully');
+
+    // Run auto-migrations for SQLite schema updates
+    await runAutoMigrations();
 
     // Auto-seed default super_admin user
     await seedSuperAdmin();
@@ -172,3 +194,4 @@ export async function connectDB() {
     process.exit(1);
   }
 }
+
