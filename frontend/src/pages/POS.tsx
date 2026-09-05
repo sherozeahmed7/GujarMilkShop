@@ -10,6 +10,7 @@ import { MilkProducts } from './inventory/MilkProducts';
 import { posConfigService, POSConfigData } from '../services/posConfig.service';
 import { buildReceipt } from '../utils/escposBuilder';
 import { NumericKeypadInput } from '../components/pos/NumericKeypadInput';
+import { inventoryService } from '../services/inventoryService';
 
 interface CartItem {
   id: string;
@@ -453,6 +454,45 @@ export const POS: React.FC = () => {
     if (items.length === 0) {
       setCheckoutError('Cart has no valid items.');
       return;
+    }
+
+    // Butter / Ghee: block on Cash OK (not when adding to cart) if inventory is short
+    const butterQty = money(
+      items.filter((i) => i.itemName === 'butter').reduce((s, i) => s + i.quantity, 0)
+    );
+    const gheeQty = money(
+      items.filter((i) => i.itemName === 'ghee').reduce((s, i) => s + i.quantity, 0)
+    );
+    if (butterQty > 0 || gheeQty > 0) {
+      try {
+        const products = await inventoryService.getProducts();
+        const butterStock = Number(
+          products.find((p) => p.code?.toUpperCase() === 'BUTTER' || p.name?.toLowerCase() === 'butter')
+            ?.stock ?? 0
+        );
+        const gheeStock = Number(
+          products.find((p) => p.code?.toUpperCase() === 'GHEE' || p.name?.toLowerCase() === 'ghee')
+            ?.stock ?? 0
+        );
+        if (butterQty > 0 && butterStock < butterQty) {
+          setCheckoutError(
+            butterStock <= 0
+              ? 'Cannot sell Butter. Inventory stock is 0 kg. Add Butter stock in Inventory first.'
+              : `Cannot sell ${butterQty} kg Butter. Only ${butterStock} kg available in Inventory.`
+          );
+          return;
+        }
+        if (gheeQty > 0 && gheeStock < gheeQty) {
+          setCheckoutError(
+            gheeStock <= 0
+              ? 'Cannot sell Ghee. Inventory stock is 0 kg. Add Ghee stock in Inventory first.'
+              : `Cannot sell ${gheeQty} kg Ghee. Only ${gheeStock} kg available in Inventory.`
+          );
+          return;
+        }
+      } catch {
+        /* backend still enforces on createSale */
+      }
     }
 
     // Recompute total from item lines so it always matches backend validation

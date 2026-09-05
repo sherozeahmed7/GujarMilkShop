@@ -38,6 +38,76 @@ function milkOrYogurtExpenseCategory(name: string): 'Milk' | 'Yogurt' | null {
   return null;
 }
 
+/** Yogurt / Lassi are made from milk — 1 kg product uses 1 kg milk until a configurable ratio exists. */
+export const MILK_PER_KG_YOGURT = 1;
+export const MILK_PER_KG_LASSI = 1;
+
+function isYogurtProduct(product: { code?: string | null; name?: string | null }): boolean {
+  const code = String(product.code || '').toUpperCase();
+  const name = String(product.name || '').trim().toLowerCase();
+  return code === 'YOGURT' || name === 'yogurt' || name === 'yog';
+}
+
+/**
+ * Deduct milk inventory for a conversion (yogurt stock-in, lassi sale, etc.).
+ * Returns null if milk product missing or qty is 0; throws Error with message on hard failure when requireStock.
+ */
+export async function deductMilkConversion(
+  tx: any,
+  opts: {
+    milkKg: number;
+    reference: string;
+    source: string;
+    userId?: number;
+    shiftId?: number | null;
+    /** When true, refuse if milk stock would go below zero */
+    requireStock?: boolean;
+  }
+): Promise<{ id: number } | null> {
+  const milkKg = money(opts.milkKg);
+  if (!(milkKg > 0)) return null;
+
+  const existing = await tx.inventoryMovement.findUnique({ where: { reference: opts.reference } });
+  if (existing) return existing;
+
+  let milkProduct = await tx.inventoryProduct.findFirst({ where: { code: 'MILK' } });
+  if (!milkProduct) {
+    const all = await tx.inventoryProduct.findMany({ where: { isActive: true } });
+    milkProduct = all.find((p: any) => String(p.name).trim().toLowerCase() === 'milk') || null;
+  }
+  if (!milkProduct) {
+    throw new Error('Milk inventory product not found. Cannot convert milk.');
+  }
+
+  const current =
+    (
+      await tx.inventoryMovement.aggregate({
+        where: { productId: milkProduct.id },
+        _sum: { quantity: true },
+      })
+    )._sum.quantity || 0;
+
+  if (opts.requireStock && current < milkKg) {
+    throw new Error(
+      `Not enough milk stock. Need ${milkKg} kg but only ${money(current)} kg available.`
+    );
+  }
+
+  const movement = await tx.inventoryMovement.create({
+    data: {
+      productId: milkProduct.id,
+      quantity: money(-milkKg),
+      movementType: 'CONVERSION',
+      source: opts.source,
+      reference: opts.reference,
+      userId: opts.userId,
+      shiftId: opts.shiftId ?? null,
+    },
+  });
+  await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', movement.id, movement, 2);
+  return movement;
+}
+
 function toDateOnly(value: Date): string {
   const yyyy = value.getFullYear();
   const mm = String(value.getMonth() + 1).padStart(2, '0');
@@ -190,54 +260,79 @@ export class InventoryService {
         : null;
     const addedBy = user?.email || user?.name || 'inventory';
 
-    const movement = await prisma.$transaction(async (tx) => {
-      const created = await tx.inventoryMovement.create({
-        data: {
-          productId,
-          quantity: money(quantity),
-          movementType,
-          source: payload.source || movementType,
-          reference,
-          unitCost: payload.unitCost !== undefined ? Number(payload.unitCost) : null,
-          supplierId: payload.supplierId ? Number(payload.supplierId) : null,
-          shiftId: payload.shiftId ? Number(payload.shiftId) : null,
-          userId,
-          date: movementDate,
-        },
-      });
-
-      // Milk / Yogurt stock removed = wastage loss → appear on Expenses screen
-      if (expenseCategory && lostQty > 0) {
-        const grossLoss = money(lostQty * unitCostForLoss);
-        const reasonText =
-          (typeof payload.notes === 'string' && payload.notes.trim()) ||
-          (typeof payload.reason === 'string' && payload.reason.trim()) ||
-          'Stock adjustment (lost / discarded)';
-
-        const expense = await tx.expense.create({
+    try {
+      const movement = await prisma.$transaction(async (tx) => {
+        const created = await tx.inventoryMovement.create({
           data: {
-            date: toDateOnly(movementDate),
-            category: expenseCategory,
-            description: `${expenseCategory} stock loss — ${lostQty} kg removed from inventory`,
-            quantity: lostQty,
-            unitCost: unitCostForLoss,
-            grossLoss,
-            soldRecovery: 0,
-            netExpense: grossLoss,
-            amount: grossLoss,
-            paidAmount: 0,
-            remaining: grossLoss,
-            reason: reasonText,
-            addedBy,
+            productId,
+            quantity: money(quantity),
+            movementType,
+            source: payload.source || movementType,
+            reference,
+            unitCost: payload.unitCost !== undefined ? Number(payload.unitCost) : null,
+            supplierId: payload.supplierId ? Number(payload.supplierId) : null,
+            shiftId: payload.shiftId ? Number(payload.shiftId) : null,
+            userId,
+            date: movementDate,
           },
         });
-        await SyncQueueService.enqueueCreate(tx, 'Expense', expense.id, expense, 1);
+
+        // Milk / Yogurt stock removed = wastage loss → appear on Expenses screen
+        if (expenseCategory && lostQty > 0) {
+          const grossLoss = money(lostQty * unitCostForLoss);
+          const reasonText =
+            (typeof payload.notes === 'string' && payload.notes.trim()) ||
+            (typeof payload.reason === 'string' && payload.reason.trim()) ||
+            'Stock adjustment (lost / discarded)';
+
+          const expense = await tx.expense.create({
+            data: {
+              date: toDateOnly(movementDate),
+              category: expenseCategory,
+              description: `${expenseCategory} stock loss — ${lostQty} kg removed from inventory`,
+              quantity: lostQty,
+              unitCost: unitCostForLoss,
+              grossLoss,
+              soldRecovery: 0,
+              netExpense: grossLoss,
+              amount: grossLoss,
+              paidAmount: 0,
+              remaining: grossLoss,
+              reason: reasonText,
+              addedBy,
+            },
+          });
+          await SyncQueueService.enqueueCreate(tx, 'Expense', expense.id, expense, 1);
+        }
+
+        // Yogurt is made from milk — adding yogurt stock consumes milk 1:1
+        // (milk may go negative if inventory milk is 0 / short)
+        if (
+          isYogurtProduct(product) &&
+          quantity > 0 &&
+          (movementType === 'ADJUSTMENT' || movementType === 'STOCK_IN')
+        ) {
+          await deductMilkConversion(tx, {
+            milkKg: money(quantity * MILK_PER_KG_YOGURT),
+            reference: `${reference}-milk`,
+            source: 'Yogurt production (from milk)',
+            userId,
+            shiftId: payload.shiftId ? Number(payload.shiftId) : null,
+            requireStock: false,
+          });
+        }
+
+        await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', created.id, created, 2);
+        return created;
+      });
+
+      return { success: true, statusCode: 201, data: movement };
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to record inventory movement.';
+      if (/not enough milk|milk inventory product not found/i.test(msg)) {
+        return { success: false, statusCode: 422, message: msg };
       }
-
-      await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', created.id, created, 2);
-      return created;
-    });
-
-    return { success: true, statusCode: 201, data: movement };
+      throw err;
+    }
   }
 }

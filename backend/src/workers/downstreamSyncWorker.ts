@@ -83,9 +83,9 @@ const TRANSACTION_ENTITIES = new Set([
   'Shift'
 ]);
 
-// F2 derived state — downstream sync SKIPPED, only MilkProductTransaction syncs
+// F2 daily stock IS synced via UPSERT; audit/held carts stay local
 const SKIP_ENTITIES = new Set([
-  'MilkProductDailyStock', 'AuditRecord', 'HeldCart'
+  'AuditRecord', 'HeldCart'
 ]);
 
 // -----------------------------------------------------------------------
@@ -142,11 +142,17 @@ async function applyChange(
 
   // --- CREATE / UPSERT: apply new records from other devices ---
   if (operation === 'CREATE' || operation === 'UPSERT') {
+    // F2 daily stock: upsert by local date even when already mapped
+    if (entityType === 'MilkProductDailyStock' && operation === 'UPSERT') {
+      await applyMilkProductDailyStockUpsert(tx, cloudUuid, payload, deviceId, localDeviceId);
+      return { status: 'APPLIED' };
+    }
+
     const existingMapping = await tx.localToCloudMapping.findFirst({
       where: { entityType, cloudUuid }
     });
     if (existingMapping) {
-      // Already exists locally — idempotent, skip
+      // Already exists locally — for UPDATE-like UPSERT on masters, skip create
       return { status: 'SKIPPED', reason: `Already mapped locally for ${entityType} ${cloudUuid}` };
     }
     await applyCreate(tx, entityType, cloudUuid, payload, deviceId, localDeviceId);
@@ -157,6 +163,44 @@ async function applyChange(
 }
 
 // -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+async function applyMilkProductDailyStockUpsert(
+  tx: any,
+  cloudUuid: string,
+  payload: Record<string, any>,
+  sourceDeviceId: string,
+  localDeviceId: string
+): Promise<void> {
+  const p = snakeToCamel(payload);
+  const dateValue = p.date ? new Date(p.date) : new Date();
+  dateValue.setHours(0, 0, 0, 0);
+
+  const data = {
+    milkTotal: Number(p.milkTotal ?? 0),
+    lassiProduced: Number(p.lassiProduced ?? 0),
+    lassiSold: Number(p.lassiSold ?? 0),
+    lassiRemaining: Number(p.lassiRemaining ?? 0),
+    butterOpening: Number(p.butterOpening ?? 0),
+    butterProduced: Number(p.butterProduced ?? 0),
+    butterSold: Number(p.butterSold ?? 0),
+    butterConverted: Number(p.butterConverted ?? 0),
+    butterClosing: Number(p.butterClosing ?? 0),
+    gheeOpening: Number(p.gheeOpening ?? 0),
+    gheeProduced: Number(p.gheeProduced ?? 0),
+    gheeSold: Number(p.gheeSold ?? 0),
+    gheeClosing: Number(p.gheeClosing ?? 0),
+  };
+
+  const existing = await tx.milkProductDailyStock.findFirst({ where: { date: dateValue } });
+  let rec;
+  if (existing) {
+    rec = await tx.milkProductDailyStock.update({ where: { id: existing.id }, data });
+  } else {
+    rec = await tx.milkProductDailyStock.create({ data: { date: dateValue, ...data } });
+  }
+  await ensureMapping(tx, 'MilkProductDailyStock', rec.id, cloudUuid, localDeviceId);
+}
+
 async function applyCreate(
   tx: any,
   entityType: string,
@@ -183,6 +227,13 @@ async function applyCreate(
       break;
     }
     case 'Supplier': {
+      const existingByCode = p.code
+        ? await tx.supplier.findFirst({ where: { code: p.code } })
+        : null;
+      if (existingByCode) {
+        await ensureMapping(tx, 'Supplier', existingByCode.id, cloudUuid, localDeviceId);
+        break;
+      }
       const rec = await tx.supplier.create({
         data: {
           name: p.name,
@@ -201,6 +252,13 @@ async function applyCreate(
       break;
     }
     case 'InventoryProduct': {
+      const existingByCode = p.code
+        ? await tx.inventoryProduct.findFirst({ where: { code: p.code } })
+        : null;
+      if (existingByCode) {
+        await ensureMapping(tx, 'InventoryProduct', existingByCode.id, cloudUuid, localDeviceId);
+        break;
+      }
       const rec = await tx.inventoryProduct.create({
         data: {
           code: p.code,
@@ -215,6 +273,10 @@ async function applyCreate(
         }
       });
       await ensureMapping(tx, 'InventoryProduct', rec.id, cloudUuid, localDeviceId);
+      break;
+    }
+    case 'MilkProductDailyStock': {
+      await applyMilkProductDailyStockUpsert(tx, cloudUuid, payload, sourceDeviceId, localDeviceId);
       break;
     }
     case 'DailyRate': {
@@ -573,6 +635,40 @@ async function applyUpdate(
           paidAmount: Number(p.paidAmount ?? 0),
           remainingBalance: Number(p.remainingBalance ?? 0),
           status: p.status,
+        }
+      });
+      break;
+    case 'Payment':
+      await tx.payment.update({
+        where: { id: localId },
+        data: {
+          method: p.method ?? 'cash',
+          amount: Number(p.amount ?? 0),
+          status: p.status ?? 'completed',
+        }
+      });
+      break;
+    case 'SupplierCollection':
+      await tx.supplierCollection.update({
+        where: { id: localId },
+        data: {
+          date: p.date,
+          shift: p.shift,
+          milkType: p.milkType,
+          quantity: Number(p.quantity ?? 0),
+          rate: Number(p.rate ?? 0),
+          amount: Number(p.amount ?? 0),
+          notes: p.notes ?? null,
+        }
+      });
+      break;
+    case 'Expense':
+      await tx.expense.update({
+        where: { id: localId },
+        data: {
+          paidAmount: Number(p.paidAmount ?? 0),
+          remaining: Number(p.remaining ?? 0),
+          ...(p.amount !== undefined ? { amount: Number(p.amount) } : {}),
         }
       });
       break;

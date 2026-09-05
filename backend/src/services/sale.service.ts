@@ -83,6 +83,60 @@ function localDateKey(d: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+async function getInventoryStockByCode(db: any, code: string): Promise<number> {
+  const product = await db.inventoryProduct.findFirst({
+    where: { code: code.toUpperCase() },
+  });
+  if (!product) {
+    const all = await db.inventoryProduct.findMany({ where: { isActive: true } });
+    const match = all.find((p: any) => String(p.name).toLowerCase() === code.toLowerCase());
+    if (!match) return 0;
+    const sum = await db.inventoryMovement.aggregate({
+      where: { productId: match.id },
+      _sum: { quantity: true },
+    });
+    return money(sum._sum.quantity || 0);
+  }
+  const sum = await db.inventoryMovement.aggregate({
+    where: { productId: product.id },
+    _sum: { quantity: true },
+  });
+  return money(sum._sum.quantity || 0);
+}
+
+/** Butter & Ghee may only be sold from inventory stock (not F2-only / negative). */
+async function assertButterGheeInventoryStock(
+  items: { itemName: string; quantity: number }[]
+): Promise<{ ok: true } | { ok: false; statusCode: number; message: string }> {
+  const needed = new Map<string, number>();
+  for (const item of items) {
+    const key = item.itemName.toLowerCase();
+    if (key !== 'butter' && key !== 'ghee') continue;
+    needed.set(key, money((needed.get(key) || 0) + item.quantity));
+  }
+  if (needed.size === 0) return { ok: true };
+
+  for (const [name, qty] of needed) {
+    const available = await getInventoryStockByCode(prisma, name);
+    if (available < qty) {
+      const label = name === 'butter' ? 'Butter' : 'Ghee';
+      if (available <= 0) {
+        return {
+          ok: false,
+          statusCode: 422,
+          message: `Cannot sell ${label}. Inventory stock is 0 kg. Add ${label} stock in Inventory first.`,
+        };
+      }
+      return {
+        ok: false,
+        statusCode: 422,
+        message: `Cannot sell ${qty} kg ${label}. Only ${available} kg available in Inventory. Add more stock or reduce quantity.`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
 async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput[], userId?: number) {
   const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' } });
 
@@ -101,26 +155,29 @@ async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput
       const all = await tx.inventoryProduct.findMany({ where: { isActive: true } });
       product = all.find((p: any) => String(p.name).toLowerCase() === itemName) || null;
     }
-    if (!product) continue;
 
-    const reference = `sale-${saleId}-${itemName}`;
-    const existing = await tx.inventoryMovement.findUnique({ where: { reference } });
-    if (existing) continue;
+    if (product) {
+      const reference = `sale-${saleId}-${itemName}`;
+      const existing = await tx.inventoryMovement.findUnique({ where: { reference } });
+      if (!existing) {
+        // Allow sale at zero / negative stock — balance just goes further down
+        const movement = await tx.inventoryMovement.create({
+          data: {
+            productId: product.id,
+            quantity: money(-quantity),
+            movementType: 'SALE',
+            source: 'Point of Sale',
+            reference,
+            userId,
+            shiftId: shift?.id,
+          },
+        });
 
-    // Allow sale at zero / negative stock — balance just goes further down
-    const movement = await tx.inventoryMovement.create({
-      data: {
-        productId: product.id,
-        quantity: money(-quantity),
-        movementType: 'SALE',
-        source: 'Point of Sale',
-        reference,
-        userId,
-        shiftId: shift?.id,
-      },
-    });
-    
-    await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', movement.id, movement, 2);
+        await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', movement.id, movement, 2);
+      }
+    }
+    // Lassi sales only move LASSI inventory (may go negative).
+    // Milk was already taken when adding milk in F2 — do not deduct milk again on sale.
   }
 }
 
@@ -470,10 +527,20 @@ export class SaleService {
       };
     }
 
+    // ========== BUTTER / GHEE INVENTORY STOCK ==========
+    // Must have enough inventory stock before sale (cannot sell into negative).
+    const stockCheck = await assertButterGheeInventoryStock(normalizedItems);
+    if (!stockCheck.ok) {
+      return {
+        success: false,
+        statusCode: stockCheck.statusCode,
+        message: stockCheck.message,
+      };
+    }
+
     // ========== F2 STOCK ==========
-    // Lassi/Butter/Ghee may sell at zero stock — balances just go down (can be negative).
-    // Deduction happens inside the sale transaction via deductF2Stock().
-    // No pre-check that blocks the sale.
+    // Lassi may sell at zero / negative F2 remaining.
+    // Butter/Ghee F2 counters still update, but inventory gate above blocks oversell.
 
     // ========== WALK-IN ==========
     if (saleType === 'walk_in') {

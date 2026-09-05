@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
-import { Plus, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { NumericKeypadInput } from '../pos/NumericKeypadInput';
 
 interface Props {
   stock: MilkProductsDailyStock;
-  onAddProduction: (qty: number) => void;
   onOpenDayEnd: () => void;
   onAddToCart?: (name: string, qty: number, unitPrice: number, total?: number) => void;
   /** Daily rate Rs/kg from Settings — prefills sell price (still editable) */
@@ -14,12 +13,10 @@ interface Props {
 
 export const LassiSection: React.FC<Props> = ({
   stock,
-  onAddProduction,
   onOpenDayEnd,
   onAddToCart,
   defaultRatePerKg = 0,
 }) => {
-  const [prodInput, setProdInput] = useState('');
   const [salePrice, setSalePrice] = useState(
     defaultRatePerKg > 0 ? String(defaultRatePerKg) : ''
   );
@@ -37,12 +34,6 @@ export const LassiSection: React.FC<Props> = ({
       : defaultRatePerKg > 0
         ? defaultRatePerKg
         : 70;
-
-  const handleProd = () => {
-    const q = parseFloat(prodInput);
-    if (q > 0) onAddProduction(q);
-    setProdInput('');
-  };
 
   const handleWeightPreset = (weight: number) => {
     const rate = effectiveRate;
@@ -111,8 +102,10 @@ export const LassiSection: React.FC<Props> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Rs. {effectiveRate.toLocaleString()} / kg &nbsp;|&nbsp; Stock:{' '}
-            <span className="font-bold text-cyan-600">{stock.lassiRemaining} kg</span>
+            Rs. {effectiveRate.toLocaleString()} / kg &nbsp;|&nbsp; Inventory:{' '}
+            <span className={`font-bold ${stock.lassiRemaining > 0 ? 'text-cyan-600' : 'text-rose-600'}`}>
+              {stock.lassiRemaining} kg
+            </span>
           </p>
         </div>
       </div>
@@ -224,40 +217,23 @@ export const LassiSection: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Stock Details */}
+        {/* Stock Details — from Inventory (exact) */}
         <div className="space-y-1.5 text-xs">
           <div className="flex justify-between text-slate-500">
-            <span>Produced:</span>
+            <span>Added today:</span>
             <span className="font-medium text-slate-800">{stock.lassiProduced} kg</span>
           </div>
           <div className="flex justify-between text-slate-500">
-            <span>Sold:</span>
+            <span>Sold today:</span>
             <span className="font-medium text-slate-800">{stock.lassiSold} kg</span>
           </div>
           <div className="flex justify-between pt-1.5 border-t border-slate-100">
-            <span className="font-bold text-slate-700">Remaining:</span>
+            <span className="font-bold text-slate-700">Inventory stock:</span>
             <span className="font-bold text-cyan-600">{stock.lassiRemaining} kg</span>
           </div>
         </div>
 
-        {/* Production & Actions */}
         <div className="mt-auto space-y-2.5 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              placeholder="Production (kg)"
-              className="flex-1 border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500"
-              value={prodInput}
-              onChange={(e) => setProdInput(e.target.value)}
-            />
-            <button
-              onClick={handleProd}
-              className="bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg border border-cyan-200 text-xs font-medium transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           <button
             onClick={onOpenDayEnd}
             className="w-full bg-slate-800 hover:bg-slate-900 text-white rounded-lg py-2 text-xs font-bold transition-colors"

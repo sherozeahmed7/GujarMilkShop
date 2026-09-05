@@ -846,8 +846,8 @@ export const KhataLedger: React.FC = () => {
             {supplierCycleFilter !== 'All' && ` · Type: ${supplierCycleFilter}`}
             {dateFilter.label !== 'All Time' && ` · ${dateFilter.label}`}
             {nameSort !== 'default' && ` · Sort: ${nameSort === 'az' ? 'A–Z' : 'Z–A'}`}
-          </div>
         </div>
+      </div>
       )}
 
       {isFormOpen && (

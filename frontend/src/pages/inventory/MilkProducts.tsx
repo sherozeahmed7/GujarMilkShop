@@ -30,6 +30,19 @@ export const MilkProducts: React.FC<{
     loadData();
   }, [selectedDate]);
 
+  // Refresh when returning to the tab so Inventory stock-in shows on F2 cards
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadData();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [selectedDate]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -43,7 +56,7 @@ export const MilkProducts: React.FC<{
           });
         }
       } catch {
-        // keep zeros â€” cashier can still type Rs/kg
+        // keep zeros — cashier can still type Rs/kg
       }
     })();
     return () => {
@@ -73,27 +86,12 @@ export const MilkProducts: React.FC<{
     const qty = parseFloat(milkInput);
     if (isNaN(qty) || qty <= 0) return;
     try {
-      const updated = await milkProductsService.addMilk(selectedDate, qty);
-      setStock(updated);
+      await milkProductsService.addMilk(selectedDate, qty);
       setMilkInput('');
+      await loadData();
     } catch (err: any) {
       alert(err.message);
     }
-  };
-
-  const handleLassiProd = async (qty: number) => {
-    const updated = await milkProductsService.addLassiProduction(selectedDate, qty);
-    setStock(updated);
-  };
-
-  const handleButterProd = async (qty: number) => {
-    const updated = await milkProductsService.addButterProduction(selectedDate, qty);
-    setStock(updated);
-  };
-
-  const handleGheeProd = async (qty: number) => {
-    const updated = await milkProductsService.addGheeProduction(selectedDate, qty);
-    setStock(updated);
   };
 
   if (isLoadingStock && !stock)
@@ -172,7 +170,6 @@ export const MilkProducts: React.FC<{
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <LassiSection
                 stock={stock}
-                onAddProduction={handleLassiProd}
                 onOpenDayEnd={() => setIsLassiModalOpen(true)}
                 onAddToCart={onAddToCart}
                 defaultRatePerKg={f2Rates.lassi}
@@ -181,7 +178,7 @@ export const MilkProducts: React.FC<{
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <ButterSection
                 stock={stock}
-                onAddProduction={handleButterProd}
+                inventoryStockKg={stock.butterClosing}
                 onOpenConversion={() => setIsConversionModalOpen(true)}
                 onAddToCart={onAddToCart}
                 defaultRatePerKg={f2Rates.butter}
@@ -190,7 +187,7 @@ export const MilkProducts: React.FC<{
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <GheeSection
                 stock={stock}
-                onAddProduction={handleGheeProd}
+                inventoryStockKg={stock.gheeClosing}
                 onAddToCart={onAddToCart}
                 defaultRatePerKg={f2Rates.ghee}
               />

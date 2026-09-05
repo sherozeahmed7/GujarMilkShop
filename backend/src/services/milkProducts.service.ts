@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
+import { deductMilkConversion } from './inventory.service';
 function money(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -45,8 +46,73 @@ const ZERO_STOCK = (date: string) => ({
   updatedAt: new Date(),
 });
 
+/** Resolve core inventory product by code / name (LASSI, BUTTER, GHEE). */
+async function findInventoryProduct(tx: any, code: 'LASSI' | 'BUTTER' | 'GHEE') {
+  const name = code.toLowerCase();
+  let product = await tx.inventoryProduct.findFirst({ where: { code } });
+  if (!product) {
+    const all = await tx.inventoryProduct.findMany({ where: { isActive: true } });
+    product = all.find((p: any) => String(p.name).toLowerCase() === name) || null;
+  }
+  return product;
+}
+
+/**
+ * Exact inventory snapshot for one F2 product on a calendar day.
+ * Closing = stock as of end of day (all movements up to end).
+ * Opening / added / sold / converted derived from inventory movements.
+ */
+async function inventoryDaySnapshot(
+  code: 'LASSI' | 'BUTTER' | 'GHEE',
+  dateStr: string
+): Promise<{ opening: number; added: number; sold: number; converted: number; closing: number }> {
+  const { start, end } = parseDateRange(dateStr);
+  const product = await findInventoryProduct(prisma, code);
+  if (!product) {
+    return { opening: 0, added: 0, sold: 0, converted: 0, closing: 0 };
+  }
+
+  const [beforeAgg, dayMoves] = await Promise.all([
+    prisma.inventoryMovement.aggregate({
+      where: { productId: product.id, date: { lt: start } },
+      _sum: { quantity: true },
+    }),
+    prisma.inventoryMovement.findMany({
+      where: { productId: product.id, date: { gte: start, lte: end } },
+      select: { quantity: true, movementType: true },
+    }),
+  ]);
+
+  const opening = money(beforeAgg._sum.quantity || 0);
+  let added = 0;
+  let sold = 0;
+  let converted = 0;
+  let dayNet = 0;
+
+  for (const m of dayMoves) {
+    const q = Number(m.quantity) || 0;
+    dayNet = money(dayNet + q);
+    const type = String(m.movementType || '').toUpperCase();
+    if (q < 0 && type === 'SALE') {
+      sold = money(sold + Math.abs(q));
+    } else if (q < 0 && type === 'CONVERSION') {
+      converted = money(converted + Math.abs(q));
+    } else if (q > 0) {
+      added = money(added + q);
+    }
+  }
+
+  return {
+    opening,
+    added,
+    sold,
+    converted,
+    closing: money(opening + dayNet),
+  };
+}
+
 export class MilkProductsService {
-  /** GET stock for a specific date; returns zeroed record if none exists */
+  /** GET stock for a specific date; remaining/closing overlay exact Inventory balances */
   static async getDailyStock(dateStr: string) {
     parseDateRange(dateStr); // validate
     const dateKey = parseDateKey(dateStr);
@@ -60,10 +126,34 @@ export class MilkProductsService {
       },
     });
 
+    const base = record ?? ZERO_STOCK(dateStr);
+    const [lassiInv, butterInv, gheeInv] = await Promise.all([
+      inventoryDaySnapshot('LASSI', dateStr),
+      inventoryDaySnapshot('BUTTER', dateStr),
+      inventoryDaySnapshot('GHEE', dateStr),
+    ]);
+
     return {
       success: true,
       statusCode: 200,
-      data: record ?? ZERO_STOCK(dateStr),
+      data: {
+        ...base,
+        // Lassi — inventory is source of truth
+        lassiProduced: lassiInv.added,
+        lassiSold: lassiInv.sold,
+        lassiRemaining: lassiInv.closing,
+        // Butter
+        butterOpening: butterInv.opening,
+        butterProduced: butterInv.added,
+        butterSold: butterInv.sold,
+        butterConverted: butterInv.converted,
+        butterClosing: butterInv.closing,
+        // Ghee
+        gheeOpening: gheeInv.opening,
+        gheeProduced: gheeInv.added,
+        gheeSold: gheeInv.sold,
+        gheeClosing: gheeInv.closing,
+      },
     };
   }
 
@@ -101,27 +191,46 @@ export class MilkProductsService {
     }
   }
 
-  /** POST add milk */
-  static async addMilk(dateStr: string, quantity: number) {
+  /** POST add milk — also deducts the same kg from inventory milk */
+  static async addMilk(dateStr: string, quantity: number, userId?: number) {
     if (!quantity || quantity <= 0) {
       return { success: false, statusCode: 400, message: 'quantity must be > 0.' };
     }
-    const record = await prisma.$transaction(async (tx) => {
-      const updated = await this.upsertStock(tx, dateStr, (cur) => ({
-        milkTotal: money(cur.milkTotal + quantity),
-      }));
-      await tx.milkProductTransaction.create({
-        data: {
-          date: parseDateKey(dateStr),
-          product: 'Milk',
-          type: 'milk_added',
-          quantity,
-        },
+    const qty = money(quantity);
+    const ref = `f2-milk-${dateStr}-${Date.now()}`;
+    try {
+      const record = await prisma.$transaction(async (tx) => {
+        await deductMilkConversion(tx, {
+          milkKg: qty,
+          reference: ref,
+          source: 'F2 milk added (from inventory)',
+          userId,
+          requireStock: false,
+        });
+        const updated = await this.upsertStock(tx, dateStr, (cur) => ({
+          milkTotal: money(cur.milkTotal + qty),
+        }));
+        await tx.milkProductTransaction.create({
+          data: {
+            date: parseDateKey(dateStr),
+            product: 'Milk',
+            type: 'milk_added',
+            quantity: qty,
+            reference: ref,
+            notes: 'Deducted from inventory milk',
+          },
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+        return updated;
       });
-      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
-      return updated;
-    });
-    return { success: true, statusCode: 200, data: record };
+      return { success: true, statusCode: 200, data: record };
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to add milk.';
+      if (/not enough milk|milk inventory product not found/i.test(msg)) {
+        return { success: false, statusCode: 422, message: msg };
+      }
+      throw err;
+    }
   }
 
   /** POST lassi production */
@@ -184,7 +293,7 @@ export class MilkProductsService {
     return { success: true, statusCode: 200, data: record };
   }
 
-  /** POST butter → ghee conversion */
+  /** POST butter → ghee conversion — updates F2 daily stock AND Inventory */
   static async addConversion(dateStr: string, butterKg: number, gheeKg: number, notes?: string) {
     if (!butterKg || butterKg <= 0 || !gheeKg || gheeKg <= 0) {
       return { success: false, statusCode: 400, message: 'butterKg and gheeKg must be > 0.' };
@@ -194,6 +303,28 @@ export class MilkProductsService {
         const dateKey = parseDateKey(dateStr);
         const dateOnly = new Date(dateStr);
         dateOnly.setHours(0, 0, 0, 0);
+
+        const butterProduct = await findInventoryProduct(tx, 'BUTTER');
+        const gheeProduct = await findInventoryProduct(tx, 'GHEE');
+        if (!butterProduct) {
+          throw new Error('Butter inventory product not found. Add Butter in Inventory first.');
+        }
+        if (!gheeProduct) {
+          throw new Error('Ghee inventory product not found. Add Ghee in Inventory first.');
+        }
+
+        const butterBal =
+          (
+            await tx.inventoryMovement.aggregate({
+              where: { productId: butterProduct.id },
+              _sum: { quantity: true },
+            })
+          )._sum.quantity || 0;
+        if (butterBal < butterKg) {
+          throw new Error(
+            `Not enough Butter in Inventory. Available ${money(butterBal)} kg, need ${money(butterKg)} kg.`
+          );
+        }
 
         const existing = await tx.milkProductDailyStock.findFirst({
           where: {
@@ -236,6 +367,30 @@ export class MilkProductsService {
           data: { date: dateKey, butterUsed: butterKg, gheeProduced: gheeKg, notes: notes ?? null },
         });
 
+        const ts = Date.now();
+        const butterMove = await tx.inventoryMovement.create({
+          data: {
+            productId: butterProduct.id,
+            quantity: money(-butterKg),
+            movementType: 'CONVERSION',
+            source: 'Butter → Ghee conversion',
+            reference: `f2-conv-butter-${dateStr}-${ts}`,
+            date: new Date(),
+          },
+        });
+        const gheeMove = await tx.inventoryMovement.create({
+          data: {
+            productId: gheeProduct.id,
+            quantity: money(gheeKg),
+            movementType: 'CONVERSION',
+            source: 'Butter → Ghee conversion',
+            reference: `f2-conv-ghee-${dateStr}-${ts}`,
+            date: new Date(),
+          },
+        });
+        await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', butterMove.id, butterMove, 2);
+        await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', gheeMove.id, gheeMove, 2);
+
         await tx.milkProductTransaction.create({
           data: {
             date: dateKey,
@@ -260,9 +415,15 @@ export class MilkProductsService {
         return updated;
       });
 
-      return { success: true, statusCode: 200, data: record };
-    } catch {
-      return { success: false, statusCode: 500, message: 'Conversion failed. No changes were saved.' };
+      // Return inventory-backed snapshot so UI matches Inventory immediately
+      const snap = await this.getDailyStock(dateStr);
+      return { success: true, statusCode: 200, data: snap.data };
+    } catch (err: any) {
+      const msg = err?.message || 'Conversion failed. No changes were saved.';
+      if (/not enough butter|inventory product not found/i.test(msg)) {
+        return { success: false, statusCode: 422, message: msg };
+      }
+      return { success: false, statusCode: 500, message: msg };
     }
   }
 

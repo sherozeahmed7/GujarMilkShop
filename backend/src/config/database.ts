@@ -95,8 +95,9 @@ const CORE_INVENTORY_PRODUCTS = [
 
 async function seedCoreInventoryProducts() {
   try {
+    const { SyncQueueService } = await import('../services/syncQueue.service');
     for (const item of CORE_INVENTORY_PRODUCTS) {
-      await prisma.inventoryProduct.upsert({
+      const product = await prisma.inventoryProduct.upsert({
         where: { code: item.code },
         update: {
           name: item.name,
@@ -120,6 +121,19 @@ async function seedCoreInventoryProducts() {
           isLocked: true,
         },
       });
+
+      // Ensure cloud mapping exists so inventory movements can resolve product_uuid
+      const mapped = await SyncQueueService.getCloudMapping('InventoryProduct', product.id);
+      if (!mapped) {
+        await SyncQueueService.enqueueUpdate(
+          prisma,
+          'InventoryProduct',
+          product.id,
+          product,
+          0,
+          'UPSERT'
+        );
+      }
     }
     console.log('📦 Core inventory ready: Milk, Yogurt, Butter, Lassi, Ghee');
   } catch (error) {

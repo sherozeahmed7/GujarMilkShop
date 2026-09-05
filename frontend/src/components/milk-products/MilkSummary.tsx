@@ -24,7 +24,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <Coffee className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm font-medium text-slate-500">Lassi Remaining</p>
+          <p className="text-sm font-medium text-slate-500">Lassi Inventory</p>
           <h3 className="text-xl font-bold text-slate-800">{stock.lassiRemaining} kg</h3>
         </div>
       </div>
@@ -34,7 +34,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <Box className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm font-medium text-slate-500">Butter Stock</p>
+          <p className="text-sm font-medium text-slate-500">Butter Inventory</p>
           <h3 className="text-xl font-bold text-slate-800">{stock.butterClosing} kg</h3>
         </div>
       </div>
@@ -44,7 +44,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <Archive className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm font-medium text-slate-500">Ghee Stock</p>
+          <p className="text-sm font-medium text-slate-500">Ghee Inventory</p>
           <h3 className="text-xl font-bold text-slate-800">{stock.gheeClosing} kg</h3>
         </div>
       </div>

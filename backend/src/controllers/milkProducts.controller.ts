@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/database';
 import { ApiResponse } from '../utils/apiResponse';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { deductMilkConversion } from '../services/inventory.service';
+import { SyncQueueService } from '../services/syncQueue.service';
 
 function money(n: number): number {
   return Math.round(n * 100) / 100;
@@ -55,18 +58,61 @@ export const addMilk = async (req: Request, res: Response, next: NextFunction) =
     const qty = Number(quantity);
     if (!qty || qty <= 0 || isNaN(qty)) return ApiResponse.error(res, 'quantity must be > 0.', 400);
 
-    const stock = await prisma.milkProductDailyStock.upsert({
-      where:  { date: range.dayStart },
-      create: { date: range.dayStart, milkTotal: money(qty) },
-      update: { milkTotal: { increment: money(qty) } },
-    });
+    const userId = (req as AuthenticatedRequest).user?.userId;
+    const dateKey = date as string;
+    const ref = `f2-milk-${dateKey}-${Date.now()}`;
 
-    await prisma.milkProductTransaction.create({
-      data: { date: range.dayStart, product: 'Milk', type: 'milk_added', quantity: money(qty) },
-    });
+    try {
+      const stock = await prisma.$transaction(async (tx) => {
+        // Milk moved into F2 comes from inventory milk stock
+        await deductMilkConversion(tx, {
+          milkKg: money(qty),
+          reference: ref,
+          source: 'F2 milk added (from inventory)',
+          userId,
+          requireStock: false,
+        });
 
-    return ApiResponse.success(res, 'Milk added.', stock);
-  } catch (err) { next(err); }
+        const updated = await tx.milkProductDailyStock.upsert({
+          where: { date: range.dayStart },
+          create: { date: range.dayStart, milkTotal: money(qty) },
+          update: { milkTotal: { increment: money(qty) } },
+        });
+
+        await tx.milkProductTransaction.create({
+          data: {
+            date: range.dayStart,
+            product: 'Milk',
+            type: 'milk_added',
+            quantity: money(qty),
+            reference: ref,
+            notes: 'Deducted from inventory milk',
+          },
+        });
+
+        await SyncQueueService.enqueueUpdate(
+          tx,
+          'MilkProductDailyStock',
+          updated.id,
+          updated,
+          2,
+          'UPSERT'
+        );
+
+        return updated;
+      });
+
+      return ApiResponse.success(res, 'Milk added (deducted from inventory).', stock);
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to add milk.';
+      if (/not enough milk|milk inventory product not found/i.test(msg)) {
+        return ApiResponse.error(res, msg, 422);
+      }
+      throw err;
+    }
+  } catch (err) {
+    next(err);
+  }
 };
 
 // ─── POST /api/milk-products/stock/lassi-production ──────────────────────────

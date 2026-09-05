@@ -1,11 +1,13 @@
+
 import React, { useEffect, useState } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
-import { Plus, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { NumericKeypadInput } from '../pos/NumericKeypadInput';
 
 interface Props {
   stock: MilkProductsDailyStock;
-  onAddProduction: (qty: number) => void;
+  /** Sellable stock from Inventory screen (authoritative for POS sales) */
+  inventoryStockKg?: number;
   onOpenConversion: () => void;
   onAddToCart?: (name: string, qty: number, unitPrice: number, total?: number) => void;
   defaultRatePerKg?: number;
@@ -13,12 +15,11 @@ interface Props {
 
 export const ButterSection: React.FC<Props> = ({
   stock,
-  onAddProduction,
+  inventoryStockKg = 0,
   onOpenConversion,
   onAddToCart,
   defaultRatePerKg = 0,
 }) => {
-  const [prodInput, setProdInput] = useState('');
   const [saleQty, setSaleQty] = useState('');
   const [salePrice, setSalePrice] = useState(
     defaultRatePerKg > 0 ? String(defaultRatePerKg) : ''
@@ -39,11 +40,7 @@ export const ButterSection: React.FC<Props> = ({
         ? defaultRatePerKg
         : 1200;
 
-  const handleProd = () => {
-    const q = parseFloat(prodInput);
-    if (q > 0) onAddProduction(q);
-    setProdInput('');
-  };
+  const availableKg = Number(inventoryStockKg) || 0;
 
   const handleWeightPreset = (weight: number) => {
     const rate = effectiveRate;
@@ -93,9 +90,24 @@ export const ButterSection: React.FC<Props> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Rs. {effectiveRate.toLocaleString()} / kg &nbsp;|&nbsp; Stock:{' '}
-            <span className="font-bold text-amber-600">{stock.butterClosing} kg</span>
+            Rs. {effectiveRate.toLocaleString()} / kg
+            {onAddToCart ? (
+              <>
+                {' '}&nbsp;|&nbsp; Inventory:{' '}
+                <span className={`font-bold ${availableKg > 0 ? 'text-amber-600' : 'text-rose-600'}`}>
+                  {availableKg} kg
+                </span>
+              </>
+            ) : (
+              <>
+                {' '}&nbsp;|&nbsp; F2:{' '}
+                <span className="font-bold text-amber-600">{stock.butterClosing} kg</span>
+              </>
+            )}
           </p>
+          {onAddToCart && saleError && (
+            <p className="text-[11px] text-rose-600 font-medium mt-1 max-w-xs">{saleError}</p>
+          )}
         </div>
 
         {onAddToCart && (
@@ -206,7 +218,7 @@ export const ButterSection: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Stock Details */}
+        {/* Stock Details — from Inventory (exact) */}
         <div className="space-y-1.5 text-xs">
           <div className="flex justify-between text-slate-500">
             <span>Opening:</span>
@@ -225,29 +237,12 @@ export const ButterSection: React.FC<Props> = ({
             <span className="font-medium text-slate-800">{stock.butterConverted} kg</span>
           </div>
           <div className="flex justify-between pt-1.5 border-t border-slate-100">
-            <span className="font-bold text-slate-700">Closing Stock:</span>
+            <span className="font-bold text-slate-700">Inventory stock:</span>
             <span className="font-bold text-amber-600">{stock.butterClosing} kg</span>
           </div>
         </div>
 
-        {/* Production & Actions */}
         <div className="mt-auto space-y-2.5 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              placeholder="Production (kg)"
-              className="flex-1 border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-              value={prodInput}
-              onChange={(e) => setProdInput(e.target.value)}
-            />
-            <button
-              onClick={handleProd}
-              className="bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-medium transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           <button
             onClick={onOpenConversion}
             className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-lg py-2 text-xs font-bold transition-colors"
