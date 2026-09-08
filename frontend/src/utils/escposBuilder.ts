@@ -1,6 +1,5 @@
 /**
- * ESC/POS Byte Builder for Thermal Printers (58mm & 80mm)
- * Matches the layout of POS Config Receipt Preview.
+ * ESC/POS Byte Builder for Thermal Printers (58mm & 80mm).
  */
 
 // ---------------------------------------------------------------------------
@@ -177,19 +176,17 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   push(INIT);
   push(newline());
 
-  // ── 2. Shop Header ────────────────────────────────────────────────────────
+  // ── 2. Compact receipt header ─────────────────────────────────────────────
   push(ALIGN_CENTER);
   if (sale.shopName) {
-    push(BOLD_ON, DOUBLE_ON);
-    push(encodeText(sale.shopName.slice(0, cols === 32 ? 16 : 24)), newline());
-    push(DOUBLE_OFF, BOLD_OFF);
+    push(BOLD_ON);
+    push(encodeText(sale.shopName.toUpperCase().slice(0, cols)), newline());
+    push(BOLD_OFF);
   }
 
-  push(BOLD_ON);
   push(centeredLine('SALE RECEIPT', cols), newline());
-  push(BOLD_OFF);
 
-  // ── 3. Token Number (Large) ───────────────────────────────────────────────
+  // ── 3. Token number ───────────────────────────────────────────────────────
   if (sale.tokenNumber !== undefined && sale.tokenNumber !== null) {
     const tokenFormatted = sale.tokenNumber < 10 ? `0${sale.tokenNumber}` : `${sale.tokenNumber}`;
     push(BOLD_ON, DOUBLE_ON);
@@ -198,29 +195,23 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   }
   push(newline());
 
-  // ── 4. Bill & Date/Time ───────────────────────────────────────────────────
+  // ── 4. Bill and date/time ─────────────────────────────────────────────────
   push(ALIGN_LEFT);
   const date = new Date(sale.createdAt);
   const dateStr = date.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = date.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   push(twoCol(`Bill: BILL-${sale.id}`, `${dateStr} ${timeStr}`, cols));
-  if (sale.customerName) {
-    push(twoCol('Customer:', sale.customerName, cols));
-  }
-  if (sale.cashierName) {
-    push(twoCol('Cashier:', sale.cashierName, cols));
-  }
 
-  // ── 5. Payment Method Banner ──────────────────────────────────────────────
-  push(separator('=', cols));
+  // ── 5. Payment method ─────────────────────────────────────────────────────
+  push(separator('-', cols));
   push(ALIGN_CENTER, BOLD_ON);
   const method = (sale.paymentMethod || 'CASH').toUpperCase();
   push(centeredLine(`PAID: ${method}`, cols), newline());
   push(BOLD_OFF);
-  push(separator('=', cols));
+  push(separator('-', cols));
 
-  // ── 6. Items with Dotted Leader & Sub-line ─────────────────────────────────
+  // ── 6. Compact item rows ──────────────────────────────────────────────────
   push(ALIGN_LEFT);
   for (const item of sale.items) {
     const itemUpper = item.itemName.toUpperCase();
@@ -236,34 +227,14 @@ export function buildReceipt(sale: ReceiptSale): number[] {
     push(encodeText(subLine), newline());
   }
 
-  // ── 7. Totals Section ─────────────────────────────────────────────────────
+  // ── 7. Total ──────────────────────────────────────────────────────────────
   push(separator('-', cols));
 
-  if (sale.discountAmount && sale.discountAmount > 0) {
-    push(twoCol('Discount:', `${currency}${sale.discountAmount}`, cols));
-  }
-
-  // Large Total Row
-  push(BOLD_ON, DBL_HEIGHT);
+  push(BOLD_ON);
   push(twoCol('TOTAL', `${currency}${sale.totalAmount}`, cols));
-  push(DOUBLE_OFF, BOLD_OFF);
+  push(BOLD_OFF);
 
-  push(separator('-', cols));
-
-  // Paid & Balance / Change
-  push(twoCol('Paid:', `${currency}${sale.paidAmount}`, cols));
-
-  if (sale.remainingBalance > 0) {
-    push(BOLD_ON);
-    push(twoCol('Balance Due:', `${currency}${sale.remainingBalance}`, cols));
-    push(BOLD_OFF);
-  } else if (sale.remainingBalance < 0) {
-    push(twoCol('Change Return:', `${currency}${Math.abs(sale.remainingBalance)}`, cols));
-  }
-
-  push(newline());
-
-  // ── 8. Barcode (Code39) ───────────────────────────────────────────────────
+  // ── 8. Barcode and return instruction ─────────────────────────────────────
   try {
     const barcodeCode = `BILL-${sale.id}`;
     push(buildBarcode(barcodeCode));
