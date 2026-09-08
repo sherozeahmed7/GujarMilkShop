@@ -83,6 +83,12 @@ export const ActivityLogs: React.FC = () => {
           { header: 'Action', dataKey: 'action' }, { header: 'Description', dataKey: 'description' },
           { header: 'Status', dataKey: 'status' }
         ]}
+        exportSummary={{
+          totalEvents: filtered.length,
+          successful: successCount,
+          warnings: warningCount,
+          errors: errorCount,
+        }}
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

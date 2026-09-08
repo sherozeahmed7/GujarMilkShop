@@ -60,6 +60,15 @@ export const CashRegisterReport: React.FC = () => {
           { header: 'Expected', dataKey: 'expectedCash' }, { header: 'Actual', dataKey: 'countedCash' },
           { header: 'Variance', dataKey: 'variance' }, { header: 'Status', dataKey: 'status' }
         ]}
+        exportSummary={data?.summary ? {
+          openingCash: fmt(data.summary.openingCash),
+          cashSales: fmt(data.summary.cashSales),
+          expenses: fmt(data.summary.expenses),
+          expectedCash: fmt(data.summary.expectedCash),
+          countedCash: fmt(data.summary.countedCash),
+          closingCash: fmt(data.summary.closingCash),
+          variance: fmt(data.summary.variance),
+        } : undefined}
       />
       <ReportFilters currentFilter={filter} onFilterChange={setFilter} onRefresh={loadReport} searchTerm={searchTerm} onSearchChange={setSearchTerm} isLoading={isLoading} />
 

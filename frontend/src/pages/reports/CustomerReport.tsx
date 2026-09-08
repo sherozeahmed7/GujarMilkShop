@@ -80,6 +80,14 @@ export const CustomerReport: React.FC = () => {
           { header: 'Credit Sales', dataKey: 'credit' }, { header: 'Outstanding', dataKey: 'outstanding' },
           { header: 'Last Purchase', dataKey: 'lastPurchase' }, { header: 'Status', dataKey: 'isActive' }
         ]}
+        exportSummary={data?.summary ? {
+          totalCustomers: data.summary.totalCustomers,
+          totalSales: fmt(data.summary.totalCustomerSales),
+          totalCollected: fmt(data.summary.totalCollected),
+          totalOutstanding: fmt(data.summary.totalOutstanding),
+          creditSales: fmt(data.summary.creditSales),
+          customerReturns: fmt(data.summary.customerReturns),
+        } : undefined}
       />
       <ReportFilters currentFilter={filter} onFilterChange={setFilter} onRefresh={loadReport} searchTerm={searchTerm} onSearchChange={setSearchTerm} isLoading={isLoading} />
 

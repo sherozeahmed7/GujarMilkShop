@@ -1,6 +1,22 @@
 export interface MilkProductsDailyStock {
   date: string; // YYYY-MM-DD
   milkTotal: number;
+  milkRatePerKg?: number;
+  lassiRatePerKg?: number;
+  butterRatePerKg?: number;
+  milkAddedCost?: number;
+  lassiBreakEvenKg?: number;
+  butterBreakEvenKg?: number;
+  butterBreakEvenCost?: number;
+  butterInventoryValue?: number;
+  butterTotalValue?: number;
+  butterRecoveryResult?: number;
+  butterMilkCostShortfall?: number;
+  milkRemainingKg?: number;
+  milkRecoveredFromLassi?: number;
+  milkRecoveredFromButter?: number;
+  milkRecoveryKgFromButter?: number;
+  milkLossCost?: number;
   
   // Lassi (Daily - resets to 0 next day)
   lassiProduced: number;

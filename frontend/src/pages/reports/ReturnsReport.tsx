@@ -58,6 +58,14 @@ export const ReturnsReport: React.FC = () => {
           { header: 'Items', dataKey: 'items' }, { header: 'Amount', dataKey: 'amount' },
           { header: 'Method', dataKey: 'refundMethod' }, { header: 'Reason', dataKey: 'reason' }
         ]}
+        exportSummary={data?.summary ? {
+          totalReturns: data.summary.totalReturns,
+          returnAmount: fmt(data.summary.returnAmount),
+          cashRefunds: fmt(data.summary.cashRefunds),
+          creditRefunds: fmt(data.summary.creditRefunds),
+          returnedBills: data.summary.returnedBills,
+          returnedItems: data.summary.returnedItems,
+        } : undefined}
       />
       <ReportFilters currentFilter={filter} onFilterChange={setFilter} onRefresh={loadReport} searchTerm={searchTerm} onSearchChange={setSearchTerm} isLoading={isLoading} />
 

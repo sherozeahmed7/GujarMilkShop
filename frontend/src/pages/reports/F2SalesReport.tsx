@@ -98,6 +98,10 @@ export const F2SalesReport: React.FC = () => {
     date: new Date(s.createdAt).toLocaleDateString(),
     time: new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     customer: saleCustomerLabel(s),
+    items: (s.items || [])
+      .filter((item) => ['Lassi', 'Butter', 'Ghee'].includes(item.itemName))
+      .map((item) => `${item.itemName} (${item.quantity} kg)`)
+      .join(', '),
     saleType: saleTypeLabel(s.saleType),
     paymentMethod: paymentLabel(s),
     total: s.totalAmount,
@@ -116,11 +120,18 @@ export const F2SalesReport: React.FC = () => {
           { header: 'Date', dataKey: 'date' },
           { header: 'Time', dataKey: 'time' },
           { header: 'Customer', dataKey: 'customer' },
+          { header: 'F2 Items', dataKey: 'items' },
           { header: 'Sale Type', dataKey: 'saleType' },
           { header: 'Payment Method', dataKey: 'paymentMethod' },
           { header: 'Total Amount', dataKey: 'total' },
           { header: 'Status', dataKey: 'status' },
         ]}
+        exportSummary={{
+          netF2Sales: `Rs. ${money(summary.netSales).toLocaleString()}`,
+          f2Bills: summary.totalBills,
+          cashSales: `Rs. ${money(summary.cashSales).toLocaleString()}`,
+          creditAndSplit: `Rs. ${money(summary.splitSales).toLocaleString()}`,
+        }}
       />
 
       <ReportFilters

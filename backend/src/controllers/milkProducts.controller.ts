@@ -4,6 +4,7 @@ import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { deductMilkConversion } from '../services/inventory.service';
 import { SyncQueueService } from '../services/syncQueue.service';
+import { MilkProductsService } from '../services/milkProducts.service';
 
 function money(n: number): number {
   return Math.round(n * 100) / 100;
@@ -26,6 +27,12 @@ function emptyStock(date: string) {
   return {
     id: null, date,
     milkTotal: 0, lassiProduced: 0, lassiSold: 0, lassiRemaining: 0,
+    milkRatePerKg: 0, lassiRatePerKg: 0, butterRatePerKg: 0,
+    milkAddedCost: 0, lassiBreakEvenKg: 0, butterBreakEvenKg: 0,
+    butterBreakEvenCost: 0, butterInventoryValue: 0, butterMilkCostShortfall: 0,
+    milkRemainingKg: 0, milkRecoveredFromLassi: 0, milkLossCost: 0,
+    milkRecoveredFromButter: 0, milkRecoveryKgFromButter: 0,
+    butterTotalValue: 0, butterRecoveryResult: 0,
     butterOpening: 0, butterProduced: 0, butterSold: 0, butterConverted: 0, butterClosing: 0,
     gheeOpening: 0, gheeProduced: 0, gheeSold: 0, gheeClosing: 0,
     createdAt: null, updatedAt: null,
@@ -40,11 +47,59 @@ export const getDailyStock = async (req: Request, res: Response, next: NextFunct
       return ApiResponse.error(res, 'date query param is required and must be YYYY-MM-DD (e.g. 2024-08-25).', 400);
     }
 
-    const stock = await prisma.milkProductDailyStock.findFirst({
-      where: { date: { gte: range.dayStart, lte: range.dayEnd } },
-    });
+    const stockResult = await MilkProductsService.getDailyStock(req.query.date as string);
+    const stock = stockResult.data;
 
-    return ApiResponse.success(res, 'Daily stock fetched.', stock ?? emptyStock(req.query.date as string));
+    const latestRate = await prisma.dailyRate.findFirst({
+      orderBy: { id: 'desc' },
+      select: { milkRate: true, lassiRate: true, butterRate: true },
+    });
+    const milkTotal = Number(stock?.milkTotal ?? 0);
+    const milkRatePerKg = Number(latestRate?.milkRate ?? 0);
+    const lassiRatePerKg = Number(latestRate?.lassiRate ?? 0);
+    const butterRatePerKg = Number(latestRate?.butterRate ?? 0);
+    const milkAddedCost = money(milkTotal * milkRatePerKg);
+    const lassiBreakEvenKg = lassiRatePerKg > 0
+      ? Math.round((milkAddedCost / lassiRatePerKg) * 1000) / 1000
+      : 0;
+    const lassiSold = Number(stock?.lassiSold ?? 0);
+    const milkRecoveredFromLassi = money(lassiSold * lassiRatePerKg);
+    const butterSoldValue = money(Number(stock?.butterSold ?? 0) * butterRatePerKg);
+    const milkRecoveredFromButter = money(Math.min(butterSoldValue, milkAddedCost));
+    const milkRecoveryKgFromButter = milkRatePerKg > 0
+      ? Math.round((milkRecoveredFromButter / milkRatePerKg) * 1000) / 1000
+      : 0;
+    const milkRemainingKg = Math.max(milkTotal - lassiSold - milkRecoveryKgFromButter, 0);
+    const milkLossCost = money(Math.max(milkAddedCost - milkRecoveredFromLassi - milkRecoveredFromButter, 0));
+    const butterBreakEvenKg = butterRatePerKg > 0
+      ? Math.round((milkAddedCost / butterRatePerKg) * 1000) / 1000
+      : 0;
+    const butterBreakEvenCost = milkAddedCost;
+    const butterInventoryKg = Math.max(Number(stock?.butterClosing ?? 0), 0);
+    const butterInventoryValue = money(butterInventoryKg * butterRatePerKg);
+    const butterTotalValue = money(butterInventoryValue + milkRecoveredFromLassi);
+    const butterRecoveryResult = money(butterTotalValue - milkAddedCost);
+    const butterMilkCostShortfall = money(Math.max(milkAddedCost - butterInventoryValue, 0));
+
+    return ApiResponse.success(res, 'Daily stock fetched.', {
+      ...(stock ?? emptyStock(req.query.date as string)),
+      milkRatePerKg,
+      lassiRatePerKg,
+      butterRatePerKg,
+      milkAddedCost,
+      lassiBreakEvenKg,
+      butterBreakEvenKg,
+      butterBreakEvenCost,
+      butterInventoryValue,
+      butterTotalValue,
+      butterRecoveryResult,
+      butterMilkCostShortfall,
+      milkRemainingKg,
+      milkRecoveredFromLassi,
+      milkRecoveredFromButter,
+      milkRecoveryKgFromButter,
+      milkLossCost,
+    });
   } catch (err) { next(err); }
 };
 

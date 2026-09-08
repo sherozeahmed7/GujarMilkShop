@@ -127,8 +127,9 @@ export const getCustomerReport = async (filter: DateFilterType) => {
 };
 
 // ── Supplier Report ───────────────────────────────────────────────────────────
-export const getSupplierReport = async (_filter: DateFilterType) => {
-  const res = await apiClient.get('/reports/suppliers');
+export const getSupplierReport = async (filter: DateFilterType) => {
+  const { from, to } = dateParams(filter);
+  const res = await apiClient.get('/reports/suppliers', { from, to });
   return res.data;
 };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, ShoppingCart, Activity, Download, FileText, Plus } from 'lucide-react';
+import { Package, ShoppingCart, Activity, Plus } from 'lucide-react';
 import { useInventory } from '../hooks/useInventory';
 import { InventorySummaryCards } from '../components/inventory/InventorySummaryCards';
 import { ProductsTab } from '../components/inventory/ProductsTab';
@@ -8,6 +8,7 @@ import { StockMovementsTab } from '../components/inventory/StockMovementsTab';
 import { AddProductModal } from '../components/inventory/AddProductModal';
 import { EditProductModal } from '../components/inventory/EditProductModal';
 import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
+import { ExportButtons } from '../components/reports/ExportButtons';
 import { Product } from '../types/inventory';
 
 export const Inventory: React.FC = () => {
@@ -52,12 +53,30 @@ export const Inventory: React.FC = () => {
           <p className="text-slate-500 text-sm mt-1">Track product levels, valuation, and refill status.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => handleAction('Exporting Excel...')} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
-            <Download className="w-4 h-4" /> Excel
-          </button>
-          <button onClick={() => handleAction('Generating PDF...')} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
-            <FileText className="w-4 h-4" /> PDF
-          </button>
+          <ExportButtons
+            reportName="Inventory"
+            data={products.map((product) => ({
+              ...product,
+              inventoryValue: product.stock * product.cost,
+            }))}
+            columns={[
+              { header: 'Code', dataKey: 'code' },
+              { header: 'Product', dataKey: 'name' },
+              { header: 'Category', dataKey: 'category' },
+              { header: 'Stock', dataKey: 'stock' },
+              { header: 'Unit', dataKey: 'unit' },
+              { header: 'Cost', dataKey: 'cost' },
+              { header: 'Selling Price', dataKey: 'sellPrice' },
+              { header: 'Inventory Value', dataKey: 'inventoryValue' },
+              { header: 'Status', dataKey: 'status' },
+            ]}
+            summaryData={{
+              products: summary.totalProducts,
+              stockValue: `Rs. ${summary.stockValue.toLocaleString()}`,
+              lowStock: summary.lowStockCount,
+              outOfStock: summary.outOfStockCount,
+            }}
+          />
           <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-3 py-2 bg-emerald-600 rounded-lg text-sm font-medium text-white hover:bg-emerald-700 transition-colors shadow-sm">
             <Plus className="w-4 h-4" /> Add Product
           </button>

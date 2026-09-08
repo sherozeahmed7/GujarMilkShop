@@ -341,8 +341,12 @@ export class ReportsController {
   // ── SUPPLIER REPORT ─────────────────────────────────────────────────────────
   static async suppliers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
+      const { from, to } = parseRange(req);
       const suppliers = await prisma.supplier.findMany({
-        include: { collections: true, payments: true },
+        include: {
+          collections: { where: { date: { gte: from, lte: to } } },
+          payments: { where: { date: { gte: from, lte: to } } },
+        },
         orderBy: { name: 'asc' },
       });
 

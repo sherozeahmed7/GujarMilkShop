@@ -59,6 +59,14 @@ export const InventoryReport: React.FC = () => {
           { header: 'Purchase Cost', dataKey: 'costPrice' }, { header: 'Selling Price', dataKey: 'salePrice' },
           { header: 'Inventory Value', dataKey: 'inventoryValue' }, { header: 'Status', dataKey: 'stockStatus' }
         ]}
+        exportSummary={data?.summary ? {
+          totalProducts: data.summary.totalProducts,
+          totalStockUnits: data.summary.totalStock,
+          lowStockItems: data.summary.lowStockItems,
+          outOfStock: data.summary.outOfStockItems,
+          costValue: fmt(data.summary.costValue),
+          retailValue: fmt(data.summary.estimatedRetailValue),
+        } : undefined}
       />
 
       {/* Real-time filters (no date filter for inventory) */}

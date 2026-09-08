@@ -58,6 +58,14 @@ export const SupplierReport: React.FC = () => {
           { header: 'Returns', dataKey: 'returns' }, { header: 'Incentives', dataKey: 'incentives' },
           { header: 'Outstanding', dataKey: 'outstanding' }, { header: 'Status', dataKey: 'status' }
         ]}
+        exportSummary={data?.summary ? {
+          totalSuppliers: data.summary.totalSuppliers,
+          totalPurchases: fmt(data.summary.totalPurchases),
+          totalPaid: fmt(data.summary.totalPaid),
+          totalPayable: fmt(data.summary.totalPayable),
+          totalReturns: fmt(data.summary.totalReturns),
+          incentives: fmt(data.summary.totalIncentives),
+        } : undefined}
       />
       <ReportFilters currentFilter={filter} onFilterChange={setFilter} onRefresh={loadReport} searchTerm={searchTerm} onSearchChange={setSearchTerm} isLoading={isLoading} />
 

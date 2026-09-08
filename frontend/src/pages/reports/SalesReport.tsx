@@ -365,6 +365,13 @@ export const SalesReport: React.FC = () => {
           { header: 'Status', dataKey: 'status' },
 
         ]}
+        exportSummary={{
+          netSales: fmt(summary.netSales),
+          cashSales: fmt(summary.cashSales),
+          onlineSales: fmt(summary.onlineSales),
+          splitBills: fmt(summary.splitSales),
+          totalBills: summary.totalBills,
+        }}
 
       />
 

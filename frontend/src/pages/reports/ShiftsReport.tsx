@@ -57,6 +57,15 @@ export const ShiftsReport: React.FC = () => {
           { header: 'Expected', dataKey: 'expectedCash' }, { header: 'Counted', dataKey: 'countedCash' },
           { header: 'Variance', dataKey: 'variance' }, { header: 'Status', dataKey: 'status' },
         ]}
+        exportSummary={data?.summary ? {
+          totalShifts: data.summary.totalShifts,
+          openShifts: data.summary.openShifts,
+          closedShifts: data.summary.closedShifts,
+          totalHours: `${data.summary.totalHours}h`,
+          expectedCash: fmt(data.summary.expectedCash),
+          countedCash: fmt(data.summary.countedCash),
+          totalVariance: fmt(data.summary.totalVariance),
+        } : undefined}
       />
       <ReportFilters currentFilter={filter} onFilterChange={setFilter} onRefresh={loadReport} searchTerm={searchTerm} onSearchChange={setSearchTerm} isLoading={isLoading} />
 

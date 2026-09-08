@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { connectDB } from './config/database';
 import { startSyncWorker } from './workers/syncWorker';
 import { startDownstreamSyncWorker } from './workers/downstreamSyncWorker';
+import { startLassiMidnightReset } from './services/lassiMidnightReset.service';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -19,6 +20,9 @@ async function startServer() {
     // Start background sync workers
     startSyncWorker();
     startDownstreamSyncWorker();
+    const lassiResetTimer = startLassiMidnightReset();
+
+    (server as any).lassiResetTimer = lassiResetTimer;
   }).on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`❌ Port ${PORT} is already in use by another application. Please free port ${PORT} and restart the POS.`);
@@ -31,6 +35,8 @@ async function startServer() {
 
   const gracefulShutdown = () => {
     console.log('Stopping POS backend server...');
+    const lassiResetTimer = (server as any).lassiResetTimer;
+    if (lassiResetTimer) clearTimeout(lassiResetTimer);
     server.close(() => {
       console.log('HTTP server closed.');
       process.exit(0);
