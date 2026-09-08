@@ -174,15 +174,9 @@ export function buildReceipt(sale: ReceiptSale): number[] {
 
   // ── 1. Init ───────────────────────────────────────────────────────────────
   push(INIT);
-  push(newline());
 
   // ── 2. Compact receipt header ─────────────────────────────────────────────
   push(ALIGN_CENTER);
-  if (sale.shopName) {
-    push(BOLD_ON);
-    push(encodeText(sale.shopName.toUpperCase().slice(0, cols)), newline());
-    push(BOLD_OFF);
-  }
 
   push(centeredLine('SALE RECEIPT', cols), newline());
 
@@ -193,7 +187,6 @@ export function buildReceipt(sale: ReceiptSale): number[] {
     push(encodeText(`TOKEN ${tokenFormatted}`), newline());
     push(DOUBLE_OFF, BOLD_OFF);
   }
-  push(newline());
 
   // ── 4. Bill and date/time ─────────────────────────────────────────────────
   push(ALIGN_LEFT);
@@ -230,27 +223,27 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   // ── 7. Total ──────────────────────────────────────────────────────────────
   push(separator('-', cols));
 
-  push(BOLD_ON);
+  push(BOLD_ON, DBL_HEIGHT);
   push(twoCol('TOTAL', `${currency}${sale.totalAmount}`, cols));
-  push(BOLD_OFF);
+  push(DOUBLE_OFF, BOLD_OFF);
 
   // ── 8. Barcode and return instruction ─────────────────────────────────────
   try {
     const barcodeCode = `BILL-${sale.id}`;
     push(buildBarcode(barcodeCode));
     push(ALIGN_CENTER);
+    push(separator('-', cols));
     push(encodeText('SCAN FOR RETURN / AUDIT'), newline());
   } catch (_) {}
 
   // ── 9. Footer ─────────────────────────────────────────────────────────────
-  push(newline());
   push(ALIGN_CENTER);
   const footer = sale.footerText || 'Thank you for your visit!';
   const footerLines = wrapText(footer, cols);
   footerLines.forEach(line => push(centeredLine(line, cols), newline()));
 
   // ── 10. Feed Paper & Cut ──────────────────────────────────────────────────
-  push(newline(), newline(), newline(), newline());
+  push(newline());
   if (sale.autoCutter !== false) {
     push(CUT);
   }
