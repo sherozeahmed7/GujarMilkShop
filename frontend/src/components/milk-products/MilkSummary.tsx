@@ -29,6 +29,17 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <h3 className="text-xl font-bold text-slate-800">{stock.lassiRemaining} kg</h3>
         </div>
       </div>
+
+      <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-4">
+        <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+          <Beaker className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-500">Milk Added</p>
+          <h3 className="text-xl font-bold text-slate-800">{stock.milkTotal} kg</h3>
+          <p className="text-[11px] text-slate-400">milk added today</p>
+        </div>
+      </div>
       
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
         <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
