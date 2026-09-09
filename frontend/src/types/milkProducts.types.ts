@@ -2,6 +2,7 @@ export interface MilkProductsDailyStock {
   date: string; // YYYY-MM-DD
   milkTotal: number;
   milkRatePerKg?: number;
+  milkCostPerKg?: number;
   lassiRatePerKg?: number;
   butterRatePerKg?: number;
   milkAddedCost?: number;

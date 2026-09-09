@@ -57,7 +57,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <div>
             <p className="text-sm font-medium text-slate-500">Added Milk Cost</p>
             <h3 className="text-xl font-bold text-slate-800">Rs. {(stock.milkAddedCost ?? 0).toLocaleString()}</h3>
-            <p className="text-[11px] text-slate-400">{stock.milkTotal} kg at Rs. {stock.milkRatePerKg ?? 0}/kg</p>
+            <p className="text-[11px] text-slate-400">{stock.milkTotal} kg at supplier cost Rs. {stock.milkCostPerKg ?? stock.milkRatePerKg ?? 0}/kg</p>
           </div>
       </div>
 

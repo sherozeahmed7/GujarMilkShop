@@ -27,7 +27,7 @@ function emptyStock(date: string) {
   return {
     id: null, date,
     milkTotal: 0, lassiProduced: 0, lassiSold: 0, lassiRemaining: 0,
-    milkRatePerKg: 0, lassiRatePerKg: 0, butterRatePerKg: 0,
+    milkRatePerKg: 0, milkCostPerKg: 0, lassiRatePerKg: 0, butterRatePerKg: 0,
     milkAddedCost: 0, lassiBreakEvenKg: 0, butterBreakEvenKg: 0,
     butterBreakEvenCost: 0, butterInventoryValue: 0, butterMilkCostShortfall: 0,
     milkRemainingKg: 0, milkRecoveredFromLassi: 0, milkLossCost: 0,
@@ -54,11 +54,16 @@ export const getDailyStock = async (req: Request, res: Response, next: NextFunct
       orderBy: { id: 'desc' },
       select: { milkRate: true, lassiRate: true, butterRate: true },
     });
+    const supplierMilkCost = await prisma.supplierCollection.aggregate({
+      where: { quantity: { gt: 0 }, rate: { gt: 0 } },
+      _avg: { rate: true },
+    });
     const milkTotal = Number(stock?.milkTotal ?? 0);
-    const milkRatePerKg = Number(latestRate?.milkRate ?? 0);
+    const milkSellRatePerKg = Number(latestRate?.milkRate ?? 0);
+    const milkCostPerKg = money(Number(supplierMilkCost._avg.rate ?? 0) || milkSellRatePerKg * 0.65);
     const lassiRatePerKg = Number(latestRate?.lassiRate ?? 0);
     const butterRatePerKg = Number(latestRate?.butterRate ?? 0);
-    const milkAddedCost = money(milkTotal * milkRatePerKg);
+    const milkAddedCost = money(milkTotal * milkCostPerKg);
     const lassiBreakEvenKg = lassiRatePerKg > 0
       ? Math.round((milkAddedCost / lassiRatePerKg) * 1000) / 1000
       : 0;
@@ -66,8 +71,8 @@ export const getDailyStock = async (req: Request, res: Response, next: NextFunct
     const milkRecoveredFromLassi = money(lassiSold * lassiRatePerKg);
     const butterSoldValue = money(Number(stock?.butterSold ?? 0) * butterRatePerKg);
     const milkRecoveredFromButter = money(Math.min(butterSoldValue, milkAddedCost));
-    const milkRecoveryKgFromButter = milkRatePerKg > 0
-      ? Math.round((milkRecoveredFromButter / milkRatePerKg) * 1000) / 1000
+    const milkRecoveryKgFromButter = milkCostPerKg > 0
+      ? Math.round((milkRecoveredFromButter / milkCostPerKg) * 1000) / 1000
       : 0;
     const milkRemainingKg = Math.max(milkTotal - lassiSold - milkRecoveryKgFromButter, 0);
     const milkLossCost = money(Math.max(milkAddedCost - milkRecoveredFromLassi - milkRecoveredFromButter, 0));
@@ -83,7 +88,8 @@ export const getDailyStock = async (req: Request, res: Response, next: NextFunct
 
     return ApiResponse.success(res, 'Daily stock fetched.', {
       ...(stock ?? emptyStock(req.query.date as string)),
-      milkRatePerKg,
+      milkRatePerKg: milkCostPerKg,
+      milkCostPerKg,
       lassiRatePerKg,
       butterRatePerKg,
       milkAddedCost,

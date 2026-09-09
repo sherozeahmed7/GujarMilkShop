@@ -55,14 +55,18 @@ export async function resetLassiInventoryAtMidnight(): Promise<void> {
         orderBy: [{ date: 'desc' }, { id: 'desc' }],
         select: { milkRate: true, lassiRate: true, butterRate: true },
       });
-      const milkCost = money(Number(previousStock.milkTotal || 0) * Number(rate?.milkRate || 0));
+      const supplierMilkCost = await tx.supplierCollection.aggregate({
+        where: { quantity: { gt: 0 }, rate: { gt: 0 } },
+        _avg: { rate: true },
+      });
+      const milkCostPerKg = money(Number(supplierMilkCost._avg.rate ?? 0) || Number(rate?.milkRate || 0) * 0.65);
+      const milkCost = money(Number(previousStock.milkTotal || 0) * milkCostPerKg);
       const lassiRecovery = money(Number(previousStock.lassiSold || 0) * Number(rate?.lassiRate || 0));
       const butterRecovery = money(Math.min(
         Number(previousStock.butterSold || 0) * Number(rate?.butterRate || 0),
         milkCost
       ));
-      const milkRate = Number(rate?.milkRate || 0);
-      const butterRecoveryKg = milkRate > 0 ? money(butterRecovery / milkRate) : 0;
+      const butterRecoveryKg = milkCostPerKg > 0 ? money(butterRecovery / milkCostPerKg) : 0;
       const lossCost = money(Math.max(milkCost - lassiRecovery - butterRecovery, 0));
       const remainingMilk = money(Math.max(
         Number(previousStock.milkTotal || 0) - Number(previousStock.lassiSold || 0) - butterRecoveryKg,
@@ -76,7 +80,7 @@ export async function resetLassiInventoryAtMidnight(): Promise<void> {
             category: 'Milk',
             description: `F2 milk cost not recovered from Lassi sales - ${lossDateKey}`,
             quantity: remainingMilk,
-            unitCost: Number(rate?.milkRate || 0),
+            unitCost: milkCostPerKg,
             grossLoss: lossCost,
             soldRecovery: money(lassiRecovery + butterRecovery),
             netExpense: lossCost,

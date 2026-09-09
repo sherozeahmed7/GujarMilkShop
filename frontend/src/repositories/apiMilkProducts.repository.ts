@@ -21,6 +21,7 @@ class ApiMilkProductsRepository implements IMilkProductsRepository {
         date,
         milkTotal: 0,
         milkRatePerKg: 0,
+        milkCostPerKg: 0,
         lassiRatePerKg: 0,
         butterRatePerKg: 0,
         milkAddedCost: 0,
