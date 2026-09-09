@@ -50,8 +50,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
         </div>
       </div>
 
-      {stock.milkTotal > 0 && (
-        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-4">
+      <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
             <CircleDollarSign className="w-6 h-6" />
           </div>
@@ -60,11 +59,9 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
             <h3 className="text-xl font-bold text-slate-800">Rs. {(stock.milkAddedCost ?? 0).toLocaleString()}</h3>
             <p className="text-[11px] text-slate-400">{stock.milkTotal} kg at Rs. {stock.milkRatePerKg ?? 0}/kg</p>
           </div>
-        </div>
-      )}
+      </div>
 
-      {stock.milkTotal > 0 && (
-        <div className="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex items-center gap-4">
+      <div className="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
             <Target className="w-6 h-6" />
           </div>
@@ -73,8 +70,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
             <h3 className="text-xl font-bold text-slate-800">{(stock.lassiBreakEvenKg ?? 0).toLocaleString()} kg</h3>
             <p className="text-[11px] text-slate-400">sell this much to recover milk cost</p>
           </div>
-        </div>
-      )}
+      </div>
 
       <div className="bg-white p-4 rounded-xl border border-cyan-100 shadow-sm flex items-center gap-4">
         <div className="p-3 bg-cyan-50 text-cyan-600 rounded-lg">

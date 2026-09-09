@@ -254,38 +254,11 @@ export const addConversion = async (req: Request, res: Response, next: NextFunct
     if (!bKg || bKg <= 0 || !gKg || gKg <= 0) {
       return ApiResponse.error(res, 'butterKg and gheeKg must both be > 0.', 400);
     }
-
-    const stock = await prisma.$transaction(async (tx) => {
-      const updated = await tx.milkProductDailyStock.upsert({
-        where:  { date: range.dayStart },
-        create: {
-          date: range.dayStart,
-          butterConverted: money(bKg), butterClosing: money(-bKg),
-          gheeProduced:    money(gKg), gheeClosing:   money(gKg),
-        },
-        update: {
-          butterConverted: { increment: money(bKg) },
-          butterClosing:   { decrement: money(bKg) },
-          gheeProduced:    { increment: money(gKg) },
-          gheeClosing:     { increment: money(gKg) },
-        },
-      });
-
-      await tx.butterGheeConversion.create({
-        data: { date: range.dayStart, butterUsed: money(bKg), gheeProduced: money(gKg), notes: notes || null },
-      });
-
-      await tx.milkProductTransaction.create({
-        data: { date: range.dayStart, product: 'Butter', type: 'butter_converted', quantity: money(bKg), notes: `Converted to ${gKg} kg Ghee` },
-      });
-      await tx.milkProductTransaction.create({
-        data: { date: range.dayStart, product: 'Ghee', type: 'ghee_produced', quantity: money(gKg), notes: `Produced from ${bKg} kg Butter` },
-      });
-
-      return updated;
-    });
-
-    return ApiResponse.success(res, 'Butter→Ghee conversion recorded.', stock);
+    const result = await MilkProductsService.addConversion(date, bKg, gKg, notes);
+    if (!result.success) {
+      return ApiResponse.error(res, result.message || 'Conversion failed.', result.statusCode);
+    }
+    return ApiResponse.success(res, 'Butter→Ghee conversion recorded.', result.data);
   } catch (err) {
     next(err);
   }
