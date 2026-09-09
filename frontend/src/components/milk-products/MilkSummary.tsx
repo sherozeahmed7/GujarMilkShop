@@ -1,6 +1,6 @@
 import React from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
-import { Beaker, Coffee, Box, Archive, CircleDollarSign, Target, ShoppingCart, Scale, WalletCards, AlertTriangle } from 'lucide-react';
+import { Beaker, Coffee, Box, Archive, CircleDollarSign, Target, ShoppingCart, Scale, WalletCards, AlertTriangle, ArrowRightLeft, Droplets } from 'lucide-react';
 
 interface Props {
   stock: MilkProductsDailyStock;
@@ -116,6 +116,43 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <p className="text-sm font-medium text-slate-500">Milk Cost Still Uncovered</p>
           <h3 className="text-xl font-bold text-slate-800">Rs. {(stock.butterMilkCostShortfall ?? 0).toLocaleString()}</h3>
           <p className="text-[11px] text-slate-400">after selling all Butter in stock</p>
+        </div>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-violet-100 shadow-sm flex items-center gap-4">
+        <div className="p-3 bg-violet-50 text-violet-600 rounded-lg">
+          <ArrowRightLeft className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-500">Butter Converted Today</p>
+          <h3 className="text-xl font-bold text-slate-800">{stock.butterConverted} kg</h3>
+          <p className="text-[11px] text-slate-400">used for Ghee production</p>
+        </div>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-orange-100 shadow-sm flex items-center gap-4">
+        <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
+          <Droplets className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-500">Ghee Produced Today</p>
+          <h3 className="text-xl font-bold text-slate-800">{stock.gheeProduced} kg</h3>
+          <p className="text-[11px] text-slate-400">from Butter conversion</p>
+        </div>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-violet-100 shadow-sm flex items-center gap-4">
+        <div className="p-3 bg-violet-50 text-violet-600 rounded-lg">
+          <Target className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-500">Ghee Yield</p>
+          <h3 className="text-xl font-bold text-slate-800">
+            {stock.butterConverted > 0
+              ? `${((stock.gheeProduced / stock.butterConverted) * 100).toFixed(1)}%`
+              : '0%'}
+          </h3>
+          <p className="text-[11px] text-slate-400">Ghee produced from Butter used</p>
         </div>
       </div>
 
