@@ -75,7 +75,7 @@ export const Dashboard: React.FC = () => {
       {/* ── Date Filter Bar ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
         <div className="flex items-center gap-2 text-slate-800 font-semibold">
-          <CalendarIcon className="w-5 h-5 text-blue-600" />
+          <CalendarIcon className="w-5 h-5 text-[#166534]" />
           <span>Dashboard Overview</span>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 sm:pb-0">
@@ -83,8 +83,8 @@ export const Dashboard: React.FC = () => {
             <button
               key={preset.label}
               onClick={() => { setDateFilter({ label: preset.label, startDate: new Date(), endDate: new Date() }); setShowCustomPicker(false); }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                dateFilter.label === preset.label ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                dateFilter.label === preset.label ? 'bg-[#166534] text-white shadow-sm font-semibold shadow-[#166534]/20' : 'bg-slate-100 text-slate-600 hover:bg-[#FEF3C7]/60 hover:text-[#166534]'
               }`}
             >
               {preset.label}
@@ -95,8 +95,8 @@ export const Dashboard: React.FC = () => {
             <button
               ref={buttonRef}
               onClick={() => setShowCustomPicker(!showCustomPicker)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
-                isCustom ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+                isCustom ? 'bg-[#166534] text-white shadow-sm font-semibold shadow-[#166534]/20' : 'bg-white border border-slate-200 text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
               }`}
             >
               {isCustom ? dateFilter.label : 'Custom'}
@@ -108,17 +108,17 @@ export const Dashboard: React.FC = () => {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-slate-500">Start Date</label>
                   <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#166534]" />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-slate-500">End Date</label>
                   <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#166534]" />
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
                   <button onClick={() => setShowCustomPicker(false)} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
                   <button onClick={handleApplyCustom} disabled={!customStart || !customEnd}
-                    className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Apply</button>
+                    className="px-3 py-1.5 text-xs font-semibold bg-[#166534] text-white rounded-lg hover:bg-[#14532d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs">Apply</button>
                 </div>
               </div>
             )}
@@ -129,7 +129,7 @@ export const Dashboard: React.FC = () => {
       {/* ── Loading / Error Banner ────────────────────────────────────── */}
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-100 rounded-xl px-4 py-3 shadow-sm">
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          <div className="w-4 h-4 border-2 border-[#166534] border-t-transparent rounded-full animate-spin flex-shrink-0" />
           Loading dashboard data…
         </div>
       )}

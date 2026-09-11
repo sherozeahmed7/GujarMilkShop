@@ -2,18 +2,32 @@ import React, { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Delete, Keyboard, X } from 'lucide-react';
 
-type Accent = 'emerald' | 'blue' | 'cyan' | 'amber' | 'orange' | 'slate';
+type Accent = 'primary' | 'cream' | 'emerald' | 'blue' | 'cyan' | 'amber' | 'orange' | 'slate';
 
 const ACCENT: Record<
   Accent,
   { ring: string; btn: string; confirm: string; border: string; soft: string }
 > = {
+  primary: {
+    ring: 'focus:ring-[#166534]',
+    btn: 'active:bg-[#dcfce7] hover:border-[#166534]',
+    confirm: 'bg-[#166534] hover:bg-[#14532d]',
+    border: 'border-[#bbf7d0]',
+    soft: 'bg-[#f0fdf4]',
+  },
+  cream: {
+    ring: 'focus:ring-[#f59e0b]',
+    btn: 'active:bg-[#fde68a] hover:border-[#f59e0b]',
+    confirm: 'bg-[#166534] hover:bg-[#14532d]',
+    border: 'border-[#fde68a]',
+    soft: 'bg-[#fef3c7]',
+  },
   emerald: {
-    ring: 'focus:ring-emerald-500',
-    btn: 'active:bg-emerald-100 hover:border-emerald-400',
-    confirm: 'bg-emerald-600 hover:bg-emerald-700',
-    border: 'border-emerald-200',
-    soft: 'bg-emerald-50',
+    ring: 'focus:ring-[#166534]',
+    btn: 'active:bg-[#dcfce7] hover:border-[#166534]',
+    confirm: 'bg-[#166534] hover:bg-[#14532d]',
+    border: 'border-[#bbf7d0]',
+    soft: 'bg-[#f0fdf4]',
   },
   blue: {
     ring: 'focus:ring-blue-500',

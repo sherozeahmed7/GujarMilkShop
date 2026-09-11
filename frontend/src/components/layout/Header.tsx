@@ -38,7 +38,7 @@ export const Header: React.FC = () => {
           </div>
           <input
             type="text"
-            className="block w-full pl-9 pr-12 md:pr-16 py-2 border-0 rounded-full bg-white/70 text-slate-900 text-sm focus:ring-2 focus:ring-teal-600 focus:outline-none placeholder-slate-400 shadow-sm transition-all"
+            className="block w-full pl-9 pr-12 md:pr-16 py-2 border-0 rounded-full bg-white/80 text-slate-900 text-sm focus:ring-2 focus:ring-[#166534] focus:outline-none placeholder-slate-400 shadow-sm transition-all"
             placeholder="Search..."
           />
           <div className="absolute inset-y-0 right-0 pr-2 md:pr-3 flex items-center pointer-events-none hidden sm:flex">

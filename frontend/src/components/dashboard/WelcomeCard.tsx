@@ -47,17 +47,17 @@ export const WelcomeCard: React.FC<WelcomeCardProps> = ({
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-[#F8FAFC] rounded-xl p-4 border border-slate-100">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Gross</div>
-          <div className="text-xl font-bold text-slate-800">{fmt(grossSales)}</div>
+        <div className="bg-[#FFFDF5] rounded-xl p-4 border border-[#FDE68A] shadow-xs">
+          <div className="text-xs font-bold text-[#78350F] uppercase tracking-wider mb-1">Gross</div>
+          <div className="text-xl font-black text-[#78350F]">{fmt(grossSales)}</div>
         </div>
-        <div className="bg-[#F8FAFC] rounded-xl p-4 border border-slate-100">
+        <div className="bg-[#F8FAFC] rounded-xl p-4 border border-slate-200/70 shadow-xs">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Refunds</div>
           <div className="text-xl font-bold text-slate-800">{refunds === 0 ? 'Rs. 0' : fmt(refunds)}</div>
         </div>
-        <div className="bg-[#F8FAFC] rounded-xl p-4 border border-slate-100">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Net</div>
-          <div className="text-xl font-bold text-slate-800">{fmt(netSales)}</div>
+        <div className="bg-[#F0FDF4] rounded-xl p-4 border border-[#BBF7D0] shadow-xs">
+          <div className="text-xs font-bold text-[#166534] uppercase tracking-wider mb-1">Net</div>
+          <div className="text-xl font-black text-[#166534]">{fmt(netSales)}</div>
         </div>
       </div>
     </div>

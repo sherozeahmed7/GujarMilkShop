@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import { milkProductsService } from '../../services/milkProducts.service';
 import { rateService } from '../../services/rate.service';
@@ -11,11 +11,19 @@ import { DayEndLassiModal } from '../../components/milk-products/DayEndLassiModa
 import { ProductHistory } from '../../components/milk-products/ProductHistory';
 import { Calendar, Plus } from 'lucide-react';
 
+/** Returns YYYY-MM-DD in local time (not UTC) */
+const getLocalDateStr = (d = new Date()): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export const MilkProducts: React.FC<{
   onAddToCart?: (name: string, qty: number, unitPrice: number, total?: number) => void;
   onRegisterRefresh?: (fn: () => void) => void;
 }> = ({ onAddToCart, onRegisterRefresh }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateStr());
   const [stock, setStock] = useState<MilkProductsDailyStock | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingStock, setIsLoadingStock] = useState(true);
@@ -143,18 +151,18 @@ export const MilkProducts: React.FC<{
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg p-1.5">
-            <span className="text-xs font-bold text-blue-800 pl-2">Total Milk:</span>
+          <div className="flex items-center gap-2 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-1.5 shadow-xs">
+            <span className="text-xs font-bold text-[#166534] pl-2">Total Milk:</span>
             <input
               type="number"
               value={milkInput}
               onChange={(e) => setMilkInput(e.target.value)}
               placeholder="kg"
-              className="w-16 bg-white border border-blue-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-16 bg-white border border-[#BBF7D0] rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#166534]"
             />
             <button
               onClick={handleAddMilk}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded p-1 transition-colors"
+              className="bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white rounded-lg p-1.5 transition-colors shadow-xs"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -164,8 +172,6 @@ export const MilkProducts: React.FC<{
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <MilkSummary stock={stock} />
-
           <div className="flex flex-wrap gap-6 items-stretch">
             <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
               <LassiSection
@@ -193,6 +199,8 @@ export const MilkProducts: React.FC<{
               />
             </div>
           </div>
+
+          <MilkSummary stock={stock} />
 
           <ProductHistory date={selectedDate} />
         </div>

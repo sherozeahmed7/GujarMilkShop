@@ -457,7 +457,7 @@ export class ReportsController {
       const { from, to } = parseRange(req);
 
       const [sales, returns, expenses] = await Promise.all([
-        prisma.sale.findMany({ where: { createdAt: { gte: new Date(from + 'T00:00:00'), lte: new Date(to + 'T23:59:59') } }, include: { items: true } }),
+        prisma.sale.findMany({ where: { status: { not: 'voided' }, createdAt: { gte: new Date(from + 'T00:00:00'), lte: new Date(to + 'T23:59:59') } }, include: { items: true } }),
         prisma.return.findMany({ where: { date: { gte: from, lte: to } } }),
         prisma.expense.findMany({ where: { date: { gte: from, lte: to } } }),
       ]);

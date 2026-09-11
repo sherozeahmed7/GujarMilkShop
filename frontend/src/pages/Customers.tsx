@@ -384,7 +384,7 @@ export const Customers: React.FC = () => {
         <button
           type="button"
           onClick={handleAddClick}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-sm transition-colors"
+          className="flex items-center gap-2 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-[#166534]/25 transition-all"
         >
           <Plus className="w-5 h-5" />
           Add Customer

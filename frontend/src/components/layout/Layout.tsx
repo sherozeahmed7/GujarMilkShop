@@ -5,7 +5,7 @@ import { Header } from './Header';
 
 export const Layout: React.FC = () => {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F3F6F8] font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAF8] font-sans">
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <Header />

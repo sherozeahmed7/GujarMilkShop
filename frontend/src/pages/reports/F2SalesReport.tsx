@@ -8,6 +8,8 @@ import { LoadingState, ErrorState } from '../../components/reports/ReportStates'
 import { Banknote, CreditCard, Beaker, Package } from 'lucide-react';
 import { saleService, SaleRecord, SalesReportAnalytics } from '../../services/sale.service';
 import { getF2SalesReport } from '../../services/reportsApi';
+import { milkProductsService } from '../../services/milkProducts.service';
+import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -64,24 +66,47 @@ const EMPTY_ANALYTICS: SalesReportAnalytics = {
   categoryBreakdown: [],
 };
 
+function getDateKey(date: Date | null): string {
+  const value = date ? new Date(date) : new Date();
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatKg(value: number | undefined): string {
+  return `${Number(value ?? 0).toLocaleString()} kg`;
+}
+
+function formatRs(value: number | undefined): string {
+  return `Rs. ${money(Number(value ?? 0)).toLocaleString()}`;
+}
+
 export const F2SalesReport: React.FC = () => {
   const [filter, setFilter] = useState<DateFilterType>(getThisWeekFilter);
   const [isLoading, setIsLoading] = useState(false);
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [analytics, setAnalytics] = useState<SalesReportAnalytics>(EMPTY_ANALYTICS);
+  const [itemStock, setItemStock] = useState<MilkProductsDailyStock | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getF2SalesReport(filter);
+      const stockDate = getDateKey(filter.endDate);
+      const [result, stock] = await Promise.all([
+        getF2SalesReport(filter),
+        milkProductsService.getDailyStock(stockDate),
+      ]);
       setSales(result.sales || []);
       setAnalytics(result.analytics || EMPTY_ANALYTICS);
+      setItemStock(stock);
     } catch (e: any) {
       setError(e?.message || 'Failed to load F2 Sales report.');
       setSales([]);
       setAnalytics(EMPTY_ANALYTICS);
+      setItemStock(null);
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +117,22 @@ export const F2SalesReport: React.FC = () => {
   }, [filter.label, filter.startDate?.toISOString(), filter.endDate?.toISOString()]);
 
   const { summary } = analytics;
+  const itemSummary = itemStock
+    ? {
+        milkAdded: formatKg(itemStock.milkTotal),
+        addedMilkCost: formatRs(itemStock.milkAddedCost),
+        lassiInventory: formatKg(itemStock.lassiRemaining),
+        butterStock: formatKg(itemStock.butterClosing),
+        gheeInventory: formatKg(itemStock.gheeClosing),
+        lassiSoldToday: formatKg(itemStock.lassiSold),
+        butterConvertedToday: formatKg(itemStock.butterConverted),
+        gheeProduced: formatKg(itemStock.gheeProduced),
+        profitAndLoss: itemStock.milkAddedCost === 0
+          ? 'No milk cost'
+          : `${(itemStock.butterRecoveryResult ?? 0) >= 0 ? 'Profit' : 'Loss'}: ${formatRs(Math.abs(itemStock.butterRecoveryResult ?? 0))}`,
+        combinedRecoveryValue: formatRs(itemStock.butterTotalValue),
+      }
+    : undefined;
 
   const exportRows = sales.map((s) => ({
     id: toInvoiceNo(s.id),
@@ -126,12 +167,8 @@ export const F2SalesReport: React.FC = () => {
           { header: 'Total Amount', dataKey: 'total' },
           { header: 'Status', dataKey: 'status' },
         ]}
-        exportSummary={{
-          netF2Sales: `Rs. ${money(summary.netSales).toLocaleString()}`,
-          f2Bills: summary.totalBills,
-          cashSales: `Rs. ${money(summary.cashSales).toLocaleString()}`,
-          creditAndSplit: `Rs. ${money(summary.splitSales).toLocaleString()}`,
-        }}
+        exportSummary={itemSummary}
+        exportSummaryTitle={itemStock ? `F2 Item Summary (${getDateKey(filter.endDate)})` : undefined}
       />
 
       <ReportFilters

@@ -5,22 +5,21 @@ function money(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Parse a YYYY-MM-DD string into a Date range for that calendar day */
+/** Parse a YYYY-MM-DD string into a Date range for that calendar day (LOCAL time, not UTC) */
 function parseDateRange(dateStr: string): { start: Date; end: Date } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     throw new Error(`Invalid date format "${dateStr}". Expected YYYY-MM-DD.`);
   }
-  const start = new Date(dateStr);
-  start.setHours(0, 0, 0, 0);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const start = new Date(y, m - 1, d, 0, 0, 0, 0);
   if (isNaN(start.getTime())) {
     throw new Error(`Invalid date "${dateStr}".`);
   }
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
+  const end = new Date(y, m - 1, d, 23, 59, 59, 999);
   return { start, end };
 }
 
-/** Parse a YYYY-MM-DD string to a single Date (midnight) for unique daily record lookup */
+/** Parse a YYYY-MM-DD string to a single Date (local midnight) for unique daily record lookup */
 function parseDateKey(dateStr: string): Date {
   const { start } = parseDateRange(dateStr);
   return start;
@@ -112,43 +111,55 @@ async function inventoryDaySnapshot(
 }
 
 export class MilkProductsService {
-  /** GET stock for a specific date; remaining/closing overlay exact Inventory balances */
+  /**
+   * GET stock for a specific date.
+   *
+   * Lassi: strictly daily — opening is always 0. Produced and sold come from the
+   * milkProductDailyStock record for that calendar date. It does NOT accumulate
+   * across days via inventoryDaySnapshot (which would carry yesterday's balance).
+   *
+   * Butter & Ghee: persist across days — opening = prior days' closing balance
+   * from inventoryDaySnapshot (carry-over is correct behaviour).
+   *
+   * Milk (milkTotal): isolated per calendar date in milkProductDailyStock.
+   */
   static async getDailyStock(dateStr: string) {
-    parseDateRange(dateStr); // validate
-    const dateKey = parseDateKey(dateStr);
+    const { start, end } = parseDateRange(dateStr);
 
     const record = await prisma.milkProductDailyStock.findFirst({
-      where: {
-        date: {
-          gte: new Date(dateKey.setHours(0, 0, 0, 0)),
-          lte: new Date(new Date(dateStr).setHours(23, 59, 59, 999)),
-        },
-      },
+      where: { date: { gte: start, lte: end } },
     });
 
     const base = record ?? ZERO_STOCK(dateStr);
-    const [lassiInv, butterInv, gheeInv] = await Promise.all([
-      inventoryDaySnapshot('LASSI', dateStr),
+
+    // Butter & Ghee: use inventory snapshot so opening carries over from prior days
+    const [butterInv, gheeInv] = await Promise.all([
       inventoryDaySnapshot('BUTTER', dateStr),
       inventoryDaySnapshot('GHEE', dateStr),
     ]);
+
+    // Lassi: daily reset — use the per-day record values, NOT the inventory snapshot.
+    // Opening is always 0 for Lassi. Remaining = max(0, produced - sold).
+    const lassiProduced = money(Number(base.lassiProduced ?? 0));
+    const lassiSold    = money(Number(base.lassiSold    ?? 0));
+    const lassiRemaining = Math.max(0, money(lassiProduced - lassiSold));
 
     return {
       success: true,
       statusCode: 200,
       data: {
         ...base,
-        // Lassi — inventory is source of truth
-        lassiProduced: lassiInv.added,
-        lassiSold: lassiInv.sold,
-        lassiRemaining: lassiInv.closing,
-        // Butter
+        // Lassi — daily lifecycle: produced and sold per calendar date, opening = 0
+        lassiProduced,
+        lassiSold,
+        lassiRemaining,
+        // Butter — carry-over opening from inventory snapshot
         butterOpening: butterInv.opening,
         butterProduced: butterInv.added,
         butterSold: butterInv.sold,
         butterConverted: butterInv.converted,
         butterClosing: butterInv.closing,
-        // Ghee
+        // Ghee — carry-over opening from inventory snapshot
         gheeOpening: gheeInv.opening,
         gheeProduced: gheeInv.added,
         gheeSold: gheeInv.sold,
@@ -163,13 +174,11 @@ export class MilkProductsService {
     dateStr: string,
     updater: (current: ReturnType<typeof ZERO_STOCK>) => Partial<ReturnType<typeof ZERO_STOCK>>
   ) {
-    parseDateRange(dateStr); // validate
-    const dateKey = parseDateKey(dateStr);
+    const { start, end } = parseDateRange(dateStr); // local calendar day range
+    const dateKey = parseDateKey(dateStr);           // local midnight
 
     const existing = await tx.milkProductDailyStock.findFirst({
-      where: {
-        date: { gte: dateKey, lte: new Date(new Date(dateStr).setHours(23, 59, 59, 999)) },
-      },
+      where: { date: { gte: start, lte: end } },
     });
 
     const current = existing ?? ZERO_STOCK(dateStr);
@@ -181,10 +190,8 @@ export class MilkProductsService {
         data: updates,
       });
     } else {
-      const dateOnly = new Date(dateStr);
-      dateOnly.setHours(0, 0, 0, 0);
       const created = await tx.milkProductDailyStock.create({
-        data: { date: dateOnly, ...updates } as any,
+        data: { date: dateKey, ...updates } as any,
       });
       await SyncQueueService.createCloudMapping('MilkProductDailyStock', created.id, undefined, tx);
       return created;
@@ -300,9 +307,8 @@ export class MilkProductsService {
     }
     try {
       const record = await prisma.$transaction(async (tx) => {
+        const { start, end } = parseDateRange(dateStr);
         const dateKey = parseDateKey(dateStr);
-        const dateOnly = new Date(dateStr);
-        dateOnly.setHours(0, 0, 0, 0);
 
         const butterProduct = await findInventoryProduct(tx, 'BUTTER');
         const gheeProduct = await findInventoryProduct(tx, 'GHEE');
@@ -327,12 +333,7 @@ export class MilkProductsService {
         }
 
         const existing = await tx.milkProductDailyStock.findFirst({
-          where: {
-            date: {
-              gte: new Date(new Date(dateStr).setHours(0, 0, 0, 0)),
-              lte: new Date(new Date(dateStr).setHours(23, 59, 59, 999)),
-            },
-          },
+          where: { date: { gte: start, lte: end } },
         });
         const cur = existing ?? ZERO_STOCK(dateStr);
 
@@ -355,7 +356,7 @@ export class MilkProductsService {
             })
           : await tx.milkProductDailyStock.create({
               data: {
-                date: dateOnly,
+                date: dateKey,
                 butterConverted,
                 butterClosing: Math.max(0, butterClosing),
                 gheeProduced,
@@ -480,13 +481,9 @@ export class MilkProductsService {
     butterQty: number,
     gheeQty: number
   ) {
+    const { start, end } = parseDateRange(dateStr);
     const existing = await tx.milkProductDailyStock.findFirst({
-      where: {
-        date: {
-          gte: new Date(new Date(dateStr).setHours(0, 0, 0, 0)),
-          lte: new Date(new Date(dateStr).setHours(23, 59, 59, 999)),
-        },
-      },
+      where: { date: { gte: start, lte: end } },
     });
 
     if (!existing) {
@@ -514,13 +511,9 @@ export class MilkProductsService {
 
   /** Stock check — optional helper; sales no longer block on zero F2 stock */
   static async checkF2Stock(dateStr: string, lassiQty: number, butterQty: number, gheeQty: number) {
+    const { start, end } = parseDateRange(dateStr);
     const existing = await prisma.milkProductDailyStock.findFirst({
-      where: {
-        date: {
-          gte: new Date(new Date(dateStr).setHours(0, 0, 0, 0)),
-          lte: new Date(new Date(dateStr).setHours(23, 59, 59, 999)),
-        },
-      },
+      where: { date: { gte: start, lte: end } },
     });
 
     return { ok: true as const, record: existing };

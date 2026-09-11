@@ -81,54 +81,54 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-[#edf1ee] overflow-hidden">
       <div className="grid min-h-screen w-full lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="relative hidden lg:flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.8),_transparent_32%),linear-gradient(135deg,#f9f1e6_0%,#edf7f1_35%,#e4eefb_100%)] p-10">
+        <div className="relative hidden lg:flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(254,243,199,0.7),_transparent_40%),linear-gradient(135deg,#fffdf5_0%,#fef3c7_30%,#f0fdf4_70%,#dcfce7_100%)] p-10">
           <div className="absolute inset-0 opacity-30" style={{
-            backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9) 0, rgba(255,255,255,0) 30%), radial-gradient(circle at 75% 70%, rgba(93,153,224,0.22) 0, rgba(93,153,224,0) 35%)'
+            backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9) 0, rgba(255,255,255,0) 30%), radial-gradient(circle at 75% 70%, rgba(22,101,52,0.15) 0, rgba(22,101,52,0) 35%)'
           }} />
 
-          <div className="relative w-full max-w-xl rounded-[36px] border border-white/70 bg-white/20 backdrop-blur-sm p-8 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
+          <div className="relative w-full max-w-xl rounded-[36px] border border-white/80 bg-white/40 backdrop-blur-md p-8 shadow-[0_30px_80px_rgba(22,101,52,0.08)]">
             <div className="flex items-center justify-center mb-10">
               <BrandLogo variant="login" />
             </div>
 
             <div className="relative mx-auto mb-8 flex h-72 w-72 items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#fbe8c5] to-[#d9f1ea] blur-3xl opacity-90" />
-              <div className="relative h-44 w-32 rounded-[34px] border-[10px] border-[#f7f4ee] bg-[linear-gradient(180deg,#ffffff_0%,#edf7fb_100%)] shadow-[0_25px_40px_rgba(15,23,42,0.14)]">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 h-10 w-12 rounded-t-[22px] border-[7px] border-[#f3f0eb] border-b-0 bg-white" />
-                <div className="absolute inset-x-5 top-5 bottom-5 rounded-[22px] bg-[linear-gradient(180deg,#f5fbff_0%,#e7f6fd_100%)]" />
-                <div className="absolute left-1/2 top-16 -translate-x-1/2 text-[#7dbbe7]">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#FEF3C7] to-[#dcfce7] blur-3xl opacity-90" />
+              <div className="relative h-44 w-32 rounded-[34px] border-[10px] border-[#fbf9f4] bg-[linear-gradient(180deg,#ffffff_0%,#f0fdf4_100%)] shadow-[0_25px_40px_rgba(22,101,52,0.12)]">
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 h-10 w-12 rounded-t-[22px] border-[7px] border-[#f6f2ea] border-b-0 bg-white" />
+                <div className="absolute inset-x-5 top-5 bottom-5 rounded-[22px] bg-[linear-gradient(180deg,#ffffff_0%,#f0fdf4_100%)]" />
+                <div className="absolute left-1/2 top-16 -translate-x-1/2 text-[#166534]">
                   <Droplets className="w-12 h-12" />
                 </div>
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#e9f7f0] border-4 border-white flex items-center justify-center text-[#2f9d7b]">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#FEF3C7] border-4 border-white flex items-center justify-center text-[#166534] shadow-xs">
                   <Leaf className="w-4 h-4" />
                 </div>
               </div>
 
-              <div className="absolute left-3 bottom-10 h-20 w-24 rounded-[22px] bg-amber-100 border border-amber-200 shadow-sm rotate-[-20deg]">
-                <div className="absolute inset-x-2 top-3 h-2 rounded-full bg-[#d7b06a]" />
-                <div className="absolute inset-x-3 bottom-4 flex justify-between text-[#c48a33]">
+              <div className="absolute left-3 bottom-10 h-20 w-24 rounded-[22px] bg-[#FEF3C7] border border-[#FDE68A] shadow-sm rotate-[-20deg]">
+                <div className="absolute inset-x-2 top-3 h-2 rounded-full bg-[#fde68a]" />
+                <div className="absolute inset-x-3 bottom-4 flex justify-between text-[#78350F]">
                   <span className="text-[10px] font-black">Milk</span>
                   <span className="text-[10px] font-black">Fresh</span>
                 </div>
               </div>
 
-              <div className="absolute right-4 bottom-16 h-16 w-16 rounded-full bg-[#fef3c7] border-4 border-white flex items-center justify-center text-[#d97706] shadow-sm">
+              <div className="absolute right-4 bottom-16 h-16 w-16 rounded-full bg-[#FEF3C7] border-4 border-white flex items-center justify-center text-[#166534] shadow-md">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-3 text-slate-700 text-base font-semibold">
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                Smart dairy billing
+              <div className="flex items-center gap-3 text-slate-800 text-base font-semibold">
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#166534]" />
+                Fresh milk & dairy billing
               </div>
-              <div className="flex items-center gap-3 text-slate-700 text-base font-semibold">
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-sky-500" />
-                Khata tracking & sales control
+              <div className="flex items-center gap-3 text-slate-800 text-base font-semibold">
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#d97706]" />
+                Khata ledger & customer accounts
               </div>
-              <div className="flex items-center gap-3 text-slate-700 text-base font-semibold">
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-                Built for daily shop operations
+              <div className="flex items-center gap-3 text-slate-800 text-base font-semibold">
+                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#15803d]" />
+                Fast daily counter operations
               </div>
             </div>
           </div>
@@ -138,14 +138,14 @@ export const Login: React.FC = () => {
           <div className="w-full max-w-md">
             <div className="flex flex-col items-center mb-8 lg:hidden">
               <BrandLogo variant="login" className="mb-4" />
-              <h1 className="text-2xl font-black text-slate-800 mt-2">Gujar Milk Shop</h1>
-              <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.2em] mt-1">POS Management System</p>
+              <h1 className="text-2xl font-black text-[#166534] mt-2">Gujar Milk Shop</h1>
+              <p className="text-[11px] text-[#78350F] bg-[#FEF3C7] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-[0.2em] mt-1.5">POS Management System</p>
               <p className="text-sm text-slate-500 mt-3">Sign in to continue</p>
             </div>
 
             <div className="hidden lg:block mb-8">
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-2">Welcome back</div>
-              <h2 className="text-3xl font-black text-slate-800">Sign in</h2>
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#166534] mb-2">Welcome back</div>
+              <h2 className="text-3xl font-black text-slate-900">Sign in</h2>
             </div>
 
             {authError && (
@@ -170,7 +170,7 @@ export const Login: React.FC = () => {
                     className={`w-full bg-slate-50 border rounded-xl py-3 pl-9 pr-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all ${
                       emailError
                         ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                        : 'border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20'
+                        : 'border-slate-200 focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/20'
                     }`}
                     autoComplete="email"
                   />
@@ -193,7 +193,7 @@ export const Login: React.FC = () => {
                     className={`w-full bg-slate-50 border rounded-xl py-3 pl-9 pr-10 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all ${
                       passwordError
                         ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                        : 'border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20'
+                        : 'border-slate-200 focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/20'
                     }`}
                     autoComplete="current-password"
                   />
@@ -213,7 +213,7 @@ export const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-[#1f2d3d] hover:bg-[#172333] active:bg-[#101c2d] text-white font-bold py-3 rounded-xl text-sm transition-all duration-150 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+                className="w-full flex items-center justify-center gap-2 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white font-bold py-3.5 rounded-xl text-sm transition-all duration-150 shadow-md shadow-[#166534]/25 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
               >
                 {loading ? (
                   <>

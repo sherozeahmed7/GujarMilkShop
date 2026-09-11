@@ -654,18 +654,18 @@ export const POS: React.FC = () => {
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex gap-2 mb-4">
           <button
-            className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors ${activeTab === 'milk-yogurt'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'milk-yogurt'
+              ? 'bg-[#166534] text-white shadow-sm shadow-[#166534]/25'
+              : 'bg-white text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534] border border-slate-200 shadow-xs'
               }`}
             onClick={() => setActiveTab('milk-yogurt')}
           >
             Milk & Yogurt
           </button>
           <button
-            className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-colors flex items-center gap-2 ${activeTab === 'items'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 shadow-sm'
+            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'items'
+              ? 'bg-[#166534] text-white shadow-sm shadow-[#166534]/25'
+              : 'bg-white text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534] border border-slate-200 shadow-xs'
               }`}
             onClick={() => setActiveTab('items')}
           >
@@ -689,7 +689,7 @@ export const POS: React.FC = () => {
             />
           ) : pricesLoading ? (
             <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
-              Loading standard pricesâ€¦
+              Loading standard prices…
             </div>
           ) : pricesError ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-sm">
@@ -703,27 +703,27 @@ export const POS: React.FC = () => {
                     .catch((err: any) => setPricesError(err?.message || 'Failed to load standard prices'))
                     .finally(() => setPricesLoading(false));
                 }}
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-[#166534] hover:text-[#14532d] font-bold"
               >
                 Retry
               </button>
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 bg-emerald-100/70 border border-emerald-200 rounded-xl p-4 flex flex-col">
+              <div className="flex-1 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl p-4 flex flex-col shadow-xs">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-emerald-700">Milk</h2>
-                  <div className="flex items-center gap-2 bg-white rounded-lg p-2 border border-emerald-300 shadow-sm">
-                    <div className="flex bg-slate-100 rounded-md p-0.5">
+                  <h2 className="text-xl font-black text-[#166534]">Milk</h2>
+                  <div className="flex items-center gap-2 bg-white rounded-xl p-2 border border-[#BBF7D0] shadow-sm">
+                    <div className="flex bg-slate-100 rounded-lg p-0.5">
                       <button
                         onClick={() => setMilkCustomType('rs')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-md transition-colors ${milkCustomType === 'rs' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'rs' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         RS
                       </button>
                       <button
                         onClick={() => setMilkCustomType('kg')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-md transition-colors ${milkCustomType === 'kg' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'kg' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         KG
                       </button>
@@ -734,14 +734,14 @@ export const POS: React.FC = () => {
                       onConfirm={(v) => handleCustomAdd('milk', v)}
                       placeholder={milkCustomType === 'kg' ? 'kg' : 'Rs'}
                       title="Milk amount"
-                      accent="emerald"
+                      accent="primary"
                       confirmLabel="Add"
                       className="w-36"
                       triggerClassName="border-none"
                     />
                     <button
                       onClick={() => handleCustomAdd('milk')}
-                      className="bg-emerald-500 text-white hover:bg-emerald-600 px-4 py-1.5 rounded-md text-sm font-bold transition-colors"
+                      className="bg-[#166534] text-white hover:bg-[#14532d] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
                     >
                       Add
                     </button>
@@ -772,9 +772,9 @@ export const POS: React.FC = () => {
                         <button
                           key={`milk-w-${item.preset.weight}-${i}`}
                           onClick={() => addToCart('Milk', item.preset.weight, 'kg', item.preset.price, milkRatePerKg)}
-                          className="border border-white bg-white hover:border-emerald-400 hover:bg-emerald-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-emerald-100/80 bg-white hover:border-[#166534] hover:bg-[#F0FDF4] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <div className="font-bold text-slate-800 group-hover:text-emerald-700 text-lg">{item.preset.label}</div>
+                          <div className="font-bold text-slate-800 group-hover:text-[#166534] text-lg">{item.preset.label}</div>
                           <div className="text-xs text-slate-500 font-medium mt-1">Rs. {item.preset.price}</div>
                         </button>
                       ) : (
@@ -782,12 +782,12 @@ export const POS: React.FC = () => {
                           key={`milk-rs-${item.preset.amount}`}
                           type="button"
                           onClick={() => addToCart('Milk', item.preset.weight, 'rs', item.preset.amount, milkRatePerKg)}
-                          className="rounded-xl border border-white bg-white hover:border-emerald-400 hover:bg-emerald-50 p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="rounded-xl border border-[#FDE68A] bg-[#FEF3C7]/40 hover:bg-[#FEF3C7] hover:border-[#FDE68A] p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <span className="font-bold text-emerald-800 group-hover:text-emerald-900 text-base sm:text-lg">
+                          <span className="font-black text-[#166534] text-base sm:text-lg">
                             {item.preset.amount}
                           </span>
-                          <span className="text-[10px] text-emerald-600/80 font-medium mt-0.5">
+                          <span className="text-[10px] text-[#78350F] font-bold mt-0.5">
                             {item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}
                           </span>
                         </button>
@@ -799,20 +799,20 @@ export const POS: React.FC = () => {
 
               <div className="hidden lg:block w-px bg-slate-100"></div>
 
-              <div className="flex-1 bg-blue-100/70 border border-blue-200 rounded-xl p-4 flex flex-col">
+              <div className="flex-1 bg-[#FFFDF5] border border-[#FDE68A] rounded-2xl p-4 flex flex-col shadow-xs">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-blue-700">Yogurt</h2>
-                  <div className="flex items-center gap-2 bg-white rounded-lg p-2 border border-blue-300 shadow-sm">
-                    <div className="flex bg-slate-100 rounded-md p-0.5">
+                  <h2 className="text-xl font-black text-[#78350F]">Yogurt</h2>
+                  <div className="flex items-center gap-2 bg-white rounded-xl p-2 border border-[#FDE68A] shadow-sm">
+                    <div className="flex bg-slate-100 rounded-lg p-0.5">
                       <button
                         onClick={() => setYogurtCustomType('rs')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-md transition-colors ${yogurtCustomType === 'rs' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'rs' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         RS
                       </button>
                       <button
                         onClick={() => setYogurtCustomType('kg')}
-                        className={`px-3 py-1.5 text-sm font-bold rounded-md transition-colors ${yogurtCustomType === 'kg' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'kg' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         KG
                       </button>
@@ -823,14 +823,14 @@ export const POS: React.FC = () => {
                       onConfirm={(v) => handleCustomAdd('yogurt', v)}
                       placeholder={yogurtCustomType === 'kg' ? 'kg' : 'Rs'}
                       title="Yogurt amount"
-                      accent="blue"
+                      accent="cream"
                       confirmLabel="Add"
                       className="w-36"
                       triggerClassName="border-none"
                     />
                     <button
                       onClick={() => handleCustomAdd('yogurt')}
-                      className="bg-blue-500 text-white hover:bg-blue-600 px-4 py-1.5 rounded-md text-sm font-bold transition-colors"
+                      className="bg-[#166534] text-white hover:bg-[#14532d] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
                     >
                       Add
                     </button>
@@ -861,9 +861,9 @@ export const POS: React.FC = () => {
                         <button
                           key={`y-w-${item.preset.weight}-${i}`}
                           onClick={() => addToCart('Yogurt', item.preset.weight, 'kg', item.preset.price, yogurtRatePerKg)}
-                          className="border border-white bg-white hover:border-blue-400 hover:bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-amber-100/80 bg-white hover:border-[#166534] hover:bg-[#F0FDF4] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <div className="font-bold text-slate-800 group-hover:text-blue-700 text-lg">{item.preset.label}</div>
+                          <div className="font-bold text-slate-800 group-hover:text-[#166534] text-lg">{item.preset.label}</div>
                           <div className="text-xs text-slate-500 font-medium mt-1">Rs. {item.preset.price}</div>
                         </button>
                       ) : (
@@ -871,10 +871,10 @@ export const POS: React.FC = () => {
                           key={`y-rs-${item.preset.amount}`}
                           type="button"
                           onClick={() => addToCart('Yogurt', item.preset.weight, 'rs', item.preset.amount, yogurtRatePerKg)}
-                          className="border border-white bg-white hover:border-blue-400 hover:bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-[#FDE68A] bg-[#FEF3C7]/40 hover:bg-[#FEF3C7] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <div className="font-bold text-slate-800 group-hover:text-blue-700 text-lg">{item.preset.label}</div>
-                          <div className="text-xs text-slate-500 font-medium mt-1">{item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}</div>
+                          <div className="font-black text-[#166534] text-lg">{item.preset.label}</div>
+                          <div className="text-xs text-[#78350F] font-bold mt-1">{item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}</div>
                         </button>
                       );
                     });
@@ -892,9 +892,9 @@ export const POS: React.FC = () => {
 
           {showKhataPicker ? (
             <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">
-              <div className="p-4 bg-blue-700 text-white flex-shrink-0">
+              <div className="p-4 bg-[#166534] text-white flex-shrink-0">
                 <h2 className="font-bold text-sm tracking-wide uppercase">Select Customer</h2>
-                <p className="text-[11px] text-blue-100 mt-1">
+                <p className="text-[11px] text-emerald-100 mt-1">
                   Choose a registered customer to add this bill to their khata.
                 </p>
               </div>
@@ -906,8 +906,8 @@ export const POS: React.FC = () => {
                     type="text"
                     value={khataFilter}
                     onChange={(e) => setKhataFilter(e.target.value)}
-                    placeholder="Filter by name or phoneâ€¦"
-                    className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Filter by name or phone…"
+                    className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
                     autoFocus
                   />
                 </div>
@@ -916,7 +916,7 @@ export const POS: React.FC = () => {
               <div className="flex-1 overflow-y-auto custom-scrollbar bg-white min-h-0">
                 {khataLoading && (
                   <div className="h-full flex items-center justify-center text-sm text-slate-400">
-                    Loading customersâ€¦
+                    Loading customers…
                   </div>
                 )}
 
@@ -950,9 +950,9 @@ export const POS: React.FC = () => {
                             setSelectedKhataCustomer(c);
                             setCheckoutError(null);
                           }}
-                          className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-blue-50 active:bg-blue-100 transition-colors"
+                          className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-[#FEF3C7]/40 active:bg-[#FEF3C7]/70 transition-colors"
                         >
-                          <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-[#FEF3C7] text-[#166534] border border-[#FDE68A] flex items-center justify-center flex-shrink-0">
                             <UserRound className="w-5 h-5" />
                           </div>
                           <div className="min-w-0 flex-1 text-left">
@@ -960,9 +960,9 @@ export const POS: React.FC = () => {
                           </div>
                           <div className="flex-shrink-0 flex flex-col items-end gap-1">
                             <span
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide ${isMonthly
-                                ? 'bg-violet-100 text-violet-700'
-                                : 'bg-sky-100 text-sky-700'
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${isMonthly
+                                ? 'bg-[#FEF3C7] text-[#78350F] border-[#FDE68A]'
+                                : 'bg-[#DCFCE7] text-[#166534] border-[#BBF7D0]'
                                 }`}
                             >
                               {isMonthly ? 'Monthly' : 'Daily'}
@@ -986,7 +986,7 @@ export const POS: React.FC = () => {
                     setKhataFilter('');
                     setCheckoutError(null);
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-sm font-bold transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-[#FEF3C7]/40 hover:text-[#166534] text-sm font-bold transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Back to Cash
@@ -995,12 +995,12 @@ export const POS: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">
-              <div className="p-4 bg-slate-800 text-white flex-shrink-0 space-y-3">
+              <div className="p-4 bg-[#166534] text-white flex-shrink-0 space-y-3">
                 <div className="flex justify-between items-center gap-2">
                   <h2 className="font-bold text-sm tracking-wide">CURRENT BILL ({cart.length})</h2>
                   <div className="flex items-center gap-2">
                     {heldCarts.length > 0 && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-[#FEF3C7] text-[#78350F] border border-[#FDE68A] px-2 py-0.5 rounded-md">
                         {heldCarts.length} held
                       </span>
                     )}
@@ -1009,7 +1009,7 @@ export const POS: React.FC = () => {
                       onClick={holdCurrentBill}
                       disabled={submitting || cart.length === 0}
                       title="Hold current bill"
-                      className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1.5 text-[10px] font-bold uppercase hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center gap-1 rounded-lg bg-white/15 hover:bg-white/25 text-white border border-white/20 px-2.5 py-1.5 text-[10px] font-bold uppercase disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                     >
                       <PauseCircle className="w-3.5 h-3.5" /> Hold
                     </button>
@@ -1017,8 +1017,8 @@ export const POS: React.FC = () => {
                 </div>
 
                 {/* Card options: same item → new line OR combine (last line only) */}
-                <div className="rounded-xl bg-white/10 border border-white/10 px-3 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/55 mb-2">
+                <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100 mb-2">
                     Same item click
                   </p>
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -1027,7 +1027,7 @@ export const POS: React.FC = () => {
                         type="checkbox"
                         checked={cartLineMode === 'combine'}
                         onChange={() => setCartLineModePersisted('combine')}
-                        className="h-4 w-4 rounded border-white/30 accent-emerald-400 cursor-pointer"
+                        className="h-4 w-4 rounded border-white/30 accent-[#FEF3C7] cursor-pointer"
                       />
                       Combine
                     </label>
@@ -1036,12 +1036,12 @@ export const POS: React.FC = () => {
                         type="checkbox"
                         checked={cartLineMode === 'new'}
                         onChange={() => setCartLineModePersisted('new')}
-                        className="h-4 w-4 rounded border-white/30 accent-emerald-400 cursor-pointer"
+                        className="h-4 w-4 rounded border-white/30 accent-[#FEF3C7] cursor-pointer"
                       />
                       New line
                     </label>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-white/50 leading-snug">
+                  <p className="mt-1.5 text-[10px] text-emerald-100/70 leading-snug">
                     {cartLineMode === 'combine'
                       ? 'Adds qty to the last matching line only — earlier separate lines stay as they are.'
                       : 'Every click adds a new cart line, even for the same product.'}
@@ -1059,7 +1059,7 @@ export const POS: React.FC = () => {
                     {cart.map((item) => (
                       <div key={item.id} className="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-3 group shadow-sm">
                         <div className="font-bold text-slate-800 text-sm w-16">{item.name}</div>
-                        <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+                        <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 focus-within:border-[#166534] focus-within:ring-1 focus-within:ring-[#166534]">
                           <input
                             type="number"
                             value={item.quantity === 0 ? '' : Number(item.quantity.toFixed(3))}
@@ -1084,16 +1084,16 @@ export const POS: React.FC = () => {
 
               <div className="p-5 border-t border-slate-100 bg-white">
                 {heldCarts.length > 0 && (
-                  <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                  <div className="mb-4 rounded-xl border border-[#FDE68A] bg-[#FEF3C7]/50 p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Held bills</span>
-                      {heldCartsLoading && <span className="text-[10px] text-amber-700">Loading...</span>}
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#78350F]">Held bills</span>
+                      {heldCartsLoading && <span className="text-[10px] text-[#78350F]">Loading...</span>}
                     </div>
                     <div className="max-h-24 space-y-1.5 overflow-y-auto">
                       {heldCarts.map((heldCart) => (
                         <div
                           key={heldCart.id}
-                          className="flex w-full items-center justify-between rounded-lg border border-amber-100 bg-white px-2.5 py-2 hover:border-amber-300"
+                          className="flex w-full items-center justify-between rounded-lg border border-[#FDE68A] bg-white px-2.5 py-2 hover:border-[#fcd34d]"
                         >
                           <button
                             type="button"
@@ -1102,9 +1102,9 @@ export const POS: React.FC = () => {
                             className="flex flex-1 items-center justify-between text-left disabled:opacity-50"
                           >
                             <span className="text-xs font-semibold text-slate-700">
-                              {heldCart.snapshot.cart.length} item{heldCart.snapshot.cart.length === 1 ? '' : 's'} Â· Rs. {heldCart.snapshot.cart.reduce((sum, item) => sum + item.total, 0).toFixed(0)}
+                              {heldCart.snapshot.cart.length} item{heldCart.snapshot.cart.length === 1 ? '' : 's'} · Rs. {heldCart.snapshot.cart.reduce((sum, item) => sum + item.total, 0).toFixed(0)}
                             </span>
-                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-amber-700">
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase text-[#166534]">
                               <RotateCcw className="h-3 w-3" /> Load
                             </span>
                           </button>
@@ -1132,7 +1132,7 @@ export const POS: React.FC = () => {
                 {isDiscountOpen ? (
                   <div className="flex justify-between items-center mb-4 bg-slate-50 p-2 rounded-lg border border-slate-200">
                     <div className="text-sm font-medium text-slate-600">Discount (Rs):</div>
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-md px-2 py-1 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-md px-2 py-1 focus-within:border-[#166534] focus-within:ring-1 focus-within:ring-[#166534]">
                       <input
                         type="number"
                         value={discount === 0 ? '' : discount}
@@ -1148,7 +1148,7 @@ export const POS: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => setIsDiscountOpen(true)}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium mb-4 flex items-center gap-1"
+                    className="text-xs text-[#166534] hover:text-[#14532d] font-bold mb-4 flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" /> Add Discount
                   </button>
@@ -1156,7 +1156,7 @@ export const POS: React.FC = () => {
 
                 <div className="flex justify-between items-end mb-4">
                   <div className="text-sm font-bold text-slate-800 tracking-wider">TOTAL</div>
-                  <div className="text-3xl font-black text-emerald-500">Rs. {finalTotal.toFixed(2)}</div>
+                  <div className="text-3xl font-black text-[#166534]">Rs. {finalTotal.toFixed(2)}</div>
                 </div>
 
                 <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
@@ -1175,8 +1175,8 @@ export const POS: React.FC = () => {
                         }
                       }}
                       className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${paymentMethod === method
-                        ? 'bg-white text-slate-800 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-[#166534] text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-[#FEF3C7]/60 hover:text-[#166534]'
                         }`}
                     >
                       {method}
@@ -1186,9 +1186,9 @@ export const POS: React.FC = () => {
 
                 {/* Split fields */}
                 {paymentMethod === 'split' && (
-                  <div className="mb-4 space-y-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                  <div className="mb-4 space-y-3 p-3 bg-[#FFFDF5] border border-[#FDE68A] rounded-xl">
                     <div>
-                      <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                      <label className="text-[10px] font-bold text-[#78350F] uppercase tracking-wider">
                         Amount paying now *
                       </label>
                       <input
@@ -1196,17 +1196,17 @@ export const POS: React.FC = () => {
                         value={splitPaidAmount}
                         onChange={(e) => setSplitPaidAmount(e.target.value)}
                         placeholder={`Less than ${finalTotal.toFixed(0)}`}
-                        className="mt-1 w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        className="mt-1 w-full px-3 py-2 bg-white border border-[#FDE68A] rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
                       />
                       {splitPaidAmount && !Number.isNaN(parseFloat(splitPaidAmount)) && (
-                        <p className="text-[11px] text-amber-700 mt-1 font-medium">
+                        <p className="text-[11px] text-[#78350F] mt-1 font-semibold">
                           Remaining:{' '}
                           Rs. {Math.max(0, money(finalTotal - parseFloat(splitPaidAmount))).toFixed(0)}
                         </p>
                       )}
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                      <label className="text-[10px] font-bold text-[#78350F] uppercase tracking-wider">
                         Name *
                       </label>
                       <input
@@ -1214,11 +1214,11 @@ export const POS: React.FC = () => {
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder="Customer name"
-                        className="mt-1 w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        className="mt-1 w-full px-3 py-2 bg-white border border-[#FDE68A] rounded-lg text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                      <label className="text-[10px] font-bold text-[#78350F] uppercase tracking-wider">
                         Phone * (groups same person)
                       </label>
                       <input
@@ -1226,29 +1226,29 @@ export const POS: React.FC = () => {
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         placeholder="e.g. 0300-1234567"
-                        className="mt-1 w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        className="mt-1 w-full px-3 py-2 bg-white border border-[#FDE68A] rounded-lg text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
                       />
                     </div>
                   </div>
                 )}
 
                 {paymentMethod === 'khata' && selectedKhataCustomer && (
-                  <div className="mb-4 flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                    <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
+                  <div className="mb-4 flex items-center gap-2 p-3 bg-[#FEF3C7] border border-[#FDE68A] rounded-xl">
+                    <div className="w-9 h-9 rounded-full bg-[#166534] text-white flex items-center justify-center flex-shrink-0 font-bold">
                       <UserRound className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-blue-900 truncate">{selectedKhataCustomer.name}</div>
-                      <div className="text-[10px] text-blue-700 truncate">
+                      <div className="text-xs font-bold text-[#78350F] truncate">{selectedKhataCustomer.name}</div>
+                      <div className="text-[10px] text-[#78350F]/80 truncate">
                         {selectedKhataCustomer.phone?.trim() || 'Not Available'}
-                        {' Â· '}
+                        {' · '}
                         {selectedKhataCustomer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily'}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSelectedKhataCustomer(null)}
-                      className="text-[10px] font-bold text-blue-700 hover:text-blue-900 uppercase flex-shrink-0"
+                      className="text-[10px] font-bold text-[#166534] hover:text-[#14532d] uppercase flex-shrink-0"
                     >
                       Change
                     </button>
@@ -1262,14 +1262,14 @@ export const POS: React.FC = () => {
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Name (optional)"
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#166534]"
                     />
                     <input
                       type="text"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="Phone (optional)"
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#166534]"
                     />
                   </div>
                 )}
@@ -1280,8 +1280,8 @@ export const POS: React.FC = () => {
                   </div>
                 )}
                 {checkoutSuccess && (
-                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium flex justify-between items-center">
-                    <span className="text-emerald-700">{checkoutSuccess}</span>
+                  <div className="mb-3 rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2 text-xs font-medium flex justify-between items-center">
+                    <span className="text-[#166534] font-semibold">{checkoutSuccess}</span>
                     {lastSaleDetails && posConfig?.printerEnabled && (
                       <button
                         onClick={() => {
@@ -1313,9 +1313,9 @@ export const POS: React.FC = () => {
                             data: bytes,
                           }).catch((e) => console.error('[PRINT] Manual reprint failed:', e));
                         }}
-                        className="ml-2 px-3 py-1 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-100 rounded shadow-sm text-xs"
+                        className="ml-2 px-3 py-1 bg-white border border-[#BBF7D0] text-[#166534] hover:bg-[#F0FDF4] rounded shadow-sm text-xs font-semibold"
                       >
-                        ðŸ–¨ Reprint
+                        🖨 Reprint
                       </button>
                     )}
                   </div>
@@ -1327,16 +1327,16 @@ export const POS: React.FC = () => {
                       type="button"
                       onClick={handleCheckoutClick}
                       disabled={submitting}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-4 font-bold tracking-wide transition-colors shadow-sm shadow-blue-600/20 disabled:opacity-50"
+                      className="flex-1 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white rounded-xl py-4 font-black tracking-wide text-sm sm:text-base transition-all shadow-md shadow-[#166534]/25 disabled:opacity-50"
                     >
-                      {submitting ? 'Savingâ€¦' : primaryButtonLabel}
+                      {submitting ? 'Saving…' : primaryButtonLabel}
                     </button>
                     <button
                       type="button"
                       onClick={holdCurrentBill}
                       disabled={submitting || cart.length === 0}
                       title="Hold current bill"
-                      className="px-6 bg-slate-800 text-white rounded-xl py-4 font-bold tracking-wide hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-6 bg-[#FEF3C7] hover:bg-[#FDE68A] active:bg-[#FCD34D] text-[#78350F] border border-[#FDE68A] rounded-xl py-4 font-bold tracking-wide transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       HOLD
                     </button>

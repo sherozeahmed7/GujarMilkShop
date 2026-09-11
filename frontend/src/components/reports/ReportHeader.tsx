@@ -8,6 +8,7 @@ interface ReportHeaderProps {
   exportData?: any[];
   exportColumns?: { header: string; dataKey: string }[];
   exportSummary?: Record<string, any>;
+  exportSummaryTitle?: string;
 }
 
 export const ReportHeader: React.FC<ReportHeaderProps> = ({ 
@@ -15,7 +16,8 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   description,
   exportData = [],
   exportColumns = [],
-  exportSummary
+  exportSummary,
+  exportSummaryTitle
 }) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -32,6 +34,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
         data={exportData} 
         columns={exportColumns}
         summaryData={exportSummary}
+        summaryTitle={exportSummaryTitle}
       />
     </div>
   );

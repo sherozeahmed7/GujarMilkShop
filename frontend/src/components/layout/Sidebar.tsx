@@ -144,12 +144,12 @@ export const Sidebar: React.FC = () => {
       <aside 
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`${isCollapsed ? 'w-[72px]' : 'w-[240px]'} transition-[width] duration-300 ease-in-out shrink-0 bg-[#F8FAFC] border-r border-slate-200 h-full flex flex-col text-slate-700`}
+        className={`${isCollapsed ? 'w-[72px]' : 'w-[240px]'} transition-[width] duration-300 ease-in-out shrink-0 bg-[#F9FAF8] border-r border-slate-200 h-full flex flex-col text-slate-700`}
       >
         {/* Header / Logo */}
         <div className={`p-5 flex items-center shrink-0 ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
           <BrandLogo variant="sidebar" />
-          <span className={`text-sm font-semibold tracking-tight text-slate-800 whitespace-nowrap transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
+          <span className={`text-sm font-bold tracking-tight text-[#166534] whitespace-nowrap transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
             Gujar Milk Shop
           </span>
         </div>
@@ -166,14 +166,14 @@ export const Sidebar: React.FC = () => {
                   end={item.path === '/register'}
                   title={isCollapsed ? item.name : undefined}
                   className={({ isActive }) =>
-                    `flex items-center rounded-lg transition-all ${
+                    `flex items-center rounded-xl transition-all ${
                       isCollapsed 
                         ? 'justify-center p-2.5 mx-auto w-10 h-10' 
                         : 'gap-3 px-3 py-2.5'
                     } ${
                       isActive
-                        ? 'bg-slate-200/70 text-slate-900 font-medium shadow-sm'
-                        : 'text-slate-600 hover:bg-slate-100'
+                        ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
+                        : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
                     }`
                   }
                 >
@@ -196,14 +196,14 @@ export const Sidebar: React.FC = () => {
                     setReportsOpen(!reportsOpen);
                   }}
                   title={isCollapsed ? 'Reports' : undefined}
-                  className={`w-full flex items-center rounded-lg transition-all ${
+                  className={`w-full flex items-center rounded-xl transition-all ${
                     isCollapsed 
                       ? 'justify-center p-2.5 mx-auto w-10 h-10' 
                       : 'justify-between px-3 py-2.5'
                   } ${
                     isReportActive && !reportsOpen
-                      ? 'bg-slate-200/70 text-slate-900 font-medium shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-100'
+                      ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
+                      : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -219,15 +219,15 @@ export const Sidebar: React.FC = () => {
 
                 {!isCollapsed && (
                   <div className={`overflow-hidden transition-all duration-300 ease-in-out ${reportsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                    <ul className="pl-9 space-y-1">
+                    <ul className="pl-6 space-y-1 border-l-2 border-slate-200/60 ml-4 my-1">
                       {visibleReportItems.map((item) => (
                         <li key={item.path}>
                           <NavLink
                             to={item.path}
                             className={({ isActive }) =>
-                              `flex items-center px-3 py-2 rounded-lg text-sm transition-all whitespace-nowrap ${isActive
-                                ? 'bg-blue-50 text-blue-700 font-medium shadow-sm'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                              `flex items-center px-3 py-2 rounded-lg text-xs transition-all whitespace-nowrap ${isActive
+                                ? 'bg-[#FEF3C7] text-[#166534] font-bold shadow-xs'
+                                : 'text-slate-500 hover:bg-[#FEF3C7]/30 hover:text-[#166534]'
                               }`
                             }
                           >
@@ -250,14 +250,14 @@ export const Sidebar: React.FC = () => {
                      setSettingsOpen(!settingsOpen);
                   }}
                   title={isCollapsed ? 'Settings' : undefined}
-                  className={`w-full flex items-center rounded-lg transition-all ${
+                  className={`w-full flex items-center rounded-xl transition-all ${
                     isCollapsed 
                       ? 'justify-center p-2.5 mx-auto w-10 h-10' 
                       : 'justify-between px-3 py-2.5'
                   } ${
                     isSettingsActive && !settingsOpen
-                      ? 'bg-slate-200/70 text-slate-900 font-medium shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-100'
+                      ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
+                      : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -273,15 +273,15 @@ export const Sidebar: React.FC = () => {
 
                 {!isCollapsed && (
                   <div className={`overflow-hidden transition-all duration-300 ease-in-out ${settingsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                    <ul className="pl-9 space-y-1">
+                    <ul className="pl-6 space-y-1 border-l-2 border-slate-200/60 ml-4 my-1">
                       {visibleSettingsItems.map((item) => (
                         <li key={item.path}>
                           <NavLink
                             to={item.path}
                             className={({ isActive }) =>
-                              `flex items-center px-3 py-2 rounded-lg text-sm transition-all whitespace-nowrap ${isActive
-                                ? 'bg-blue-50 text-blue-700 font-medium shadow-sm'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                              `flex items-center px-3 py-2 rounded-lg text-xs transition-all whitespace-nowrap ${isActive
+                                ? 'bg-[#FEF3C7] text-[#166534] font-bold shadow-xs'
+                                : 'text-slate-500 hover:bg-[#FEF3C7]/30 hover:text-[#166534]'
                               }`
                             }
                           >
@@ -302,13 +302,13 @@ export const Sidebar: React.FC = () => {
                   to={item.path}
                   title={isCollapsed ? item.name : undefined}
                   className={({ isActive }) =>
-                    `flex items-center rounded-lg transition-all ${
+                    `flex items-center rounded-xl transition-all ${
                       isCollapsed 
                         ? 'justify-center p-2.5 mx-auto w-10 h-10' 
                         : 'gap-3 px-3 py-2.5'
                     } ${isActive
-                      ? 'bg-slate-200/70 text-slate-900 font-medium shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-100'
+                      ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
+                      : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
                     }`
                   }
                 >
@@ -335,13 +335,13 @@ export const Sidebar: React.FC = () => {
               const initial = displayName.charAt(0).toUpperCase();
               return (
                 <>
-                  <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 flex items-center justify-center font-semibold text-slate-700 text-sm">
+                  <div className="w-8 h-8 shrink-0 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center font-bold text-[#166534] text-sm shadow-xs">
                     {initial}
                   </div>
                   {!isCollapsed && (
                     <div className="flex flex-col whitespace-nowrap overflow-hidden">
                       <span className="text-xs font-semibold text-slate-800 truncate">{displayName}</span>
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded w-fit mt-0.5 uppercase">{role}</span>
+                      <span className="text-[10px] font-bold text-[#166534] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-md w-fit mt-0.5 uppercase tracking-wider">{role}</span>
                     </div>
                   )}
                 </>

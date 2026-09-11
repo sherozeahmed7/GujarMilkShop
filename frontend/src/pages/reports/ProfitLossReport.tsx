@@ -6,15 +6,7 @@ import { ReportHeader } from '../../components/reports/ReportHeader';
 import { ReportFilters } from '../../components/reports/ReportFilters';
 import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, EmptyState, ErrorState } from '../../components/reports/ReportStates';
-import { TrendingUp, TrendingDown, DollarSign, BarChart2, Percent, BookOpen, Info } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend, AreaChart, Area
-} from 'recharts';
-import { getCashbookSummary } from '../../services/cashbook.service';
-import { CashbookSummary } from '../../types/cashbook';
-
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
+import { TrendingUp, TrendingDown, DollarSign, BarChart2, Percent } from 'lucide-react';
 
 export const ProfitLossReport: React.FC = () => {
   const [filter, setFilter] = useState<DateFilterType>({
@@ -26,18 +18,13 @@ export const ProfitLossReport: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cashbookSummary, setCashbookSummary] = useState<CashbookSummary | null>(null);
 
   const loadReport = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [result, cbSummary] = await Promise.all([
-        getProfitAndLossReport(filter),
-        getCashbookSummary(),
-      ]);
+      const result = await getProfitAndLossReport(filter);
       setData(result);
-      setCashbookSummary(cbSummary);
     } catch (e) {
       setError('Failed to load Profit & Loss report.');
       console.error(e);
@@ -91,7 +78,6 @@ export const ProfitLossReport: React.FC = () => {
 
       {!isLoading && !error && data && (
         <>
-          {/* Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <SummaryCard title="Net Sales" value={fmt(data.revenue.netSales)} icon={TrendingUp} valueColor="text-blue-600" />
             <SummaryCard title="Total COGS" value={fmt(data.costs.totalCosts)} icon={BarChart2} valueColor="text-amber-600" />
@@ -100,12 +86,10 @@ export const ProfitLossReport: React.FC = () => {
             <SummaryCard title="Profit Margin" value={`${data.profit.margin}%`} icon={Percent} valueColor={data.profit.margin >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* P&L Statement Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-5 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800">Statement of Profit & Loss</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Based on actual transactions for the selected period</p>
+                <h3 className="font-bold text-slate-800">Profit & Loss Statement</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Actual synced sales, returns, costs, and expenses for the selected range</p>
               </div>
               <div className="p-5 space-y-5">
                 {/* Revenue Section */}
@@ -151,113 +135,7 @@ export const ProfitLossReport: React.FC = () => {
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Charts Column */}
-            <div className="flex flex-col gap-5">
-              {/* Revenue vs Cost */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[280px]">
-                <h3 className="font-bold text-slate-800 mb-4">Revenue vs Cost</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={data.charts.revVsCost}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v / 1000}k`} />
-                    <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                    <Legend />
-                    <Bar dataKey="revenue" name="Revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="cost" name="COGS" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Gross Profit Trend */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[280px]">
-                <h3 className="font-bold text-slate-800 mb-4">Gross Profit Trend</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={data.charts.profitTrend}>
-                    <defs>
-                      <linearGradient id="plGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v / 1000}k`} />
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                    <Area type="monotone" dataKey="value" name="Gross Profit" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#plGrad)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Expenses Breakdown Donut */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[280px]">
-                <h3 className="font-bold text-slate-800 mb-4">Expenses Breakdown</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={data.charts.expBreakdown} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={4} dataKey="value">
-                      {data.charts.expBreakdown.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                    <Legend verticalAlign="bottom" height={36} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Profit/Loss Visual Indicator */}
-          <div className={`rounded-xl border p-8 flex flex-col sm:flex-row items-center justify-between gap-6 ${isBreakEven ? 'bg-slate-50 border-slate-200' : isProfit ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-            <div>
-              <h3 className={`text-2xl font-bold ${isBreakEven ? 'text-slate-700' : isProfit ? 'text-emerald-700' : 'text-rose-700'}`}>
-                {isBreakEven ? '⚖️ Break-even Period' : isProfit ? '📈 Profitable Period' : '📉 Operating at a Loss'}
-              </h3>
-              <p className="text-slate-600 mt-1">
-                Net profit margin of <strong>{data.profit.margin}%</strong> on net sales of{' '}
-                <strong>{fmt(data.revenue.netSales)}</strong> for the selected period.
-              </p>
-            </div>
-            <div className="text-center shrink-0">
-              <div className={`text-4xl font-bold ${isProfit ? 'text-emerald-600' : isBreakEven ? 'text-slate-700' : 'text-rose-600'}`}>
-                {fmt(data.profit.netProfit)}
-              </div>
-              <p className="text-sm text-slate-500 mt-1">Net Profit / (Loss)</p>
-            </div>
-          </div>
-
-          {/* ─── Cashbook — Informational Only ───────────────────────────────────────
-              These values are sourced from the Cashbook module.
-              They do NOT affect Revenue, Expenses, COGS, Net Profit, or Net Loss.
-              They are displayed here for informational/reference purposes only.
-          ─────────────────────────────────────────────────────────────────────── */}
-          {cashbookSummary && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-6">
-              <div className="flex items-center gap-2 mb-1">
-                <BookOpen className="w-4 h-4 text-blue-600" />
-                <h3 className="font-bold text-blue-800">Cashbook — Informational Only</h3>
-              </div>
-              <div className="flex items-start gap-1.5 mb-5">
-                <Info className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-600">
-                  These values are from the Cashbook module and are <strong>not included</strong> in the Revenue, Expenses, or Net Profit/Loss calculations above.
-                  They are reference figures only.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl border border-blue-100 p-5">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cashbook Receivable</p>
-                  <p className="text-2xl font-bold text-blue-700">{fmt(cashbookSummary.totalToReceive)}</p>
-                  <p className="text-xs text-slate-400 mt-1">How much people owe us (Cashbook debtors)</p>
-                </div>
-                <div className="bg-white rounded-xl border border-blue-100 p-5">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cashbook Payable</p>
-                  <p className="text-2xl font-bold text-rose-600">{fmt(cashbookSummary.totalToPay)}</p>
-                  <p className="text-xs text-slate-400 mt-1">How much we owe people (Cashbook creditors)</p>
-                </div>
-              </div>
-            </div>
-          )}
+                  </div>
         </>
       )}
 

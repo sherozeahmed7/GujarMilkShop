@@ -9,9 +9,10 @@ interface ExportButtonsProps {
   data: any[]; // Data array to export
   columns: { header: string; dataKey: string }[];
   summaryData?: Record<string, any>;
+  summaryTitle?: string;
 }
 
-export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, columns, summaryData }) => {
+export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, columns, summaryData, summaryTitle = 'Summary' }) => {
   
   const handleExportExcel = () => {
     try {
@@ -52,15 +53,30 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, 
       let startY = 50;
       if (summaryData) {
         doc.setFontSize(12);
-        doc.text('Summary', 14, startY);
+        doc.text(summaryTitle, 14, startY);
         startY += 8;
-        doc.setFontSize(10);
-        Object.entries(summaryData).forEach(([key, val], index) => {
-           // Simple formatting
-           const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-           doc.text(`${label}: ${val}`, 14 + (index % 2) * 90, startY + (Math.floor(index / 2) * 6));
+        const summaryEntries = Object.entries(summaryData);
+        const cardWidth = 87;
+        const cardHeight = 16;
+        const cardGap = 5;
+        summaryEntries.forEach(([key, val], index) => {
+          const column = index % 2;
+          const row = Math.floor(index / 2);
+          const x = 14 + column * (cardWidth + cardGap);
+          const y = startY + row * (cardHeight + cardGap);
+          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+
+          doc.setDrawColor(226, 232, 240);
+          doc.setFillColor(248, 250, 252);
+          doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD');
+          doc.setFontSize(8);
+          doc.setTextColor(100, 116, 139);
+          doc.text(label, x + 4, y + 6);
+          doc.setFontSize(10);
+          doc.setTextColor(15, 23, 42);
+          doc.text(String(val), x + 4, y + 12);
         });
-        startY += (Math.ceil(Object.keys(summaryData).length / 2) * 6) + 10;
+        startY += (Math.ceil(summaryEntries.length / 2) * (cardHeight + cardGap)) + 4;
       }
 
       // Table

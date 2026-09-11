@@ -22,7 +22,7 @@ export const PaceCard: React.FC<PaceCardProps> = ({ dateFilter, billsServed, ave
             <div className="text-sm text-slate-500 mt-1">Bills served</div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-amber-700 tracking-tight">Rs. {averageBill.toLocaleString()}</div>
+            <div className="text-2xl font-black text-[#166534] tracking-tight">Rs. {averageBill.toLocaleString()}</div>
             <div className="text-sm text-slate-500 mt-1">Average bill</div>
           </div>
         </div>
@@ -30,7 +30,7 @@ export const PaceCard: React.FC<PaceCardProps> = ({ dateFilter, billsServed, ave
       <button
         type="button"
         onClick={() => navigate('/pos')}
-        className="w-full bg-[#1F7A6A] hover:bg-[#196356] text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 shadow-md"
+        className="w-full bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-[#166534]/25"
       >
         <ShoppingCart className="w-5 h-5" />
         <span>New Sale &rarr;</span>

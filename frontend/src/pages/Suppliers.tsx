@@ -115,7 +115,7 @@ export const Suppliers: React.FC = () => {
                 </label>
                 <button 
                   onClick={() => setIsAddModalOpen(true)}
-                  className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-sm transition-colors"
+                  className="flex items-center gap-1 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                   Add
@@ -131,18 +131,18 @@ export const Suppliers: React.FC = () => {
                 onClick={() => setSelectedSupplierId(sup.id)}
                 className={`w-full flex items-start justify-between p-3 rounded-xl mb-1 transition-all text-left ${
                   selectedSupplierId === sup.id 
-                    ? 'bg-blue-50 border border-blue-200 shadow-sm' 
-                    : 'hover:bg-slate-50 border border-transparent'
+                    ? 'bg-[#FEF3C7]/60 border border-[#FDE68A] shadow-xs' 
+                    : 'hover:bg-[#FEF3C7]/30 border border-transparent'
                 } ${!sup.isActive ? 'opacity-60' : ''}`}
               >
                 <div>
-                  <h3 className={`font-semibold text-sm ${selectedSupplierId === sup.id ? 'text-blue-900' : 'text-slate-800'}`}>
+                  <h3 className={`font-bold text-sm ${selectedSupplierId === sup.id ? 'text-[#166534]' : 'text-slate-800'}`}>
                     {sup.name}
                   </h3>
                   <span className="text-xs text-slate-500 font-mono mt-0.5 block">{sup.code}</span>
                 </div>
                 <div className="text-right">
-                  <div className={`font-bold text-sm ${selectedSupplierId === sup.id ? 'text-blue-700' : 'text-slate-700'}`}>
+                  <div className={`font-bold text-sm ${selectedSupplierId === sup.id ? 'text-[#166534]' : 'text-slate-700'}`}>
                     {formatCurrency(sup.payableBalance)}
                   </div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">
