@@ -3,6 +3,8 @@ import { Download, FileText, Printer } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
 
 interface ExportButtonsProps {
   reportName: string;
@@ -13,6 +15,7 @@ interface ExportButtonsProps {
 }
 
 export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, columns, summaryData, summaryTitle = 'Summary' }) => {
+  const isTauri = () => typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
   
   const handleExportExcel = () => {
     try {
@@ -35,7 +38,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, 
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
       const doc = new jsPDF();
       
@@ -92,7 +95,19 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, 
         headStyles: { fillColor: [59, 130, 246] }
       });
 
-      doc.save(`${reportName}_${new Date().toISOString().split('T')[0]}.pdf`);
+      const filename = `${reportName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      if (isTauri()) {
+        const path = await save({
+          defaultPath: filename,
+          filters: [{ name: 'PDF document', extensions: ['pdf'] }],
+        });
+        if (path) {
+          const pdfBytes = new Uint8Array(doc.output('arraybuffer'));
+          await writeFile(path, pdfBytes);
+        }
+      } else {
+        doc.save(filename);
+      }
     } catch (e) {
       console.error("PDF export failed", e);
       alert("Failed to export PDF.");
