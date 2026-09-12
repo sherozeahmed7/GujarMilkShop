@@ -153,6 +153,12 @@ export const getF2SalesReport = async (filter: DateFilterType) => {
   return res.data;
 };
 
+export const getF2ItemSummary = async (filter: DateFilterType) => {
+  const { from, to } = dateParams(filter);
+  const res = await apiClient.get('/reports/f2-item-summary', { from, to });
+  return res.data;
+};
+
 // ── Backup Report (no backend — stays as local data) ─────────────────────────
 export const getBackupReport = async () => {
   const { initialMockBackups } = await import('../data/backupMockData');

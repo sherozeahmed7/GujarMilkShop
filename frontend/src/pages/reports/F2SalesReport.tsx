@@ -7,9 +7,9 @@ import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, ErrorState } from '../../components/reports/ReportStates';
 import { Banknote, CreditCard, Beaker, Package } from 'lucide-react';
 import { saleService, SaleRecord, SalesReportAnalytics } from '../../services/sale.service';
-import { getF2SalesReport } from '../../services/reportsApi';
-import { milkProductsService } from '../../services/milkProducts.service';
+import { getF2SalesReport, getF2ItemSummary } from '../../services/reportsApi';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
+import { MilkSummary } from '../../components/milk-products/MilkSummary';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -66,14 +66,6 @@ const EMPTY_ANALYTICS: SalesReportAnalytics = {
   categoryBreakdown: [],
 };
 
-function getDateKey(date: Date | null): string {
-  const value = date ? new Date(date) : new Date();
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function formatKg(value: number | undefined): string {
   return `${Number(value ?? 0).toLocaleString()} kg`;
 }
@@ -94,10 +86,9 @@ export const F2SalesReport: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const stockDate = getDateKey(filter.endDate);
       const [result, stock] = await Promise.all([
         getF2SalesReport(filter),
-        milkProductsService.getDailyStock(stockDate),
+        getF2ItemSummary(filter),
       ]);
       setSales(result.sales || []);
       setAnalytics(result.analytics || EMPTY_ANALYTICS);
@@ -168,7 +159,7 @@ export const F2SalesReport: React.FC = () => {
           { header: 'Status', dataKey: 'status' },
         ]}
         exportSummary={itemSummary}
-        exportSummaryTitle={itemStock ? `F2 Item Summary (${getDateKey(filter.endDate)})` : undefined}
+        exportSummaryTitle={itemStock ? `F2 Item Summary (${filter.label})` : undefined}
       />
 
       <ReportFilters
@@ -184,6 +175,8 @@ export const F2SalesReport: React.FC = () => {
         <ErrorState message={error} onRetry={loadReport} />
       ) : (
         <div className="space-y-6">
+          {itemStock && <MilkSummary stock={itemStock as MilkProductsDailyStock} periodLabel={filter.label} />}
+
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard

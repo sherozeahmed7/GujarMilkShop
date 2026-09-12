@@ -17,9 +17,10 @@ import {
 
 interface Props {
   stock: MilkProductsDailyStock;
+  periodLabel?: string;
 }
 
-export const MilkSummary: React.FC<Props> = ({ stock }) => {
+export const MilkSummary: React.FC<Props> = ({ stock, periodLabel = 'today' }) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -42,7 +43,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <h3 className="text-xl font-bold text-slate-800">
             {stock.milkTotal} kg
           </h3>
-          <p className="text-[11px] text-slate-400">milk added today</p>
+          <p className="text-[11px] text-slate-400">milk added for {periodLabel.toLowerCase()}</p>
         </div>
       </div>
 
@@ -122,7 +123,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <ShoppingCart className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm font-medium text-slate-500">Lassi Sold Today</p>
+          <p className="text-sm font-medium text-slate-500">Lassi Sold ({periodLabel})</p>
           <h3 className="text-xl font-bold text-slate-800">
             {stock.lassiSold} kg
           </h3>
@@ -134,7 +135,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
             sold value
           </p>
           <p className="text-[11px] text-slate-400">
-            quantity and amount sold so far
+            quantity and amount sold for {periodLabel.toLowerCase()}
           </p>
         </div>
       </div>
@@ -196,12 +197,12 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
         </div>
         <div>
           <p className="text-sm font-medium text-slate-500">
-            Butter Converted Today
+            Butter Converted ({periodLabel})
           </p>
           <h3 className="text-xl font-bold text-slate-800">
             {stock.butterConverted} kg
           </h3>
-          <p className="text-[11px] text-slate-400">used for Ghee production</p>
+          <p className="text-[11px] text-slate-400">used for Ghee production in {periodLabel.toLowerCase()}</p>
         </div>
       </div>
 
@@ -216,7 +217,7 @@ export const MilkSummary: React.FC<Props> = ({ stock }) => {
           <h3 className="text-xl font-bold text-slate-800">
             {stock.gheeProduced} kg
           </h3>
-          <p className="text-[11px] text-slate-400">from Butter conversion</p>
+          <p className="text-[11px] text-slate-400">from Butter conversion in {periodLabel.toLowerCase()}</p>
         </div>
       </div>
 {/* 

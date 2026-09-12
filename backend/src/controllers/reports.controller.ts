@@ -590,4 +590,77 @@ export class ReportsController {
       });
     } catch (err) { next(err); }
   }
+
+  // ── F2 ITEM SUMMARY ────────────────────────────────────────────────────────
+  static async f2ItemSummary(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { from, to, start, end } = parseRange(req);
+      const [dailyRows, products, rate, supplierCost] = await Promise.all([
+        prisma.milkProductDailyStock.findMany({ where: { date: { gte: start, lte: end } } }),
+        prisma.inventoryProduct.findMany({ where: { code: { in: ['LASSI', 'BUTTER', 'GHEE'] } }, select: { id: true, code: true } }),
+        prisma.dailyRate.findFirst({ where: { date: { lte: end } }, orderBy: [{ date: 'desc' }, { id: 'desc' }] }),
+        prisma.supplierCollection.aggregate({ where: { quantity: { gt: 0 }, rate: { gt: 0 }, date: { lte: to } }, _avg: { rate: true } }),
+      ]);
+
+      const totals = dailyRows.reduce((sum, row) => ({
+        milkTotal: money(sum.milkTotal + row.milkTotal),
+        lassiProduced: money(sum.lassiProduced + row.lassiProduced),
+        lassiSold: money(sum.lassiSold + row.lassiSold),
+        butterProduced: money(sum.butterProduced + row.butterProduced),
+        butterSold: money(sum.butterSold + row.butterSold),
+        butterConverted: money(sum.butterConverted + row.butterConverted),
+        gheeProduced: money(sum.gheeProduced + row.gheeProduced),
+        gheeSold: money(sum.gheeSold + row.gheeSold),
+      }), {
+        milkTotal: 0, lassiProduced: 0, lassiSold: 0, butterProduced: 0,
+        butterSold: 0, butterConverted: 0, gheeProduced: 0, gheeSold: 0,
+      });
+
+      const closingByCode: Record<string, number> = {};
+      await Promise.all(products.map(async (product) => {
+        const result = await prisma.inventoryMovement.aggregate({
+          where: { productId: product.id, date: { lte: end } },
+          _sum: { quantity: true },
+        });
+        closingByCode[product.code] = money(Number(result._sum.quantity || 0));
+      }));
+
+      const milkCostPerKg = money(Number(supplierCost._avg.rate ?? 0) || Number(rate?.milkRate || 0) * 0.65);
+      const lassiRatePerKg = Number(rate?.lassiRate || 0);
+      const butterRatePerKg = Number(rate?.butterRate || 0);
+      const milkAddedCost = money(totals.milkTotal * milkCostPerKg);
+      const lassiRecovery = money(totals.lassiSold * lassiRatePerKg);
+      const butterInventoryValue = money(Math.max(closingByCode.BUTTER || 0, 0) * butterRatePerKg);
+      const butterTotalValue = money(butterInventoryValue + lassiRecovery);
+      const butterRecoveryResult = money(butterTotalValue - milkAddedCost);
+
+      return ApiResponse.success(res, 'F2 item summary.', {
+        date: to,
+        milkTotal: totals.milkTotal,
+        milkRatePerKg: milkCostPerKg,
+        milkCostPerKg,
+        lassiRatePerKg,
+        butterRatePerKg,
+        milkAddedCost,
+        milkRecoveredFromLassi: lassiRecovery,
+        milkRecoveredFromButter: money(Math.min(totals.butterSold * butterRatePerKg, milkAddedCost)),
+        milkLossCost: money(Math.max(milkAddedCost - lassiRecovery, 0)),
+        butterInventoryValue,
+        butterTotalValue,
+        butterRecoveryResult,
+        lassiProduced: totals.lassiProduced,
+        lassiSold: totals.lassiSold,
+        lassiRemaining: Math.max(closingByCode.LASSI || 0, 0),
+        butterOpening: 0,
+        butterProduced: totals.butterProduced,
+        butterSold: totals.butterSold,
+        butterConverted: totals.butterConverted,
+        butterClosing: Math.max(closingByCode.BUTTER || 0, 0),
+        gheeOpening: 0,
+        gheeProduced: totals.gheeProduced,
+        gheeSold: totals.gheeSold,
+        gheeClosing: Math.max(closingByCode.GHEE || 0, 0),
+      });
+    } catch (err) { next(err); }
+  }
 }

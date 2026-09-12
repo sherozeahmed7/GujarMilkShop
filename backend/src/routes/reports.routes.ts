@@ -14,5 +14,6 @@ router.get('/suppliers',      ReportsController.suppliers);
 router.get('/inventory',      ReportsController.inventory);
 router.get('/profit-loss',    ReportsController.profitLoss);
 router.get('/f2-sales',       ReportsController.f2Sales);
+router.get('/f2-item-summary', ReportsController.f2ItemSummary);
 
 export default router;
