@@ -240,6 +240,7 @@ async function migrateSupplierPayments() {
       payload: {
         id: cloudUuid, local_id: r.id, device_id: SyncQueueService.getDeviceId(),
         supplier_uuid: supplierUuid, date: r.date, amount: r.amount,
+        shift_uuid: await resolveUuid('Shift', r.shiftId),
         method: r.method, notes: r.notes, created_by_uuid: createdByUuid,
         created_at: r.createdAt,
       },

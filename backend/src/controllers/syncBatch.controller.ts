@@ -52,7 +52,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
     'notes', 'created_by_uuid', 'created_at', 'updated_at',
   ]),
   SupplierPayment: new Set([
-    'supplier_uuid', 'date', 'amount', 'method', 'notes', 'created_by_uuid', 'created_at',
+    'supplier_uuid', 'shift_uuid', 'date', 'amount', 'method', 'notes', 'created_by_uuid', 'created_at',
   ]),
   Sale: new Set([
     'sale_type', 'customer_uuid', 'customer_name', 'customer_phone', 'total_amount',

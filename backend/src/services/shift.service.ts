@@ -92,10 +92,16 @@ async function expectedCash(shift: {
     _sum: { amount: true },
   });
 
+  const supplierCashOut = await prisma.supplierPayment.aggregate({
+    where: { shiftId: shift.id, method: 'cash' },
+    _sum: { amount: true },
+  });
+
   return money(
     shift.openingCash +
       payments.reduce((sum, payment) => sum + payment.amount, 0) -
-      (expenseCashOut._sum.amount || 0)
+      (expenseCashOut._sum.amount || 0) -
+      (supplierCashOut._sum.amount || 0)
   );
 }
 

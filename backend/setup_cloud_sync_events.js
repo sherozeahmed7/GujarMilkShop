@@ -30,6 +30,12 @@ async function setupCloudSyncEvents() {
     `);
     console.log('  Indexes created.');
 
+    await client.query(`
+      ALTER TABLE supplier_payments
+      ADD COLUMN IF NOT EXISTS shift_uuid UUID REFERENCES shifts(id)
+    `);
+    console.log('  Supplier payment shift links verified.');
+
     // Check current max sequence (for initial cursor computation)
     const maxSeq = await client.query(`SELECT COALESCE(MAX(change_sequence), 0) AS max_seq FROM cloud_sync_events`);
     console.log(`  Current max change_sequence: ${maxSeq.rows[0].max_seq}`);

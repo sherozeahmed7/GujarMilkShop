@@ -84,10 +84,10 @@ function buildInsert(entityType: string, p: any): { sql: string; vals: any[] } {
     case 'SupplierPayment':
       return {
         sql: `INSERT INTO supplier_payments
-                (id,local_id,device_id,supplier_uuid,date,amount,method,notes,created_by_uuid,created_at)
-              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                (id,local_id,device_id,supplier_uuid,shift_uuid,date,amount,method,notes,created_by_uuid,created_at)
+              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
               ON CONFLICT(device_id,local_id) DO NOTHING`,
-        vals: [p.id,p.local_id,p.device_id,p.supplier_uuid,p.date,p.amount,
+        vals: [p.id,p.local_id,p.device_id,p.supplier_uuid,p.shift_uuid,p.date,p.amount,
                p.method,p.notes,p.created_by_uuid,p.created_at],
       };
 

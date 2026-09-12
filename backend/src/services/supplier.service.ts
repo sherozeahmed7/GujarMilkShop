@@ -402,10 +402,53 @@ export class SupplierService {
     const notes = payload.notes?.trim() || null;
 
     const created = await prisma.$transaction(async (tx) => {
+      const openShift = await tx.shift.findFirst({
+        where: { status: 'Open' },
+        orderBy: { openedAt: 'asc' },
+      });
+
+      if (amount > 0 && method === 'cash') {
+        if (!openShift) {
+          throw new Error('Open a shift before making a cash supplier payment.');
+        }
+
+        const [cashPayments, expenseCashOut, supplierCashOut] = await Promise.all([
+          tx.payment.aggregate({
+            where: {
+              method: 'cash',
+              status: { in: ['completed', 'partial'] },
+              createdAt: { gte: openShift.openedAt },
+            },
+            _sum: { amount: true },
+          }),
+          tx.expensePayment.aggregate({
+            where: { shiftId: openShift.id },
+            _sum: { amount: true },
+          }),
+          tx.supplierPayment.aggregate({
+            where: { shiftId: openShift.id, method: 'cash' },
+            _sum: { amount: true },
+          }),
+        ]);
+
+        const availableCash = Math.round((
+          openShift.openingCash +
+          Number(cashPayments._sum.amount || 0) -
+          Number(expenseCashOut._sum.amount || 0) -
+          Number(supplierCashOut._sum.amount || 0)
+        ) * 100) / 100;
+
+        if (amount > availableCash + 1e-9) {
+          throw new Error(
+            `Insufficient shift cash. Available Rs. ${availableCash.toLocaleString()}, but supplier payment is Rs. ${amount.toLocaleString()}.`
+          );
+        }
+      }
+
       const rows = [];
       if (amount > 0) {
         const pay = await tx.supplierPayment.create({
-          data: { supplierId, date, amount, method, notes, createdById: userId },
+          data: { supplierId, date, amount, method, notes, createdById: userId, shiftId: method === 'cash' ? openShift?.id : null },
         });
         await SyncQueueService.enqueueCreate(tx, 'SupplierPayment', pay.id, pay, 1);
         rows.push(pay);
@@ -420,6 +463,7 @@ export class SupplierService {
             date,
             amount: discount,
             method: 'discount',
+            shiftId: null,
             notes: discountNotes,
             createdById: userId,
           },

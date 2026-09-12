@@ -393,9 +393,13 @@ async function applyCreate(
         ? await resolveLocalId(tx, 'Supplier', p.supplierUuid, sourceDeviceId)
         : null;
       if (!supplierLocalId) throw new Error(`Cannot apply SupplierPayment: missing Supplier mapping`);
+      const shiftLocalId = p.shiftUuid
+        ? await resolveLocalId(tx, 'Shift', p.shiftUuid, sourceDeviceId)
+        : null;
       const rec = await tx.supplierPayment.create({
         data: {
           supplierId: supplierLocalId,
+          shiftId: shiftLocalId,
           date: p.date,
           amount: Number(p.amount),
           method: p.method ?? 'cash',

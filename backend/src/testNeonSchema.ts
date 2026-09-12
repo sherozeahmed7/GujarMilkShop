@@ -178,6 +178,7 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
   local_id INT NOT NULL,
   device_id VARCHAR NOT NULL,
   supplier_uuid UUID REFERENCES suppliers(id),
+  shift_uuid UUID REFERENCES shifts(id),
   date VARCHAR NOT NULL,
   amount DECIMAL NOT NULL,
   method VARCHAR NOT NULL,
@@ -187,6 +188,9 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(device_id, local_id)
 );
+
+ALTER TABLE supplier_payments
+  ADD COLUMN IF NOT EXISTS shift_uuid UUID REFERENCES shifts(id);
 
 CREATE TABLE IF NOT EXISTS inventory_movements (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
