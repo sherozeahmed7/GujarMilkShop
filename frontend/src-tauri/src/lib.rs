@@ -1,28 +1,37 @@
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::ptr;
+use std::sync::{Arc, Mutex};
 use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::Graphics::Printing::{
     ClosePrinter, EndDocPrinter, EndPagePrinter, OpenPrinterW, StartDocPrinterW, StartPagePrinter,
     WritePrinter, DOC_INFO_1W,
 };
-use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandEvent;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// Open Windows built-in on-screen keyboard (Touch Keyboard / OSK).
 #[tauri::command]
 fn open_onscreen_keyboard() -> Result<(), String> {
     let tabtip = r"C:\Program Files\Common Files\microsoft shared\ink\TabTip.exe";
     if std::path::Path::new(tabtip).exists() {
-        std::process::Command::new(tabtip)
-            .spawn()
+        let mut cmd = std::process::Command::new(tabtip);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.spawn()
             .map_err(|e| format!("Failed to open Touch Keyboard: {e}"))?;
         return Ok(());
     }
 
-    std::process::Command::new("osk.exe")
-        .spawn()
+    let mut cmd = std::process::Command::new("osk.exe");
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd.spawn()
         .map_err(|e| format!("Failed to open On-Screen Keyboard: {e}"))?;
     Ok(())
 }
@@ -30,7 +39,11 @@ fn open_onscreen_keyboard() -> Result<(), String> {
 /// List installed Windows printers via PowerShell
 #[tauri::command]
 fn list_printers() -> Result<Vec<String>, String> {
-    let output = std::process::Command::new("powershell")
+    let mut cmd = std::process::Command::new("powershell");
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd
         .args(&[
             "-NoProfile",
             "-Command",
@@ -124,20 +137,19 @@ fn print_raw_bytes(printer_name: String, data: Vec<u8>) -> Result<bool, String> 
     }
 }
 
-use std::sync::{Arc, Mutex};
-
 fn kill_port_or_orphan_backend() {
     #[cfg(target_os = "windows")]
     {
-        // 1. Force kill any existing backend processes by name
-        let _ = std::process::Command::new("taskkill")
-            .args(&["/F", "/IM", "backend.exe", "/T"])
-            .output();
-        let _ = std::process::Command::new("taskkill")
-            .args(&["/F", "/IM", "backend-x86_64-pc-windows-msvc.exe", "/T"])
-            .output();
+        // 1. Force kill any existing backend processes by name silently
+        let mut cmd1 = std::process::Command::new("taskkill");
+        cmd1.creation_flags(CREATE_NO_WINDOW);
+        let _ = cmd1.args(&["/F", "/IM", "backend.exe", "/T"]).output();
 
-        // 2. Kill whatever process is occupying port 5000 using netstat/cmd for instant execution
+        let mut cmd2 = std::process::Command::new("taskkill");
+        cmd2.creation_flags(CREATE_NO_WINDOW);
+        let _ = cmd2.args(&["/F", "/IM", "backend-x86_64-pc-windows-msvc.exe", "/T"]).output();
+
+        // 2. Kill whatever process is occupying port 5000 using netstat/powershell silently
         let script = r#"
             $conn = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue
             if ($conn) {
@@ -149,9 +161,9 @@ fn kill_port_or_orphan_backend() {
                 }
             }
         "#;
-        let _ = std::process::Command::new("powershell")
-            .args(&["-NoProfile", "-NonInteractive", "-Command", script])
-            .output();
+        let mut ps_cmd = std::process::Command::new("powershell");
+        ps_cmd.creation_flags(CREATE_NO_WINDOW);
+        let _ = ps_cmd.args(&["-NoProfile", "-NonInteractive", "-Command", script]).output();
 
         // Allow Windows socket stack a brief moment to free the port completely
         std::thread::sleep(std::time::Duration::from_millis(200));
@@ -163,101 +175,101 @@ pub fn run() {
     // Clean up any stale backend instances from previous runs before launching
     kill_port_or_orphan_backend();
 
-    let child_handle: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>> =
-        Arc::new(Mutex::new(None));
-    let child_handle_cleanup = Arc::clone(&child_handle);
+    let child_handle: Arc<Mutex<Option<std::process::Child>>> = Arc::new(Mutex::new(None));
+    let child_handle_window = Arc::clone(&child_handle);
+    let child_handle_exit = Arc::clone(&child_handle);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .setup(move |app| {
-            // Spawn the backend sidecar.
-            // 1. Try Tauri's official sidecar API
-            let spawned = match app.shell().sidecar("bin/backend") {
-                Ok(cmd) => cmd.spawn(),
-                Err(_) => match app.shell().sidecar("backend") {
-                    Ok(cmd) => cmd.spawn(),
-                    Err(e) => Err(e),
-                },
-            };
+        .setup(move |_app| {
+            // Find backend binary candidate paths
+            let mut candidate_paths = vec![
+                std::path::PathBuf::from("src-tauri/bin/backend-x86_64-pc-windows-msvc.exe"),
+                std::path::PathBuf::from("bin/backend-x86_64-pc-windows-msvc.exe"),
+                std::path::PathBuf::from("backend-x86_64-pc-windows-msvc.exe"),
+            ];
 
-            match spawned {
-                Ok((mut rx, child)) => {
-                    println!("[Backend] Sidecar spawned successfully (PID: {})", child.pid());
-                    
-                    if let Ok(mut lock) = child_handle.lock() {
-                        *lock = Some(child);
+            if let Ok(current_exe) = std::env::current_exe() {
+                if let Some(exe_dir) = current_exe.parent() {
+                    candidate_paths.push(exe_dir.join("bin/backend-x86_64-pc-windows-msvc.exe"));
+                    candidate_paths.push(exe_dir.join("backend-x86_64-pc-windows-msvc.exe"));
+                    candidate_paths.push(exe_dir.join("backend.exe"));
+                    candidate_paths.push(exe_dir.join("bin/backend.exe"));
+                    // In release bundle, resources may be alongside exe or up one dir
+                    if let Some(parent) = exe_dir.parent() {
+                        candidate_paths.push(parent.join("bin/backend-x86_64-pc-windows-msvc.exe"));
                     }
-
-                    tauri::async_runtime::spawn(async move {
-                        while let Some(event) = rx.recv().await {
-                            match event {
-                                CommandEvent::Stdout(line) => {
-                                    print!("[Backend] {}", String::from_utf8_lossy(&line));
-                                }
-                                CommandEvent::Stderr(line) => {
-                                    eprint!("[Backend ERR] {}", String::from_utf8_lossy(&line));
-                                }
-                                CommandEvent::Terminated(payload) => {
-                                    println!(
-                                        "[Backend] Process terminated with code: {:?}",
-                                        payload.code
-                                    );
-                                    break;
-                                }
-                                _ => {}
-                            }
-                        }
-                    });
                 }
-                Err(e) => {
-                    eprintln!("[Backend] Tauri sidecar API failed ({}), trying direct path spawn...", e);
-                    
-                    // 2. Direct path resolution (works in production installer & dev)
-                    let mut candidate_paths = vec![
-                        std::path::PathBuf::from("src-tauri/bin/backend-x86_64-pc-windows-msvc.exe"),
-                        std::path::PathBuf::from("bin/backend-x86_64-pc-windows-msvc.exe"),
-                        std::path::PathBuf::from("backend-x86_64-pc-windows-msvc.exe"),
-                    ];
+            }
 
-                    if let Ok(current_exe) = std::env::current_exe() {
-                        if let Some(exe_dir) = current_exe.parent() {
-                            candidate_paths.push(exe_dir.join("bin/backend-x86_64-pc-windows-msvc.exe"));
-                            candidate_paths.push(exe_dir.join("backend-x86_64-pc-windows-msvc.exe"));
-                            candidate_paths.push(exe_dir.join("backend.exe"));
-                            candidate_paths.push(exe_dir.join("bin/backend.exe"));
-                        }
-                    }
+            let mut started = false;
+            for path in &candidate_paths {
+                if path.exists() {
+                    println!("[Backend] Spawning backend silently from: {:?}", path);
+                    let mut cmd = std::process::Command::new(path);
+                    #[cfg(target_os = "windows")]
+                    cmd.creation_flags(CREATE_NO_WINDOW);
 
-                    let mut fallback_started = false;
-                    for path in &candidate_paths {
-                        if path.exists() {
-                            println!("[Backend] Direct spawning from: {:?}", path);
-                            if let Ok(mut child) = std::process::Command::new(path).spawn() {
-                                println!("[Backend] Direct backend process spawned (PID: {})", child.id());
-                                fallback_started = true;
+                    cmd.stdout(std::process::Stdio::piped());
+                    cmd.stderr(std::process::Stdio::piped());
+
+                    match cmd.spawn() {
+                        Ok(mut child) => {
+                            println!("[Backend] Background process started (PID: {})", child.id());
+
+                            let stdout = child.stdout.take();
+                            let stderr = child.stderr.take();
+
+                            if let Some(out) = stdout {
                                 std::thread::spawn(move || {
-                                    let _ = child.wait();
+                                    use std::io::{BufRead, BufReader};
+                                    let reader = BufReader::new(out);
+                                    for line in reader.lines() {
+                                        if let Ok(l) = line {
+                                            println!("[Backend] {}", l);
+                                        }
+                                    }
                                 });
-                                break;
                             }
+
+                            if let Some(err) = stderr {
+                                std::thread::spawn(move || {
+                                    use std::io::{BufRead, BufReader};
+                                    let reader = BufReader::new(err);
+                                    for line in reader.lines() {
+                                        if let Ok(l) = line {
+                                            eprintln!("[Backend ERR] {}", l);
+                                        }
+                                    }
+                                });
+                            }
+
+                            if let Ok(mut lock) = child_handle.lock() {
+                                *lock = Some(child);
+                            }
+                            started = true;
+                            break;
+                        }
+                        Err(e) => {
+                            eprintln!("[Backend] Failed to spawn {:?}: {}", path, e);
                         }
                     }
-
-                    if !fallback_started {
-                        eprintln!("[Backend] Could not find or launch backend executable in any candidate path!");
-                    }
                 }
+            }
+
+            if !started {
+                eprintln!("[Backend] Could not find backend binary in any candidate path. If running in pure dev without compiled sidecar, please start backend manually.");
             }
 
             Ok(())
         })
         .on_window_event(move |_window, event| {
             if let tauri::WindowEvent::Destroyed = event {
-                if let Ok(mut lock) = child_handle_cleanup.lock() {
-                    if let Some(child) = lock.take() {
+                if let Ok(mut lock) = child_handle_window.lock() {
+                    if let Some(mut child) = lock.take() {
                         let _ = child.kill();
                     }
                 }
@@ -271,8 +283,13 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app_handle, event| {
+        .run(move |_app_handle, event| {
             if let tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit = event {
+                if let Ok(mut lock) = child_handle_exit.lock() {
+                    if let Some(mut child) = lock.take() {
+                        let _ = child.kill();
+                    }
+                }
                 kill_port_or_orphan_backend();
             }
         });
