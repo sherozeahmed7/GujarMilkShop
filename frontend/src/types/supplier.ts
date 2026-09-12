@@ -53,4 +53,26 @@ export interface SupplierPayment {
   notes?: string;
   /** Optional write-off sent with addPayment — creates a separate discount payment row */
   discount?: number;
+  shiftId?: number | null;
+  shiftDate?: string | null;
+  shiftStatus?: string | null;
+}
+
+/** Row from GET /suppliers/payments — farm + shift attribution */
+export interface SupplierPaymentRecord {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  supplierCode: string;
+  date: string;
+  amount: number;
+  method: string;
+  notes?: string | null;
+  createdAt?: string;
+  createdBy?: string | null;
+  shiftId?: number | null;
+  shiftDate?: string | null;
+  shiftStatus?: string | null;
+  shiftOpenedAt?: string | null;
+  shiftClosedAt?: string | null;
 }

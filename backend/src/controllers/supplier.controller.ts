@@ -22,6 +22,22 @@ export class SupplierController {
   static async get(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.get(idOf(req.params.id)); return r.success ? ApiResponse.success(res, 'Supplier fetched successfully', r.data) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }
   static async update(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.update(idOf(req.params.id), req.body); return r.success ? ApiResponse.success(res, 'Supplier updated successfully', r.data) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }
   static async entries(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.collections(idOf(req.params.id)); return r.success ? ApiResponse.success(res, 'Supplier entries fetched successfully', r.data) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }
+  static async listPayments(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { fromDate, toDate, supplierId, shiftId, shiftDate, method } = req.query;
+      const data = await SupplierService.listPayments({
+        fromDate: typeof fromDate === 'string' ? fromDate : undefined,
+        toDate: typeof toDate === 'string' ? toDate : undefined,
+        supplierId: typeof supplierId === 'string' && supplierId ? Number(supplierId) : undefined,
+        shiftId: typeof shiftId === 'string' && shiftId ? Number(shiftId) : undefined,
+        shiftDate: typeof shiftDate === 'string' ? shiftDate : undefined,
+        method: typeof method === 'string' ? method : undefined,
+      });
+      return ApiResponse.success(res, 'Supplier payments fetched successfully', data);
+    } catch (e) {
+      next(e);
+    }
+  }
   static async collection(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.saveCollection(req.user!.userId, idOf(req.params.id), req.body, req.body.id ? Number(req.body.id) : undefined); return r.success ? ApiResponse.success(res, 'Collection saved successfully', r.data, r.statusCode) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }
   static async deleteCollection(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.deleteCollection(idOf(req.params.collectionId)); return ApiResponse.success(res, 'Collection deleted successfully', r.data); } catch (e) { next(e); } }
   static async payment(req: AuthenticatedRequest, res: Response, next: NextFunction) { try { const r = await SupplierService.addPayment(req.user!.userId, idOf(req.params.id), req.body); return r.success ? ApiResponse.success(res, 'Supplier payment saved successfully', r.data, r.statusCode) : ApiResponse.error(res, r.message!, r.statusCode); } catch (e) { next(e); } }

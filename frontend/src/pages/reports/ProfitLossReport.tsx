@@ -7,6 +7,10 @@ import { ReportFilters } from '../../components/reports/ReportFilters';
 import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, EmptyState, ErrorState } from '../../components/reports/ReportStates';
 import { TrendingUp, TrendingDown, DollarSign, BarChart2, Percent } from 'lucide-react';
+import {
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer,
+  Tooltip as RechartsTooltip, XAxis, YAxis,
+} from 'recharts';
 
 export const ProfitLossReport: React.FC = () => {
   const [filter, setFilter] = useState<DateFilterType>({
@@ -64,10 +68,11 @@ export const ProfitLossReport: React.FC = () => {
         exportData={exportData}
         exportColumns={[{ header: 'Item', dataKey: 'item' }, { header: 'Amount (Rs.)', dataKey: 'amount' }]}
         exportSummary={data ? {
-          NetSales: fmt(data.revenue.netSales),
-          GrossProfit: fmt(data.profit.grossProfit),
+          TotalSales: fmt(data.summary.totalSales),
+          ReturnAmount: fmt(data.summary.returnAmount),
+          Expenses: fmt(data.summary.expenses),
+          NumberOfSales: data.summary.numberOfSales,
           NetProfit: fmt(data.profit.netProfit),
-          ProfitMargin: `${data.profit.margin}%`,
         } : undefined}
       />
 
@@ -79,63 +84,101 @@ export const ProfitLossReport: React.FC = () => {
       {!isLoading && !error && data && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            <SummaryCard title="Net Sales" value={fmt(data.revenue.netSales)} icon={TrendingUp} valueColor="text-blue-600" />
-            <SummaryCard title="Total COGS" value={fmt(data.costs.totalCosts)} icon={BarChart2} valueColor="text-amber-600" />
-            <SummaryCard title="Gross Profit" value={fmt(data.profit.grossProfit)} icon={DollarSign} valueColor="text-emerald-600" />
+            <SummaryCard title="Total Sales" value={fmt(data.summary.totalSales)} icon={TrendingUp} valueColor="text-blue-600" />
+            <SummaryCard title="Return Amount" value={fmt(data.summary.returnAmount)} icon={TrendingDown} valueColor="text-rose-600" />
+            <SummaryCard title="Expenses" value={fmt(data.summary.expenses)} icon={BarChart2} valueColor="text-amber-600" />
+            <SummaryCard title="Number of Sales" value={data.summary.numberOfSales} icon={DollarSign} valueColor="text-slate-700" />
             <SummaryCard title="Net Profit" value={fmt(data.profit.netProfit)} icon={data.profit.netProfit >= 0 ? TrendingUp : TrendingDown} valueColor={data.profit.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
-            <SummaryCard title="Profit Margin" value={`${data.profit.margin}%`} icon={Percent} valueColor={data.profit.margin >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+              <h3 className="font-bold text-slate-800">Daily Sales</h3>
+              <p className="text-xs text-slate-400 mt-1">Recorded sales amount for each day in the selected range</p>
+              <div className="h-64 mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={data.charts.revVsCost}>
+                    <defs>
+                      <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} tickFormatter={(value: number) => `Rs.${value}`} />
+                    <RechartsTooltip formatter={(value) => fmt(Number(value ?? 0))} />
+                    <Area type="monotone" dataKey="revenue" name="Sales" stroke="#2563EB" fill="url(#salesFill)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+              <h3 className="font-bold text-slate-800">Revenue vs Cost</h3>
+              <p className="text-xs text-slate-400 mt-1">Daily recorded revenue compared with product cost and wastage</p>
+              <div className="h-64 mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.charts.revVsCost}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B' }} tickFormatter={(value: number) => `Rs.${value}`} />
+                    <RechartsTooltip formatter={(value) => fmt(Number(value ?? 0))} />
+                    <Legend />
+                    <Bar dataKey="revenue" name="Revenue" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cost" name="Cost + Wastage" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-5 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800">Profit & Loss Statement</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Actual synced sales, returns, costs, and expenses for the selected range</p>
+            <div className="p-5 border-b border-slate-100">
+              <h3 className="font-bold text-slate-800">Profit & Loss Statement</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Actual synced sales, returns, costs, and expenses for the selected range</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="px-5 py-3 font-bold">Category</th>
+                    <th className="px-5 py-3 font-bold">Title</th>
+                    <th className="px-5 py-3 text-right font-bold whitespace-nowrap">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <TableRow section="Sales" label="Total Sales" value={fmt(data.revenue.grossSales)} />
+                  <TableRow section="Sales" label="Discounts" value={`(${fmt(data.revenue.discounts)})`} valueClass="text-rose-500" />
+                  <TableRow section="Sales" label="Return Amount" value={`(${fmt(data.revenue.returns)})`} valueClass="text-rose-500" />
+                  <TableRow section="Sales" label="Number of Returns" value={String(data.summary.numberOfReturns)} />
+                  <TableRow section="Collections" label="Amount Collected" value={fmt(data.summary.amountCollected)} emphasized valueClass="text-blue-600" />
+                  <TableRow section="Sales" label="Number of Sales" value={String(data.summary.numberOfSales)} />
+                  <TableRow section="Sales" label="Net Sales" value={fmt(data.revenue.netSales)} emphasized />
+                  <TableRow section="Costs" label="Product Cost" value={fmt(data.costs.cogs)} />
+                  <TableRow
+                    section="Costs"
+                    label="Gross Profit"
+                    value={fmt(data.profit.grossProfit)}
+                    emphasized
+                    valueClass={data.profit.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}
+                  />
+                  {Object.entries(data.expenses.breakdown).map(([category, amount]) => (
+                    <TableRow key={category} section="Expenses" label={category} value={fmt(amount as number)} />
+                  ))}
+                  <TableRow section="Expenses" label="Total Expenses" value={`(${fmt(data.expenses.totalExpenses)})`} emphasized valueClass="text-rose-500" />
+                  <TableRow
+                    section="Result"
+                    label="Net Profit / (Loss)"
+                    value={fmt(data.profit.netProfit)}
+                    emphasized
+                    valueClass={isBreakEven ? 'text-slate-700' : isProfit ? 'text-emerald-600' : 'text-rose-600'}
+                  />
+                  <TableRow section="Result" label="Profit Margin" value={`${data.profit.margin}%`} />
+                </tbody>
+              </table>
+            </div>
               </div>
-              <div className="p-5 space-y-5">
-                {/* Revenue Section */}
-                <section>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Revenue</h4>
-                  <div className="space-y-2.5">
-                    <Row label="Gross Sales" value={fmt(data.revenue.grossSales)} />
-                    <Row label="Less: Discounts" value={`(${fmt(data.revenue.discounts)})`} color="text-rose-500" />
-                    <Row label="Less: Returns" value={`(${fmt(data.revenue.returns)})`} color="text-rose-500" />
-                    <DividerRow label="Net Sales" value={fmt(data.revenue.netSales)} />
-                  </div>
-                </section>
-
-                {/* Cost Section */}
-                <section>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Cost of Goods Sold</h4>
-                  <div className="space-y-2.5">
-                    <Row label="Purchase / Production Cost" value={fmt(data.costs.cogs)} />
-                    <Row label="Wastage" value={fmt(data.costs.wastage)} />
-                    <DividerRow label="Gross Profit" value={fmt(data.profit.grossProfit)} color={data.profit.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
-                  </div>
-                </section>
-
-                {/* Expenses Section */}
-                <section>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Operating Expenses</h4>
-                  <div className="space-y-2.5">
-                    {Object.entries(data.expenses.breakdown).map(([cat, amt]) => (
-                      <Row key={cat} label={cat} value={fmt(amt as number)} />
-                    ))}
-                    <DividerRow label="Total Expenses" value={`(${fmt(data.expenses.totalExpenses)})`} color="text-rose-500" />
-                  </div>
-                </section>
-
-                {/* Net Profit */}
-                <div className={`p-4 rounded-xl flex items-center justify-between ${isBreakEven ? 'bg-slate-50 border border-slate-200' : isProfit ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-50 border border-rose-200'}`}>
-                  <div>
-                    <p className="font-bold text-slate-800 text-base">Net Profit / (Loss)</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Margin: {data.profit.margin}%</p>
-                  </div>
-                  <p className={`text-xl font-bold ${isBreakEven ? 'text-slate-700' : isProfit ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {fmt(data.profit.netProfit)}
-                  </p>
-                </div>
-              </div>
-                  </div>
         </>
       )}
 
@@ -145,16 +188,16 @@ export const ProfitLossReport: React.FC = () => {
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-const Row: React.FC<{ label: string; value: string; color?: string }> = ({ label, value, color = 'text-slate-700' }) => (
-  <div className="flex justify-between items-center">
-    <span className="text-sm text-slate-600">{label}</span>
-    <span className={`text-sm font-medium ${color}`}>{value}</span>
-  </div>
-);
-
-const DividerRow: React.FC<{ label: string; value: string; color?: string }> = ({ label, value, color = 'text-slate-800' }) => (
-  <div className="flex justify-between items-center pt-2 border-t border-slate-200 mt-1">
-    <span className="text-sm font-semibold text-slate-700">{label}</span>
-    <span className={`text-sm font-bold ${color}`}>{value}</span>
-  </div>
+const TableRow: React.FC<{
+  section: string;
+  label: string;
+  value: string;
+  emphasized?: boolean;
+  valueClass?: string;
+}> = ({ section, label, value, emphasized = false, valueClass = 'text-slate-700' }) => (
+  <tr className={emphasized ? 'bg-slate-50/70' : undefined}>
+    <td className="px-5 py-3 whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate-400">{section}</td>
+    <td className={`px-5 py-3 whitespace-nowrap ${emphasized ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{label}</td>
+    <td className={`px-5 py-3 text-right whitespace-nowrap ${emphasized ? 'font-bold' : 'font-medium'} ${valueClass}`}>{value}</td>
+  </tr>
 );

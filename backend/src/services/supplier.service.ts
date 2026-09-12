@@ -290,9 +290,25 @@ export class SupplierService {
     if (!supplier) return { success: false, statusCode: 404, message: 'Supplier not found.' };
     const [collections, payments] = await Promise.all([
       prisma.supplierCollection.findMany({ where: { supplierId }, orderBy: { date: 'desc' } }),
-      prisma.supplierPayment.findMany({ where: { supplierId }, orderBy: { date: 'desc' } }),
+      prisma.supplierPayment.findMany({
+        where: { supplierId },
+        include: { shift: { select: { id: true, shiftDate: true, status: true } } },
+        orderBy: { date: 'desc' },
+      }),
     ]);
-    return { success: true, statusCode: 200, data: { collections, payments } };
+    return {
+      success: true,
+      statusCode: 200,
+      data: {
+        collections,
+        payments: payments.map((p) => ({
+          ...p,
+          shiftDate: p.shift?.shiftDate ?? null,
+          shiftStatus: p.shift?.status ?? null,
+          shift: undefined,
+        })),
+      },
+    };
   }
 
   static async saveCollection(userId: number, supplierId: number, payload: any, collectionId?: number) {
@@ -479,5 +495,73 @@ export class SupplierService {
       statusCode: 201,
       data: created.length === 1 ? created[0] : created,
     };
+  }
+
+  /** Global supplier payment history — which farm was paid, from which shift, how much, on which date */
+  static async listPayments(filters: {
+    fromDate?: string;
+    toDate?: string;
+    supplierId?: number;
+    shiftId?: number;
+    shiftDate?: string;
+    method?: string;
+  }) {
+    const where: any = {};
+
+    if (filters.supplierId && Number.isFinite(filters.supplierId)) {
+      where.supplierId = filters.supplierId;
+    }
+
+    if (filters.method && filters.method !== 'all') {
+      where.method = filters.method;
+    }
+
+    if (filters.fromDate || filters.toDate) {
+      where.date = {};
+      if (filters.fromDate) where.date.gte = filters.fromDate;
+      if (filters.toDate) where.date.lte = filters.toDate;
+    }
+
+    if (filters.shiftId && Number.isFinite(filters.shiftId)) {
+      where.shiftId = filters.shiftId;
+    } else if (filters.shiftDate) {
+      where.shift = { shiftDate: filters.shiftDate };
+    }
+
+    const rows = await prisma.supplierPayment.findMany({
+      where,
+      include: {
+        supplier: { select: { id: true, name: true, code: true } },
+        shift: {
+          select: {
+            id: true,
+            shiftDate: true,
+            status: true,
+            openedAt: true,
+            closedAt: true,
+          },
+        },
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: [{ date: 'desc' }, { id: 'desc' }],
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      supplierId: row.supplierId,
+      supplierName: row.supplier?.name || '—',
+      supplierCode: row.supplier?.code || '',
+      date: row.date,
+      amount: row.amount,
+      method: row.method,
+      notes: row.notes,
+      createdAt: row.createdAt,
+      createdBy: row.createdBy?.name || row.createdBy?.email || null,
+      shiftId: row.shiftId,
+      shiftDate: row.shift?.shiftDate || null,
+      shiftStatus: row.shift?.status || null,
+      shiftOpenedAt: row.shift?.openedAt || null,
+      shiftClosedAt: row.shift?.closedAt || null,
+    }));
   }
 }

@@ -476,14 +476,18 @@ export class ReportsController {
       const avgSupplierCost = avgCostResult._avg.rate || ((rate?.milkRate || 100) * 0.65);
 
       let cogs = 0;
+      const costByDate: Record<string, number> = {};
       for (const sale of sales) {
+        const saleDate = toYMD(sale.createdAt);
         for (const item of sale.items) {
           let costPerUnit: number;
           if (item.itemName === 'milk') costPerUnit = avgSupplierCost;
           else if (item.itemName === 'yogurt') costPerUnit = avgSupplierCost * 1.1; // yogurt slightly higher
           else if (['butter', 'ghee'].includes(item.itemName)) costPerUnit = item.unitPrice * 0.75;
           else costPerUnit = item.unitPrice * 0.65; // lassi
-          cogs += money(item.quantity * costPerUnit);
+          const itemCost = money(item.quantity * costPerUnit);
+          cogs += itemCost;
+          costByDate[saleDate] = money((costByDate[saleDate] || 0) + itemCost);
         }
       }
       cogs = money(cogs);
@@ -502,17 +506,35 @@ export class ReportsController {
       const margin    = netSales > 0 ? parseFloat(((netProfit / netSales) * 100).toFixed(2)) : 0;
 
       // Daily trend
-      const byDate: Record<string, { rev: number; cost: number }> = {};
+      const byDate: Record<string, number> = {};
       for (const sale of sales) {
         const key = toYMD(sale.createdAt);
-        if (!byDate[key]) byDate[key] = { rev: 0, cost: 0 };
-        byDate[key].rev  = money(byDate[key].rev  + sale.totalAmount);
+        byDate[key] = money((byDate[key] || 0) + sale.totalAmount);
       }
-      const revVsCost   = fillDailyTrend(from, to, Object.fromEntries(Object.entries(byDate).map(([k, v]) => [k, v.rev])))
-        .map((p, i) => ({ label: p.label, revenue: p.value, cost: money(p.value * 0.64) }));
+      const dailyRevenue = fillDailyTrend(from, to, byDate);
+      const dateKeys: string[] = [];
+      const dateCursor = new Date(`${from}T12:00:00`);
+      const dateEnd = new Date(`${to}T12:00:00`);
+      while (dateCursor <= dateEnd) {
+        dateKeys.push(toYMD(dateCursor));
+        dateCursor.setDate(dateCursor.getDate() + 1);
+      }
+      const revVsCost = dailyRevenue.map((p, index) => {
+        const key = dateKeys[index];
+        const dailyCogs = costByDate[key] || 0;
+        return { label: p.label, revenue: p.value, cost: money(dailyCogs * 1.03) };
+      });
       const profitTrend = revVsCost.map(p => ({ label: p.label, value: money(p.revenue - p.cost) }));
 
       return ApiResponse.success(res, 'P&L report.', {
+        summary: {
+          totalSales: grossSales,
+          returnAmount: returnsAmt,
+          numberOfReturns: returns.length,
+          amountCollected: money(sales.reduce((sum, sale) => sum + sale.paidAmount, 0)),
+          expenses: operatingExpenses,
+          numberOfSales: sales.length,
+        },
         revenue:  { grossSales, discounts, returns: returnsAmt, netSales },
         costs:    { cogs, wastage, otherCosts: 0, totalCosts },
         expenses: { operating: operatingExpenses, totalExpenses: operatingExpenses, breakdown: expByCategory,

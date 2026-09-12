@@ -35,6 +35,12 @@ export const CycleReport: React.FC<CycleReportProps> = ({ supplier }) => {
     .filter((p) => p.supplierId === supplier.id)
     .map((p) => {
       const isDiscount = (p.method || '').toLowerCase() === 'discount';
+      const shiftHint =
+        !isDiscount && p.shiftDate
+          ? ` · Shift ${p.shiftDate}`
+          : !isDiscount && p.shiftId
+            ? ` · Shift #${p.shiftId}`
+            : '';
       return {
         id: p.id,
         date: p.date,
@@ -42,7 +48,7 @@ export const CycleReport: React.FC<CycleReportProps> = ({ supplier }) => {
         type: (isDiscount ? 'Discount' : 'Payment') as 'Discount' | 'Payment',
         description: isDiscount
           ? `Discount write-off${p.notes ? ` — ${p.notes}` : ''}`
-          : `${methodLabel(p.method)}${p.notes ? ` — ${p.notes}` : ''}`,
+          : `${methodLabel(p.method)}${shiftHint}${p.notes ? ` — ${p.notes}` : ''}`,
         amount: -p.amount,
         method: p.method,
       };
