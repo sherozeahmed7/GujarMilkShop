@@ -108,10 +108,14 @@ model SupplierPayment {
   date        String
   amount      Float
   method      String   @default("cash")
+  shiftId     Int?
+  shift       Shift?   @relation(fields: [shiftId], references: [id])
   notes       String?
   createdById Int?
   createdBy   User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
+
+  @@index([shiftId])
 }
 
 // Cash drawer session for one shop day. Only one open shift is allowed at a time.
@@ -134,6 +138,7 @@ model Shift {
   status         String   @default("Open")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  supplierPayments SupplierPayment[]
 
   @@index([status])
   @@index([openedAt])

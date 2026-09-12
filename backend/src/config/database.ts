@@ -182,6 +182,26 @@ async function runAutoMigrations() {
       await prisma.$executeRawUnsafe(`ALTER TABLE "Sale" ADD COLUMN "tokenNumber" INTEGER NOT NULL DEFAULT 0`);
       console.log('✅ tokenNumber column added to Sale table successfully.');
     }
+
+    // SupplierPayment.shiftId — cash payments linked to open shift drawer
+    const supplierPaymentColumns: any[] = await prisma.$queryRawUnsafe(
+      `PRAGMA table_info("SupplierPayment")`
+    );
+    const hasShiftId = supplierPaymentColumns.some((col: any) => col.name === 'shiftId');
+    if (!hasShiftId) {
+      console.log('🔄 Auto-migrating: Adding shiftId column to SupplierPayment table...');
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE "SupplierPayment" ADD COLUMN "shiftId" INTEGER`
+      );
+      try {
+        await prisma.$executeRawUnsafe(
+          `CREATE INDEX IF NOT EXISTS "SupplierPayment_shiftId_idx" ON "SupplierPayment"("shiftId")`
+        );
+      } catch {
+        /* index may already exist */
+      }
+      console.log('✅ shiftId column added to SupplierPayment table successfully.');
+    }
   } catch (error) {
     console.error('⚠️ Auto-migration notice:', error);
   }
