@@ -173,17 +173,21 @@ async function seedDefaultDailyRates() {
  * so existing client installations don't crash when new columns are added.
  */
 async function runAutoMigrations() {
-  // ── Sale.tokenNumber ─────────────────────────────────────────────────────────
   try {
+    // Check Sale table for tokenNumber
     const saleColumns: any[] = await prisma.$queryRawUnsafe(`PRAGMA table_info("Sale")`);
     const hasTokenNumber = saleColumns.some((col: any) => col.name === 'tokenNumber');
     if (!hasTokenNumber) {
-      console.log('🔄 Auto-migrating: Adding tokenNumber column to Sale...');
+      console.log('🔄 Auto-migrating: Adding tokenNumber column to Sale table...');
       await prisma.$executeRawUnsafe(`ALTER TABLE "Sale" ADD COLUMN "tokenNumber" INTEGER NOT NULL DEFAULT 0`);
-      console.log('✅ Sale.tokenNumber added.');
+      console.log('✅ tokenNumber column added to Sale table successfully.');
     }
+  } catch (error) {
+    console.error('⚠️ Auto-migration notice:', error);
+  }
 
-    // SupplierPayment.shiftId — cash payments linked to open shift drawer
+  // SupplierPayment.shiftId — cash payments linked to open shift drawer
+  try {
     const supplierPaymentColumns: any[] = await prisma.$queryRawUnsafe(
       `PRAGMA table_info("SupplierPayment")`
     );
@@ -203,33 +207,14 @@ async function runAutoMigrations() {
       console.log('✅ shiftId column added to SupplierPayment table successfully.');
     }
   } catch (error) {
-    console.error('⚠️ Auto-migration (Sale.tokenNumber):', error);
-  }
-
-  // ── SupplierPayment.shiftId ──────────────────────────────────────────────────
-  try {
-    const spColumns: any[] = await prisma.$queryRawUnsafe(`PRAGMA table_info("SupplierPayment")`);
-    const hasShiftId = spColumns.some((col: any) => col.name === 'shiftId');
-    if (!hasShiftId) {
-      console.log('🔄 Auto-migrating: Adding shiftId column to SupplierPayment...');
-      await prisma.$executeRawUnsafe(`ALTER TABLE "SupplierPayment" ADD COLUMN "shiftId" INTEGER REFERENCES "Shift"("id")`);
-      console.log('✅ SupplierPayment.shiftId added.');
-    }
-  } catch (error) {
     console.error('⚠️ Auto-migration (SupplierPayment.shiftId):', error);
   }
 
-  // ── SupplierCollection.updatedAt ─────────────────────────────────────────────
+  // Shift.shiftDate — Drop the unique index to allow multiple shifts per day
   try {
-    const scColumns: any[] = await prisma.$queryRawUnsafe(`PRAGMA table_info("SupplierCollection")`);
-    const hasUpdatedAt = scColumns.some((col: any) => col.name === 'updatedAt');
-    if (!hasUpdatedAt) {
-      console.log('🔄 Auto-migrating: Adding updatedAt to SupplierCollection...');
-      await prisma.$executeRawUnsafe(`ALTER TABLE "SupplierCollection" ADD COLUMN "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`);
-      console.log('✅ SupplierCollection.updatedAt added.');
-    }
+    await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "Shift_shiftDate_key"`);
   } catch (error) {
-    console.error('⚠️ Auto-migration (SupplierCollection.updatedAt):', error);
+    console.error('⚠️ Auto-migration (Shift.shiftDate drop index):', error);
   }
 }
 

@@ -121,7 +121,7 @@ model SupplierPayment {
 // Cash drawer session for one shop day. Only one open shift is allowed at a time.
 model Shift {
   id             Int      @id @default(autoincrement())
-  shiftDate      String   @unique
+  shiftDate      String
   openedById     Int
   openedBy       User     @relation("ShiftOpenedBy", fields: [openedById], references: [id])
   closedById     Int?
