@@ -3,8 +3,7 @@ import { Download, FileText, Printer } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { save } from '@tauri-apps/plugin-dialog';
-import { writeFile } from '@tauri-apps/plugin-fs';
+import { savePdfDocument, saveExcelDocument } from '../../utils/exportUtils';
 
 interface ExportButtonsProps {
   reportName: string;
@@ -15,26 +14,25 @@ interface ExportButtonsProps {
 }
 
 export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, columns, summaryData, summaryTitle = 'Summary' }) => {
-  const isTauri = () => typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
-  
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       // Map data to headers
       const worksheetData = data.map(item => {
         const row: any = {};
         columns.forEach(col => {
-          row[col.header] = item[col.dataKey];
+          const val = item[col.dataKey];
+          row[col.header] = val !== undefined && val !== null ? val : '';
         });
         return row;
       });
       
       const worksheet = XLSX.utils.json_to_sheet(worksheetData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, reportName);
-      XLSX.writeFile(workbook, `${reportName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, reportName.slice(0, 31));
+      const filename = `${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await saveExcelDocument(workbook, filename);
     } catch (e) {
       console.error("Excel export failed", e);
-      alert("Failed to export Excel.");
     }
   };
 
@@ -95,22 +93,10 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, 
         headStyles: { fillColor: [59, 130, 246] }
       });
 
-      const filename = `${reportName}_${new Date().toISOString().split('T')[0]}.pdf`;
-      if (isTauri()) {
-        const path = await save({
-          defaultPath: filename,
-          filters: [{ name: 'PDF document', extensions: ['pdf'] }],
-        });
-        if (path) {
-          const pdfBytes = new Uint8Array(doc.output('arraybuffer'));
-          await writeFile(path, pdfBytes);
-        }
-      } else {
-        doc.save(filename);
-      }
+      const filename = `${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      await savePdfDocument(doc, filename);
     } catch (e) {
       console.error("PDF export failed", e);
-      alert("Failed to export PDF.");
     }
   };
 

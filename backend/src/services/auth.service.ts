@@ -3,6 +3,26 @@ import { comparePassword, generateAccessToken } from '../utils/auth';
 
 export class AuthService {
   /**
+   * Public list of active users for the login avatar picker.
+   * Never returns password or assignedScreens.
+   */
+  static async listLoginUsers() {
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, email: true, role: true, status: true },
+      orderBy: [{ role: 'asc' }, { name: 'asc' }, { email: 'asc' }],
+    });
+
+    return users
+      .filter((u) => (u.status || 'active').toLowerCase() === 'active')
+      .map((u) => ({
+        id: u.id,
+        name: u.name || u.email.split('@')[0],
+        email: u.email,
+        role: u.role,
+      }));
+  }
+
+  /**
    * Validates user credentials and generates a JWT access token upon successful login.
    * @param email User's email address
    * @param password Plain-text candidate password
@@ -81,4 +101,3 @@ export class AuthService {
     };
   }
 }
-

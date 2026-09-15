@@ -100,18 +100,12 @@ export class ExpenseController {
         return ApiResponse.error(res, 'amount must be a valid number.', 400);
       }
 
-      // paidAmount: if provided use it; else full amount for simple cash expenses;
-      // inventory sends paidAmount: 0 explicitly or omits amount with only netExpense — treat as unpaid cash
+      // paidAmount: if provided use it; else default to 0 (unpaid)
       const hasExplicitPaid = body.paidAmount !== undefined && body.paidAmount !== null && body.paidAmount !== '';
-      const isInventoryStyle =
-        body.source === 'inventory' ||
-        (Number(body.quantity) > 0 && !hasExplicitPaid && body.amount === undefined);
 
       let paidAmount = hasExplicitPaid
         ? money(Number(body.paidAmount) || 0)
-        : isInventoryStyle
-          ? 0
-          : amount;
+        : 0;
 
       if (paidAmount < 0) paidAmount = 0;
       if (paidAmount > amount) {
@@ -249,17 +243,53 @@ export class ExpenseController {
         amount = money(Number(body.netExpense));
       }
 
-      const paidAmount = money(existing.paidAmount || 0);
-      if (amount < paidAmount) {
-        return ApiResponse.error(
-          res,
-          `Total amount cannot be less than already paid Rs. ${paidAmount}.`,
-          400
-        );
+      const existingPaid = money(existing.paidAmount || 0);
+      const hasPaidAmount = body.paidAmount !== undefined && body.paidAmount !== null && body.paidAmount !== '';
+      const newPaidAmount = hasPaidAmount ? money(Number(body.paidAmount) || 0) : existingPaid;
+
+      if (newPaidAmount < 0) {
+        return ApiResponse.error(res, 'Paid amount cannot be negative.', 400);
       }
-      const remaining = money(Math.max(0, amount - paidAmount));
+      if (newPaidAmount > amount) {
+        return ApiResponse.error(res, 'Paid amount cannot exceed total amount.', 400);
+      }
+
+      const remaining = money(Math.max(0, amount - newPaidAmount));
+      const paidDiff = money(newPaidAmount - existingPaid);
 
       const updated = await prisma.$transaction(async (tx) => {
+        // Adjust payments if paid amount changed
+        if (paidDiff > 0) {
+          // Additional payment paid out now
+          const shiftId = await openShiftId();
+          const payment = await tx.expensePayment.create({
+            data: {
+              expenseId: id,
+              amount: paidDiff,
+              shiftId,
+              date: body.date || existing.date,
+              addedBy: req.user?.email || 'unknown',
+            },
+          });
+          await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
+        } else if (paidDiff < 0) {
+          // User reduced paid amount (fixing an overpayment/erroneous payment)
+          await tx.expensePayment.deleteMany({ where: { expenseId: id } });
+          if (newPaidAmount > 0) {
+            const shiftId = await openShiftId();
+            const payment = await tx.expensePayment.create({
+              data: {
+                expenseId: id,
+                amount: newPaidAmount,
+                shiftId,
+                date: body.date || existing.date,
+                addedBy: req.user?.email || 'unknown',
+              },
+            });
+            await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
+          }
+        }
+
         const updatedExp = await tx.expense.update({
           where: { id },
           data: {
@@ -274,6 +304,7 @@ export class ExpenseController {
               : {}),
             ...(body.reason !== undefined ? { reason: body.reason || null } : {}),
             amount,
+            paidAmount: newPaidAmount,
             remaining,
             netExpense: money(body.netExpense !== undefined ? Number(body.netExpense) : amount),
           },

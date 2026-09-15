@@ -6,7 +6,7 @@ import { WeeklyRevenue } from '../components/dashboard/WeeklyRevenue';
 import { RecentSales } from '../components/dashboard/RecentSales';
 import { Analysis } from '../components/dashboard/Analysis';
 import { OutstandingCustomers } from '../components/dashboard/OutstandingCustomers';
-import { TrendingUp, FileText, Banknote, Wallet, CreditCard, AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { TrendingUp, FileText, Banknote, Wallet, CreditCard, AlertCircle, Calendar as CalendarIcon, CheckCircle2, RefreshCw } from 'lucide-react';
 import { DateFilterType } from '../types';
 import { useDashboardData } from '../hooks/useDashboardData';
 
@@ -38,7 +38,19 @@ export const Dashboard: React.FC = () => {
   const data = useDashboardData(dateFilter);
   const { metrics, recentSales, khataCustomers,
           chartTitleSuffix, chartSubtitle, periodLabel, periodSummary,
-          revenueChart, isLoading, error } = data;
+          revenueChart, isLoading, error, refresh } = data;
+
+  // Show a brief "Done" toast after loading finishes
+  const [showDone, setShowDone] = React.useState(false);
+  const prevLoading = React.useRef(false);
+  React.useEffect(() => {
+    if (prevLoading.current && !isLoading && !error) {
+      setShowDone(true);
+      const t = setTimeout(() => setShowDone(false), 2000);
+      return () => clearTimeout(t);
+    }
+    prevLoading.current = isLoading;
+  }, [isLoading, error]);
 
   useEffect(() => {
     if (showCustomPicker && buttonRef.current && popupRef.current) {
@@ -126,13 +138,66 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Loading / Error Banner ────────────────────────────────────── */}
+      {/* ── Top progress bar (fixed, full-width) ──────────────────────── */}
       {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-100 rounded-xl px-4 py-3 shadow-sm">
-          <div className="w-4 h-4 border-2 border-[#166534] border-t-transparent rounded-full animate-spin flex-shrink-0" />
-          Loading dashboard data…
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, height: 3 }}
+        >
+          <div
+            style={{
+              height: '100%',
+              background: 'linear-gradient(90deg, #166534, #22c55e, #166534)',
+              backgroundSize: '200% 100%',
+              animation: 'dashProgress 1.2s linear infinite',
+            }}
+          />
+          <style>{`
+            @keyframes dashProgress {
+              0%   { background-position: 200% center; }
+              100% { background-position: -200% center; }
+            }
+          `}</style>
         </div>
       )}
+
+      {/* ── Floating refresh toast (bottom-right) ─────────────────────── */}
+      {(isLoading || showDone) && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: isLoading ? '#166534' : '#15803d',
+            color: '#fff',
+            borderRadius: 12,
+            padding: '10px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            boxShadow: '0 8px 32px rgba(22,101,52,0.25)',
+            transition: 'opacity 0.3s ease',
+            opacity: isLoading || showDone ? 1 : 0,
+          }}
+        >
+          {isLoading ? (
+            <>
+              <RefreshCw style={{ width: 15, height: 15, animation: 'spin 0.8s linear infinite' }} />
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              Refreshing dashboard…
+            </>
+          ) : (
+            <>
+              <CheckCircle2 style={{ width: 15, height: 15 }} />
+              Data updated!
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Error Banner ──────────────────────────────────────────────── */}
       {error && !isLoading && (
         <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -149,6 +214,8 @@ export const Dashboard: React.FC = () => {
             refunds={metrics.refunds}
             netSales={metrics.netSales}
             periodSummary={periodSummary}
+            isLoading={isLoading}
+            onRefresh={refresh}
           />
         </div>
         <div>

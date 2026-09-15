@@ -5,6 +5,18 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export class AuthController {
   /**
+   * GET /api/auth/login-users — public active users for avatar login picker
+   */
+  static async listLoginUsers(req: Request, res: Response, next: NextFunction) {
+    try {
+      const users = await AuthService.listLoginUsers();
+      return ApiResponse.success(res, 'Login users fetched successfully', users, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Handles POST /api/auth/login request.
    * Validates required input fields and delegates verification to AuthService.
    */

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { X, Download, Calendar } from 'lucide-react';
 import { Supplier, MilkCollection } from '../../types';
 import { supplierService } from '../../services/supplier.service';
+import { savePdfDocument } from '../../utils/exportUtils';
 
 interface SupplierDailyLedgerModalProps {
   onClose: () => void;
@@ -215,7 +216,7 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
       finalY + 8
     );
 
-    doc.save(`supplier-daily-ledger-${date}.pdf`);
+    await savePdfDocument(doc, `supplier-daily-ledger-${date}.pdf`);
   };
 
   return (

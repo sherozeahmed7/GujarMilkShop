@@ -9,6 +9,10 @@
     "dialog:default",
     "fs:default",
     {
+      "identifier": "fs:scope",
+      "allow": ["**"]
+    },
+    {
       "identifier": "shell:allow-execute",
       "allow": [
         {

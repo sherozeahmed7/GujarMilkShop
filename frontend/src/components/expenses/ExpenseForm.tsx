@@ -14,7 +14,7 @@ export const ExpenseForm: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
 
   const total = parseFloat(amount) || 0;
-  const paid = paidNow.trim() === '' ? total : parseFloat(paidNow) || 0;
+  const paid = paidNow.trim() === '' ? 0 : parseFloat(paidNow) || 0;
   const remaining = useMemo(() => Math.max(0, Math.round((total - paid) * 100) / 100), [total, paid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,9 +62,11 @@ export const ExpenseForm: React.FC = () => {
       setPaidNow('');
       setNotes('');
       setSuccess(
-        paid < total
-          ? `Expense saved. Remaining Rs. ${Math.round(total - paid).toLocaleString()} to clear later.`
-          : 'Expense saved. Paid amount deducted from open shift expected cash.'
+        paid === 0
+          ? `Expense saved as unpaid (Remaining Rs. ${total.toLocaleString()}).`
+          : paid < total
+            ? `Expense saved. Remaining Rs. ${Math.round(total - paid).toLocaleString()} to clear later.`
+            : 'Expense saved. Paid in full and deducted from open shift expected cash.'
       );
     } catch (err: any) {
       setError(err?.message || 'Unable to save expense. Please try again.');
@@ -137,9 +139,23 @@ export const ExpenseForm: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-              Paid now (Rs)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Paid now (Rs)
+              </label>
+              {total > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaidNow(String(total));
+                    setSuccess(null);
+                  }}
+                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Pay Full (Rs. {total.toLocaleString()})
+                </button>
+              )}
+            </div>
             <input
               type="number"
               min="0"
@@ -149,11 +165,13 @@ export const ExpenseForm: React.FC = () => {
                 setPaidNow(e.target.value);
                 setSuccess(null);
               }}
-              placeholder={amount.trim() ? amount : 'Leave blank = full'}
+              placeholder="0 (leave blank for unpaid)"
               className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-[11px] text-slate-400">
-              Leave blank to pay full amount. Remaining: Rs. {remaining.toLocaleString()}
+              {paid === 0
+                ? `Unpaid expense. Remaining: Rs. ${remaining.toLocaleString()}`
+                : `Paying Rs. ${paid.toLocaleString()}. Remaining: Rs. ${remaining.toLocaleString()}`}
             </p>
           </div>
         </div>

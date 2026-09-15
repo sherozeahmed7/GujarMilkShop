@@ -50,6 +50,7 @@ export const apiClient = {
       }
       const response = await fetch(url.toString(), {
         headers: getHeaders(),
+        cache: 'no-store',
       });
       const data = await response.json();
       if (response.status === 401) handle401(endpoint, data);

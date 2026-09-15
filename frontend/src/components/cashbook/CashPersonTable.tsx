@@ -133,7 +133,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
                 return (
                   <tr
                     key={person.id}
-                    className={`transition-colors hover:bg-slate-50/60 ${!isActive ? 'opacity-60' : ''}`}
+                    className={`transition-colors hover:bg-slate-50/60 ${!isActive ? 'opacity-60' : ''} ${openMenu === person.id ? 'relative z-10' : ''}`}
                   >
                     {/* Name */}
                     <td className="px-5 py-4">
@@ -213,7 +213,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
                         </button>
 
                         {openMenu === person.id && (
-                          <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 z-30 overflow-hidden">
+                          <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-slate-200 z-50 overflow-hidden">
                             {/* Ledger */}
                             <button
                               onClick={() => { setOpenMenu(null); navigate(`/register/cashbook/ledger/${person.id}`); }}

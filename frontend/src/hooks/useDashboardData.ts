@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DateFilterType } from '../types';
 import { dashboardService } from '../services/dashboardService';
 
@@ -33,6 +33,7 @@ export interface DashboardData {
   periodSummary: string;
   isLoading: boolean;
   error: string | null;
+  refresh: () => void;
 }
 
 const EMPTY_METRICS: DashboardMetrics = {
@@ -82,6 +83,9 @@ export function useDashboardData(dateFilter: DateFilterType): DashboardData {
   const [revenueChart, setRevenue]    = useState<RevenueDataPoint[]>([]);
   const [isLoading, setIsLoading]     = useState(false);
   const [error, setError]             = useState<string | null>(null);
+  const [refreshKey, setRefreshKey]   = useState(0);
+
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   const key = filterKey(dateFilter);
 
@@ -129,9 +133,9 @@ export function useDashboardData(dateFilter: DateFilterType): DashboardData {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, refreshKey]);
 
   const meta = getPeriodMeta(dateFilter);
 
-  return { metrics, recentSales, khataCustomers, revenueChart, isLoading, error, ...meta };
+  return { metrics, recentSales, khataCustomers, revenueChart, isLoading, error, refresh, ...meta };
 }

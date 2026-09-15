@@ -21,6 +21,8 @@ import {
   DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw
 } from 'lucide-react';
 import { CustomerTypeFilter, NameSortOrder } from '../components/customers/CustomerToolbar';
+import * as XLSX from 'xlsx';
+import { savePdfDocument, saveExcelDocument } from '../utils/exportUtils';
 
 function sortByName<T extends { name: string }>(list: T[], order: NameSortOrder): T[] {
   if (order === 'default') return list;
@@ -198,43 +200,166 @@ export const KhataLedger: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleExcelExport = () => {
-    const rows = [
-      [
-        'Name',
-        'Phone',
-        'Customer Type',
-        'Current Month/Day',
-        'Previous Month/Day',
-        'Total to Pay',
-        'Paid',
-        'Remaining Balance',
-        'Address',
-        'Last Sale',
-      ],
-      ...customers.map((c) => [
-        c.name,
-        c.phone || 'Not Available',
-        typeBadge(c.customerType),
-        String(c.currentDue ?? 0),
-        String(c.previousDue ?? 0),
-        String(c.totalAmount ?? 0),
-        String(c.paidAmount ?? 0),
-        String(c.remainingBalance ?? c.totalDue ?? 0),
-        c.address || 'Not Available',
-        c.lastSaleDate
-          ? new Date(c.lastSaleDate).toLocaleDateString()
-          : 'Not Available',
-      ]),
-    ];
-    const csv = rows.map((r) => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'khata_export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExcelExport = async () => {
+    try {
+      const dataRows = customers.map((c) => {
+        const current = c.currentDue ?? 0;
+        const previous = c.previousDue ?? 0;
+        const totalPay = c.totalAmount ?? current + previous;
+        const paid = c.paidAmount ?? 0;
+        const bal = c.remainingBalance ?? c.totalDue ?? 0;
+        return {
+          'Name': c.name,
+          'Phone': c.phone || '',
+          'Customer Type': c.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily',
+          'Current Due (Rs.)': current,
+          'Previous Due (Rs.)': previous,
+          'Total to Pay (Rs.)': totalPay,
+          'Paid (Rs.)': paid,
+          'Remaining Balance (Rs.)': bal,
+          'Address': c.address || '',
+          'Last Sale': c.lastSaleDate ? new Date(c.lastSaleDate).toLocaleDateString('en-GB') : '',
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Khata Ledger');
+      const filename = `Khata_Ledger_${filterMode}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await saveExcelDocument(workbook, filename);
+    } catch (err) {
+      console.error('[Khata] Excel export error:', err);
+    }
+  };
+
+  const handlePdfExport = async () => {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('GUJJAR MILK SHOP', 14, 15);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Khata Ledger Report — Filter: ${filterLabel}`, 14, 22);
+      doc.setFontSize(9);
+      doc.text(`Generated on: ${new Date().toLocaleString('en-PK')}`, 14, 28);
+
+      // Summary Card row
+      const summaryItems = [
+        { label: 'Total Accounts', val: String(summary.khataAccounts) },
+        { label: 'Total Outstanding', val: `Rs. ${Math.round(summary.totalOutstanding).toLocaleString()}` },
+        { label: 'Collected Today', val: `Rs. ${Math.round(summary.collectedToday).toLocaleString()}` },
+        { label: 'Pending Accounts', val: String(summary.pendingCount) },
+        { label: 'Paid Accounts', val: String(summary.paidCount) },
+      ];
+
+      let cardX = 14;
+      const cardWidth = 51;
+      const cardHeight = 14;
+      const cardGap = 4;
+      summaryItems.forEach((item) => {
+        doc.setDrawColor(226, 232, 240);
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(cardX, 32, cardWidth, cardHeight, 1.5, 1.5, 'FD');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.label, cardX + 3, 37);
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(item.val, cardX + 3, 43);
+        doc.setFont('helvetica', 'normal');
+        cardX += cardWidth + cardGap;
+      });
+
+      // Rows
+      let totalCurrent = 0;
+      let totalPrevious = 0;
+      let totalToPay = 0;
+      let totalPaid = 0;
+      let totalRemaining = 0;
+
+      const body = customers.map((c) => {
+        const current = c.currentDue ?? 0;
+        const previous = c.previousDue ?? 0;
+        const totalPay = c.totalAmount ?? current + previous;
+        const paid = c.paidAmount ?? 0;
+        const bal = c.remainingBalance ?? c.totalDue ?? 0;
+
+        totalCurrent += current;
+        totalPrevious += previous;
+        totalToPay += totalPay;
+        totalPaid += paid;
+        totalRemaining += bal;
+
+        return [
+          c.name || '—',
+          c.phone || '—',
+          c.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily',
+          Math.round(current).toLocaleString(),
+          Math.round(previous).toLocaleString(),
+          Math.round(totalPay).toLocaleString(),
+          Math.round(paid).toLocaleString(),
+          bal > 0 ? Math.round(bal).toLocaleString() : 'Clear',
+          c.lastSaleDate
+            ? new Date(c.lastSaleDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+            : '—',
+        ];
+      });
+
+      // Total row
+      body.push([
+        'TOTAL',
+        '',
+        '',
+        Math.round(totalCurrent).toLocaleString(),
+        Math.round(totalPrevious).toLocaleString(),
+        Math.round(totalToPay).toLocaleString(),
+        Math.round(totalPaid).toLocaleString(),
+        Math.round(totalRemaining).toLocaleString(),
+        '',
+      ]);
+
+      autoTable(doc, {
+        head: [
+          [
+            'Customer Name',
+            'Phone',
+            'Type',
+            'Current Due',
+            'Previous Due',
+            'Total to Pay',
+            'Paid',
+            'Remaining',
+            'Last Sale',
+          ],
+        ],
+        body,
+        startY: 50,
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+        didParseCell: (hookData) => {
+          if (hookData.section === 'body' && hookData.row.index === body.length - 1) {
+            hookData.cell.styles.fontStyle = 'bold';
+            hookData.cell.styles.fillColor = [241, 245, 249];
+          }
+          if (hookData.column.index === 7 && hookData.cell.text[0] !== 'Clear' && hookData.cell.text[0] !== '0') {
+            hookData.cell.styles.textColor = [220, 38, 38];
+          }
+        },
+      });
+
+      const filename = `Khata_Ledger_${filterMode}_${new Date().toISOString().split('T')[0]}.pdf`;
+      await savePdfDocument(doc, filename);
+    } catch (err) {
+      console.error('[Khata] PDF export error:', err);
+    }
   };
 
   const handleDailyPrint = () => {
@@ -326,7 +451,7 @@ export const KhataLedger: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={handleDailyPrint}
+            onClick={handlePdfExport}
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors"
           >
             <FileText className="w-4 h-4 text-blue-600" />

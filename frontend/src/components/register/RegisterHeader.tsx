@@ -3,6 +3,7 @@ import { Lock, FileSpreadsheet, FileText, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRegisterStore } from '../../store/registerStore';
 import { RegisterStatus } from '../../types';
+import { exportZReportToPdf, exportZReportToExcel } from '../../utils/exportUtils';
 
 interface RegisterHeaderProps {
   onCloseRegisterRequest: () => void;
@@ -15,7 +16,7 @@ const statusColors: Record<RegisterStatus, string> = {
 };
 
 export const RegisterHeader: React.FC<RegisterHeaderProps> = ({ onCloseRegisterRequest }) => {
-  const { currentRegister } = useRegisterStore();
+  const { currentRegister, registerHistory } = useRegisterStore();
   const navigate = useNavigate();
 
   if (!currentRegister) {
@@ -29,8 +30,12 @@ export const RegisterHeader: React.FC<RegisterHeaderProps> = ({ onCloseRegisterR
     );
   }
 
-  const handleMockExport = (type: string) => {
-    alert(`Mock: Generating ${type} report...`);
+  const handleExportPdf = async () => {
+    await exportZReportToPdf(currentRegister, registerHistory);
+  };
+
+  const handleExportExcel = async () => {
+    await exportZReportToExcel(currentRegister, registerHistory);
   };
 
   return (
@@ -57,14 +62,14 @@ export const RegisterHeader: React.FC<RegisterHeaderProps> = ({ onCloseRegisterR
         <div className="w-px h-8 bg-slate-200 mx-1"></div>
 
         <button
-          onClick={() => handleMockExport('Excel')}
+          onClick={handleExportExcel}
           className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
         >
           <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
           Excel
         </button>
         <button
-          onClick={() => handleMockExport('PDF')}
+          onClick={handleExportPdf}
           className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
         >
           <FileText className="w-4 h-4 text-rose-500" />

@@ -1,48 +1,123 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { apiClient } from '../services/apiClient';
-import { Lock, Mail, Store, Eye, EyeOff, Loader2, Droplets, Leaf, CheckCircle2 } from 'lucide-react';
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  Droplets,
+  Leaf,
+  CheckCircle2,
+  ArrowLeft,
+  UserRound,
+} from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
+
+interface LoginUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
+function formatRole(role: string): string {
+  return (role || 'user')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+/** Distinct avatar colors by role key */
+function roleAvatarClass(role: string): string {
+  const key = (role || '').toLowerCase();
+  if (key.includes('super')) return 'bg-[#166534] text-white ring-[#FEF3C7]';
+  if (key.includes('admin') || key.includes('manager')) return 'bg-sky-700 text-white ring-sky-100';
+  if (key.includes('cashier') || key.includes('counter')) return 'bg-amber-600 text-white ring-amber-100';
+  if (key.includes('accountant') || key.includes('finance')) return 'bg-violet-700 text-white ring-violet-100';
+  return 'bg-slate-700 text-white ring-slate-200';
+}
+
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [users, setUsers] = useState<LoginUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState('');
+  const [selected, setSelected] = useState<LoginUser | null>(null);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [authError, setAuthError] = useState('');
   const navigate = useNavigate();
 
-  const isValidEmail = (emailStr: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingUsers(true);
+      setUsersError('');
+      try {
+        const response = await apiClient.get('/auth/login-users');
+        const list = (response.data || []) as LoginUser[];
+        if (!cancelled) setUsers(list);
+      } catch (err: any) {
+        if (!cancelled) {
+          setUsersError(err?.message || 'Could not load users. Check that the server is running.');
+          setUsers([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingUsers(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const roleCount = useMemo(() => {
+    const set = new Set(users.map((u) => (u.role || 'user').toLowerCase()));
+    return set.size;
+  }, [users]);
+
+  const selectUser = (user: LoginUser) => {
+    setSelected(user);
+    setPassword('');
+    setPasswordError('');
+    setAuthError('');
+    setShowPassword(false);
+  };
+
+  const clearSelection = () => {
+    setSelected(null);
+    setPassword('');
+    setPasswordError('');
+    setAuthError('');
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setEmailError('');
     setPasswordError('');
     setAuthError('');
 
-    let hasError = false;
-    if (!email.trim()) {
-      setEmailError('Email address is required.');
-      hasError = true;
-    } else if (!isValidEmail(email.trim())) {
-      setEmailError('Please enter a valid email address.');
-      hasError = true;
+    if (!selected) {
+      setAuthError('Select a user to continue.');
+      return;
     }
-
     if (!password.trim()) {
       setPasswordError('Password is required.');
-      hasError = true;
+      return;
     }
 
-    if (hasError) return;
-
     setLoading(true);
-
     try {
       const response = await apiClient.post('/auth/login', {
-        email: email.trim(),
+        email: selected.email,
         password,
       });
 
@@ -56,14 +131,13 @@ export const Login: React.FC = () => {
         localStorage.setItem('assignedScreens', JSON.stringify(user.assignedScreens));
 
         toast.success('Login successful! Redirecting...');
-
         setTimeout(() => navigate('/'), 500);
       } else {
         const msg = response.message || '';
         if (msg.toLowerCase().includes('inactive')) {
           setAuthError('Your account is currently inactive. Please contact the administrator.');
         } else {
-          setAuthError('Invalid email or password.');
+          setAuthError('Incorrect password for this user.');
         }
       }
     } catch (error: any) {
@@ -71,7 +145,7 @@ export const Login: React.FC = () => {
       if (msg.toLowerCase().includes('inactive')) {
         setAuthError('Your account is currently inactive. Please contact the administrator.');
       } else {
-        setAuthError('Invalid email or password.');
+        setAuthError('Incorrect password for this user.');
       }
     } finally {
       setLoading(false);
@@ -82,9 +156,13 @@ export const Login: React.FC = () => {
     <div className="min-h-screen w-full bg-[#edf1ee] overflow-hidden">
       <div className="grid min-h-screen w-full lg:grid-cols-[1.2fr_0.8fr]">
         <div className="relative hidden lg:flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(254,243,199,0.7),_transparent_40%),linear-gradient(135deg,#fffdf5_0%,#fef3c7_30%,#f0fdf4_70%,#dcfce7_100%)] p-10">
-          <div className="absolute inset-0 opacity-30" style={{
-            backgroundImage: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9) 0, rgba(255,255,255,0) 30%), radial-gradient(circle at 75% 70%, rgba(22,101,52,0.15) 0, rgba(22,101,52,0) 35%)'
-          }} />
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9) 0, rgba(255,255,255,0) 30%), radial-gradient(circle at 75% 70%, rgba(22,101,52,0.15) 0, rgba(22,101,52,0) 35%)',
+            }}
+          />
 
           <div className="relative w-full max-w-xl rounded-[36px] border border-white/80 bg-white/40 backdrop-blur-md p-8 shadow-[0_30px_80px_rgba(22,101,52,0.08)]">
             <div className="flex items-center justify-center mb-10">
@@ -139,13 +217,27 @@ export const Login: React.FC = () => {
             <div className="flex flex-col items-center mb-8 lg:hidden">
               <BrandLogo variant="login" className="mb-4" />
               <h1 className="text-2xl font-black text-[#166534] mt-2">Gujar Milk Shop</h1>
-              <p className="text-[11px] text-[#78350F] bg-[#FEF3C7] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-[0.2em] mt-1.5">POS Management System</p>
-              <p className="text-sm text-slate-500 mt-3">Sign in to continue</p>
+              <p className="text-[11px] text-[#78350F] bg-[#FEF3C7] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-[0.2em] mt-1.5">
+                POS Management System
+              </p>
             </div>
 
-            <div className="hidden lg:block mb-8">
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#166534] mb-2">Welcome back</div>
-              <h2 className="text-3xl font-black text-slate-900">Sign in</h2>
+            <div className="mb-6">
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#166534] mb-2">
+                Welcome
+              </div>
+              <h2 className="text-3xl font-black text-slate-900">
+                {selected ? 'Enter password' : 'Who is signing in?'}
+              </h2>
+              <p className="text-sm text-slate-500 mt-1.5">
+                {selected
+                  ? `Continue as ${selected.name}`
+                  : loadingUsers
+                    ? 'Loading users…'
+                    : users.length > 0
+                      ? `${users.length} user${users.length === 1 ? '' : 's'} · ${roleCount} role${roleCount === 1 ? '' : 's'} on this system`
+                      : 'No active users found'}
+              </p>
             </div>
 
             {authError && (
@@ -154,77 +246,135 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            <form onSubmit={handleLogin} className="space-y-4" noValidate>
-              <div>
-                <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    id="login-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setEmailError(''); setAuthError(''); }}
-                    placeholder="admin@gujarmilkshop.com"
-                    className={`w-full bg-slate-50 border rounded-xl py-3 pl-9 pr-4 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all ${
-                      emailError
-                        ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                        : 'border-slate-200 focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/20'
-                    }`}
-                    autoComplete="email"
-                  />
-                </div>
-                {emailError && <p className="mt-1.5 text-xs text-rose-600">{emailError}</p>}
+            {usersError && (
+              <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 font-medium">
+                {usersError}
               </div>
+            )}
 
+            {!selected ? (
               <div>
-                <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    id="login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); setPasswordError(''); setAuthError(''); }}
-                    placeholder="••••••••"
-                    className={`w-full bg-slate-50 border rounded-xl py-3 pl-9 pr-10 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all ${
-                      passwordError
-                        ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                        : 'border-slate-200 focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/20'
-                    }`}
-                    autoComplete="current-password"
-                  />
+                {loadingUsers ? (
+                  <div className="flex items-center justify-center gap-2 py-16 text-slate-400 text-sm">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Loading users…
+                  </div>
+                ) : users.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-14 text-slate-400 gap-2">
+                    <UserRound className="w-10 h-10 text-slate-200" />
+                    <p className="text-sm font-medium">No active users to show</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {users.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => selectUser(user)}
+                        className="group flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-[#f0fdf4] hover:border-[#166534]/30 px-3 py-4 transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#166534]/30"
+                      >
+                        <span
+                          className={`flex h-16 w-16 items-center justify-center rounded-full text-lg font-black shadow-sm ring-4 ${roleAvatarClass(
+                            user.role
+                          )} group-hover:scale-105 transition-transform`}
+                        >
+                          {initials(user.name)}
+                        </span>
+                        <span className="text-sm font-bold text-slate-800 text-center leading-tight line-clamp-2">
+                          {user.name}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                          {formatRole(user.role)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-4" noValidate>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <span
+                    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-base font-black ring-4 ${roleAvatarClass(
+                      selected.role
+                    )}`}
+                  >
+                    {initials(selected.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-900 truncate">{selected.name}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-0.5">
+                      {formatRole(selected.role)}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    tabIndex={-1}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={clearSelection}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-[#166534] px-2 py-1.5 rounded-lg hover:bg-white transition-colors"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Change
                   </button>
                 </div>
-                {passwordError && <p className="mt-1.5 text-xs text-rose-600">{passwordError}</p>}
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white font-bold py-3.5 rounded-xl text-sm transition-all duration-150 shadow-md shadow-[#166534]/25 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
-              </button>
-            </form>
+                <div>
+                  <label
+                    htmlFor="login-password"
+                    className="block text-sm font-medium text-slate-700 mb-1.5"
+                  >
+                    Password for {formatRole(selected.role)}
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      id="login-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setPasswordError('');
+                        setAuthError('');
+                      }}
+                      placeholder="Enter password"
+                      autoFocus
+                      className={`w-full bg-slate-50 border rounded-xl py-3 pl-9 pr-10 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all ${
+                        passwordError
+                          ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                          : 'border-slate-200 focus:border-[#166534] focus:ring-2 focus:ring-[#166534]/20'
+                      }`}
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((s) => !s)}
+                      tabIndex={-1}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {passwordError && (
+                    <p className="mt-1.5 text-xs text-rose-600">{passwordError}</p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white font-bold py-3.5 rounded-xl text-sm transition-all duration-150 shadow-md shadow-[#166534]/25 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </button>
+              </form>
+            )}
 
             <p className="text-center text-[11px] text-slate-400 mt-7">
               Gujar Milk Shop POS &copy; {new Date().getFullYear()}

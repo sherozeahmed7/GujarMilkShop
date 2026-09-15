@@ -19,6 +19,7 @@ import neonRoutes from './neon.routes';
 import syncRoutes from './sync.routes';
 import posConfigRoutes from './posConfig.routes';
 import backupRoutes from './backup.routes';
+import cashbookRoutes from './cashbook.routes';
 
 const router = Router();
 
@@ -44,5 +45,6 @@ router.use('/neon',            neonRoutes);
 router.use('/sync',            syncRoutes);
 router.use('/pos-config',      posConfigRoutes);
 router.use('/backup',          backupRoutes);
+router.use('/cashbook',        cashbookRoutes);
 
 export default router;

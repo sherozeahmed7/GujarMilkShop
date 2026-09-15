@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Printer, Info } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Calendar, Printer, Info, Download, FileText } from 'lucide-react';
+import { savePdfDocument } from '../../utils/exportUtils';
 import { 
   customerLedgerService, 
   MilkEntry, 
@@ -131,78 +132,167 @@ export const CustomerMonthlyMilkLedger: React.FC = () => {
     setSelectedYear(d.getFullYear());
   };
 
-  const handlePrint = () => {
-    const printContent = `
-      <html>
-        <head>
-          <title>Customer Milk Statement — ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}</title>
-          <style>
-            body { font-family: sans-serif; padding: 20px; font-size: 12px; }
-            h2 { margin-bottom: 5px; }
-            .header-info { margin-bottom: 20px; color: #444; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th { background: #f1f5f9; text-align: left; padding: 8px; border: 1px solid #ddd; }
-            td { padding: 8px; border: 1px solid #ddd; vertical-align: top; }
-            .summary-box { border: 1px solid #ddd; padding: 15px; background: #fafafa; margin-bottom: 20px; }
-            .summary-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
-            .total-row { font-weight: bold; border-top: 2px solid #ccc; padding-top: 5px; margin-top: 5px; }
-            .day-cell { height: 60px; }
-            .day-num { font-weight: bold; margin-bottom: 4px; display: block; }
-          </style>
-        </head>
-        <body>
-          <div style="text-align: center; margin-bottom: 20px;">
-            <img src="/logo.png" alt="Gujjar Milk Shop" style="height: 64px; object-fit: contain; margin-bottom: 10px;" />
-            <h2 style="margin: 0;">GUJJAR MILK SHOP</h2>
-            <h3 style="margin-top: 5px; color: #555;">Customer Milk Statement</h3>
-          </div>
-          <div class="header-info">
-            <p><strong>Customer:</strong> ${customer?.name || 'Unknown'}</p>
-            <p><strong>Phone:</strong> ${customer?.phone || 'N/A'}</p>
-            <p><strong>Period:</strong> ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}</p>
-          </div>
-          
-          <div class="summary-box">
-            <div class="summary-row"><span>Total Sales / Purchases:</span> <span>Rs. ${summary?.currentMonthAmount.toLocaleString()}</span></div>
-            <div class="summary-row"><span>Previous Balance:</span> <span>Rs. ${summary?.previousBalance.toLocaleString()}</span></div>
-            <div class="summary-row total-row"><span>Total Payable:</span> <span>Rs. ${summary?.totalPayable.toLocaleString()}</span></div>
-            <div class="summary-row"><span>Total Received:</span> <span>Rs. ${summary?.totalReceived.toLocaleString()}</span></div>
-            <div class="summary-row total-row"><span>Remaining:</span> <span>Rs. ${summary?.remaining.toLocaleString()}</span></div>
-          </div>
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-          <table>
-            <thead>
-              <tr>
-                ${WEEK_DAYS.map(d => `<th>${d}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${Array.from({ length: Math.ceil(calendarDays.length / 7) }).map((_, rowIndex) => `
-                <tr>
-                  ${calendarDays.slice(rowIndex * 7, (rowIndex + 1) * 7).map(day => {
-                    if (!day) return `<td></td>`;
-                    const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    const dayEntries = entriesByDate.get(dateStr) || [];
-                    const dailyAmt = dayEntries.reduce((sum, e) => sum + e.amount, 0);
-                    return `
-                      <td class="day-cell">
-                        <span class="day-num">${day}</span>
-                        ${dailyAmt > 0 ? `Rs. ${dailyAmt.toLocaleString()}` : '-'}
-                      </td>
-                    `;
-                  }).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-    const win = window.open('', '_blank');
-    if (win) {
-      win.document.write(printContent);
-      win.document.close();
-      win.print();
+  const handleGeneratePdf = async () => {
+    if (!customer) return;
+    setIsGeneratingPdf(true);
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const monthLabel = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('GUJJAR MILK SHOP', 14, 16);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('Customer Monthly Milk Statement', 14, 22);
+
+      // Customer Info Box
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, 26, 182, 18, 2, 2, 'FD');
+
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Customer:', 18, 32);
+      doc.text('Phone:', 18, 38);
+      doc.text('Period:', 110, 32);
+      doc.text('Customer Type:', 110, 38);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(customer.name || '—', 38, 32);
+      doc.text(customer.phone || 'N/A', 38, 38);
+      doc.text(monthLabel, 138, 32);
+      doc.text(customer.customerType === 'monthly_ledger' ? 'Monthly Ledger' : 'Daily Ledger', 138, 38);
+
+      // Financial Summary Box
+      const summaryItems = [
+        ['Current Purchases', `Rs. ${(summary?.currentMonthAmount ?? 0).toLocaleString()}`],
+        ['Previous Balance', `Rs. ${(summary?.previousBalance ?? 0).toLocaleString()}`],
+        ['Total Payable', `Rs. ${(summary?.totalPayable ?? 0).toLocaleString()}`],
+        ['Total Received', `Rs. ${(summary?.totalReceived ?? 0).toLocaleString()}`],
+        ['Remaining Due', `Rs. ${(summary?.remaining ?? 0).toLocaleString()}`],
+      ];
+
+      autoTable(doc, {
+        body: summaryItems,
+        startY: 48,
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 50, textColor: [71, 85, 105] },
+          1: { fontStyle: 'bold', halign: 'right', textColor: [15, 23, 42] },
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        theme: 'grid',
+      });
+
+      let nextY = (doc as any).lastAutoTable?.finalY + 8 || 85;
+
+      // Calendar Table
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Monthly Calendar Overview (${monthLabel})`, 14, nextY);
+
+      const calRows: string[][] = [];
+      const totalWeeks = Math.ceil(calendarDays.length / 7);
+      for (let r = 0; r < totalWeeks; r++) {
+        const rowCells = calendarDays.slice(r * 7, (r + 1) * 7).map((day) => {
+          if (!day) return '';
+          const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dayEntries = entriesByDate.get(dateStr) || [];
+          const dailyAmt = dayEntries.reduce((sum, e) => sum + e.amount, 0);
+          return dailyAmt > 0 ? `${day}\nRs. ${dailyAmt.toLocaleString()}` : `${day}\n—`;
+        });
+        while (rowCells.length < 7) rowCells.push('');
+        calRows.push(rowCells);
+      }
+
+      autoTable(doc, {
+        head: [WEEK_DAYS.map(w => w.slice(0, 3))],
+        body: calRows,
+        startY: nextY + 3,
+        styles: { fontSize: 7, cellPadding: 2, halign: 'center', valign: 'middle', minCellHeight: 11 },
+        headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+        theme: 'grid',
+      });
+
+      nextY = (doc as any).lastAutoTable?.finalY + 8 || 150;
+
+      // Payments Table (if any)
+      if (payments.length > 0) {
+        if (nextY > 230) {
+          doc.addPage();
+          nextY = 20;
+        }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text('Payments Received This Month', 14, nextY);
+
+        const paymentRows = payments.map(p => [
+          p.date ? new Date(p.date).toLocaleDateString('en-GB') : '—',
+          p.paymentMethod || 'Cash',
+          `Rs. ${Number(p.amount || 0).toLocaleString()}`,
+          p.reference || '—',
+          p.addedBy || '—',
+        ]);
+
+        autoTable(doc, {
+          head: [['Date', 'Method', 'Amount', 'Reference', 'Received By']],
+          body: paymentRows,
+          startY: nextY + 3,
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+          theme: 'striped',
+        });
+
+        nextY = (doc as any).lastAutoTable?.finalY + 8 || 200;
+      }
+
+      // Detailed Entries Table
+      if (entries.length > 0) {
+        if (nextY > 230) {
+          doc.addPage();
+          nextY = 20;
+        }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text('Detailed Milk Purchases', 14, nextY);
+
+        const entryRows = entries.map(e => [
+          e.date ? new Date(e.date).toLocaleDateString('en-GB') : '—',
+          e.product || 'Fresh Milk',
+          `${Number(e.quantity || 0).toFixed(2)} ${e.unit || 'kg'}`,
+          `Rs. ${Number(e.rate || 0).toLocaleString()}`,
+          `Rs. ${Number(e.amount || 0).toLocaleString()}`,
+        ]);
+
+        autoTable(doc, {
+          head: [['Date', 'Product', 'Quantity', 'Rate', 'Total']],
+          body: entryRows,
+          startY: nextY + 3,
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+          theme: 'striped',
+        });
+      }
+
+      const safeName = (customer.name || 'Customer').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Customer_Milk_Statement_${safeName}_${selectedMonth}_${selectedYear}.pdf`;
+      await savePdfDocument(doc, filename);
+    } catch (err) {
+      console.error('[Customer Ledger] PDF generation failed:', err);
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -243,11 +333,12 @@ export const CustomerMonthlyMilkLedger: React.FC = () => {
         </div>
         
         <button 
-          onClick={handlePrint}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors"
+          onClick={handleGeneratePdf}
+          disabled={isGeneratingPdf || !customer}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors"
         >
-          <Printer className="w-4 h-4" />
-          Generate PDF
+          <Download className="w-4 h-4" />
+          {isGeneratingPdf ? 'Saving PDF…' : 'Generate PDF'}
         </button>
       </div>
 

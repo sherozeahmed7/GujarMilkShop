@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Calendar, Printer, Info,
-  CreditCard, Package,
+  CreditCard, Package, Download, FileText,
 } from 'lucide-react';
+import { savePdfDocument } from '../../utils/exportUtils';
 import {
   supplierLedgerService,
   PurchaseEntry,
@@ -126,82 +127,168 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
   const goCurrent = () => { setSelectedMonth(today.getMonth() + 1); setSelectedYear(today.getFullYear()); };
 
   // ── PDF generation ──
-  const handlePrint = () => {
-    const calRows = Array.from({ length: Math.ceil(calendarDays.length / 7) })
-      .map((_, row) =>
-        `<tr>${calendarDays.slice(row * 7, row * 7 + 7).map(day => {
-          if (!day) return '<td></td>';
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleGeneratePdf = async () => {
+    if (!supplier) return;
+    setIsGeneratingPdf(true);
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const monthLabel = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('GUJJAR MILK SHOP', 14, 16);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text('Supplier Monthly Purchase Statement', 14, 22);
+
+      // Supplier Info Box
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, 26, 182, 18, 2, 2, 'FD');
+
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Supplier:', 18, 32);
+      doc.text('Phone:', 18, 38);
+      doc.text('Period:', 110, 32);
+      doc.text('Cycle Type:', 110, 38);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(supplier.name || '—', 36, 32);
+      doc.text(supplier.phone || 'N/A', 36, 38);
+      doc.text(monthLabel, 136, 32);
+      doc.text(supplier.cycleType || 'N/A', 136, 38);
+
+      // Financial Summary Box
+      const summaryItems = [
+        ['Current Month Purchases', `Rs. ${(summary?.currentMonthAmount ?? 0).toLocaleString()}`],
+        ['Previous Balance', `Rs. ${(summary?.previousBalance ?? 0).toLocaleString()}`],
+        ['Total Payable', `Rs. ${(summary?.totalPayable ?? 0).toLocaleString()}`],
+        ['Total Paid', `Rs. ${(summary?.totalPaid ?? 0).toLocaleString()}`],
+        ['Remaining Payable', `Rs. ${(summary?.remaining ?? 0).toLocaleString()}`],
+      ];
+
+      autoTable(doc, {
+        body: summaryItems,
+        startY: 48,
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 50, textColor: [71, 85, 105] },
+          1: { fontStyle: 'bold', halign: 'right', textColor: [15, 23, 42] },
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        theme: 'grid',
+      });
+
+      let nextY = (doc as any).lastAutoTable?.finalY + 8 || 85;
+
+      // Calendar Overview
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Monthly Calendar Overview (${monthLabel})`, 14, nextY);
+
+      const calRows: string[][] = [];
+      const totalWeeks = Math.ceil(calendarDays.length / 7);
+      for (let r = 0; r < totalWeeks; r++) {
+        const rowCells = calendarDays.slice(r * 7, (r + 1) * 7).map((day) => {
+          if (!day) return '';
           const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const dayEntries = entriesByDate.get(dateStr) ?? [];
           const amt = dayEntries.reduce((s, e) => s + e.amount, 0);
-          return `<td class="day-cell"><span class="day-num">${day}</span>${amt > 0 ? `Rs. ${Math.round(amt).toLocaleString()}` : '-'}</td>`;
-        }).join('')}</tr>`
-      ).join('');
+          return amt > 0 ? `${day}\nRs. ${Math.round(amt).toLocaleString()}` : `${day}\n—`;
+        });
+        while (rowCells.length < 7) rowCells.push('');
+        calRows.push(rowCells);
+      }
 
-    const payRows = payments.map(p =>
-      `<tr><td>${fmtDate(p.date)}</td><td>${p.paymentMethod}</td><td>${fmtAmount(p.amount)}</td><td>${p.reference}</td><td>${p.addedBy}</td></tr>`
-    ).join('') || '<tr><td colspan="5" style="text-align:center;color:#888">No payments this month</td></tr>';
+      autoTable(doc, {
+        head: [WEEK_DAYS.map(w => w.slice(0, 3))],
+        body: calRows,
+        startY: nextY + 3,
+        styles: { fontSize: 7, cellPadding: 2, halign: 'center', valign: 'middle', minCellHeight: 11 },
+        headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+        theme: 'grid',
+      });
 
-    const purchaseRows = entries.map(e =>
-      `<tr><td>${fmtDate(e.date, { day: '2-digit', month: 'short' })}</td><td>${e.product}</td><td>${e.quantity.toFixed(2)} ${e.unit}</td><td>Rs. ${e.rate}</td><td>${fmtAmount(e.amount)}</td></tr>`
-    ).join('') || '<tr><td colspan="5" style="text-align:center;color:#888">No purchases this month</td></tr>';
+      nextY = (doc as any).lastAutoTable?.finalY + 8 || 150;
 
-    const html = `
-      <html><head>
-        <title>Supplier Purchase Statement — ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}</title>
-        <style>
-          body { font-family: sans-serif; padding: 24px; font-size: 12px; color: #1e293b; }
-          h2 { margin: 0 0 4px; font-size: 18px; }
-          h3 { margin: 0 0 16px; font-size: 13px; font-weight: normal; color: #64748b; }
-          .meta p { margin: 2px 0; color: #475569; }
-          .summary-box { border: 1px solid #e2e8f0; padding: 16px; background: #f8fafc; margin: 20px 0; border-radius: 8px; }
-          .summary-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
-          .summary-row.total { font-weight: bold; border-top: 1px solid #cbd5e1; padding-top: 6px; margin-top: 6px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-          th { background: #f1f5f9; text-align: left; padding: 7px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #64748b; border: 1px solid #e2e8f0; }
-          td { padding: 7px 10px; border: 1px solid #e2e8f0; vertical-align: top; }
-          .day-cell { min-height: 52px; }
-          .day-num { font-weight: bold; display: block; margin-bottom: 3px; }
-          .section-title { font-size: 13px; font-weight: bold; margin: 20px 0 8px; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }
-        </style>
-      </head><body>
-        <div style="text-align: center; margin-bottom: 20px;">
-          <img src="/logo.png" alt="Gujjar Milk Shop" style="height: 64px; object-fit: contain; margin-bottom: 10px;" />
-          <h2 style="margin: 0;">GUJJAR MILK SHOP</h2>
-          <h3 style="margin-top: 5px; color: #555;">Supplier Monthly Purchase Statement</h3>
-        </div>
-        <div class="meta">
-          <p><strong>Supplier:</strong> ${supplier?.name ?? 'Unknown'}</p>
-          <p><strong>Phone:</strong> ${supplier?.phone ?? 'N/A'}</p>
-          <p><strong>Cycle:</strong> ${supplier?.cycleType ?? 'N/A'}</p>
-          <p><strong>Period:</strong> ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}</p>
-        </div>
-        <div class="summary-box">
-          <div class="summary-row"><span>Current Month Purchases:</span><span>${fmtAmount(summary?.currentMonthAmount ?? 0)}</span></div>
-          <div class="summary-row"><span>Previous Balance:</span><span>${fmtAmount(summary?.previousBalance ?? 0)}</span></div>
-          <div class="summary-row total"><span>Total Payable:</span><span>${fmtAmount(summary?.totalPayable ?? 0)}</span></div>
-          <div class="summary-row"><span>Total Paid:</span><span>${fmtAmount(summary?.totalPaid ?? 0)}</span></div>
-          <div class="summary-row total"><span>Remaining Payable:</span><span>${fmtAmount(summary?.remaining ?? 0)}</span></div>
-        </div>
-        <div class="section-title">Monthly Calendar — ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}</div>
-        <table>
-          <thead><tr>${WEEK_DAYS.map(d => `<th>${d}</th>`).join('')}</tr></thead>
-          <tbody>${calRows}</tbody>
-        </table>
-        <div class="section-title">Payment History</div>
-        <table>
-          <thead><tr><th>Date</th><th>Method</th><th>Amount</th><th>Reference</th><th>Added By</th></tr></thead>
-          <tbody>${payRows}</tbody>
-        </table>
-        <div class="section-title">Purchase Detail</div>
-        <table>
-          <thead><tr><th>Date</th><th>Product</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead>
-          <tbody>${purchaseRows}</tbody>
-        </table>
-      </body></html>`;
+      // Payments Table
+      if (payments.length > 0) {
+        if (nextY > 230) {
+          doc.addPage();
+          nextY = 20;
+        }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text('Payment History', 14, nextY);
 
-    const win = window.open('', '_blank');
-    if (win) { win.document.write(html); win.document.close(); win.print(); }
+        const paymentRows = payments.map(p => [
+          p.date ? new Date(p.date).toLocaleDateString('en-GB') : '—',
+          p.paymentMethod || 'Cash',
+          `Rs. ${Math.round(Number(p.amount || 0)).toLocaleString()}`,
+          p.reference || '—',
+          p.addedBy || '—',
+        ]);
+
+        autoTable(doc, {
+          head: [['Date', 'Method', 'Amount', 'Reference', 'Added By']],
+          body: paymentRows,
+          startY: nextY + 3,
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [16, 185, 129], textColor: 255 },
+          theme: 'striped',
+        });
+
+        nextY = (doc as any).lastAutoTable?.finalY + 8 || 200;
+      }
+
+      // Purchases Table
+      if (entries.length > 0) {
+        if (nextY > 230) {
+          doc.addPage();
+          nextY = 20;
+        }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text('Purchase Details', 14, nextY);
+
+        const purchaseRows = entries.map(e => [
+          e.date ? new Date(e.date).toLocaleDateString('en-GB') : '—',
+          e.product || 'Milk',
+          `${Number(e.quantity || 0).toFixed(2)} ${e.unit || 'kg'}`,
+          `Rs. ${Number(e.rate || 0).toLocaleString()}`,
+          `Rs. ${Math.round(Number(e.amount || 0)).toLocaleString()}`,
+        ]);
+
+        autoTable(doc, {
+          head: [['Date', 'Product', 'Quantity', 'Rate', 'Total']],
+          body: purchaseRows,
+          startY: nextY + 3,
+          styles: { fontSize: 8, cellPadding: 2.5 },
+          headStyles: { fillColor: [51, 65, 85], textColor: 255 },
+          theme: 'striped',
+        });
+      }
+
+      const safeName = (supplier.name || 'Supplier').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Supplier_Purchase_Statement_${safeName}_${selectedMonth}_${selectedYear}.pdf`;
+      await savePdfDocument(doc, filename);
+    } catch (err) {
+      console.error('[Supplier Ledger] PDF generation failed:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   // ─── Early returns ────────────────────────────────────────────────────────
@@ -254,11 +341,12 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
               </button>
             </div>
             <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors"
+              onClick={handleGeneratePdf}
+              disabled={isGeneratingPdf || !supplier}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors"
             >
-              <Printer className="w-4 h-4" />
-              Generate PDF
+              <Download className="w-4 h-4" />
+              {isGeneratingPdf ? 'Saving PDF…' : 'Generate PDF'}
             </button>
           </div>
         </div>

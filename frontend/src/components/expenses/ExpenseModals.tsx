@@ -29,7 +29,9 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
   const [editDate, setEditDate] = useState('');
   const [editProduct, setEditProduct] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [editPaidAmount, setEditPaidAmount] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payError, setPayError] = useState<string | null>(null);
 
@@ -38,9 +40,15 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
       setEditDate(editExpense.date);
       setEditProduct(editExpense.category);
       setEditAmount(String(editExpense.amount ?? editExpense.netExpense ?? 0));
+      setEditPaidAmount(String(editExpense.paidAmount ?? 0));
       setEditNotes(editExpense.reason || '');
+      setEditError(null);
     }
   }, [editExpense]);
+
+  const totalInEdit = parseFloat(editAmount) || 0;
+  const paidInEdit = editPaidAmount.trim() === '' ? 0 : parseFloat(editPaidAmount) || 0;
+  const remainingInEdit = Math.max(0, Math.round((totalInEdit - paidInEdit) * 100) / 100);
 
   useEffect(() => {
     if (payExpense) {
@@ -53,24 +61,42 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editExpense) return;
+    setEditError(null);
     const amount = parseFloat(editAmount);
-    if (!editDate || !editProduct.trim() || !Number.isFinite(amount) || amount <= 0) {
-      alert('Date, product, and amount > 0 are required.');
+    const paid = editPaidAmount.trim() === '' ? 0 : parseFloat(editPaidAmount);
+
+    if (!editDate || !editProduct.trim()) {
+      setEditError('Date and product are required.');
       return;
     }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setEditError('Enter a total amount greater than zero.');
+      return;
+    }
+    if (!Number.isFinite(paid) || paid < 0) {
+      setEditError('Paid amount must be 0 or greater.');
+      return;
+    }
+    if (paid > amount) {
+      setEditError('Paid amount cannot exceed total amount.');
+      return;
+    }
+
     try {
       await updateExpense(editExpense.id, {
         date: editDate,
         category: editProduct.trim(),
         description: editProduct.trim(),
         amount,
+        paidAmount: paid,
+        remaining: Math.max(0, amount - paid),
         netExpense: amount,
         grossLoss: amount,
         reason: editNotes,
       });
       onCloseEdit();
-    } catch {
-      alert('Unable to update expense.');
+    } catch (err: any) {
+      setEditError(err?.message || 'Unable to update expense.');
     }
   };
 
@@ -216,20 +242,68 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Total amount</label>
+                <label className="text-xs font-semibold text-slate-600">Total amount (Rs)</label>
                 <input
                   type="number"
                   min="0"
                   step="1"
                   value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
+                  onChange={(e) => {
+                    setEditAmount(e.target.value);
+                    setEditError(null);
+                  }}
                   required
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-                <p className="text-[11px] text-slate-400">
-                  Already paid: Rs. {(editExpense.paidAmount || 0).toLocaleString()} (cannot go
-                  below this)
-                </p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-600">Paid amount (Rs)</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditPaidAmount('0');
+                        setEditError(null);
+                      }}
+                      className="text-[11px] font-medium text-amber-600 hover:text-amber-700 hover:underline"
+                    >
+                      Unpaid (Rs. 0)
+                    </button>
+                    {totalInEdit > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPaidAmount(String(totalInEdit));
+                          setEditError(null);
+                        }}
+                        className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        Pay Full (Rs. {totalInEdit.toLocaleString()})
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max={totalInEdit > 0 ? totalInEdit : undefined}
+                  step="1"
+                  value={editPaidAmount}
+                  onChange={(e) => {
+                    setEditPaidAmount(e.target.value);
+                    setEditError(null);
+                  }}
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <div className="flex items-center justify-between text-[11px] mt-0.5">
+                  <span className="text-slate-500">
+                    Previously paid: Rs. {(editExpense.paidAmount || 0).toLocaleString()}
+                  </span>
+                  <span className={remainingInEdit > 0 ? 'text-amber-600 font-semibold' : 'text-slate-400'}>
+                    Remaining: Rs. {remainingInEdit.toLocaleString()}
+                  </span>
+                </div>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-slate-600">Notes</label>
@@ -240,6 +314,11 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                   className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
+              {editError && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  {editError}
+                </div>
+              )}
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"

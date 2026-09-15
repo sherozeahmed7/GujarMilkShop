@@ -16,6 +16,7 @@ import {
   CustomerPayment,
   AddPaymentPayload,
 } from '../types/customerMilkReport';
+import { savePdfDocument } from '../utils/exportUtils';
 
 // ---------------------------------------------------------------------------
 // Mock in-memory payment store (keyed by "customerId-month-year")
@@ -311,6 +312,7 @@ export const customerMilkReportService = {
       });
     }
 
-    doc.save(`milk-statement-${stmt.customerName}-${monthLabel}.pdf`);
+    const filename = `milk-statement-${stmt.customerName.replace(/\s+/g, '_')}-${monthLabel.replace(/\s+/g, '_')}.pdf`;
+    await savePdfDocument(doc, filename);
   },
 };

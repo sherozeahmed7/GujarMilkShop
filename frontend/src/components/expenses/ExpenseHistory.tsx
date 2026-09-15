@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useExpenseStore } from '../../store/expenseStore';
 import { ExpenseRecord } from '../../types';
-import { Eye, Edit2, Trash2, FileText, Search, Banknote } from 'lucide-react';
+import { Eye, Edit2, Trash2, FileText, Search } from 'lucide-react';
 import { ExpenseModals } from './ExpenseModals';
 
 type FilterTab = 'Today' | 'This Week' | 'This Month' | 'All Time';
@@ -162,15 +162,6 @@ export const ExpenseHistory: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-sm whitespace-nowrap">
                       <div className="flex items-center gap-1">
-                        {remaining > 0 && (
-                          <button
-                            onClick={() => setPayExpense(expense)}
-                            className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
-                            title="Pay remaining"
-                          >
-                            <Banknote className="w-4 h-4" />
-                          </button>
-                        )}
                         <button
                           onClick={() => setViewExpense(expense)}
                           className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
