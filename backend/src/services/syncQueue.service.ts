@@ -21,7 +21,10 @@ const NESTED_KEYS = new Set([
   'movements',
   'collections',
   'users',
-  'shift',
+  // NOTE: 'shift' intentionally NOT listed here.
+  // SupplierCollection.shift is a plain string ('morning'/'evening'), not a relation.
+  // The Shift relation object on other models is an object and will be caught by the
+  // object-type guard below (line ~136), so it never leaks into the payload.
 ]);
 
 /** Local FK field → { uuidKey, parent entity type } */
@@ -78,17 +81,28 @@ export class SyncQueueService {
     db: DbClient = prisma
   ): Promise<string> {
     const uuid = cloudUuid || crypto.randomUUID();
+    const deviceId = this.getDeviceId();
 
-    await db.localToCloudMapping.create({
-      data: {
-        deviceId: this.getDeviceId(),
+    const result = await db.localToCloudMapping.upsert({
+      where: {
+        deviceId_entityType_localId: {
+          deviceId,
+          entityType,
+          localId,
+        },
+      },
+      update: {
+        ...(cloudUuid ? { cloudUuid } : {}),
+      },
+      create: {
+        deviceId,
         entityType,
         localId,
         cloudUuid: uuid,
       },
     });
 
-    return uuid;
+    return result.cloudUuid;
   }
 
   /** Get existing mapping or create one (for seeded masters that never went through enqueue). */

@@ -14,14 +14,16 @@ export const DeleteBackupModal: React.FC<DeleteBackupModalProps> = ({ backup, on
   const { deleteBackup } = useBackupStore();
 
   const handleDelete = async () => {
+    if (isDeleting) return;
     setIsDeleting(true);
     try {
       toast.loading('Deleting backup...', { id: 'delete-toast' });
-      await deleteBackup(backup.id);
+      await deleteBackup(backup.filename);
       toast.success('Backup deleted successfully.', { id: 'delete-toast' });
       onClose();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete backup.', { id: 'delete-toast' });
+      const msg = error?.message || 'Failed to delete backup.';
+      toast.error(msg, { id: 'delete-toast', duration: 5000 });
     } finally {
       setIsDeleting(false);
     }
@@ -35,9 +37,10 @@ export const DeleteBackupModal: React.FC<DeleteBackupModalProps> = ({ backup, on
             <Trash2 className="w-5 h-5" />
             <h2 className="text-lg font-bold">Delete Backup</h2>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            disabled={isDeleting}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="w-5 h-5" />
           </button>
@@ -51,6 +54,13 @@ export const DeleteBackupModal: React.FC<DeleteBackupModalProps> = ({ backup, on
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4 break-all text-sm font-medium text-slate-800">
             {backup.filename}
           </div>
+
+          <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex gap-3 items-start">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-red-800 font-medium">
+              This backup file will be permanently removed from disk.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
@@ -58,16 +68,16 @@ export const DeleteBackupModal: React.FC<DeleteBackupModalProps> = ({ backup, on
             type="button"
             onClick={onClose}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-6 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+            className="px-6 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isDeleting ? 'Deleting...' : 'Confirm'}
+            {isDeleting ? 'Deleting...' : 'Delete Backup'}
           </button>
         </div>
       </div>

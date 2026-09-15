@@ -1,33 +1,46 @@
 import { create } from 'zustand';
 import { BackupRecord, AutoBackupSettings } from '../types';
-import { initialMockBackups } from '../data/backupMockData';
 import {
   createBackup as svcCreateBackup,
   deleteBackup as svcDeleteBackup,
-  getBackupFolder,
-  changeBackupFolder,
-  resetBackupFolder,
+  listBackups as svcListBackups,
   getBackupSettings,
-  updateBackupSettings
 } from '../services/backupService';
+
+interface BackupSummary {
+  totalBackups: number;
+  latestBackup: string | null;
+  totalStorageKb: number;
+  status: string;
+}
 
 interface BackupStore {
   backups: BackupRecord[];
+  summary: BackupSummary;
   isCreating: boolean;
+  isLoading: boolean;
   backupFolder: string;
   autoBackupSettings: AutoBackupSettings;
   createBackup: () => Promise<BackupRecord>;
-  addBackup: (record: BackupRecord) => void;
-  deleteBackup: (id: string) => Promise<void>;
+  deleteBackup: (filename: string) => Promise<void>;
   loadInitialData: () => Promise<void>;
   setBackupFolder: (folder: string) => void;
   setAutoBackupSettings: (settings: AutoBackupSettings) => void;
 }
 
-export const useBackupStore = create<BackupStore>((set) => ({
-  backups: initialMockBackups,
+const defaultSummary: BackupSummary = {
+  totalBackups: 0,
+  latestBackup: null,
+  totalStorageKb: 0,
+  status: 'Loading...',
+};
+
+export const useBackupStore = create<BackupStore>((set, get) => ({
+  backups: [],
+  summary: defaultSummary,
   isCreating: false,
-  backupFolder: 'C:\\Users\\HP\\OneDrive\\Documents\\RetailPOSBackup\\',
+  isLoading: true,
+  backupFolder: 'Loading...',
   autoBackupSettings: {
     enabled: true,
     schedule: 'Daily',
@@ -39,30 +52,63 @@ export const useBackupStore = create<BackupStore>((set) => ({
     set({ isCreating: true });
     try {
       const newBackup = await svcCreateBackup();
-      set((state) => ({
-        backups: [newBackup, ...state.backups],
-        isCreating: false,
-      }));
+      // Refresh all cards and table
+      await get().loadInitialData();
       return newBackup;
     } catch (e) {
+      // Let error bubble up to UI for toast
+      throw e;
+    } finally {
       set({ isCreating: false });
+    }
+  },
+
+  deleteBackup: async (filename: string) => {
+    try {
+      await svcDeleteBackup(filename);
+      // Refresh all cards and table
+      await get().loadInitialData();
+    } catch (e) {
+      // Let error bubble up to UI for toast
       throw e;
     }
   },
 
-  addBackup: (record) => {
-    set((state) => ({ backups: [record, ...state.backups] }));
-  },
-
-  deleteBackup: async (id: string) => {
-    await svcDeleteBackup(id);
-    set((state) => ({ backups: state.backups.filter(b => b.id !== id) }));
-  },
-
   loadInitialData: async () => {
-    const folder = await getBackupFolder();
-    const settings = await getBackupSettings();
-    set({ backupFolder: folder, autoBackupSettings: settings });
+    set({ isLoading: true });
+    try {
+      const [{ backups, summary }, settings] = await Promise.all([
+        svcListBackups(),
+        getBackupSettings(),
+      ]);
+
+      let folderPath = '';
+      if (backups.length > 0) {
+        const lastSlash = Math.max(
+          backups[0].path.lastIndexOf('\\'),
+          backups[0].path.lastIndexOf('/')
+        );
+        folderPath = lastSlash > 0 ? backups[0].path.substring(0, lastSlash) : backups[0].path;
+      }
+
+      set({
+        backups,
+        summary,
+        autoBackupSettings: settings,
+        backupFolder: folderPath || 'Local AppData / Backups',
+      });
+    } catch (err: any) {
+      console.error('[BackupStore] Failed to load backup data:', err.message);
+      set({
+        summary: {
+          ...get().summary,
+          status: 'Error: ' + (err.message || 'Could not load backups'),
+        },
+      });
+    } finally {
+      // Always reset loading, regardless of success or failure
+      set({ isLoading: false });
+    }
   },
 
   setBackupFolder: (folder: string) => {

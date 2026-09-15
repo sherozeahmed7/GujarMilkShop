@@ -1,31 +1,30 @@
 import React from 'react';
 import { useBackupStore } from '../../../store/backupStore';
-import { HardDrive, Clock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { HardDrive, Clock, CheckCircle2, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 export const BackupStats: React.FC = () => {
-  const { backups } = useBackupStore();
+  const { summary } = useBackupStore();
 
-  const totalBackups = backups.length;
-  
-  const totalSizeKb = backups.reduce((acc, curr) => acc + curr.sizeKb, 0);
+  const totalSizeKb = summary.totalStorageKb || 0;
   const totalSize = totalSizeKb > 1024 
     ? `${(totalSizeKb / 1024).toFixed(2)} MB` 
     : `${totalSizeKb.toLocaleString()} KB`;
 
-  const latestBackup = backups.length > 0 ? backups[0] : null;
-  const latestBackupDate = latestBackup 
-    ? new Date(latestBackup.createdAt).toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+  const latestBackupDate = summary.latestBackup 
+    ? new Date(summary.latestBackup).toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
     : 'Never';
+
+  const isHealthy = summary.status === 'Healthy';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
           <ShieldCheck className="w-5 h-5" />
         </div>
         <div>
           <div className="text-xs text-slate-500 font-medium">Total Backups</div>
-          <div className="text-lg font-bold text-slate-800">{totalBackups}</div>
+          <div className="text-lg font-bold text-slate-800">{summary.totalBackups}</div>
         </div>
       </div>
 
@@ -50,12 +49,12 @@ export const BackupStats: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
-          <CheckCircle2 className="w-5 h-5" />
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isHealthy ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+          {isHealthy ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
         </div>
         <div>
           <div className="text-xs text-slate-500 font-medium">Status</div>
-          <div className="text-lg font-bold text-emerald-600">Healthy</div>
+          <div className={`text-lg font-bold ${isHealthy ? 'text-emerald-600' : 'text-rose-600'}`}>{summary.status}</div>
         </div>
       </div>
     </div>

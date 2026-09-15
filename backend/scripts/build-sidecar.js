@@ -60,4 +60,11 @@ if (fs.existsSync(templatePath)) {
     console.warn('template.db not found at', templatePath, 'skipping');
 }
 
+const envPath = path.join(rootDir, '.env');
+const targetEnvPath = path.join(frontendBinDir, '.env');
+if (fs.existsSync(envPath)) {
+    fs.copyFileSync(envPath, targetEnvPath);
+    console.log('Copied .env');
+}
+
 console.log('Sidecar build complete.');

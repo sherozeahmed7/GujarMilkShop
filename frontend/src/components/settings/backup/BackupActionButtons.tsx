@@ -1,12 +1,14 @@
-import React, { useRef } from 'react';
-import { Database, RefreshCw, FolderOpen, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { Database, RefreshCw, FolderOpen } from 'lucide-react';
 import { useBackupStore } from '../../../store/backupStore';
 import { openBackupFolder, restoreBackupFromFile } from '../../../services/backupService';
 import { toast } from 'react-hot-toast';
+import { open } from '@tauri-apps/plugin-dialog';
 
 export const BackupActionButtons: React.FC = () => {
-  const { createBackup, isCreating } = useBackupStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { createBackup, isCreating, loadInitialData } = useBackupStore();
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isOpeningFolder, setIsOpeningFolder] = useState(false);
 
   const handleBackupNow = async () => {
     try {
@@ -14,48 +16,73 @@ export const BackupActionButtons: React.FC = () => {
       await createBackup();
       toast.success('Backup created successfully!', { id: 'backup-toast' });
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create backup.', { id: 'backup-toast' });
+      const msg = error?.message || 'Failed to create backup.';
+      toast.error(msg, { id: 'backup-toast', duration: 5000 });
     }
   };
 
   const handleOpenFolder = async () => {
+    setIsOpeningFolder(true);
     try {
       await openBackupFolder();
     } catch (error: any) {
-      toast.error('Could not open folder in mock mode.', { id: 'folder-toast' });
+      const msg = error?.message || 'Could not open backup folder.';
+      toast.error(msg, { id: 'folder-toast' });
+    } finally {
+      setIsOpeningFolder(false);
     }
   };
 
-  const handleRestoreFromFile = () => {
-    fileInputRef.current?.click();
-  };
-
-  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!window.confirm('Restoring this backup may replace current local data. Make sure you have a recent backup before continuing.')) {
-      e.target.value = '';
-      return;
-    }
+  const handleRestoreFromFile = async () => {
+    if (isRestoring) return;
+    setIsRestoring(true);
 
     try {
-      toast.loading('Restoring from file...', { id: 'restore-toast' });
-      await restoreBackupFromFile(file);
-      toast.success('Restore successful!', { id: 'restore-toast' });
+      let selectedPath: string | null = null;
+
+      try {
+        const result = await open({
+          multiple: false,
+          filters: [{ name: 'Database Backup', extensions: ['db', 'sqlite', 'bak'] }]
+        });
+        if (!result) return; // User cancelled picker
+        selectedPath = Array.isArray(result) ? result[0] : result;
+      } catch (pickerErr: any) {
+        toast.error('Could not open file picker: ' + (pickerErr?.message || 'Unknown error'), { id: 'restore-toast' });
+        return;
+      }
+
+      if (!selectedPath) return;
+
+      if (!window.confirm(
+        `Restoring this backup will replace the current database.\n\nFile: ${selectedPath}\n\nA safety backup will be created automatically before the restore.\n\nContinue?`
+      )) {
+        return;
+      }
+
+      toast.loading('Validating and restoring backup...', { id: 'restore-toast' });
+      await restoreBackupFromFile(selectedPath);
+      await loadInitialData();
+      toast.success(
+        'Restore successful! Please restart the application to apply all changes.',
+        { id: 'restore-toast', duration: 8000 }
+      );
     } catch (error: any) {
-      toast.error(error.message || 'Failed to restore.', { id: 'restore-toast' });
+      const msg = error?.message || 'Restore failed. Please try again.';
+      toast.error(msg, { id: 'restore-toast', duration: 8000 });
     } finally {
-      e.target.value = '';
+      setIsRestoring(false);
     }
   };
+
+  const isAnyProcessing = isCreating || isRestoring || isOpeningFolder;
 
   return (
     <div className="flex flex-wrap gap-4 mb-6">
       <button
         onClick={handleBackupNow}
-        disabled={isCreating}
-        className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50"
+        disabled={isAnyProcessing}
+        className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Database className="w-5 h-5" />
         {isCreating ? 'Creating...' : 'Backup Now'}
@@ -63,26 +90,20 @@ export const BackupActionButtons: React.FC = () => {
 
       <button
         onClick={handleRestoreFromFile}
-        className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-sm"
+        disabled={isAnyProcessing}
+        className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <RefreshCw className="w-5 h-5" />
-        Restore from File
+        <RefreshCw className={`w-5 h-5 ${isRestoring ? 'animate-spin' : ''}`} />
+        {isRestoring ? 'Restoring...' : 'Restore from File'}
       </button>
-      
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={onFileChange} 
-        className="hidden" 
-        accept=".db,.sqlite,.bak" 
-      />
 
       <button
         onClick={handleOpenFolder}
-        className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-sm"
+        disabled={isAnyProcessing}
+        className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <FolderOpen className="w-5 h-5" />
-        Open Backup Folder
+        {isOpeningFolder ? 'Opening...' : 'Open Backup Folder'}
       </button>
     </div>
   );

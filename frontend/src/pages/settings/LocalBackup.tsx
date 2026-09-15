@@ -26,7 +26,7 @@ export const LocalBackup: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-y-auto">
+    <div className="flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Backup & Restore</h1>

@@ -1,64 +1,100 @@
-/**
- * backupService.ts
- *
- * Service layer for backup operations. Currently uses mock/local state.
- * Replace the implementations with Tauri invoke() calls when ready.
- */
-
 import { BackupRecord } from '../types';
 
-const BASE_PATH = 'C:\\Users\\HP\\OneDrive\\Documents\\RetailPOSBackup\\';
+const BACKUP_API = 'http://localhost:5000/api/backup';
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Wraps fetch with consistent network error handling.
+ * Throws a user-friendly error if the server is unreachable or returns an error.
+ */
+async function backupFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(input, init);
+  } catch (networkErr: any) {
+    throw new Error('Cannot reach the local server. Please ensure the application backend is running.');
+  }
+  return response;
 }
 
-function generateTimestamp(): string {
-  const now = new Date();
-  const pad = (n: number, len = 2) => String(n).padStart(len, '0');
-  const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}-${pad(now.getMilliseconds(), 3)}Z`;
-  return ts;
+async function parseErrorMessage(response: Response): Promise<string> {
+  try {
+    const data = await response.json();
+    return data?.error || `Request failed with status ${response.status}`;
+  } catch {
+    return `Request failed with status ${response.status}`;
+  }
 }
 
-// --- Service functions ---
+export async function listBackups(): Promise<{ backups: BackupRecord[], summary: any }> {
+  const response = await backupFetch(BACKUP_API);
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
+  return response.json();
+}
 
 export async function createBackup(): Promise<BackupRecord> {
-  // Simulate async backup process
-  await delay(1500);
-
-  const ts = generateTimestamp();
-  const filename = `manual-backup-${ts}.db`;
-  const newBackup: BackupRecord = {
-    id: `backup-manual-${Date.now()}`,
-    filename,
-    path: `${BASE_PATH}${filename}`,
-    createdAt: new Date().toISOString(),
-    sizeKb: Math.floor(Math.random() * 900 + 300),
-    type: 'Manual',
-  };
-  return newBackup;
+  const response = await backupFetch(BACKUP_API, { method: 'POST' });
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
+  const data = await response.json();
+  if (!data?.backup) throw new Error('Server returned an unexpected response for backup creation.');
+  return data.backup;
 }
 
-export async function restoreBackup(_backup: BackupRecord): Promise<void> {
-  // Simulate async restore process
-  await delay(2000);
-  // In real implementation: await invoke('restore_backup', { path: backup.path });
+export async function restoreBackup(filename: string): Promise<void> {
+  const response = await backupFetch(`${BACKUP_API}/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename })
+  });
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
+}
+
+export async function restoreBackupFromFile(absolutePath: string): Promise<void> {
+  if (!absolutePath || absolutePath.trim() === '') {
+    throw new Error('No file path provided for restore.');
+  }
+  const response = await backupFetch(`${BACKUP_API}/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ absolutePath })
+  });
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
 }
 
 export async function openBackupFolder(): Promise<void> {
-  // Stub — connect to Tauri filesystem API later
-  // await invoke('open_path', { path: STORAGE_INFO.backupPath });
-  throw new Error('Filesystem integration is not yet enabled.');
+  const response = await backupFetch(`${BACKUP_API}/open-folder`, { method: 'POST' });
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
+}
+
+export async function deleteBackup(filename: string): Promise<void> {
+  if (!filename) throw new Error('No filename specified for deletion.');
+  const response = await backupFetch(`${BACKUP_API}/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
 }
 
 export function exportToExcel(backups: BackupRecord[]): void {
-  // Generate a simple CSV that can be opened in Excel
   const header = 'Filename,Path,Created At,Size (KB)';
   const rows = backups.map(b =>
     `"${b.filename}","${b.path}","${b.createdAt}",${b.sizeKb}`
   );
   const csvContent = [header, ...rows].join('\n');
-
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -68,79 +104,10 @@ export function exportToExcel(backups: BackupRecord[]): void {
   URL.revokeObjectURL(url);
 }
 
-export function exportToPDF(backups: BackupRecord[]): void {
-  // Generate an HTML document and trigger the print dialog
-  const rows = backups.map(b => `
-    <tr>
-      <td>${b.filename}</td>
-      <td style="color:#555;font-size:12px">${b.path}</td>
-      <td>${new Date(b.createdAt).toLocaleString()}</td>
-      <td>${b.sizeKb} KB</td>
-    </tr>`).join('');
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>Backup History</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    h1 { font-size: 20px; margin-bottom: 4px; }
-    p { color: #666; font-size: 13px; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #f1f5f9; text-align: left; padding: 8px; border-bottom: 2px solid #e2e8f0; }
-    td { padding: 8px; border-bottom: 1px solid #e2e8f0; word-break: break-all; }
-  </style>
-</head>
-<body>
-  <h1>Backup History</h1>
-  <p>Gujar Milk Shop — Exported on ${new Date().toLocaleString()}</p>
-  <table>
-    <thead><tr><th>Filename</th><th>Path</th><th>Created At</th><th>Size</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-</body>
-</html>`;
-
-  const w = window.open('', '_blank');
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-    w.print();
-  }
-}
-
-export async function deleteBackup(id: string): Promise<void> {
-  await delay(1000);
-}
-
-export async function getBackupFolder(): Promise<string> {
-  return BASE_PATH;
-}
-
-export async function changeBackupFolder(): Promise<string> {
-  await delay(500);
-  // Mock opening a folder dialog and picking a new one
-  return 'D:\\Backups\\RetailPOSBackup\\';
-}
-
-export async function resetBackupFolder(): Promise<string> {
-  await delay(300);
-  return BASE_PATH;
-}
-
 export async function getBackupSettings(): Promise<import('../types').AutoBackupSettings> {
-  return {
-    enabled: true,
-    schedule: 'Daily',
-    time: '02:00',
-    retention: '30',
-  };
+  return { enabled: true, schedule: 'Daily', time: '02:00', retention: '30' };
 }
 
-export async function updateBackupSettings(settings: Partial<import('../types').AutoBackupSettings>): Promise<void> {
-  await delay(500);
-}
-
-export async function restoreBackupFromFile(file: File): Promise<void> {
-  await delay(2000);
+export async function updateBackupSettings(_settings: Partial<import('../types').AutoBackupSettings>): Promise<void> {
+  // Not implemented in backend yet — stubbed
 }

@@ -190,7 +190,7 @@ export class UserService {
   }
 
   /**
-   * Deletes a user
+   * Deletes a user or deactivates if historical records exist
    */
   static async deleteUser(id: number) {
     const user = await prisma.user.findUnique({ where: { id } });
@@ -198,16 +198,60 @@ export class UserService {
       return { success: false, statusCode: 404, message: 'User not found.' };
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.user.delete({ where: { id } });
-      await SyncQueueService.enqueueUpdate(tx, 'User', id, { id }, 0, 'DELETE');
-    });
+    // Check if user has historical business references
+    const [
+      openedShifts,
+      closedShifts,
+      supplierCollections,
+      supplierPayments
+    ] = await Promise.all([
+      prisma.shift.count({ where: { openedById: id } }),
+      prisma.shift.count({ where: { closedById: id } }),
+      prisma.supplierCollection.count({ where: { createdById: id } }),
+      prisma.supplierPayment.count({ where: { createdById: id } })
+    ]);
 
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'User deleted successfully.'
-    };
+    const hasDependencies = (openedShifts + closedShifts + supplierCollections + supplierPayments) > 0;
+
+    if (hasDependencies) {
+      // Soft-deactivate to preserve historical transaction audit integrity
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.user.update({
+          where: { id },
+          data: { status: 'inactive' }
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'User', id, updated, 0, 'UPDATE');
+      });
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: 'User has historical transactions. User has been deactivated instead of deleted.'
+      };
+    }
+
+    // If no local dependencies, attempt soft-deactivation or safe delete
+    try {
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.user.update({
+          where: { id },
+          data: { status: 'inactive' }
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'User', id, updated, 0, 'UPDATE');
+      });
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: 'User deactivated successfully.'
+      };
+    } catch (e: any) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'Failed to deactivate user: ' + (e.message || e)
+      };
+    }
   }
 
   /**

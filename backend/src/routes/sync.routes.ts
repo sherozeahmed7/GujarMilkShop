@@ -10,6 +10,7 @@ import {
   toggleSync,
   checkConnection,
 } from '../controllers/syncStatus.controller';
+import { restoreCloudData } from '../controllers/syncRestore.controller';
 import { authenticateJWT } from '../middleware/auth.middleware';
 import { authenticateSyncInternal } from '../middleware/syncAuth.middleware';
 
@@ -34,5 +35,6 @@ router.post('/trigger',          authenticateJWT, triggerSync);
 router.post('/retry-failed',     authenticateJWT, retryFailed);
 router.post('/toggle',           authenticateJWT, toggleSync);
 router.post('/check-connection', authenticateJWT, checkConnection);
+router.post('/restore',          authenticateJWT, restoreCloudData);
 
 export default router;

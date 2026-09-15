@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Cloud, CloudOff, AlertCircle, HardDrive, Wifi, WifiOff, Clock, DownloadCloud, Play, Link2Off, Link2 } from 'lucide-react';
 import { cloudSyncService, CloudStatusData, SyncItem } from '../../services/cloudSync.service';
+import { RestoreCloudDataModal } from '../../components/settings/RestoreCloudDataModal';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -16,14 +17,18 @@ function formatTs(iso: string | null | undefined): string {
   }
 }
 
+const PAGE_SIZE = 50;
+
 export const CloudSync: React.FC = () => {
   const [statusData, setStatusData] = useState<CloudStatusData | null>(null);
   const [queue, setQueue] = useState<SyncItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const pollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadData = useCallback(async (silent = false) => {
@@ -36,6 +41,7 @@ export const CloudSync: React.FC = () => {
       ]);
       setStatusData(status);
       setQueue(pendingItems);
+      setCurrentPage(1); // reset to first page on fresh load
     } catch (err: any) {
       setError(err?.message || 'Failed to load cloud sync status');
     } finally {
@@ -156,8 +162,15 @@ export const CloudSync: React.FC = () => {
   const isDisconnected = statusData?.status === 'Disconnected';
   const isOffline = statusData?.status === 'Offline';
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(queue.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, queue.length);
+  const pageItems = queue.slice(pageStart, pageEnd);
+
   return (
-    <div className="flex flex-col h-full gap-6 min-h-0">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
@@ -171,13 +184,14 @@ export const CloudSync: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-3">
-          {/* Restore Cloud Data — disabled until safe restore architecture is built */}
+          {/* Restore Cloud Data */}
           <button
-            disabled
-            title="Restore Cloud Data is not yet available. A conflict-safe restore architecture is required."
-            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-400 px-4 py-2 rounded-xl font-medium shadow-sm cursor-not-allowed opacity-50"
+            onClick={() => setIsRestoreModalOpen(true)}
+            disabled={loading || syncing || actionInProgress || !statusData?.cloudConnected}
+            title={!statusData?.cloudConnected ? 'Connect to cloud to restore data.' : 'Restore data from online cloud backup'}
+            className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
           >
-            <DownloadCloud className="w-4 h-4" />
+            <DownloadCloud className="w-4 h-4 text-blue-600" />
             Restore Cloud Data
           </button>
 
@@ -212,7 +226,7 @@ export const CloudSync: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
         {loading && !statusData ? (
           <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading sync status...</div>
         ) : (
@@ -352,9 +366,17 @@ export const CloudSync: React.FC = () => {
             </div>
 
             {/* Sync Queue */}
-            <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden min-h-[300px] mb-6">
-              <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white flex-shrink-0">
-                <h2 className="text-lg font-bold text-slate-800">Sync Queue</h2>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+              {/* Queue Header */}
+              <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-slate-800">Sync Queue</h2>
+                  {queue.length > 0 && (
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+                      {pageStart + 1}–{pageEnd} of {queue.length}
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={handleRetryAll}
@@ -366,79 +388,140 @@ export const CloudSync: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-slate-50 border-b border-slate-100 z-10">
-                    <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                      <th className="px-5 py-3">Record</th>
-                      <th className="px-5 py-3">Module</th>
-                      <th className="px-5 py-3">Action</th>
-                      <th className="px-5 py-3">Created At</th>
-                      <th className="px-5 py-3">Status</th>
-                      <th className="px-5 py-3 text-right">Retry</th>
+              {/* Table — natural height, no inner scroll */}
+              <table className="w-full text-sm table-fixed">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <th className="px-5 py-3 w-2/5">Record</th>
+                    <th className="px-5 py-3 w-28">Module</th>
+                    <th className="px-5 py-3 w-20">Action</th>
+                    <th className="px-5 py-3 w-36">Created At</th>
+                    <th className="px-5 py-3 w-36">Status</th>
+                    <th className="px-5 py-3 w-16 text-right">Retry</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {queue.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
+                        No pending synchronization items. Everything is synced!
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {queue.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
-                          No pending synchronization items. Everything is synced!
+                  ) : (
+                    pageItems.map((item) => (
+                      <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                        <td className="px-5 py-3.5 text-slate-800 font-bold truncate" title={item.record}>{item.record}</td>
+                        <td className="px-5 py-3.5 text-slate-600 font-medium truncate" title={item.module}>{item.module}</td>
+                        <td className="px-5 py-3.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
+                            item.action === 'CREATE' ? 'bg-emerald-100 text-emerald-700' :
+                            item.action === 'UPDATE' ? 'bg-blue-100 text-blue-700' :
+                            'bg-rose-100 text-rose-700'
+                          }`}>
+                            {item.action}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-slate-500 text-xs whitespace-nowrap">{formatTs(item.createdAt)}</td>
+                        <td className="px-5 py-3.5">
+                          <span className={`flex items-center gap-1.5 font-bold text-xs ${
+                            item.status === 'Pending' ? 'text-amber-600' :
+                            item.status === 'Syncing' ? 'text-blue-600' :
+                            'text-rose-600'
+                          }`}>
+                            {item.status === 'Pending' ? <Clock className="w-3.5 h-3.5" /> :
+                             item.status === 'Syncing' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> :
+                             <AlertCircle className="w-3.5 h-3.5" />}
+                            {item.status}
+                            {item.retryCount > 0 && <span className="text-slate-400 font-normal">(×{item.retryCount})</span>}
+                          </span>
+                          {item.error && (
+                            <div className="text-[10px] text-rose-400 mt-0.5 truncate" title={item.error}>
+                              {item.error}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          {item.status === 'Failed' && (
+                            <button
+                              onClick={() => handleRetryItem(item.id)}
+                              disabled={actionInProgress || syncing}
+                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded-md transition-colors disabled:opacity-50"
+                            >
+                              <Play className="w-4 h-4" />
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    ) : (
-                      queue.map((item) => (
-                        <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/80">
-                          <td className="px-5 py-3.5 text-slate-800 font-bold">{item.record}</td>
-                          <td className="px-5 py-3.5 text-slate-600 font-medium">{item.module}</td>
-                          <td className="px-5 py-3.5">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
-                              item.action === 'CREATE' ? 'bg-emerald-100 text-emerald-700' :
-                              item.action === 'UPDATE' ? 'bg-blue-100 text-blue-700' :
-                              'bg-rose-100 text-rose-700'
-                            }`}>
-                              {item.action}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-slate-500 text-xs">{formatTs(item.createdAt)}</td>
-                          <td className="px-5 py-3.5">
-                            <span className={`flex items-center gap-1.5 font-bold text-xs ${
-                              item.status === 'Pending' ? 'text-amber-600' :
-                              item.status === 'Syncing' ? 'text-blue-600' :
-                              'text-rose-600'
-                            }`}>
-                              {item.status === 'Pending' ? <Clock className="w-3.5 h-3.5" /> :
-                               item.status === 'Syncing' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> :
-                               <AlertCircle className="w-3.5 h-3.5" />}
-                              {item.status}
-                              {item.retryCount > 0 && <span className="text-slate-400 font-normal">(×{item.retryCount})</span>}
-                            </span>
-                            {item.error && (
-                              <div className="text-[10px] text-rose-400 mt-0.5 max-w-[200px] truncate" title={item.error}>
-                                {item.error}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-5 py-3.5 text-right">
-                            {item.status === 'Failed' && (
-                              <button
-                                onClick={() => handleRetryItem(item.id)}
-                                disabled={actionInProgress || syncing}
-                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded-md transition-colors disabled:opacity-50"
-                              >
-                                <Play className="w-4 h-4" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">
+                    Showing {pageStart + 1}–{pageEnd} of {queue.length} records
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={safePage === 1}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Prev
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
+                      .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) =>
+                        p === '...' ? (
+                          <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-xs">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setCurrentPage(p as number)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                              safePage === p
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )
+                    }
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={safePage === totalPages}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
       </div>
+
+      {isRestoreModalOpen && (
+        <RestoreCloudDataModal
+          onClose={() => setIsRestoreModalOpen(false)}
+          onSuccess={async (msg) => {
+            setSuccessMsg(msg);
+            await loadData();
+          }}
+          pendingCount={statusData?.pendingCount ?? 0}
+          failedCount={statusData?.failedCount ?? 0}
+        />
+      )}
     </div>
   );
 };

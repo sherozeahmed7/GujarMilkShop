@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getNeonPool } from '../config/neonDb';
+import { getNeonPool, queryWithRetry } from '../config/neonDb';
 
 const DOWNSTREAM_BATCH_SIZE = parseInt(process.env.DOWNSTREAM_SYNC_BATCH_SIZE || '100', 10);
 
@@ -28,13 +28,10 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
     DOWNSTREAM_BATCH_SIZE
   );
 
-  const pool = getNeonPool();
-  const client = await pool.connect();
-
   try {
-    // Fetch changes authored by OTHER devices, after the given cursor
-    // Order strictly by change_sequence so the cursor is monotonically safe
-    const result = await client.query(
+    // Fetch changes authored by OTHER devices, after the given cursor.
+    // Uses queryWithRetry to handle Neon cold-start connection drops transparently.
+    const result = await queryWithRetry(
       `SELECT
          change_sequence,
          event_uuid,
@@ -61,7 +58,7 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
       : parsedCursor.toString();
 
     res.status(200).json({
-      changes: changes.map(r => ({
+      changes: changes.map((r: any) => ({
         changeSequence: r.change_sequence.toString(),
         eventUuid: r.event_uuid,
         deviceId: r.device_id,
@@ -77,8 +74,6 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
   } catch (err: any) {
     console.error('[Downstream API] Error fetching changes:', err.message);
     res.status(500).json({ error: 'Failed to fetch downstream changes', details: err.message });
-  } finally {
-    client.release();
   }
 };
 
@@ -89,11 +84,8 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
  * Used by a new device to initialize its baseline cursor (skip historical migration data).
  */
 export const getDownstreamCursor = async (req: Request, res: Response): Promise<void> => {
-  const pool = getNeonPool();
-  const client = await pool.connect();
-
   try {
-    const result = await client.query(
+    const result = await queryWithRetry(
       `SELECT COALESCE(MAX(change_sequence), 0) AS max_seq FROM cloud_sync_events`
     );
     res.status(200).json({
@@ -102,7 +94,5 @@ export const getDownstreamCursor = async (req: Request, res: Response): Promise<
   } catch (err: any) {
     console.error('[Downstream API] Error fetching cursor:', err.message);
     res.status(500).json({ error: 'Failed to fetch cursor' });
-  } finally {
-    client.release();
   }
 };

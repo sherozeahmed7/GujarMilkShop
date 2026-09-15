@@ -63,10 +63,11 @@ async function wipe() {
   await prisma.cloudSyncSettings.deleteMany();
   await prisma.pOSConfig.deleteMany();
 
-  // Non–super-admin users only
-  const removedUsers = await prisma.user.deleteMany({
-    where: { role: { not: SUPER_ADMIN_ROLE } },
-  });
+  // Ensure we do NOT delete any users (keep all roles) as requested
+  // const removedUsers = await prisma.user.deleteMany({
+  //   where: { role: { not: SUPER_ADMIN_ROLE } },
+  // });
+  const removedUsers = { count: 0 };
 
   const admins = await prisma.user.findMany({
     where: { role: SUPER_ADMIN_ROLE },

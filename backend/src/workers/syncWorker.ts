@@ -22,8 +22,10 @@ function calculateNextRetry(retryCount: number): Date {
   }
 }
 
+import { isRestoreInProgress } from '../utils/restoreLock';
+
 export async function processSyncQueue() {
-  if (isSyncing) return;
+  if (isSyncing || isRestoreInProgress()) return;
   isSyncing = true;
 
   try {
@@ -146,7 +148,7 @@ export async function processSyncQueue() {
         payloads
       }, {
         headers: { 'x-sync-secret': SYNC_INTERNAL_SECRET },
-        timeout: 10000 // 10 seconds timeout
+        timeout: 30000 // 30 seconds timeout (Neon can take 10s+ on cold start)
       });
     } catch (err: any) {
       apiError = err;
@@ -217,10 +219,24 @@ export async function processSyncQueue() {
         }
 
         if (result.status === 'SYNCED') {
-          await prisma.syncQueue.update({
-            where: { eventUuid: event.eventUuid },
-            data: { status: 'SYNCED', error: null }
-          });
+          if (result.resolvedUuid && result.resolvedUuid !== event.cloudUuid) {
+            // The upstream resolved this to an existing record's true UUID. Atomically heal mappings.
+            await prisma.$transaction([
+              prisma.localToCloudMapping.updateMany({
+                where: { deviceId: event.deviceId, entityType: event.entityType, localId: event.localId },
+                data: { cloudUuid: result.resolvedUuid }
+              }),
+              prisma.syncQueue.update({
+                where: { eventUuid: event.eventUuid },
+                data: { status: 'SYNCED', error: null, cloudUuid: result.resolvedUuid }
+              })
+            ]);
+          } else {
+            await prisma.syncQueue.update({
+              where: { eventUuid: event.eventUuid },
+              data: { status: 'SYNCED', error: null }
+            });
+          }
         } else {
           // Event failed on server side
           if (result.retryable) {

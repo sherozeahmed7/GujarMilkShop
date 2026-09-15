@@ -128,8 +128,13 @@ export const cloudSyncService = {
     await apiClient.post('/sync/retry-failed');
   },
 
-  restoreCloudData: async (): Promise<{ success: boolean; records: number }> => {
-    // Not implemented — kept disabled in UI
-    throw new Error('Restore Cloud Data is not yet available.');
+  restoreCloudData: async (): Promise<{
+    success: boolean;
+    message: string;
+    backupPath: string;
+    totalRestored: number;
+    restoredCounts: Record<string, number>;
+  }> => {
+    return await apiClient.post('/sync/restore');
   },
 };

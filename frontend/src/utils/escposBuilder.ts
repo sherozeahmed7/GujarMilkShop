@@ -178,13 +178,18 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   // ── 2. Compact receipt header ─────────────────────────────────────────────
   push(ALIGN_CENTER);
 
+  const shopName = (sale.shopName || 'GUJAR MILK SHOP').toUpperCase();
+  push(BOLD_ON);
+  push(centeredLine(shopName, cols), newline());
+  push(BOLD_OFF);
   push(centeredLine('SALE RECEIPT', cols), newline());
 
   // ── 3. Token number ───────────────────────────────────────────────────────
   if (sale.tokenNumber !== undefined && sale.tokenNumber !== null) {
-    const tokenFormatted = sale.tokenNumber < 10 ? `0${sale.tokenNumber}` : `${sale.tokenNumber}`;
+    const tokenNum = Number(sale.tokenNumber);
+    const tokenFormatted = tokenNum < 10 ? `0${tokenNum}` : `${tokenNum}`;
     push(BOLD_ON, DOUBLE_ON);
-    push(encodeText(`TOKEN ${tokenFormatted}`), newline());
+    push(centeredLine(`TOKEN ${tokenFormatted}`, Math.floor(cols / 2)), newline());
     push(DOUBLE_OFF, BOLD_OFF);
   }
 

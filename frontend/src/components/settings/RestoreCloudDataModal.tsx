@@ -1,98 +1,149 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, DownloadCloud } from 'lucide-react';
+import { X, AlertTriangle, DownloadCloud, ShieldCheck, Database, CheckCircle2 } from 'lucide-react';
 import { cloudSyncService } from '../../services/cloudSync.service';
 
 interface RestoreCloudDataModalProps {
   onClose: () => void;
   onSuccess: (message: string) => void;
+  pendingCount: number;
+  failedCount: number;
 }
 
-export const RestoreCloudDataModal: React.FC<RestoreCloudDataModalProps> = ({ onClose, onSuccess }) => {
+export const RestoreCloudDataModal: React.FC<RestoreCloudDataModalProps> = ({
+  onClose,
+  onSuccess,
+  pendingCount,
+  failedCount,
+}) => {
   const [isRestoring, setIsRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restoreProgress, setRestoreProgress] = useState<string | null>(null);
+
+  const hasUnsyncedItems = pendingCount > 0 || failedCount > 0;
 
   const handleRestore = async () => {
+    if (hasUnsyncedItems) {
+      setError(`Cannot restore cloud data. You have ${pendingCount + failedCount} pending/failed item(s) in the sync queue. Please sync or resolve them first.`);
+      return;
+    }
+
     setIsRestoring(true);
     setError(null);
+    setRestoreProgress('Creating safe pre-restore SQLite backup...');
+
     try {
+      setRestoreProgress('Downloading consistent cloud snapshot from Neon & restoring modules...');
       const result = await cloudSyncService.restoreCloudData();
+      
       if (result.success) {
-        onSuccess(`Successfully restored ${result.records} records from the cloud.`);
+        onSuccess(`Successfully restored ${result.totalRestored} records from cloud backup. (Backup: ${result.backupPath})`);
         onClose();
       } else {
-        setError('Failed to restore cloud data.');
+        setError(result.message || 'Failed to restore cloud data.');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to restore cloud data.');
+      setError(err?.response?.data?.error || err.message || 'Failed to restore cloud data.');
     } finally {
       setIsRestoring(false);
+      setRestoreProgress(null);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
-          <div className="flex items-center gap-2 text-red-600">
-            <DownloadCloud className="w-5 h-5" />
-            <h2 className="text-lg font-bold">Restore Cloud Data?</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0 bg-slate-50/50">
+          <div className="flex items-center gap-2.5 text-blue-700">
+            <div className="p-2 bg-blue-100 rounded-xl">
+              <DownloadCloud className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Restore Cloud Data</h2>
+              <p className="text-xs text-slate-500">Neon PostgreSQL → Local SQLite</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            disabled={isRestoring}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 flex flex-col gap-4">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100">
-              {error}
+            <div className="p-3.5 bg-rose-50 text-rose-700 rounded-xl text-sm border border-rose-200 flex items-start gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
-          <p className="text-slate-600 text-sm mb-4">
-            You are about to restore data from the cloud backup. This operation may overwrite some of your local offline changes.
-          </p>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
-            <div className="flex justify-between mb-2">
-              <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Backup Date</span>
-              <span className="text-sm text-slate-800 font-bold">15 Aug 2026, 07:38 PM</span>
+          {hasUnsyncedItems ? (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 items-start">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-800">
+                <p className="font-bold mb-1">Unsynced Local Data Detected</p>
+                <p>
+                  You have <strong>{pendingCount} pending</strong> and <strong>{failedCount} failed</strong> items in your local sync queue.
+                  To prevent data loss, cloud restore is locked until all local changes reach the cloud.
+                </p>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Estimated Records</span>
-              <span className="text-sm text-slate-800 font-bold">~ 14,025</span>
-            </div>
-          </div>
-
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 items-start">
-            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800 font-medium">
-              Please ensure your local internet connection is stable. Do not close the application during the restore process.
+          ) : (
+            <p className="text-slate-600 text-sm leading-relaxed">
+              This operation safely pulls a complete, consistent snapshot from your online Neon PostgreSQL database and reconciles it into your local POS SQLite database.
             </p>
+          )}
+
+          {/* Safety Checklist Box */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-2.5">
+            <div className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Safety Guarantees
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>A crash-safe local SQLite backup is created before restore.</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>Existing relationships, ledger history, and IDs are preserved.</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>Local database is never dropped or blindly truncated.</span>
+            </div>
           </div>
+
+          {isRestoring && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3">
+              <Database className="w-5 h-5 text-blue-600 animate-pulse flex-shrink-0" />
+              <div className="text-xs text-blue-800 font-medium">
+                {restoreProgress || 'Processing restore... Please do not close the application.'}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50">
           <button
             type="button"
             onClick={onClose}
             disabled={isRestoring}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleRestore}
-            disabled={isRestoring}
-            className="px-6 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+            disabled={isRestoring || hasUnsyncedItems}
+            className="px-6 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            {isRestoring ? 'Restoring...' : 'Restore Data'}
+            {isRestoring ? 'Restoring Cloud Data...' : 'Start Safe Restore'}
           </button>
         </div>
       </div>

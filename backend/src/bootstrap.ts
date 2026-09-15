@@ -14,13 +14,6 @@ const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
 
-// 1. Load .env (works in npm run dev; no-op inside pkg snapshot)
-const dotenv = require('dotenv');
-dotenv.config();
-
-// 2. Detect pkg sidecar context
-const IS_PKG = !!(process as any).pkg;
-
 // Setup log file in APPDATA for production debugging
 const appDataDir = (process.env.APPDATA as string) || path.join(os.homedir(), 'AppData', 'Roaming');
 const logDir = path.join(appDataDir, 'com.shero.tauri-app');
@@ -36,8 +29,6 @@ function log(msg: string) {
     fs.appendFileSync(logFile, line);
   } catch (_) {}
 }
-
-log('[Bootstrap] Starting backend process. IS_PKG=' + IS_PKG + ', execPath=' + process.execPath);
 
 function resolveResource(filename: string): string | null {
   const execDir = path.dirname(process.execPath);
@@ -70,8 +61,26 @@ function resolveResource(filename: string): string | null {
   return null;
 }
 
+// 1. Load .env (supports dev cwd, packaged sidecar resources, and AppData config)
+const dotenv = require('dotenv');
+dotenv.config();
+
+const resolvedEnv = resolveResource('.env');
+if (resolvedEnv) {
+  dotenv.config({ path: resolvedEnv });
+}
+const appDataEnv = path.join(logDir, '.env');
+if (fs.existsSync(appDataEnv)) {
+  dotenv.config({ path: appDataEnv });
+}
+
+// 2. Detect pkg sidecar context
+const IS_PKG = !!(process as any).pkg;
+
+log('[Bootstrap] Starting backend process. IS_PKG=' + IS_PKG + ', execPath=' + process.execPath);
+
 // 3. Synthesise DATABASE_URL for pkg sidecar
-if (IS_PKG && !process.env.DATABASE_URL) {
+if (IS_PKG) {
   // Tauri stores app data at: %APPDATA%\com.shero.tauri-app
   const appDataBase: string =
     (process.env.APPDATA as string) || path.join(os.homedir(), 'AppData', 'Roaming');
@@ -94,10 +103,9 @@ if (IS_PKG && !process.env.DATABASE_URL) {
     }
   }
 
+  // In packaged binary mode, always point DATABASE_URL to the absolute pos.db path in AppData
   process.env.DATABASE_URL = 'file:' + dbPath;
-  log('[Bootstrap] DATABASE_URL = ' + process.env.DATABASE_URL);
-} else if (IS_PKG) {
-  log('[Bootstrap] DATABASE_URL already set: ' + process.env.DATABASE_URL);
+  log('[Bootstrap] IS_PKG active: DATABASE_URL set to ' + process.env.DATABASE_URL);
 }
 
 // 4. Resolve Prisma query engine and schema for pkg sidecar

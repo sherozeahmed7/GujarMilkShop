@@ -34,13 +34,145 @@ async function resolveLocalId(
   tx: any,
   entityType: string,
   cloudUuid: string,
-  sourceDeviceId: string
+  sourceDeviceId: string,
+  payloadContext?: any
 ): Promise<number | null> {
-  // First try: mapping created by this device
+  const localDeviceId = process.env.DEVICE_ID || require('../utils/deviceId').getDeviceId();
+
+  // 1. Existing LocalToCloudMapping by cloud UUID
   const ownMapping = await tx.localToCloudMapping.findFirst({
     where: { entityType, cloudUuid }
   });
   if (ownMapping) return ownMapping.localId;
+
+  // 2. Safe mapping healing specifically for InventoryProduct
+  if (entityType === 'InventoryProduct') {
+    const p = payloadContext ? snakeToCamel(payloadContext) : {};
+
+    // 2a. Resolve using validated device_id + local_id if available
+    if (sourceDeviceId && p.localId) {
+      const srcMapping = await tx.localToCloudMapping.findFirst({
+        where: {
+          entityType: 'InventoryProduct',
+          deviceId: sourceDeviceId,
+          localId: Number(p.localId)
+        }
+      });
+      if (srcMapping) {
+        return srcMapping.localId;
+      }
+    }
+
+    // 2b. Use InventoryProduct code ONLY when safely verified
+    let code = p.productCode || p.code;
+
+    // If code is not in payload, fetch the product from Neon to get its code
+    if (!code && cloudUuid) {
+      try {
+        const { getNeonPool } = require('../config/neonDb');
+        const neonPool = getNeonPool();
+        const neonProdRes = await neonPool.query('SELECT code FROM inventory_products WHERE id = $1', [cloudUuid]);
+        if (neonProdRes.rowCount && neonProdRes.rowCount > 0 && neonProdRes.rows[0].code) {
+          code = neonProdRes.rows[0].code;
+        }
+      } catch (e: any) {
+        console.warn(`[Downstream] Could not query Neon for InventoryProduct ${cloudUuid}:`, e.message);
+      }
+    }
+
+    if (code && typeof code === 'string' && code.trim()) {
+      const trimmedCode = code.trim();
+      const matchingProducts = await tx.inventoryProduct.findMany({
+        where: { code: trimmedCode }
+      });
+
+      // Must have exactly ONE local InventoryProduct matching
+      if (matchingProducts.length === 1) {
+        const candidate = matchingProducts[0];
+
+        // Check if there is a conflicting existing mapping for this candidate to a different cloud UUID
+        const existingMapping = await tx.localToCloudMapping.findFirst({
+          where: {
+            entityType: 'InventoryProduct',
+            localId: candidate.id
+          }
+        });
+
+        // Safe to heal/create mapping if:
+        // 1. No mapping exists, OR
+        // 2. Existing mapping points to the same cloudUuid, OR
+        // 3. Existing mapping points to a stale UUID that does NOT exist in Neon while candidate is a unique locked/singleton product with matching code
+        let isSafeToHeal = !existingMapping || existingMapping.cloudUuid === cloudUuid;
+
+        if (!isSafeToHeal && existingMapping && candidate.isLocked) {
+          try {
+            const { getNeonPool } = require('../config/neonDb');
+            const neonPool = getNeonPool();
+            const staleCheck = await neonPool.query('SELECT id FROM inventory_products WHERE id = $1', [existingMapping.cloudUuid]);
+            if (staleCheck.rowCount === 0) {
+              // Existing mapping points to a non-existent/stale UUID. The incoming cloudUuid is authoritative.
+              isSafeToHeal = true;
+              console.log(`[Downstream] Existing mapping for ${trimmedCode} (${existingMapping.cloudUuid}) is stale/dead in Neon. Reconciling to authoritative cloud UUID ${cloudUuid}`);
+            }
+          } catch (e: any) {
+            console.warn(`[Downstream] Could not verify stale mapping for ${trimmedCode}:`, e.message);
+          }
+        }
+
+        if (isSafeToHeal) {
+          await ensureMapping(tx, 'InventoryProduct', candidate.id, cloudUuid, localDeviceId);
+          console.log(`[Downstream] Healed InventoryProduct mapping: local ID ${candidate.id} (${trimmedCode}) -> cloud UUID ${cloudUuid}`);
+          return candidate.id;
+        } else {
+          console.warn(`[Downstream] Cannot heal InventoryProduct mapping for code ${trimmedCode}: local ID ${candidate.id} already mapped to ${existingMapping.cloudUuid}`);
+        }
+      } else if (matchingProducts.length > 1) {
+        console.warn(`[Downstream] Ambiguous InventoryProduct match for code ${trimmedCode}: found ${matchingProducts.length} candidates`);
+      }
+    }
+  }
+
+  return null;
+}
+
+async function resolveIdentityForReconciliation(
+  tx: any,
+  entityType: string,
+  cloudUuid: string,
+  payload: any,
+  sourceDeviceId?: string
+): Promise<number | null> {
+  const localDeviceId = process.env.DEVICE_ID || require('../utils/deviceId').getDeviceId();
+
+  // 1. Try UUID mapping
+  const ownMapping = await tx.localToCloudMapping.findFirst({
+    where: { entityType, cloudUuid }
+  });
+  if (ownMapping) return ownMapping.localId;
+
+  // 2. Strict entity-specific reconciliation
+  const p = snakeToCamel(payload || {});
+
+  // Shift: Do NOT match by shiftDate alone, as multiple shifts can occur on the same date.
+  // Shifts are identified strictly by (deviceId, localId) mapping or cloud UUID.
+  if (entityType === 'Shift') {
+    return null;
+  }
+
+  // InventoryProduct: Match by unique code if exactly one exists
+  if (entityType === 'InventoryProduct' && p.code) {
+    const matching = await tx.inventoryProduct.findMany({ where: { code: p.code } });
+    if (matching.length === 1) return matching[0].id;
+  }
+
+  // MilkProductDailyStock: Unique date-based record per calendar day
+  if (entityType === 'MilkProductDailyStock' && p.date) {
+     const dateValue = new Date(p.date);
+     dateValue.setHours(0,0,0,0);
+     const stock = await tx.milkProductDailyStock.findFirst({ where: { date: dateValue } });
+     if (stock) return stock.id;
+  }
+
   return null;
 }
 
@@ -148,19 +280,31 @@ async function applyChange(
       return { status: 'APPLIED' };
     }
 
-    const existingMapping = await tx.localToCloudMapping.findFirst({
-      where: { entityType, cloudUuid }
-    });
-    if (existingMapping) {
-      // Already exists locally — for UPDATE-like UPSERT on masters, skip create
-      return { status: 'SKIPPED', reason: `Already mapped locally for ${entityType} ${cloudUuid}` };
+    const resolvedLocalId = await resolveIdentityForReconciliation(tx, entityType, cloudUuid, payload);
+    if (resolvedLocalId) {
+      // Degrade to UPDATE to prevent UNIQUE constraint errors locally and reconcile state
+      await applyUpdate(tx, entityType, resolvedLocalId, cloudUuid, payload, deviceId);
+      await ensureMapping(tx, entityType, resolvedLocalId, cloudUuid, localDeviceId);
+      return { status: 'APPLIED' };
     }
+
     await applyCreate(tx, entityType, cloudUuid, payload, deviceId, localDeviceId);
     return { status: 'APPLIED' };
   }
 
   return { status: 'SKIPPED', reason: `Unknown operation: ${operation}` };
 }
+
+export {
+  resolveLocalId,
+  resolveIdentityForReconciliation,
+  ensureMapping,
+  applyChange,
+  applyCreate,
+  applyUpdate,
+  applyMasterDelete,
+  applyMilkProductDailyStockUpsert
+};
 
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
@@ -295,6 +439,29 @@ async function applyCreate(
       break;
     }
     case 'User': {
+      // Handle assignedScreens when incoming as array from Postgres or string from SQLite
+      const screensValue = typeof p.assignedScreens === 'string'
+        ? p.assignedScreens
+        : JSON.stringify(p.assignedScreens ?? p.assigned_screens ?? []);
+
+      const existingByEmail = p.email
+        ? await tx.user.findUnique({ where: { email: p.email } })
+        : null;
+
+      if (existingByEmail) {
+        await tx.user.update({
+          where: { id: existingByEmail.id },
+          data: {
+            name: p.name ?? existingByEmail.name,
+            role: p.role ?? existingByEmail.role,
+            status: p.status ?? existingByEmail.status,
+            assignedScreens: screensValue,
+          }
+        });
+        await ensureMapping(tx, 'User', existingByEmail.id, cloudUuid, localDeviceId);
+        break;
+      }
+
       // Only non-sensitive fields; password hash comes from auth flow, not sync
       const rec = await tx.user.create({
         data: {
@@ -303,7 +470,7 @@ async function applyCreate(
           password: p.password, // hash only, never plaintext
           role: p.role ?? 'user',
           status: p.status ?? 'active',
-          assignedScreens: p.assignedScreens ?? '[]',
+          assignedScreens: screensValue,
         }
       });
       await ensureMapping(tx, 'User', rec.id, cloudUuid, localDeviceId);
@@ -372,6 +539,23 @@ async function applyCreate(
         ? await resolveLocalId(tx, 'Supplier', p.supplierUuid, sourceDeviceId)
         : null;
       if (!supplierLocalId) throw new Error(`Cannot apply SupplierCollection: missing Supplier mapping`);
+
+      if (p.date && p.shift) {
+        const existingColl = await tx.supplierCollection.findUnique({
+          where: {
+            supplierId_date_shift: {
+              supplierId: supplierLocalId,
+              date: p.date,
+              shift: p.shift,
+            }
+          }
+        });
+        if (existingColl) {
+          await ensureMapping(tx, 'SupplierCollection', existingColl.id, cloudUuid, localDeviceId);
+          break;
+        }
+      }
+
       const rec = await tx.supplierCollection.create({
         data: {
           supplierId: supplierLocalId,
@@ -452,12 +636,23 @@ async function applyCreate(
     }
     case 'InventoryMovement': {
       const productLocalId = p.productUuid
-        ? await resolveLocalId(tx, 'InventoryProduct', p.productUuid, sourceDeviceId)
+        ? await resolveLocalId(tx, 'InventoryProduct', p.productUuid, sourceDeviceId, p)
         : null;
       if (!productLocalId) throw new Error(`Cannot apply InventoryMovement: missing InventoryProduct mapping`);
       const supplierLocalId = p.supplierUuid
-        ? await resolveLocalId(tx, 'Supplier', p.supplierUuid, sourceDeviceId)
+        ? await resolveLocalId(tx, 'Supplier', p.supplierUuid, sourceDeviceId, p)
         : null;
+
+      if (p.reference) {
+        const existingByRef = await tx.inventoryMovement.findUnique({
+          where: { reference: p.reference }
+        });
+        if (existingByRef) {
+          await ensureMapping(tx, 'InventoryMovement', existingByRef.id, cloudUuid, localDeviceId);
+          break;
+        }
+      }
+
       const rec = await tx.inventoryMovement.create({
         data: {
           productId: productLocalId,
@@ -577,128 +772,166 @@ async function applyUpdate(
 ): Promise<void> {
   const p = snakeToCamel(payload);
 
-  switch (entityType) {
-    case 'Customer':
-      await tx.customer.update({
-        where: { id: localId },
-        data: {
-          name: p.name,
-          phone: p.phone ?? null,
-          address: p.address ?? null,
-          customerType: p.customerType,
-          status: p.status ?? 'active',
-        }
-      });
-      break;
-    case 'Supplier':
-      await tx.supplier.update({
-        where: { id: localId },
-        data: {
-          name: p.name,
-          phone: p.phone ?? null,
-          defaultRate: Number(p.defaultRate ?? 0),
-          cowRate: Number(p.cowRate ?? 0),
-          buffaloRate: Number(p.buffaloRate ?? 0),
-          cycleType: p.cycleType ?? 'Monthly Cycle',
-          isActive: p.isActive ?? true,
-          guaranteedAdvance: Number(p.guaranteedAdvance ?? 0),
-        }
-      });
-      break;
-    case 'InventoryProduct':
-      await tx.inventoryProduct.update({
-        where: { id: localId },
-        data: {
-          name: p.name,
-          description: p.description ?? null,
-          category: p.category ?? 'Dairy',
-          unit: p.unit ?? 'kg',
-          tax: p.tax ?? 'Exempt',
-          lowStockThreshold: Number(p.lowStockThreshold ?? 0),
-          isActive: p.isActive ?? true,
-          isLocked: p.isLocked ?? false,
-        }
-      });
-      break;
-    case 'User':
-      await tx.user.update({
-        where: { id: localId },
-        data: {
-          name: p.name ?? null,
-          role: p.role ?? 'user',
-          status: p.status ?? 'active',
-          assignedScreens: p.assignedScreens ?? '[]',
-        }
-      });
-      break;
-    // Transactions: UPDATE is allowed for status changes only (e.g. Sale paid off)
-    case 'Sale':
-      await tx.sale.update({
-        where: { id: localId },
-        data: {
-          paidAmount: Number(p.paidAmount ?? 0),
-          remainingBalance: Number(p.remainingBalance ?? 0),
-          status: p.status,
-        }
-      });
-      break;
-    case 'Payment':
-      await tx.payment.update({
-        where: { id: localId },
-        data: {
-          method: p.method ?? 'cash',
-          amount: Number(p.amount ?? 0),
-          status: p.status ?? 'completed',
-        }
-      });
-      break;
-    case 'SupplierCollection':
-      await tx.supplierCollection.update({
-        where: { id: localId },
-        data: {
-          date: p.date,
-          shift: p.shift,
-          milkType: p.milkType,
-          quantity: Number(p.quantity ?? 0),
-          rate: Number(p.rate ?? 0),
-          amount: Number(p.amount ?? 0),
-          notes: p.notes ?? null,
-        }
-      });
-      break;
-    case 'Expense':
-      await tx.expense.update({
-        where: { id: localId },
-        data: {
-          paidAmount: Number(p.paidAmount ?? 0),
-          remaining: Number(p.remaining ?? 0),
-          ...(p.amount !== undefined ? { amount: Number(p.amount) } : {}),
-        }
-      });
-      break;
-    default:
-      // For unhandled entity types, log and skip rather than throwing
-      console.warn(`[Downstream] No UPDATE applicator for ${entityType} — skipped`);
+  try {
+    switch (entityType) {
+      case 'Customer':
+        await tx.customer.update({
+          where: { id: localId },
+          data: {
+            name: p.name,
+            phone: p.phone ?? null,
+            address: p.address ?? null,
+            customerType: p.customerType,
+            status: p.status ?? 'active',
+          }
+        });
+        break;
+      case 'Supplier':
+        await tx.supplier.update({
+          where: { id: localId },
+          data: {
+            name: p.name,
+            phone: p.phone ?? null,
+            defaultRate: Number(p.defaultRate ?? 0),
+            cowRate: Number(p.cowRate ?? 0),
+            buffaloRate: Number(p.buffaloRate ?? 0),
+            cycleType: p.cycleType ?? 'Monthly Cycle',
+            isActive: p.isActive ?? true,
+            guaranteedAdvance: Number(p.guaranteedAdvance ?? 0),
+          }
+        });
+        break;
+      case 'InventoryProduct':
+        await tx.inventoryProduct.update({
+          where: { id: localId },
+          data: {
+            name: p.name,
+            description: p.description ?? null,
+            category: p.category ?? 'Dairy',
+            unit: p.unit ?? 'kg',
+            tax: p.tax ?? 'Exempt',
+            lowStockThreshold: Number(p.lowStockThreshold ?? 0),
+            isActive: p.isActive ?? true,
+            isLocked: p.isLocked ?? false,
+          }
+        });
+        break;
+      case 'User': {
+        const screensValue = typeof p.assignedScreens === 'string'
+          ? p.assignedScreens
+          : JSON.stringify(p.assignedScreens ?? p.assigned_screens ?? []);
+
+        await tx.user.update({
+          where: { id: localId },
+          data: {
+            name: p.name ?? null,
+            role: p.role ?? 'user',
+            status: p.status ?? 'active',
+            assignedScreens: screensValue,
+          }
+        });
+        break;
+      }
+      // Transactions: UPDATE is allowed for status changes only (e.g. Sale paid off)
+      case 'Sale':
+        await tx.sale.update({
+          where: { id: localId },
+          data: {
+            paidAmount: Number(p.paidAmount ?? 0),
+            remainingBalance: Number(p.remainingBalance ?? 0),
+            status: p.status,
+          }
+        });
+        break;
+      case 'Payment':
+        await tx.payment.update({
+          where: { id: localId },
+          data: {
+            method: p.method ?? 'cash',
+            amount: Number(p.amount ?? 0),
+            status: p.status ?? 'completed',
+          }
+        });
+        break;
+      case 'SupplierCollection':
+        await tx.supplierCollection.update({
+          where: { id: localId },
+          data: {
+            date: p.date,
+            shift: p.shift,
+            milkType: p.milkType,
+            quantity: Number(p.quantity ?? 0),
+            rate: Number(p.rate ?? 0),
+            amount: Number(p.amount ?? 0),
+            notes: p.notes ?? null,
+          }
+        });
+        break;
+      case 'Expense':
+        await tx.expense.update({
+          where: { id: localId },
+          data: {
+            paidAmount: Number(p.paidAmount ?? 0),
+            remaining: Number(p.remaining ?? 0),
+            ...(p.amount !== undefined ? { amount: Number(p.amount) } : {}),
+          }
+        });
+        break;
+      case 'Shift':
+        await tx.shift.update({
+          where: { id: localId },
+          data: {
+            openedAt: p.openedAt ? new Date(p.openedAt) : undefined,
+            closedAt: p.closedAt ? new Date(p.closedAt) : undefined,
+            openingCash: p.openingCash != null ? Number(p.openingCash) : undefined,
+            expectedCash: p.expectedCash != null ? Number(p.expectedCash) : undefined,
+            countedCash: p.countedCash != null ? Number(p.countedCash) : undefined,
+            difference: p.difference != null ? Number(p.difference) : undefined,
+            differenceStatus: p.differenceStatus,
+            openingNotes: p.openingNotes,
+            closingNotes: p.closingNotes,
+            status: p.status,
+          }
+        });
+        break;
+      default:
+        console.warn(`[Downstream] No UPDATE applicator for ${entityType} — skipped`);
+    }
+  } catch (err: any) {
+    if (err?.code === 'P2025' || err?.message?.includes('Record to update not found') || err?.message?.includes('No record was found for an update')) {
+      console.warn(`[Downstream] ⚠️ ${entityType} #${localId} (cloud UUID: ${cloudUuid}) not found in SQLite for update. Recreating via applyCreate...`);
+      await applyCreate(tx, entityType, cloudUuid, payload, sourceDeviceId, sourceDeviceId);
+      return;
+    }
+    throw err;
   }
 }
 
 // -----------------------------------------------------------------------
 async function applyMasterDelete(tx: any, entityType: string, localId: number): Promise<void> {
-  switch (entityType) {
-    case 'Customer':
-      await tx.customer.update({ where: { id: localId }, data: { status: 'inactive' } });
-      break;
-    case 'Supplier':
-      await tx.supplier.update({ where: { id: localId }, data: { isActive: false } });
-      break;
-    case 'InventoryProduct':
-      await tx.inventoryProduct.update({ where: { id: localId }, data: { isActive: false } });
-      break;
-    case 'User':
-      await tx.user.update({ where: { id: localId }, data: { status: 'inactive' } });
-      break;
-    default:
-      console.warn(`[Downstream] No DELETE applicator for ${entityType} — skipped`);
+  try {
+    switch (entityType) {
+      case 'Customer':
+        await tx.customer.update({ where: { id: localId }, data: { status: 'inactive' } });
+        break;
+      case 'Supplier':
+        await tx.supplier.update({ where: { id: localId }, data: { isActive: false } });
+        break;
+      case 'InventoryProduct':
+        await tx.inventoryProduct.update({ where: { id: localId }, data: { isActive: false } });
+        break;
+      case 'User':
+        await tx.user.update({ where: { id: localId }, data: { status: 'inactive' } });
+        break;
+      default:
+        console.warn(`[Downstream] No DELETE applicator for ${entityType} — skipped`);
+    }
+  } catch (err: any) {
+    if (err?.code === 'P2025' || err?.message?.includes('Record to update not found') || err?.message?.includes('No record was found for an update')) {
+      console.warn(`[Downstream] ⚠️ ${entityType} #${localId} not found in SQLite for delete/deactivate — skipped`);
+      return;
+    }
+    throw err;
   }
 }
 
@@ -706,10 +939,12 @@ async function applyMasterDelete(tx: any, entityType: string, localId: number): 
 // MAIN DOWNSTREAM SYNC PROCESSOR
 // -----------------------------------------------------------------------
 
+import { isRestoreInProgress } from '../utils/restoreLock';
+
 let isDownstreamSyncing = false;
 
 export async function processDownstreamSync(): Promise<void> {
-  if (isDownstreamSyncing) return;
+  if (isDownstreamSyncing || isRestoreInProgress()) return;
   isDownstreamSyncing = true;
 
   try {
@@ -729,7 +964,7 @@ export async function processDownstreamSync(): Promise<void> {
       console.log('[Downstream] Initializing cursor from cloud...');
       const cursorRes = await axios.get(`${API_BASE_URL}/downstream/cursor`, {
         headers: { 'x-sync-secret': SYNC_INTERNAL_SECRET },
-        timeout: 8000
+        timeout: 30000
       });
       const initialCursor = BigInt(cursorRes.data.cursor || '0');
       state = await prisma.downstreamSyncState.create({
@@ -749,7 +984,7 @@ export async function processDownstreamSync(): Promise<void> {
         limit: DOWNSTREAM_SYNC_BATCH_SIZE
       },
       headers: { 'x-sync-secret': SYNC_INTERNAL_SECRET },
-      timeout: 10000
+      timeout: 30000
     });
 
     const { changes, nextCursor, hasMore } = response.data;
