@@ -146,9 +146,9 @@ export const AddCashPersonModal: React.FC<Props> = ({ onClose, onSuccess }) => {
                 onChange={set('type')}
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${errors.type ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'}`}
               >
-                <option value="">Select type…</option>
-                <option value="Incoming">Incoming — we expect to receive</option>
-                <option value="Outgoing">Outgoing — we expect to pay</option>
+                <option value="">Select cash flow…</option>
+                <option value="Incoming">Incoming (Money we receive / lena hai)</option>
+                <option value="Outgoing">Outgoing (Money we pay / dena hai)</option>
               </select>
               {errors.type && <p className="mt-1 text-xs text-rose-500">{errors.type}</p>}
             </div>
@@ -156,7 +156,7 @@ export const AddCashPersonModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             {/* Customer Type */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                <span className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5" /> Role <span className="text-rose-500">*</span></span>
+                <span className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5" /> Person Role <span className="text-rose-500">*</span></span>
               </label>
               <select
                 value={form.customerType}
@@ -164,8 +164,8 @@ export const AddCashPersonModal: React.FC<Props> = ({ onClose, onSuccess }) => {
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${errors.customerType ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'}`}
               >
                 <option value="">Select role…</option>
-                <option value="Debtor">Debtor — they owe us money</option>
-                <option value="Creditor">Creditor — we owe them money</option>
+                <option value="Debtor">They will pay us (Customer / Borrower)</option>
+                <option value="Creditor">We will pay them (Supplier / Lender)</option>
               </select>
               {errors.customerType && <p className="mt-1 text-xs text-rose-500">{errors.customerType}</p>}
             </div>
@@ -173,19 +173,15 @@ export const AddCashPersonModal: React.FC<Props> = ({ onClose, onSuccess }) => {
 
           {/* Role help text */}
           {(form.type || form.customerType) && (
-            <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-xl p-3">
+            <div className="flex items-start gap-2.5 bg-blue-50/80 border border-blue-100 rounded-xl p-3">
               <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 leading-relaxed">
-                {form.type === 'Incoming' && form.customerType === 'Debtor' &&
-                  'This person owes us money and is expected to pay us back.'}
-                {form.type === 'Incoming' && form.customerType === 'Creditor' &&
-                  'We extended money to this person; they are a creditor receiving our payments.'}
-                {form.type === 'Outgoing' && form.customerType === 'Creditor' &&
-                  'We owe this person money and need to pay them.'}
-                {form.type === 'Outgoing' && form.customerType === 'Debtor' &&
-                  'This person is recorded as a debtor in an outgoing account context.'}
-                {(!form.type || !form.customerType) &&
-                  'Select both Type and Role to see what this means.'}
+                {form.customerType === 'Debtor' &&
+                  'They owe money to our shop. We will collect / receive money from them.'}
+                {form.customerType === 'Creditor' &&
+                  'Our shop owes money to them. We need to pay them.'}
+                {!form.customerType &&
+                  'Select a person role to see their account description.'}
               </p>
             </div>
           )}

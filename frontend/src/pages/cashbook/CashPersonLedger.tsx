@@ -119,7 +119,9 @@ export const CashPersonLedger: React.FC = () => {
             </span>
             <span className="flex items-center gap-1.5 text-slate-600">
               <BadgeCheck className="w-4 h-4 text-slate-400" />
-              <span className={`font-semibold ${person.customerType === 'Debtor' ? 'text-amber-600' : 'text-violet-600'}`}>{person.customerType}</span>
+              <span className={`font-semibold ${person.customerType === 'Debtor' ? 'text-amber-600' : 'text-violet-600'}`}>
+                {person.customerType === 'Debtor' ? 'They Owe Us' : 'We Owe Them'}
+              </span>
             </span>
           </div>
         </div>

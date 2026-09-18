@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
+import { NotificationService } from './notification.service';
 const F2_ITEMS = ['lassi', 'butter', 'ghee'] as const;
 
 function money(n: number): number {
@@ -280,6 +281,14 @@ export class ReturnService {
 
       return ret;
     });
+
+    // Safely dispatch notification
+    NotificationService.create({
+      category: 'return',
+      title: 'Sale Return Processed',
+      message: `Return of Rs. ${refundAmount.toLocaleString()} processed for Bill #${billNumber}${customer ? ` (${customer})` : ''}.`,
+      metadata: { returnId: result.id, billNumber, refundAmount, customer },
+    }).catch(() => {});
 
     return {
       success: true,

@@ -67,7 +67,11 @@ export const supplierService = {
     );
     return (response.data || []).map(mapPaymentRecord);
   },
-  async create(payload: Omit<Supplier, 'id' | 'payableBalance'>): Promise<Supplier> { const response = await apiClient.post('/suppliers', payload); return mapSupplier(response.data); },
+  async getNextCode(): Promise<string> {
+    const response = await apiClient.get('/suppliers/next-code');
+    return response.data?.code || '';
+  },
+  async create(payload: Omit<Supplier, 'id' | 'payableBalance' | 'code'> & { code?: string; openingBalance?: number }): Promise<Supplier> { const response = await apiClient.post('/suppliers', payload); return mapSupplier(response.data); },
   async update(id: string, payload: Partial<Supplier>): Promise<Supplier> { const response = await apiClient.put(`/suppliers/${id}`, payload); return mapSupplier(response.data); },
   async entries(id: string): Promise<{ collections: MilkCollection[]; payments: SupplierPayment[] }> {
     const response = await apiClient.get(`/suppliers/${id}/entries`);

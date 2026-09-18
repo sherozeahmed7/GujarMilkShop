@@ -14,8 +14,9 @@
     "windows": [
       {
         "title": "Gujjar Milk Shop",
-        "width": 800,
-        "height": 600,
+        "width": 1200,
+        "height": 800,
+        "zoomHotkeysEnabled": true,
         "backgroundColor": [248, 250, 248, 255]
       }
     ],

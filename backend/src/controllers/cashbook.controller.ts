@@ -23,8 +23,8 @@ function computePersonMetrics(person: any) {
 
   const remaining =
     person.type === 'Incoming'
-      ? Math.max(0, person.openingBalance - totalReceived)
-      : Math.max(0, person.openingBalance - totalPaid);
+      ? person.openingBalance + totalPaid - totalReceived
+      : person.openingBalance + totalReceived - totalPaid;
 
   return {
     ...person,
@@ -238,10 +238,22 @@ export class CashbookController {
           runningBalance = t.amount;
         } else if (t.transactionType === 'Receive Amount') {
           amountIn = t.amount;
-          runningBalance = Math.max(0, runningBalance - t.amount);
+          if (person.type === 'Incoming') {
+            // Incoming person paid us -> what they owe us decreases
+            runningBalance -= t.amount;
+          } else {
+            // Outgoing person gave us cash / loan -> what we owe them increases
+            runningBalance += t.amount;
+          }
         } else if (t.transactionType === 'Pay Amount') {
           amountOut = t.amount;
-          runningBalance = Math.max(0, runningBalance - t.amount);
+          if (person.type === 'Incoming') {
+            // We gave cash to an incoming person -> what they owe us increases
+            runningBalance += t.amount;
+          } else {
+            // We paid an outgoing person -> what we owe them decreases
+            runningBalance -= t.amount;
+          }
         }
 
         return {
@@ -429,8 +441,8 @@ export class CashbookController {
 
         const balance =
           p.type === 'Incoming'
-            ? Math.max(0, p.openingBalance - rec)
-            : Math.max(0, p.openingBalance - paid);
+            ? p.openingBalance + paid - rec
+            : p.openingBalance + rec - paid;
 
         if (p.type === 'Incoming') {
           totalToReceive += balance;

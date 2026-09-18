@@ -16,6 +16,12 @@ function formatDate(iso: string) {
   });
 }
 
+function formatInvoiceNumber(raw: string | number) {
+  const n = Number(String(raw).replace(/^(INV-0*|BILL-0*|#)/i, ''));
+  if (isNaN(n) || n <= 0) return String(raw);
+  return `INV-${String(n).padStart(5, '0')}`;
+}
+
 interface ReturnDetailModalProps {
   record: ReturnRecord;
   onClose: () => void;
@@ -48,9 +54,9 @@ export const ReturnDetailModal: React.FC<ReturnDetailModalProps> = ({ record, on
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
               <div className="flex items-center gap-1.5 text-slate-400 mb-1">
                 <ReceiptText className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-bold uppercase tracking-wider">Bill Number</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider">Invoice / Bill Number</span>
               </div>
-              <p className="text-sm font-bold text-slate-800">{record.billNumber}</p>
+              <p className="text-sm font-bold text-blue-700 font-mono">{formatInvoiceNumber(record.billNumber)}</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
               <div className="flex items-center gap-1.5 text-slate-400 mb-1">

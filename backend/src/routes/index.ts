@@ -20,6 +20,7 @@ import syncRoutes from './sync.routes';
 import posConfigRoutes from './posConfig.routes';
 import backupRoutes from './backup.routes';
 import cashbookRoutes from './cashbook.routes';
+import notificationRoutes from './notification.routes';
 
 const router = Router();
 
@@ -46,5 +47,7 @@ router.use('/sync',            syncRoutes);
 router.use('/pos-config',      posConfigRoutes);
 router.use('/backup',          backupRoutes);
 router.use('/cashbook',        cashbookRoutes);
+router.use('/notifications',    notificationRoutes);
 
 export default router;
+

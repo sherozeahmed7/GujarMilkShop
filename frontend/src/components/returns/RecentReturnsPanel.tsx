@@ -19,6 +19,12 @@ function formatDate(iso: string) {
   });
 }
 
+function formatInvoiceNumber(raw: string | number) {
+  const n = Number(String(raw).replace(/^(INV-0*|BILL-0*|#)/i, ''));
+  if (isNaN(n) || n <= 0) return String(raw);
+  return `INV-${String(n).padStart(5, '0')}`;
+}
+
 interface RecentReturnsPanelProps {
   highlightLatest?: boolean;
 }
@@ -69,8 +75,8 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
                       <span className="text-[10px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full flex-shrink-0">NEW</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {record.billNumber} · {record.customer}
+                  <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                    {formatInvoiceNumber(record.billNumber)} · {record.customer}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">

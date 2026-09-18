@@ -163,7 +163,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
                     {/* Role */}
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${person.customerType === 'Debtor' ? 'bg-amber-50 text-amber-700' : 'bg-violet-50 text-violet-700'}`}>
-                        {person.customerType}
+                        {person.customerType === 'Debtor' ? 'They Owe Us' : 'We Owe Them'}
                       </span>
                     </td>
 

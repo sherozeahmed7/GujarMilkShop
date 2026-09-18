@@ -475,3 +475,20 @@ model CashbookTransaction {
   @@index([date])
 }
 
+// ─── NOTIFICATIONS ──────────────────────────────────────────────────────────
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  category    String   // "inventory" | "customer" | "sale" | "return" | "khata" | "shift" | "system"
+  title       String
+  message     String
+  isRead      Boolean  @default(false)
+  metadata    String?  // Optional JSON string (entityId, entityType, amount, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+

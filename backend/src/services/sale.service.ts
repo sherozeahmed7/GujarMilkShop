@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
+import { NotificationService } from './notification.service';
 
 const SALE_TYPES = ['walk_in', 'split', 'ledger_daily', 'ledger_monthly'] as const;
 const LEDGER_TYPES = ['ledger_daily', 'ledger_monthly'] as const;
@@ -614,6 +615,13 @@ export class SaleService {
         return created;
       });
 
+      NotificationService.create({
+        category: 'sale',
+        title: 'Walk-in Sale Completed',
+        message: `Sale of Rs. ${total.toLocaleString()} completed — Bill #${sale.id} (Token #${sale.tokenNumber || sale.id}).`,
+        metadata: { saleId: sale.id, saleType: 'walk_in', totalAmount: total },
+      }).catch(() => {});
+
       return { success: true, statusCode: 201, message: 'Walk-in sale created successfully.', data: sale };
     }
 
@@ -700,6 +708,13 @@ export class SaleService {
         return created;
       });
 
+      NotificationService.create({
+        category: 'sale',
+        title: 'Split Sale Created',
+        message: `Split sale of Rs. ${total.toLocaleString()} created (Paid: Rs. ${paid.toLocaleString()}, Remaining: Rs. ${remaining.toLocaleString()}) — Bill #${sale.id}.`,
+        metadata: { saleId: sale.id, saleType: 'split', totalAmount: total, paidAmount: paid, remainingBalance: remaining },
+      }).catch(() => {});
+
       return { success: true, statusCode: 201, message: 'Split sale created successfully.', data: sale };
     }
 
@@ -778,6 +793,13 @@ export class SaleService {
         
         return created;
       });
+
+      NotificationService.create({
+        category: 'sale',
+        title: 'Khata Sale Recorded',
+        message: `Ledger sale of Rs. ${total.toLocaleString()} recorded for ${customer.name} — Bill #${sale.id}.`,
+        metadata: { saleId: sale.id, customerId: customer.id, customerName: customer.name, totalAmount: total },
+      }).catch(() => {});
 
       return { success: true, statusCode: 201, message: 'Ledger sale created successfully.', data: sale };
     }
@@ -1016,6 +1038,13 @@ export class SaleService {
 
       return updatedSale;
     });
+
+    NotificationService.create({
+      category: 'sale',
+      title: 'Split Balance Settled',
+      message: `Payment of Rs. ${settleAmount.toLocaleString()} received for Bill #${sale.id} via ${paymentMethod}.`,
+      metadata: { saleId: sale.id, amount: settleAmount, paymentMethod },
+    }).catch(() => {});
 
     return {
       success: true,

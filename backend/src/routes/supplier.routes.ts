@@ -5,6 +5,7 @@ import { authenticateJWT } from '../middleware/auth.middleware';
 const router = Router();
 router.use(authenticateJWT);
 router.get('/', SupplierController.list);
+router.get('/next-code', SupplierController.getNextCode);
 router.get('/payments', SupplierController.listPayments);
 router.post('/', SupplierController.create);
 router.put('/:id', SupplierController.update);

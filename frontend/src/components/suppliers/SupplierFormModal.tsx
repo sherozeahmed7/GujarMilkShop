@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Supplier, CycleType } from '../../types';
 import { useSupplierStore } from '../../store/supplierStore';
-import { X, UserPlus, Edit2 } from 'lucide-react';
+import { supplierService } from '../../services/supplier.service';
+import { X, UserPlus, Edit2, Lock } from 'lucide-react';
 
 interface SupplierFormModalProps {
   supplier?: Supplier; // If provided, we are editing
@@ -28,6 +29,16 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
   });
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!supplier) {
+      supplierService.getNextCode().then((nextCode) => {
+        if (nextCode) setCode(nextCode);
+      }).catch((err) => {
+        console.error('Failed to fetch next supplier code:', err);
+      });
+    }
+  }, [supplier]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -39,9 +50,9 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
     }
 
     const supplierData = {
-      name,
-      code,
-      phone,
+      name: name.trim(),
+      ...(code ? { code: code.trim() } : {}),
+      phone: phone.trim() || undefined,
       defaultRate: parseFloat(defaultRate) || 0,
       cowRate: parseFloat(cowRate) || 0,
       buffaloRate: parseFloat(buffaloRate) || 0,
@@ -75,7 +86,9 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-800">{supplier ? 'Edit Supplier' : 'Add New Supplier'}</h3>
-              <p className="text-xs font-medium text-slate-500">Enter farm and rate details</p>
+              <p className="text-xs font-medium text-slate-500">
+                {supplier ? `Editing supplier · ${supplier.code}` : 'Enter farm and rate details'}
+              </p>
             </div>
           </div>
           <button 
@@ -86,7 +99,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
           </button>
         </div>
 
-            <div className="p-5 overflow-y-auto custom-scrollbar">
+        <div className="p-5 overflow-y-auto custom-scrollbar">
           <form id="supplier-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
             {error && (
               <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2 text-sm font-medium">
@@ -96,24 +109,29 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
             
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Supplier Name</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Supplier Name *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Khan Farm"
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Supplier Code</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+                  <span>Supplier Code</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" /> Auto-Generated
+                  </span>
+                </label>
                 <input
                   type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="e.g. SUP-0001"
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
-                  required
+                  value={code || 'Generating…'}
+                  disabled
+                  readOnly
+                  className="w-full px-4 py-2 bg-slate-100/90 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 font-mono cursor-not-allowed select-none shadow-xs"
                 />
               </div>
             </div>
@@ -125,6 +143,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. 03001234567"
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -178,50 +197,46 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Opening Balance{' '}
-                <span className="text-slate-400 font-normal normal-case">
-                  {supplier ? '(total we owe this supplier)' : '(optional)'}
-                </span>
-              </label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={openingBalance}
-                onChange={(e) => setOpeningBalance(e.target.value)}
-                placeholder="e.g. 5000 — amount already owed to supplier"
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-[11px] text-slate-400">
-                {supplier
-                  ? 'Set the remaining payable balance. The system adjusts the opening balance collection to match.'
-                  : 'Use this for existing suppliers with unpaid dues before the system. Shows under Previous / Remaining.'}
-              </p>
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Opening Balance{' '}
+                  <span className="text-slate-400 font-normal normal-case">
+                    {supplier ? '(we owe)' : '(optional)'}
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={openingBalance}
+                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  placeholder="e.g. 5000"
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Guaranteed Advance (Rs)</label>
                 <input
                   type="number"
                   value={guaranteedAdvance}
                   onChange={(e) => setGuaranteedAdvance(e.target.value)}
+                  placeholder="0"
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="flex items-center gap-3 pt-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-bold text-slate-700">Active Supplier</span>
-                </label>
-              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-bold text-slate-700">Active Supplier</span>
+              </label>
             </div>
 
           </form>

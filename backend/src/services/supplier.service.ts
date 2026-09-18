@@ -1,4 +1,5 @@
 import { prisma } from '../config/database';
+import { Prisma } from '@prisma/client';
 import { SyncQueueService } from './syncQueue.service';
 const CYCLE_TYPES = ['Monthly Cycle', '1-Day Cycle', 'Weekly Cycle'];
 const SHIFTS = ['Morning', 'Evening'];
@@ -84,7 +85,63 @@ function shape(
   };
 }
 
+export async function generateUniqueSupplierCode(tx: Prisma.TransactionClient | typeof prisma): Promise<string> {
+  const existingSuppliers = await tx.supplier.findMany({
+    select: { id: true, code: true }
+  });
+
+  const syncQueueRecords = await tx.syncQueue.findMany({
+    where: { entityType: 'Supplier' },
+    select: { localId: true, payload: true }
+  });
+
+  const usedCodes = new Set<string>();
+  let maxNum = 0;
+
+  const registerCode = (codeStr?: string | null, localId?: number | null) => {
+    if (!codeStr) return;
+    const clean = String(codeStr).trim().toUpperCase();
+    if (!clean) return;
+    usedCodes.add(clean);
+
+    const supMatch = clean.match(/^SUP-(\d+)$/i);
+    if (supMatch) {
+      const n = parseInt(supMatch[1], 10);
+      if (!isNaN(n) && n > maxNum) {
+        maxNum = n;
+      }
+    }
+  };
+
+  for (const s of existingSuppliers) {
+    registerCode(s.code, s.id);
+  }
+
+  for (const q of syncQueueRecords) {
+    try {
+      const payload = typeof q.payload === 'string' ? JSON.parse(q.payload) : q.payload;
+      registerCode(payload?.code, q.localId);
+    } catch {
+      // ignore
+    }
+  }
+
+  let nextNum = maxNum + 1;
+  let candidate = `SUP-${String(nextNum).padStart(4, '0')}`;
+
+  while (usedCodes.has(candidate.toUpperCase())) {
+    nextNum++;
+    candidate = `SUP-${String(nextNum).padStart(4, '0')}`;
+  }
+
+  return candidate;
+}
+
 export class SupplierService {
+  static async getNextCode() {
+    return await generateUniqueSupplierCode(prisma);
+  }
+
   static async list(filters?: {
     cycleType?: string;
     fromDate?: string;
@@ -136,15 +193,30 @@ export class SupplierService {
   }
 
   static async create(payload: any) {
-    if (!payload.name?.trim() || !payload.code?.trim()) return { success: false, statusCode: 400, message: 'Name and code are required.' };
+    if (!payload.name?.trim()) return { success: false, statusCode: 400, message: 'Supplier name is required.' };
     if (!CYCLE_TYPES.includes(payload.cycleType)) return { success: false, statusCode: 400, message: 'Invalid cycle type.' };
     try {
       const supplier = await prisma.$transaction(async (tx) => {
+        let code = payload.code?.trim();
+        if (!code) {
+          code = await generateUniqueSupplierCode(tx);
+        } else {
+          const existing = await tx.supplier.findUnique({ where: { code } });
+          if (existing) {
+            code = await generateUniqueSupplierCode(tx);
+          }
+        }
+
         const created = await tx.supplier.create({ data: {
-          name: payload.name.trim(), code: payload.code.trim(), phone: payload.phone?.trim() || null,
-          defaultRate: Number(payload.defaultRate) || 0, cowRate: Number(payload.cowRate) || 0,
-          buffaloRate: Number(payload.buffaloRate) || 0, cycleType: payload.cycleType,
-          isActive: payload.isActive !== false, guaranteedAdvance: Number(payload.guaranteedAdvance) || 0,
+          name: payload.name.trim(),
+          code,
+          phone: payload.phone?.trim() || null,
+          defaultRate: Number(payload.defaultRate) || 0,
+          cowRate: Number(payload.cowRate) || 0,
+          buffaloRate: Number(payload.buffaloRate) || 0,
+          cycleType: payload.cycleType,
+          isActive: payload.isActive !== false,
+          guaranteedAdvance: Number(payload.guaranteedAdvance) || 0,
         }});
         await SyncQueueService.enqueueCreate(tx, 'Supplier', created.id, created, 0);
 
@@ -178,9 +250,9 @@ export class SupplierService {
         prisma.supplierPayment.findMany({ where: { supplierId: supplier.id } }),
       ]);
       return { success: true, statusCode: 201, data: shape(supplier, collections, payments) };
-    } catch (error: any) {
-      if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'Supplier code already exists.' };
-      throw error;
+    } catch (e: any) {
+      if (e.code === 'P2002') return { success: false, statusCode: 409, message: 'Supplier code already exists.' };
+      return { success: false, statusCode: 500, message: e.message || 'Failed to create supplier.' };
     }
   }
 

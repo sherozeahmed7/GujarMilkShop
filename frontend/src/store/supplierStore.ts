@@ -9,7 +9,7 @@ interface SupplierStore {
   isLoading: boolean;
   error: string | null;
   fetchData: () => Promise<void>;
-  addSupplier: (supplier: Omit<Supplier, 'id' | 'payableBalance'>) => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'payableBalance' | 'code'> & { code?: string; openingBalance?: number }) => Promise<void>;
   updateSupplier: (id: string, supplier: Partial<Supplier>) => Promise<void>;
   addCollection: (collection: Omit<MilkCollection, 'id'>) => Promise<void>;
   updateCollection: (id: string, collection: Partial<MilkCollection>) => Promise<void>;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KhataSummaryCards } from '../components/khata/KhataSummaryCards';
 import { KhataCashCollectModal } from '../components/khata/KhataCashCollectModal';
@@ -18,7 +18,7 @@ import { KhataSupplierFormModal } from '../components/khata/KhataSupplierFormMod
 import { useDebounce } from '../hooks/useDebounce';
 import {
   Search, Download, FileText, Printer, Filter, Plus, ChevronDown,
-  DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw
+  DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw, MoreVertical
 } from 'lucide-react';
 import { CustomerTypeFilter, NameSortOrder } from '../components/customers/CustomerToolbar';
 import * as XLSX from 'xlsx';
@@ -82,6 +82,20 @@ export const KhataLedger: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<DateFilterType>(ALL_TIME_FILTER);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openActionMenu, setOpenActionMenu] = useState<number | null>(null);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (openActionMenu === null) return;
+    const handler = (e: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        setOpenActionMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openActionMenu]);
 
   const debouncedSearch = useDebounce(searchQuery, 400);
 
@@ -591,8 +605,8 @@ export const KhataLedger: React.FC = () => {
                 <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   Last Sale
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
-                  Actions
+                <th className="w-12 px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
+                  
                 </th>
               </tr>
             </thead>
@@ -704,44 +718,66 @@ export const KhataLedger: React.FC = () => {
                           : 'Not Available'}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1 flex-wrap opacity-100 lg:opacity-60 lg:group-hover:opacity-100 transition-opacity">
+                        <div className="relative flex items-center justify-end" ref={openActionMenu === c.id ? actionMenuRef : undefined}>
                           <button
                             type="button"
-                            onClick={() => setCollectCustomer(c)}
-                            disabled={balance <= 0}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${
-                              balance > 0
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600 shadow-sm'
-                                : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
-                            }`}
+                            onClick={() => setOpenActionMenu(openActionMenu === c.id ? null : c.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                            title="Actions"
                           >
-                            <DollarSign className="w-3.5 h-3.5" />
-                            Cash Collect
+                            <MoreVertical className="w-4 h-4" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setLedgerCustomer(c)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
-                          >
-                            <BookOpen className="w-3.5 h-3.5" />
-                            Ledger
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(c)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(c)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+
+                          {openActionMenu === c.id && (
+                            <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 overflow-hidden">
+                              {/* Cash Collect */}
+                              <button
+                                type="button"
+                                onClick={() => { setCollectCustomer(c); setOpenActionMenu(null); }}
+                                disabled={balance <= 0}
+                                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                                  balance > 0
+                                    ? 'text-emerald-700 hover:bg-emerald-50'
+                                    : 'text-slate-300 cursor-not-allowed'
+                                }`}
+                              >
+                                <DollarSign className="w-4 h-4" />
+                                Cash Collect
+                              </button>
+
+                              {/* Ledger */}
+                              <button
+                                type="button"
+                                onClick={() => { setLedgerCustomer(c); setOpenActionMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
+                              >
+                                <BookOpen className="w-4 h-4" />
+                                View Ledger
+                              </button>
+
+                              <div className="h-px bg-slate-100 my-1" />
+
+                              {/* Edit */}
+                              <button
+                                type="button"
+                                onClick={() => { handleOpenEdit(c); setOpenActionMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                                Edit
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                type="button"
+                                onClick={() => { handleDelete(c); setOpenActionMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

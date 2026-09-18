@@ -17,7 +17,7 @@ export const Header: React.FC = () => {
   if (path.includes('inventory')) title = 'Inventory';
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 md:px-6 bg-transparent gap-3 md:gap-6 min-w-0 w-full overflow-hidden">
+    <header className="h-16 flex items-center justify-between px-4 md:px-6 bg-transparent gap-3 md:gap-6 min-w-0 w-full relative z-50">
       
       {/* Title Area */}
       <div className="shrink-0 flex items-center lg:flex-1 min-w-0">

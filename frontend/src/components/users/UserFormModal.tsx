@@ -27,6 +27,19 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Reset fields whenever user prop changes
+  useEffect(() => {
+    setName(user?.name || '');
+    setEmail(user?.email || '');
+    setPassword('');
+    setConfirmPassword('');
+    setRole(user?.role || '');
+    setAssignedScreens(user?.assignedScreens || []);
+    setError(null);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+  }, [user]);
+
   const adminScreensStr = localStorage.getItem('assignedScreens');
   const allowedScreens = adminScreensStr ? JSON.parse(adminScreensStr) : [];
 
@@ -103,13 +116,15 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
             </div>
           )}
 
-          <form id="user-form" onSubmit={handleSubmit} className="space-y-6">
+          <form id="user-form" onSubmit={handleSubmit} autoComplete="off" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Name */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
                 <input
                   type="text"
+                  name="new_user_fullname"
+                  autoComplete="off"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
@@ -122,6 +137,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
                 <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
                 <input
                   type="email"
+                  name="new_user_account_email"
+                  autoComplete="new-password"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
@@ -134,6 +151,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
                 <label className="block text-sm font-medium text-slate-700 mb-1">Role <span className="text-xs font-normal text-slate-500 ml-2">(Enter role name to create or assign)</span></label>
                 <input
                   type="text"
+                  name="new_user_role"
+                  autoComplete="off"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   disabled={user?.isPrimaryAdmin}
@@ -150,6 +169,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
                     <div className="relative">
                       <input
                         type={showPassword ? "text" : "password"}
+                        name="new_user_account_password"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
@@ -170,6 +191,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
                     <div className="relative">
                       <input
                         type={showConfirmPassword ? "text" : "password"}
+                        name="new_user_account_confirm_password"
+                        autoComplete="new-password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"

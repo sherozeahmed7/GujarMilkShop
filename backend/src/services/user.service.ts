@@ -230,26 +230,26 @@ export class UserService {
       };
     }
 
-    // If no local dependencies, attempt soft-deactivation or safe delete
+    // If no dependencies exist, permanently delete the user from database
     try {
       await prisma.$transaction(async (tx) => {
-        const updated = await tx.user.update({
-          where: { id },
-          data: { status: 'inactive' }
-        });
-        await SyncQueueService.enqueueUpdate(tx, 'User', id, updated, 0, 'UPDATE');
+        const cloudUuid = await SyncQueueService.getCloudMapping('User', id, tx);
+        if (cloudUuid) {
+          await SyncQueueService.enqueueUpdate(tx, 'User', id, user, 0, 'DELETE');
+        }
+        await tx.user.delete({ where: { id } });
       });
 
       return {
         success: true,
         statusCode: 200,
-        message: 'User deactivated successfully.'
+        message: 'User deleted successfully.'
       };
     } catch (e: any) {
       return {
         success: false,
         statusCode: 400,
-        message: 'Failed to deactivate user: ' + (e.message || e)
+        message: 'Failed to delete user: ' + (e.message || e)
       };
     }
   }

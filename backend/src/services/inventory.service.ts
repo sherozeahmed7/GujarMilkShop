@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
+import { NotificationService } from './notification.service';
 const MOVEMENT_TYPES = ['OPENING', 'STOCK_IN', 'SALE', 'RETURN', 'WASTAGE', 'ADJUSTMENT', 'CONVERSION'];
 const money = (value: number) => Math.round(value * 100) / 100;
 
@@ -175,6 +176,14 @@ export class InventoryService {
         await SyncQueueService.enqueueCreate(tx, 'InventoryProduct', created.id, created, 0);
         return created;
       });
+
+      NotificationService.create({
+        category: 'inventory',
+        title: 'New Product Added',
+        message: `Product "${product.name}" (${product.code}) added to inventory.`,
+        metadata: { productId: product.id, name: product.name, code: product.code },
+      }).catch(() => {});
+
       return { success: true, statusCode: 201, data: await this.productView(product, [], rate) };
     } catch (error: any) {
       if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'Product code already exists.' };
@@ -325,6 +334,13 @@ export class InventoryService {
         await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', created.id, created, 2);
         return created;
       });
+
+      NotificationService.create({
+        category: 'inventory',
+        title: 'Stock Updated',
+        message: `${payload.movementType || 'Movement'} of ${Math.abs(quantity)} ${product.unit} recorded for ${product.name}.`,
+        metadata: { productId: product.id, productName: product.name, movementType: payload.movementType, quantity },
+      }).catch(() => {});
 
       return { success: true, statusCode: 201, data: movement };
     } catch (err: any) {

@@ -5,6 +5,14 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 const idOf = (value: string) => Number(value);
 export class SupplierController {
+  static async getNextCode(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const code = await SupplierService.getNextCode();
+      return ApiResponse.success(res, 'Next supplier code generated', { code });
+    } catch (e) {
+      next(e);
+    }
+  }
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { cycleType, fromDate, toDate } = req.query;

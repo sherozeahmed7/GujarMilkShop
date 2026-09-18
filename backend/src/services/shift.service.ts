@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
+import { NotificationService } from './notification.service';
 const money = (value: number) => Math.round(value * 100) / 100;
 
 function formatShift(shift: any, salesAggregates?: {
@@ -138,6 +139,14 @@ export class ShiftService {
       await SyncQueueService.enqueueCreate(tx, 'Shift', created.id, created, 1);
       return created;
     });
+
+    NotificationService.create({
+      category: 'shift',
+      title: 'Shift Opened',
+      message: `Shift opened by ${shift.openedBy.name || shift.openedBy.email} with Rs. ${shift.openingCash.toLocaleString()} opening cash.`,
+      metadata: { shiftId: shift.id, openedBy: shift.openedBy.name || shift.openedBy.email, openingCash: shift.openingCash },
+    }).catch(() => {});
+
     return { success: true, statusCode: 201, data: formatShift(shift, { billsCount: 0, grossSales: 0, cashSales: 0, onlineSales: 0, khataSales: 0 }) };
   }
 
@@ -160,6 +169,14 @@ export class ShiftService {
       await SyncQueueService.enqueueUpdate(tx, 'Shift', closed.id, closed, 1);
       return closed;
     });
+
+    NotificationService.create({
+      category: 'shift',
+      title: 'Shift Closed',
+      message: `Shift closed by ${updated.closedBy?.name || updated.closedBy?.email || 'User'} (Counted: Rs. ${countedCash.toLocaleString()}, ${differenceStatus}: Rs. ${Math.abs(difference).toLocaleString()}).`,
+      metadata: { shiftId: updated.id, countedCash, expectedCash: expected, difference, differenceStatus },
+    }).catch(() => {});
+
     const salesAgg = await getSalesAggregates(current.openedAt, closedAt);
     return { success: true, statusCode: 200, data: formatShift(updated, salesAgg) };
   }

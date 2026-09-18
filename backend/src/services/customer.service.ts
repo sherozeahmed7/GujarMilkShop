@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
+import { NotificationService } from './notification.service';
 const CUSTOMER_TYPES = ['daily_ledger', 'monthly_ledger'] as const;
 const CUSTOMER_STATUSES = ['active', 'inactive'] as const;
 const PAYMENT_METHODS = ['cash', 'online'] as const;
@@ -129,6 +130,13 @@ export class CustomerService {
 
       return created;
     });
+
+    NotificationService.create({
+      category: 'customer',
+      title: 'New Customer Added',
+      message: `Customer "${customer.name}" registered as ${customer.customerType === 'daily_ledger' ? 'Daily Ledger' : 'Monthly Ledger'}.`,
+      metadata: { customerId: customer.id, name: customer.name, customerType: customer.customerType },
+    }).catch(() => {});
 
     return {
       success: true,
@@ -1020,6 +1028,16 @@ export class CustomerService {
     });
 
     const cleared = money(requestedAmount + discountAmount);
+
+    if (requestedAmount > 0 || discountAmount > 0) {
+      NotificationService.create({
+        category: 'khata',
+        title: 'Khata Payment Collected',
+        message: `Collected Rs. ${requestedAmount.toLocaleString()} from ${customer.name}${discountAmount > 0 ? ` (Rs. ${discountAmount.toLocaleString()} discount)` : ''} via ${paymentMethod}.`,
+        metadata: { customerId: customer.id, customerName: customer.name, amount: requestedAmount, discount: discountAmount, paymentMethod },
+      }).catch(() => {});
+    }
+
     return {
       success: true,
       statusCode: 200,

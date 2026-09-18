@@ -17,10 +17,17 @@ function formatDate(iso: string) {
   });
 }
 
+function formatInvoiceNumber(raw: string | number) {
+  const n = Number(String(raw).replace(/^(INV-0*|BILL-0*|#)/i, ''));
+  if (isNaN(n) || n <= 0) return String(raw);
+  return `INV-${String(n).padStart(5, '0')}`;
+}
+
 interface PrintReceiptModalProps {
   record: ReturnRecord;
   onClose: () => void;
 }
+
 
 export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({ record, onClose }) => {
   const handlePrint = () => {
@@ -78,7 +85,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({ record, on
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Bill No:</span>
-                <span className="font-bold">{record.billNumber}</span>
+                <span className="font-bold font-mono">{formatInvoiceNumber(record.billNumber)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Date:</span>
