@@ -1,0 +1,245 @@
+{
+  "counts": {
+    "User": {
+      "sqlite": 12,
+      "neon": 3
+    },
+    "Supplier": {
+      "sqlite": 1,
+      "neon": 1
+    },
+    "InventoryProduct": {
+      "sqlite": 21,
+      "neon": 5
+    },
+    "DailyRate": {
+      "sqlite": 23,
+      "neon": 1
+    },
+    "Customer": {
+      "sqlite": 33,
+      "neon": 1
+    },
+    "Shift": {
+      "sqlite": 14,
+      "neon": 1
+    },
+    "SupplierCollection": {
+      "sqlite": 1,
+      "neon": 2
+    },
+    "SupplierPayment": {
+      "sqlite": 0,
+      "neon": 2
+    },
+    "Sale": {
+      "sqlite": 36,
+      "neon": 11
+    },
+    "SaleItem": {
+      "sqlite": 36,
+      "neon": 13
+    },
+    "Payment": {
+      "sqlite": 36,
+      "neon": 11
+    },
+    "Expense": {
+      "sqlite": 0,
+      "neon": 2
+    },
+    "ExpensePayment": {
+      "sqlite": 0,
+      "neon": 0
+    },
+    "InventoryMovement": {
+      "sqlite": 33,
+      "neon": 24
+    },
+    "MilkProductTransaction": {
+      "sqlite": 0,
+      "neon": 0
+    },
+    "ButterGheeConversion": {
+      "sqlite": 0,
+      "neon": 0
+    },
+    "MilkProductDailyStock": {
+      "sqlite": 0,
+      "neon": 1
+    },
+    "Return": {
+      "sqlite": 0,
+      "neon": 1
+    },
+    "ReturnItem": {
+      "sqlite": 0,
+      "neon": 1
+    },
+    "AuditRecord": {
+      "sqlite": 0,
+      "neon": 0
+    },
+    "CashPerson": {
+      "sqlite": 0,
+      "neon": 0
+    },
+    "CashbookTransaction": {
+      "sqlite": 0,
+      "neon": 0
+    }
+  },
+  "syncQueue": {
+    "PENDING": 34,
+    "SYNCING": 0,
+    "FAILED": 0,
+    "errors": {},
+    "SYNCED": 4
+  },
+  "mismatches": [
+    {
+      "model": "User",
+      "sqlite": 12,
+      "neon": 3
+    },
+    {
+      "model": "InventoryProduct",
+      "sqlite": 21,
+      "neon": 5
+    },
+    {
+      "model": "DailyRate",
+      "sqlite": 23,
+      "neon": 1
+    },
+    {
+      "model": "Customer",
+      "sqlite": 33,
+      "neon": 1
+    },
+    {
+      "model": "Shift",
+      "sqlite": 14,
+      "neon": 1
+    },
+    {
+      "model": "SupplierCollection",
+      "sqlite": 1,
+      "neon": 2
+    },
+    {
+      "model": "SupplierPayment",
+      "sqlite": 0,
+      "neon": 2
+    },
+    {
+      "model": "Sale",
+      "sqlite": 36,
+      "neon": 11
+    },
+    {
+      "model": "SaleItem",
+      "sqlite": 36,
+      "neon": 13
+    },
+    {
+      "model": "Payment",
+      "sqlite": 36,
+      "neon": 11
+    },
+    {
+      "model": "Expense",
+      "sqlite": 0,
+      "neon": 2
+    },
+    {
+      "model": "InventoryMovement",
+      "sqlite": 33,
+      "neon": 24
+    },
+    {
+      "model": "MilkProductDailyStock",
+      "sqlite": 0,
+      "neon": 1
+    },
+    {
+      "model": "Return",
+      "sqlite": 0,
+      "neon": 1
+    },
+    {
+      "model": "ReturnItem",
+      "sqlite": 0,
+      "neon": 1
+    }
+  ],
+  "tokenReconciliation": {
+    "totalChecked": 20,
+    "mismatches": []
+  },
+  "khata": [
+    {
+      "customerId": 18,
+      "sqlite": {
+        "total": 0,
+        "paid": 0
+      },
+      "neon": {
+        "total": 0,
+        "paid": 0
+      },
+      "match": true
+    },
+    {
+      "customerId": 19,
+      "sqlite": {
+        "total": 500,
+        "paid": 0
+      },
+      "neon": {
+        "total": 0,
+        "paid": 0
+      },
+      "match": false
+    },
+    {
+      "customerId": 20,
+      "sqlite": {
+        "total": 0,
+        "paid": 0
+      },
+      "neon": {
+        "total": 0,
+        "paid": 0
+      },
+      "match": true
+    },
+    {
+      "customerId": 21,
+      "sqlite": {
+        "total": 500,
+        "paid": 0
+      },
+      "neon": {
+        "total": 0,
+        "paid": 0
+      },
+      "match": false
+    },
+    {
+      "customerId": 22,
+      "sqlite": {
+        "total": 0,
+        "paid": 0
+      },
+      "neon": {
+        "total": 0,
+        "paid": 0
+      },
+      "match": true
+    }
+  ],
+  "supplierLedger": [],
+  "cashbook": [],
+  "mappingIntegrity": []
+}

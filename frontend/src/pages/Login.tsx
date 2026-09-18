@@ -59,26 +59,39 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoadingUsers(true);
-      setUsersError('');
+    const MAX_RETRIES = 10;
+    const RETRY_DELAY = 500;
+
+    const fetchUsers = async (attempt: number) => {
       try {
         const response = await apiClient.get('/auth/login-users');
         const list = (response.data || []) as LoginUser[];
-        if (!cancelled) setUsers(list);
-      } catch (err: any) {
         if (!cancelled) {
+          setUsers(list);
+          setLoadingUsers(false);
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        if (attempt < MAX_RETRIES) {
+          // Backend just became ready — give it a moment and retry
+          setTimeout(() => fetchUsers(attempt + 1), RETRY_DELAY);
+        } else {
           setUsersError(err?.message || 'Could not load users. Check that the server is running.');
           setUsers([]);
+          setLoadingUsers(false);
         }
-      } finally {
-        if (!cancelled) setLoadingUsers(false);
       }
-    })();
+    };
+
+    setLoadingUsers(true);
+    setUsersError('');
+    fetchUsers(0);
+
     return () => {
       cancelled = true;
     };
   }, []);
+
 
   const roleCount = useMemo(() => {
     const set = new Set(users.map((u) => (u.role || 'user').toLowerCase()));

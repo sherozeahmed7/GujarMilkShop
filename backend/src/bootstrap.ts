@@ -22,12 +22,35 @@ if (!fs.existsSync(logDir)) {
 }
 const logFile = path.join(logDir, 'backend.log');
 
-function log(msg: string) {
-  const line = `[${new Date().toISOString()}] ${msg}\n`;
-  console.log(msg);
+function writeToLog(type: string, args: any[]) {
+  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  const line = `[${new Date().toISOString()}] [${type}] ${msg}\n`;
   try {
     fs.appendFileSync(logFile, line);
   } catch (_) {}
+}
+
+const originalLog = console.log;
+const originalErr = console.error;
+const originalWarn = console.warn;
+
+console.log = function (...args: any[]) {
+  writeToLog('INFO', args);
+  originalLog.apply(console, args);
+};
+
+console.error = function (...args: any[]) {
+  writeToLog('ERROR', args);
+  originalErr.apply(console, args);
+};
+
+console.warn = function (...args: any[]) {
+  writeToLog('WARN', args);
+  originalWarn.apply(console, args);
+};
+
+function log(msg: string) {
+  console.log(msg);
 }
 
 function resolveResource(filename: string): string | null {
@@ -92,12 +115,25 @@ if (IS_PKG) {
 
   const dbPath: string = path.join(dbDir, 'pos.db');
 
-  // If pos.db does not yet exist, seed it from the bundled template.db.
-  if (!fs.existsSync(dbPath)) {
+  // If pos.db does not exist or is empty (0 bytes), seed it from the bundled template.db.
+  const dbExists = fs.existsSync(dbPath);
+  let dbSize = 0;
+  if (dbExists) {
+    try {
+      dbSize = fs.statSync(dbPath).size;
+    } catch (_) {}
+  }
+
+  if (!dbExists || dbSize === 0) {
     const tplPath = resolveResource('template.db');
-    if (tplPath) {
-      fs.copyFileSync(tplPath, dbPath);
-      log('[Bootstrap] Seeded DB from template: ' + tplPath + ' -> ' + dbPath);
+    if (tplPath && fs.existsSync(tplPath)) {
+      const tplSize = fs.statSync(tplPath).size;
+      if (tplSize > 0) {
+        fs.copyFileSync(tplPath, dbPath);
+        log('[Bootstrap] Seeded DB from template (' + tplSize + ' bytes): ' + tplPath + ' -> ' + dbPath);
+      } else {
+        log('[Bootstrap] WARNING: template.db found at ' + tplPath + ' but has 0 bytes!');
+      }
     } else {
       log('[Bootstrap] WARNING: template.db not found! Database might not initialize properly.');
     }

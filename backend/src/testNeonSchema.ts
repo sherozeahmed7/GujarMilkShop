@@ -367,6 +367,41 @@ CREATE INDEX IF NOT EXISTS idx_inventory_product_date ON inventory_movements(pro
 CREATE INDEX IF NOT EXISTS idx_supplier_date ON supplier_collections(supplier_uuid, date);
 CREATE INDEX IF NOT EXISTS idx_returns_sale ON returns(sale_uuid);
 CREATE INDEX IF NOT EXISTS idx_expense_payments_expense ON expense_payments(expense_uuid);
+
+CREATE TABLE IF NOT EXISTS cash_persons (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  local_id INT NOT NULL,
+  device_id VARCHAR NOT NULL,
+  name VARCHAR NOT NULL,
+  phone VARCHAR,
+  address VARCHAR,
+  type VARCHAR NOT NULL,
+  description TEXT,
+  opening_balance DECIMAL NOT NULL DEFAULT 0,
+  customer_type VARCHAR NOT NULL,
+  status VARCHAR NOT NULL DEFAULT 'Active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(device_id, local_id)
+);
+
+CREATE TABLE IF NOT EXISTS cashbook_transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  local_id INT NOT NULL,
+  device_id VARCHAR NOT NULL,
+  cash_person_uuid UUID REFERENCES cash_persons(id) ON DELETE CASCADE,
+  cash_person_name VARCHAR NOT NULL,
+  transaction_type VARCHAR NOT NULL,
+  amount DECIMAL NOT NULL,
+  description TEXT,
+  date VARCHAR NOT NULL,
+  created_by VARCHAR NOT NULL DEFAULT 'Admin',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(device_id, local_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cashbook_person ON cashbook_transactions(cash_person_uuid);
+CREATE INDEX IF NOT EXISTS idx_cashbook_date ON cashbook_transactions(date);
 `;
 
 async function executeMigration() {

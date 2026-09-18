@@ -441,3 +441,37 @@ model POSConfig {
   updatedAt                 DateTime @updatedAt
 }
 
+// ─── CASHBOOK (STANDALONE INFORMATIONAL MODULE) ─────────────────────────────
+
+model CashPerson {
+  id             Int                   @id @default(autoincrement())
+  name           String
+  phone          String?
+  address        String?
+  type           String                // "Incoming" | "Outgoing"
+  description    String?
+  openingBalance Float                 @default(0)
+  customerType   String                // "Debtor" | "Creditor"
+  status         String                @default("Active") // "Active" | "Disabled"
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  transactions   CashbookTransaction[]
+}
+
+model CashbookTransaction {
+  id              Int        @id @default(autoincrement())
+  cashPersonId    Int
+  cashPersonName  String     // Denormalised for fast listing/audit
+  transactionType String     // "Opening Balance" | "Receive Amount" | "Pay Amount"
+  amount          Float
+  description     String?
+  date            String     // YYYY-MM-DD
+  createdBy       String     @default("Admin")
+  createdAt       DateTime   @default(now())
+
+  cashPerson      CashPerson @relation(fields: [cashPersonId], references: [id], onDelete: Cascade)
+
+  @@index([cashPersonId])
+  @@index([date])
+}
+

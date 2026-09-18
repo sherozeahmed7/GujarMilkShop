@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getBackupReport } from '../../services/reportsApi';
+import { createBackup, deleteBackup, restoreBackup } from '../../services/backupService';
 import { ReportLayout } from '../../components/reports/ReportLayout';
 import { ReportHeader } from '../../components/reports/ReportHeader';
 import { SummaryCard } from '../../components/reports/SummaryCard';
@@ -11,14 +12,15 @@ export const BackupReport: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
     try {
       const result = await getBackupReport();
       setData(result);
-    } catch (e) {
-      setError('Failed to load Backup report.');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load Backup report.');
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -27,13 +29,59 @@ export const BackupReport: React.FC = () => {
 
   useEffect(() => { loadReport(); }, []);
 
-  const handleCreateBackup = () => {
-    alert('Mock Action: Creating backup...');
-    loadReport(); // refresh mock data
+  const handleCreateBackup = async () => {
+    try {
+      setIsLoading(true);
+      await createBackup();
+      setActionMessage('Backup created successfully.');
+      setTimeout(() => setActionMessage(null), 4000);
+      await loadReport();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create backup.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteBackup = async (filename: string) => {
+    if (!window.confirm(`Are you sure you want to delete backup "${filename}"?`)) return;
+    try {
+      setIsLoading(true);
+      await deleteBackup(filename);
+      setActionMessage('Backup deleted successfully.');
+      setTimeout(() => setActionMessage(null), 4000);
+      await loadReport();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to delete backup.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRestoreBackup = async (filename: string) => {
+    if (!window.confirm(`WARNING: Restoring backup "${filename}" will overwrite the local database. Proceed?`)) return;
+    try {
+      setIsLoading(true);
+      await restoreBackup(filename);
+      alert('Backup restored successfully. The application will now reload.');
+      window.location.reload();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to restore backup.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownload = (filename: string) => {
+    const url = `http://localhost:5000/api/backup/download/${encodeURIComponent(filename)}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
   };
 
   const filtered = (data?.backups || []).filter((b: any) =>
-    b.id.toLowerCase().includes(searchTerm.toLowerCase()) || b.fileName.toLowerCase().includes(searchTerm.toLowerCase())
+    (b.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (b.fileName || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -49,6 +97,12 @@ export const BackupReport: React.FC = () => {
           { header: 'Status', dataKey: 'status' }
         ]}
       />
+
+      {actionMessage && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2 rounded-lg text-sm font-medium">
+          {actionMessage}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
         <div className="relative flex-1 min-w-[200px]">
@@ -103,9 +157,9 @@ export const BackupReport: React.FC = () => {
                         <div>{b.date}</div>
                         <div className="text-xs text-slate-400">{b.time}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm"><span className={`px-2 py-0.5 rounded text-xs font-medium ${b.type === 'Full' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{b.type}</span></td>
+                      <td className="px-4 py-3 text-sm"><span className={`px-2 py-0.5 rounded text-xs font-medium ${b.type === 'Full' || b.type === 'Manual' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{b.type}</span></td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-700">{b.size}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{b.location}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 truncate max-w-[200px]" title={b.location}>{b.location}</td>
                       <td className="px-4 py-3 text-sm">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${b.status === 'Success' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{b.status}</span>
                       </td>
@@ -113,11 +167,11 @@ export const BackupReport: React.FC = () => {
                         <div className="flex items-center gap-3">
                           {b.status === 'Success' && (
                             <>
-                              <button className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="Restore this backup">Restore</button>
-                              <button className="text-slate-400 hover:text-slate-600" title="Download backup file"><Download className="w-4 h-4" /></button>
+                              <button onClick={() => handleRestoreBackup(b.fileName)} className="text-xs text-blue-600 hover:text-blue-800 font-medium" title="Restore this backup">Restore</button>
+                              <button onClick={() => handleDownload(b.fileName)} className="text-slate-400 hover:text-slate-600" title="Download backup file"><Download className="w-4 h-4" /></button>
                             </>
                           )}
-                          <button className="text-rose-400 hover:text-rose-600" title="Delete backup"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteBackup(b.fileName)} className="text-rose-400 hover:text-rose-600" title="Delete backup"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </tr>

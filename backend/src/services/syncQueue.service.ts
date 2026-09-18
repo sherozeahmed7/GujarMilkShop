@@ -9,7 +9,9 @@ type DbClient = Prisma.TransactionClient | typeof prisma;
 const NESTED_KEYS = new Set([
   'items',
   'payments',
-  'customer',
+  // NOTE: 'customer' intentionally NOT listed here.
+  // Return.customer is a plain string ('Walk-in' / customer name), not a relation.
+  // The Customer relation object on Sale is an object and will be caught by the object guard.
   'supplier',
   'product',
   'openedBy',
@@ -40,11 +42,11 @@ const FK_MAP: Record<string, { uuidKey: string; entityType: string }> = {
   closedById: { uuidKey: 'closedByUuid', entityType: 'User' },
   expenseId: { uuidKey: 'expenseUuid', entityType: 'Expense' },
   returnId: { uuidKey: 'returnUuid', entityType: 'Return' },
+  cashPersonId: { uuidKey: 'cashPersonUuid', entityType: 'CashPerson' },
 };
 
 /** Columns Neon does not have (or must not receive from local) */
 const DROP_FIELDS = new Set([
-  'tokenNumber',
   'id', // cloud id is the mapping UUID injected at batch time
 ]);
 

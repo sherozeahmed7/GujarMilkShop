@@ -2,16 +2,38 @@ import React from 'react';
 import { Folder } from 'lucide-react';
 import { useBackupStore } from '../../../store/backupStore';
 import { toast } from 'react-hot-toast';
+import { open } from '@tauri-apps/plugin-dialog';
+import { updateBackupFolder } from '../../../services/backupService';
 
 export const BackupFolderCard: React.FC = () => {
-  const { backupFolder } = useBackupStore();
+  const { backupFolder, setBackupFolder, loadInitialData } = useBackupStore();
 
-  const handleChangeFolder = () => {
-    toast('Custom backup folder location is not currently available.', { icon: '🚧' });
+  const handleChangeFolder = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: 'Select Backup Folder',
+      });
+      if (selected && typeof selected === 'string') {
+        await updateBackupFolder(selected);
+        setBackupFolder(selected);
+        await loadInitialData();
+        toast.success('Backup folder updated successfully.');
+      }
+    } catch (err: any) {
+      toast.error('Failed to change backup folder: ' + err.message);
+    }
   };
 
-  const handleResetDefault = () => {
-    toast('Custom backup folder location is not currently available.', { icon: '🚧' });
+  const handleResetDefault = async () => {
+    try {
+      await updateBackupFolder(null);
+      await loadInitialData();
+      toast.success('Backup folder reset to default.');
+    } catch (err: any) {
+      toast.error('Failed to reset backup folder: ' + err.message);
+    }
   };
 
   return (
@@ -24,7 +46,7 @@ export const BackupFolderCard: React.FC = () => {
 
         <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4 font-mono text-sm text-slate-800 break-all">
           {backupFolder}
-          <div className="text-xs text-slate-500 mt-1 font-sans">Default folder</div>
+          <div className="text-xs text-slate-500 mt-1 font-sans">Current folder location</div>
         </div>
 
         <div className="flex gap-3">

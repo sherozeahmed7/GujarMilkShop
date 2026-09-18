@@ -76,7 +76,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
       {/* Table Header */}
       <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -99,7 +99,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
       </div>
 
       {/* Responsive table wrapper */}
-      <div className="overflow-x-auto">
+      <div className="w-full">
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
             <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />

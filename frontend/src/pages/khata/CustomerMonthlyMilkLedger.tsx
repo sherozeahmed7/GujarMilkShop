@@ -258,7 +258,7 @@ export const CustomerMonthlyMilkLedger: React.FC = () => {
       }
 
       // Detailed Entries Table
-      if (entries.length > 0) {
+      if (milkEntries.length > 0) {
         if (nextY > 230) {
           doc.addPage();
           nextY = 20;
@@ -268,10 +268,10 @@ export const CustomerMonthlyMilkLedger: React.FC = () => {
         doc.setTextColor(15, 23, 42);
         doc.text('Detailed Milk Purchases', 14, nextY);
 
-        const entryRows = entries.map(e => [
+        const entryRows = milkEntries.map(e => [
           e.date ? new Date(e.date).toLocaleDateString('en-GB') : '—',
           e.product || 'Fresh Milk',
-          `${Number(e.quantity || 0).toFixed(2)} ${e.unit || 'kg'}`,
+          `${Number(e.quantity || 0).toFixed(2)} ${(e as any).unit || 'kg'}`,
           `Rs. ${Number(e.rate || 0).toLocaleString()}`,
           `Rs. ${Number(e.amount || 0).toLocaleString()}`,
         ]);

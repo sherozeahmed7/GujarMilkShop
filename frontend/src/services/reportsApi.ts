@@ -159,21 +159,56 @@ export const getF2ItemSummary = async (filter: DateFilterType) => {
   return res.data;
 };
 
-// ── Backup Report (no backend — stays as local data) ─────────────────────────
+// ── Backup Report (connected to real /api/backup backend) ────────────────────
 export const getBackupReport = async () => {
-  const { initialMockBackups } = await import('../data/backupMockData');
-  const successful = initialMockBackups.filter((b: any) => b.status !== 'Failed');
-  const totalSize  = successful.reduce((s: number, b: any) => s + (b.sizeKb || 0) * 1024, 0);
+  const { listBackups, getBackupSettings } = await import('./backupService');
+  const [data, settings] = await Promise.all([
+    listBackups().catch(() => ({ backups: [], summary: {} })),
+    getBackupSettings().catch(() => ({ enabled: false, schedule: 'Daily', time: '02:00', retention: '30 days' }))
+  ]);
+
+  const backups = data.backups || [];
+  const totalBackups = backups.length;
+  const successfulBackups = backups.length; // Existing valid SQLite files on disk
+  const failedBackups = 0;
+  const totalStorageKb = backups.reduce((s: number, b: any) => s + (b.sizeKb || 0), 0);
+  const totalStorage = totalStorageKb > 1024
+    ? `${(totalStorageKb / 1024).toFixed(1)} MB`
+    : `${totalStorageKb} KB`;
+
+  const latestBackup = backups[0]?.createdAt
+    ? new Date(backups[0].createdAt).toLocaleDateString()
+    : '—';
+
+  const backupFrequency = settings?.enabled
+    ? `${settings.schedule || 'Daily'} at ${settings.time || '02:00'}`
+    : 'Manual';
+
+  const formattedBackups = backups.map((b: any, index: number) => {
+    const createdDate = new Date(b.createdAt);
+    return {
+      id: `BCK-${String(totalBackups - index).padStart(3, '0')}`,
+      fileName: b.filename,
+      date: isNaN(createdDate.getTime()) ? '—' : createdDate.toLocaleDateString(),
+      time: isNaN(createdDate.getTime()) ? '—' : createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: b.type === 'Auto' ? 'Auto' : 'Manual',
+      size: `${b.sizeKb || 0} KB`,
+      location: b.path,
+      status: 'Success',
+      raw: b
+    };
+  });
+
   return {
     summary: {
-      totalBackups:      initialMockBackups.length,
-      latestBackup:      initialMockBackups[0]?.createdAt?.split('T')[0] || '—',
-      successfulBackups: successful.length,
-      failedBackups:     initialMockBackups.filter((b: any) => b.status === 'Failed').length,
-      totalStorage:      `${(totalSize / (1024 * 1024)).toFixed(1)} MB`,
-      backupFrequency:   'Manual',
+      totalBackups,
+      latestBackup,
+      successfulBackups,
+      failedBackups,
+      totalStorage,
+      backupFrequency,
     },
-    backups: initialMockBackups,
+    backups: formattedBackups,
   };
 };
 

@@ -5,11 +5,25 @@ import os from 'os';
 import { prisma } from '../config/database';
 import { isRestoreInProgress, setRestoreInProgress } from '../utils/restoreLock';
 import { exec } from 'child_process';
+import { getBackupConfig, saveBackupConfig, BackupConfig } from '../utils/backupConfig';
 
 /**
  * Helper to get the correct backup directory for both dev and production.
  */
 function getBackupDirectory(): string {
+  const config = getBackupConfig();
+  if (config.backupFolder) {
+    // If a custom folder is defined, try to use it
+    try {
+      if (!fs.existsSync(config.backupFolder)) {
+        fs.mkdirSync(config.backupFolder, { recursive: true });
+      }
+      return config.backupFolder;
+    } catch (e) {
+      console.error('[Backup] Custom backup directory invalid, falling back to default:', e);
+    }
+  }
+
   let backupDir: string;
   if ((process as any).pkg) {
     const appData = (process.env.APPDATA as string) || path.join(os.homedir(), 'AppData', 'Roaming');
@@ -371,5 +385,26 @@ export async function restoreBackup(req: Request, res: Response): Promise<void> 
     }
   } finally {
     setRestoreInProgress(false);
+  }
+}
+
+export async function getSettings(req: Request, res: Response): Promise<void> {
+  try {
+    const config = getBackupConfig();
+    res.json(config);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to get backup settings' });
+  }
+}
+
+export async function updateSettings(req: Request, res: Response): Promise<void> {
+  try {
+    const newConfig: Partial<BackupConfig> = req.body;
+    const currentConfig = getBackupConfig();
+    const updatedConfig = { ...currentConfig, ...newConfig, autoBackupSettings: { ...currentConfig.autoBackupSettings, ...(newConfig.autoBackupSettings || {}) } };
+    saveBackupConfig(updatedConfig);
+    res.json(updatedConfig);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to update backup settings' });
   }
 }

@@ -4,6 +4,7 @@ import { connectDB } from './config/database';
 import { startSyncWorker } from './workers/syncWorker';
 import { startDownstreamSyncWorker } from './workers/downstreamSyncWorker';
 import { startLassiMidnightReset } from './services/lassiMidnightReset.service';
+import { startAutoBackupWorker } from './workers/autoBackupWorker';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -17,9 +18,10 @@ async function startServer() {
   const server = app.listen(PORT, () => {
     console.log(`🚀 Express server is running on port ${PORT}`);
     
-    // Start background sync workers
+    // Start background workers
     startSyncWorker();
     startDownstreamSyncWorker();
+    startAutoBackupWorker();
     const lassiResetTimer = startLassiMidnightReset();
 
     (server as any).lassiResetTimer = lassiResetTimer;

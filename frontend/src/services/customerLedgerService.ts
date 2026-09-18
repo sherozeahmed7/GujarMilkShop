@@ -45,19 +45,6 @@ const localDateKey = (value: string | Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const mockDate = (year: number, month: number, day: number) => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-const mockEntries = (customerId: string, month: number, year: number): MilkEntry[] => [
-  { id: `mock-${customerId}-${year}-${month}-01a`, customerId, date: mockDate(year, month, 1), quantity: 2.5, rate: 240, amount: 600, time: '08:30', product: 'milk' },
-  { id: `mock-${customerId}-${year}-${month}-01b`, customerId, date: mockDate(year, month, 1), quantity: 1, rate: 240, amount: 240, time: '18:00', product: 'milk' },
-  { id: `mock-${customerId}-${year}-${month}-05`, customerId, date: mockDate(year, month, 5), quantity: 3, rate: 240, amount: 720, time: '08:00', product: 'milk' },
-  { id: `mock-${customerId}-${year}-${month}-12`, customerId, date: mockDate(year, month, 12), quantity: 2, rate: 245, amount: 490, time: '09:00', product: 'milk' },
-  { id: `mock-${customerId}-${year}-${month}-20`, customerId, date: mockDate(year, month, 20), quantity: 1.5, rate: 245, amount: 367.5, time: '08:30', product: 'milk' },
-];
-const mockPayments = (customerId: string, month: number, year: number): PaymentEntry[] => [
-  { id: `mock-payment-${customerId}-${year}-${month}-01`, customerId, date: mockDate(year, month, 10), amount: 1000, paymentMethod: 'cash', reference: 'MOCK-PAY-001', addedBy: 'System Admin' },
-];
-const mockCustomer = (customerId: string) => ({ id: customerId, name: 'Ahmed (Demo)', phone: '0316-8517824', customerType: 'monthly_ledger', type: 'Monthly', address: 'Main Bazar', balance: 2123 });
-
 async function getSales(customerId: string, from?: Date, to?: Date): Promise<SaleRecord[]> {
   const sales = await apiClient.get('/sales', {
     customerId: Number(customerId),
@@ -69,7 +56,7 @@ async function getSales(customerId: string, from?: Date, to?: Date): Promise<Sal
 
 function getMilkItems(sales: SaleRecord[], customerId: string): MilkEntry[] {
   return sales.flatMap((sale) => (sale.items || [])
-    .filter((item) => ['milk', 'yogurt'].includes(item.itemName.toLowerCase()))
+    .filter((item) => ['milk', 'yogurt'].includes((item.itemName || '').toLowerCase()))
     .map((item) => ({
       id: `sale-${sale.id}-item-${item.id}`,
       customerId,
@@ -98,33 +85,30 @@ function getPayments(sales: SaleRecord[], customerId: string): PaymentEntry[] {
 
 export const customerLedgerService = {
   async getCustomer(customerId: string) {
-    try {
-      const response = await apiClient.get(`/customers/${customerId}`);
-      const customer = response.data;
-      return { ...customer, id: String(customer.id), type: customer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily', balance: 0 };
-    } catch { return mockCustomer(customerId); }
+    const response = await apiClient.get(`/customers/${customerId}`);
+    const customer = response.data;
+    if (!customer) throw new Error(`Customer ${customerId} not found`);
+    return { ...customer, id: String(customer.id), type: customer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily', balance: Number(customer.balance || 0) };
   },
 
   async getMonthlyMilkEntries(customerId: string, month: number, year: number): Promise<MilkEntry[]> {
     const range = monthRange(month, year);
-    try { return getMilkItems(await getSales(customerId, range.start, range.end), customerId); }
-    catch { return mockEntries(customerId, month, year); }
+    const sales = await getSales(customerId, range.start, range.end);
+    return getMilkItems(sales, customerId);
   },
 
   async getMonthlyPayments(customerId: string, month: number, year: number): Promise<PaymentEntry[]> {
     const range = monthRange(month, year);
-    try { return getPayments(await getSales(customerId, range.start, range.end), customerId); }
-    catch { return mockPayments(customerId, month, year); }
+    const sales = await getSales(customerId, range.start, range.end);
+    return getPayments(sales, customerId);
   },
 
   async getPreviousBalance(customerId: string, month: number, year: number): Promise<number> {
     const range = monthRange(month, year);
-    try {
-      const historicalSales = await getSales(customerId, undefined, new Date(range.start.getTime() - 1));
-      const billed = historicalSales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
-      const paid = getPayments(historicalSales, customerId).reduce((sum, payment) => sum + payment.amount, 0);
-      return money(billed - paid);
-    } catch { return month === 1 ? 5000 : 5000; }
+    const historicalSales = await getSales(customerId, undefined, new Date(range.start.getTime() - 1));
+    const billed = historicalSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0);
+    const paid = getPayments(historicalSales, customerId).reduce((sum, payment) => sum + payment.amount, 0);
+    return money(billed - paid);
   },
 
   async getMonthlySummary(customerId: string, month: number, year: number): Promise<LedgerSummary> {

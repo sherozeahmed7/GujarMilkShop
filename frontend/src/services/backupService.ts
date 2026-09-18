@@ -105,9 +105,45 @@ export function exportToExcel(backups: BackupRecord[]): void {
 }
 
 export async function getBackupSettings(): Promise<import('../types').AutoBackupSettings> {
-  return { enabled: true, schedule: 'Daily', time: '02:00', retention: '30' };
+  const response = await backupFetch(`${BACKUP_API}/settings`);
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
+  const config = await response.json();
+  return config.autoBackupSettings;
 }
 
-export async function updateBackupSettings(_settings: Partial<import('../types').AutoBackupSettings>): Promise<void> {
-  // Not implemented in backend yet — stubbed
+export async function getBackupFolderConfig(): Promise<{ backupFolder: string | null }> {
+  const response = await backupFetch(`${BACKUP_API}/settings`);
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
+  const config = await response.json();
+  return { backupFolder: config.backupFolder };
+}
+
+export async function updateBackupSettings(settings: Partial<import('../types').AutoBackupSettings>): Promise<void> {
+  const response = await backupFetch(`${BACKUP_API}/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ autoBackupSettings: settings })
+  });
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
+}
+
+export async function updateBackupFolder(folder: string | null): Promise<void> {
+  const response = await backupFetch(`${BACKUP_API}/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ backupFolder: folder })
+  });
+  if (!response.ok) {
+    const msg = await parseErrorMessage(response);
+    throw new Error(msg);
+  }
 }

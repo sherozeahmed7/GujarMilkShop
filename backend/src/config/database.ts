@@ -174,47 +174,59 @@ async function seedDefaultDailyRates() {
  */
 async function runAutoMigrations() {
   try {
+    const tables: any[] = await prisma.$queryRawUnsafe(
+      `SELECT name FROM sqlite_master WHERE type='table'`
+    );
+    const tableNames = new Set(tables.map((t: any) => t.name));
+
+    if (!tableNames.has('User')) {
+      console.warn('⚠️ Warning: Database tables (User) not detected in SQLite database.');
+      return;
+    }
+
     // Check Sale table for tokenNumber
-    const saleColumns: any[] = await prisma.$queryRawUnsafe(`PRAGMA table_info("Sale")`);
-    const hasTokenNumber = saleColumns.some((col: any) => col.name === 'tokenNumber');
-    if (!hasTokenNumber) {
-      console.log('🔄 Auto-migrating: Adding tokenNumber column to Sale table...');
-      await prisma.$executeRawUnsafe(`ALTER TABLE "Sale" ADD COLUMN "tokenNumber" INTEGER NOT NULL DEFAULT 0`);
-      console.log('✅ tokenNumber column added to Sale table successfully.');
+    if (tableNames.has('Sale')) {
+      const saleColumns: any[] = await prisma.$queryRawUnsafe(`PRAGMA table_info("Sale")`);
+      const hasTokenNumber = saleColumns.some((col: any) => col.name === 'tokenNumber');
+      if (!hasTokenNumber) {
+        console.log('🔄 Auto-migrating: Adding tokenNumber column to Sale table...');
+        await prisma.$executeRawUnsafe(`ALTER TABLE "Sale" ADD COLUMN "tokenNumber" INTEGER NOT NULL DEFAULT 0`);
+        console.log('✅ tokenNumber column added to Sale table successfully.');
+      }
+    }
+
+    // SupplierPayment.shiftId — cash payments linked to open shift drawer
+    if (tableNames.has('SupplierPayment')) {
+      const supplierPaymentColumns: any[] = await prisma.$queryRawUnsafe(
+        `PRAGMA table_info("SupplierPayment")`
+      );
+      const hasShiftId = supplierPaymentColumns.some((col: any) => col.name === 'shiftId');
+      if (!hasShiftId) {
+        console.log('🔄 Auto-migrating: Adding shiftId column to SupplierPayment table...');
+        await prisma.$executeRawUnsafe(
+          `ALTER TABLE "SupplierPayment" ADD COLUMN "shiftId" INTEGER`
+        );
+        try {
+          await prisma.$executeRawUnsafe(
+            `CREATE INDEX IF NOT EXISTS "SupplierPayment_shiftId_idx" ON "SupplierPayment"("shiftId")`
+          );
+        } catch {
+          /* index may already exist */
+        }
+        console.log('✅ shiftId column added to SupplierPayment table successfully.');
+      }
+    }
+
+    // Shift.shiftDate — Drop the unique index to allow multiple shifts per day
+    if (tableNames.has('Shift')) {
+      try {
+        await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "Shift_shiftDate_key"`);
+      } catch (error) {
+        console.error('⚠️ Auto-migration (Shift.shiftDate drop index):', error);
+      }
     }
   } catch (error) {
     console.error('⚠️ Auto-migration notice:', error);
-  }
-
-  // SupplierPayment.shiftId — cash payments linked to open shift drawer
-  try {
-    const supplierPaymentColumns: any[] = await prisma.$queryRawUnsafe(
-      `PRAGMA table_info("SupplierPayment")`
-    );
-    const hasShiftId = supplierPaymentColumns.some((col: any) => col.name === 'shiftId');
-    if (!hasShiftId) {
-      console.log('🔄 Auto-migrating: Adding shiftId column to SupplierPayment table...');
-      await prisma.$executeRawUnsafe(
-        `ALTER TABLE "SupplierPayment" ADD COLUMN "shiftId" INTEGER`
-      );
-      try {
-        await prisma.$executeRawUnsafe(
-          `CREATE INDEX IF NOT EXISTS "SupplierPayment_shiftId_idx" ON "SupplierPayment"("shiftId")`
-        );
-      } catch {
-        /* index may already exist */
-      }
-      console.log('✅ shiftId column added to SupplierPayment table successfully.');
-    }
-  } catch (error) {
-    console.error('⚠️ Auto-migration (SupplierPayment.shiftId):', error);
-  }
-
-  // Shift.shiftDate — Drop the unique index to allow multiple shifts per day
-  try {
-    await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "Shift_shiftDate_key"`);
-  } catch (error) {
-    console.error('⚠️ Auto-migration (Shift.shiftDate drop index):', error);
   }
 }
 

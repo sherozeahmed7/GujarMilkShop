@@ -1,0 +1,1429 @@
+{
+  "workerDiagnosis": {
+    "SYNC_WORKER_ENABLED": "true",
+    "SYNC_API_URL": "(not set — defaults to http://localhost:5000/api/sync/batch)",
+    "SYNC_INTERNAL_SECRET_SET": true,
+    "conclusion": "SYNC_API_URL is not set in .env. Worker defaults to localhost:5000 which only works when the backend HTTP server is running. If the backend process is not running as a server (e.g. running as a sidecar), the sync worker will fail to reach the endpoint and silently leave records PENDING."
+  },
+  "pendingBreakdown": {
+    "User": [
+      {
+        "eventUuid": "a79bb6ac-61f1-41fb-8619-f8af7909df68",
+        "localId": 159,
+        "cloudUuid": "fe112b75-5671-4e45-85ed-9f2c57f4d75c",
+        "operation": "CREATE",
+        "layer": 0,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "fe112b75-5671-4e45-85ed-9f2c57f4d75c",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ],
+    "Customer": [
+      {
+        "eventUuid": "efc679fd-d62d-4e92-8138-6cb691ac3b86",
+        "localId": 49,
+        "cloudUuid": "f751d54a-8cba-4106-851e-cbafa192ab6d",
+        "operation": "CREATE",
+        "layer": 0,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "f751d54a-8cba-4106-851e-cbafa192ab6d",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "e15e1ede-d1c7-4e1e-a127-12f37aa7a023",
+        "localId": 50,
+        "cloudUuid": "5797d270-f6ff-4aa2-ab18-9ee31ca6a9f0",
+        "operation": "CREATE",
+        "layer": 0,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "5797d270-f6ff-4aa2-ab18-9ee31ca6a9f0",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ],
+    "InventoryProduct": [
+      {
+        "eventUuid": "f04b0384-beec-4466-bc07-374f8afd7356",
+        "localId": 608,
+        "cloudUuid": "8b3c2dee-a246-483b-b48c-48e51ef34737",
+        "operation": "CREATE",
+        "layer": 0,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "8b3c2dee-a246-483b-b48c-48e51ef34737",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "649ac277-65ab-4261-8f93-9b0db5cfa843",
+        "localId": 608,
+        "cloudUuid": "8b3c2dee-a246-483b-b48c-48e51ef34737",
+        "operation": "UPDATE",
+        "layer": 0,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "8b3c2dee-a246-483b-b48c-48e51ef34737",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ],
+    "Sale": [
+      {
+        "eventUuid": "0c065f42-8818-423a-bae0-900c2303aabe",
+        "localId": 87,
+        "cloudUuid": "73c6b927-6126-4a75-9c3c-ea7e79956e24",
+        "operation": "CREATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "73c6b927-6126-4a75-9c3c-ea7e79956e24",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "7ec296f8-7136-463c-9a20-f289fd8cd98f",
+        "localId": 88,
+        "cloudUuid": "f48a7e18-d34a-4b06-92e5-2963ca71fde5",
+        "operation": "CREATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "f48a7e18-d34a-4b06-92e5-2963ca71fde5",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "cd4d6746-1992-4e60-a8c9-4dac1cdcb3ba",
+        "localId": 61,
+        "cloudUuid": "7340a1bc-2b1e-4e16-8a3a-028ecd55351c",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "7340a1bc-2b1e-4e16-8a3a-028ecd55351c",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "b5a91cf0-acc0-4eef-9ef3-15c0c6c6aecd",
+        "localId": 62,
+        "cloudUuid": "ea761f8a-d3bc-4d38-bb84-c266ee3fec28",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "ea761f8a-d3bc-4d38-bb84-c266ee3fec28",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "fba024b4-2124-4413-a0e5-07f82abc33e0",
+        "localId": 64,
+        "cloudUuid": "13ebb747-9e31-428f-be79-30696d208714",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "13ebb747-9e31-428f-be79-30696d208714",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "098f7b3f-d161-4005-a246-c15a6ac8887f",
+        "localId": 65,
+        "cloudUuid": "dcf69212-1f09-4122-9930-f99d0b8ab4c1",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "dcf69212-1f09-4122-9930-f99d0b8ab4c1",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "5cfff7f9-2835-4938-801d-702f8e6d104d",
+        "localId": 67,
+        "cloudUuid": "7f80c2fa-ed6c-4563-85ff-841cd4c0a522",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "7f80c2fa-ed6c-4563-85ff-841cd4c0a522",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "c7062fa6-63f4-409e-83b5-b9e54fe2a8af",
+        "localId": 68,
+        "cloudUuid": "9bc89929-acd0-432e-85ba-d80cf49cbc3b",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "9bc89929-acd0-432e-85ba-d80cf49cbc3b",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "eb83a695-1170-4aa0-bf3e-9494e180e738",
+        "localId": 70,
+        "cloudUuid": "0c8cafee-65e2-47fb-9c6c-a0eba78cc6dc",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "0c8cafee-65e2-47fb-9c6c-a0eba78cc6dc",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "a63db56c-6401-46e5-81b7-6ddfec50f3cc",
+        "localId": 71,
+        "cloudUuid": "b989a3e5-10b1-410b-bdda-4979f9ac8e89",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "b989a3e5-10b1-410b-bdda-4979f9ac8e89",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "c63e49b3-91b8-4fbc-9b9e-ee869e04325b",
+        "localId": 73,
+        "cloudUuid": "dbe5df36-b59d-4490-aae8-c0ccfdda1803",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "dbe5df36-b59d-4490-aae8-c0ccfdda1803",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "8f168223-1361-44c7-ae9c-6b60b6cf4d23",
+        "localId": 74,
+        "cloudUuid": "321b483b-3b39-4f50-a15b-1d724a7980c7",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "321b483b-3b39-4f50-a15b-1d724a7980c7",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "649909ad-961c-4c6d-b86d-a76802a51502",
+        "localId": 76,
+        "cloudUuid": "3329cb86-5c95-4572-9c9d-6caf9c5a04db",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "3329cb86-5c95-4572-9c9d-6caf9c5a04db",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "8df55418-218f-42f8-8214-70f728b7b660",
+        "localId": 77,
+        "cloudUuid": "ca6879b4-c471-4ab0-aa65-cfc23c9f2d2b",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "ca6879b4-c471-4ab0-aa65-cfc23c9f2d2b",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "9ae598ce-7a83-4a13-b449-260769c72c42",
+        "localId": 79,
+        "cloudUuid": "082da164-3feb-418e-979c-2eadd6b50e37",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "082da164-3feb-418e-979c-2eadd6b50e37",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "01c57a55-4859-45ba-b5f0-01b9b9e1536e",
+        "localId": 80,
+        "cloudUuid": "cbbe2a31-de3f-4170-8c8f-a1c92767a0a6",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "cbbe2a31-de3f-4170-8c8f-a1c92767a0a6",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "a63032a7-de0a-409f-8906-459d3a701220",
+        "localId": 82,
+        "cloudUuid": "a667cb82-2a3e-469b-b150-71022852632f",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "a667cb82-2a3e-469b-b150-71022852632f",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "67cf3aeb-d93f-4587-b24f-a85d2013b09d",
+        "localId": 83,
+        "cloudUuid": "ea0d6c66-a1ce-44ed-becb-4ae8ca620e65",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "ea0d6c66-a1ce-44ed-becb-4ae8ca620e65",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "7b7ba617-2616-4f63-bd38-42e51f9c0f6d",
+        "localId": 85,
+        "cloudUuid": "5ffffabe-9499-4878-bad0-d9227b3eb36c",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "5ffffabe-9499-4878-bad0-d9227b3eb36c",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "edcba6a4-aec1-4c49-ba16-3146e5495e78",
+        "localId": 86,
+        "cloudUuid": "c22393cc-807f-41bd-8997-e08bf0fe6af8",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "c22393cc-807f-41bd-8997-e08bf0fe6af8",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "e337636c-7d31-42ce-baef-7800a4458003",
+        "localId": 88,
+        "cloudUuid": "f48a7e18-d34a-4b06-92e5-2963ca71fde5",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "f48a7e18-d34a-4b06-92e5-2963ca71fde5",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "3f7271d4-ee63-4d3b-8bb3-3c887c624f9a",
+        "localId": 89,
+        "cloudUuid": "073440ca-615f-4b5a-8e93-8777bdc095a8",
+        "operation": "UPDATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": null,
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "073440ca-615f-4b5a-8e93-8777bdc095a8",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ],
+    "Shift": [
+      {
+        "eventUuid": "61632e3e-d638-4850-9b49-588ca58e6c03",
+        "localId": 17,
+        "cloudUuid": "bc5051a4-839b-48ac-8a81-d5070d5208b1",
+        "operation": "CREATE",
+        "layer": 1,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "bc5051a4-839b-48ac-8a81-d5070d5208b1",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ],
+    "SaleItem": [
+      {
+        "eventUuid": "ff0c629e-9009-4560-a17e-6dd35674d3ff",
+        "localId": 117,
+        "cloudUuid": "ef25dbd5-6807-43e0-9198-ab3d9bddc564",
+        "operation": "CREATE",
+        "layer": 2,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "ef25dbd5-6807-43e0-9198-ab3d9bddc564",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "fbc35def-e08e-4f7c-bc90-04e823b78cdb",
+        "localId": 118,
+        "cloudUuid": "f3731c33-2b01-46d8-8fa5-9519c925a4f8",
+        "operation": "CREATE",
+        "layer": 2,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "f3731c33-2b01-46d8-8fa5-9519c925a4f8",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ],
+    "Payment": [
+      {
+        "eventUuid": "33cb62ca-757f-491b-8bc7-4d7c096b39a7",
+        "localId": 89,
+        "cloudUuid": "0a392282-5af5-4091-9ff5-58822b2ee063",
+        "operation": "CREATE",
+        "layer": 2,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "0a392282-5af5-4091-9ff5-58822b2ee063",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "8598fb5e-5a71-4c22-b20c-d51b336ccebd",
+        "localId": 90,
+        "cloudUuid": "5272bb91-45d3-4cbe-a7bf-7e7c4c560f9d",
+        "operation": "CREATE",
+        "layer": 2,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "5272bb91-45d3-4cbe-a7bf-7e7c4c560f9d",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ],
+    "InventoryMovement": [
+      {
+        "eventUuid": "59e0d6ef-30ac-47a4-b778-a065a8dba213",
+        "localId": 91,
+        "cloudUuid": "afd295b3-2844-45a1-94b5-51a58f371762",
+        "operation": "CREATE",
+        "layer": 2,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "afd295b3-2844-45a1-94b5-51a58f371762",
+        "classification": "CORRECTLY_PENDING"
+      },
+      {
+        "eventUuid": "c818e31a-6aae-459a-949c-02c3a573d8fc",
+        "localId": 92,
+        "cloudUuid": "5967d488-d46d-4ddf-b480-372748d44631",
+        "operation": "CREATE",
+        "layer": 2,
+        "retryCount": 0,
+        "error": "Reset from stuck SYNCING state (backend crash recovery)",
+        "sqliteExists": true,
+        "neonExists": false,
+        "mappingCloudUuid": "5967d488-d46d-4ddf-b480-372748d44631",
+        "classification": "CORRECTLY_PENDING"
+      }
+    ]
+  },
+  "mappingAnalysis": {
+    "InventoryProduct": {
+      "matched": 0,
+      "orphaned": 21
+    },
+    "Customer": {
+      "matched": 0,
+      "orphaned": 33
+    },
+    "Sale": {
+      "matched": 0,
+      "orphaned": 36
+    },
+    "SaleItem": {
+      "matched": 0,
+      "orphaned": 36
+    },
+    "Payment": {
+      "matched": 0,
+      "orphaned": 36
+    },
+    "Shift": {
+      "matched": 0,
+      "orphaned": 14
+    },
+    "User": {
+      "matched": 0,
+      "orphaned": 11
+    },
+    "InventoryMovement": {
+      "matched": 0,
+      "orphaned": 33
+    }
+  },
+  "missingFromNeon": {},
+  "orphanedMappings": {
+    "InventoryProduct": [
+      {
+        "localId": 423,
+        "cloudUuid": "e7745abf-4599-4cc4-9e0e-39512e7af61f"
+      },
+      {
+        "localId": 424,
+        "cloudUuid": "b4b909b6-ffec-454c-8bb0-ff24d7888726"
+      },
+      {
+        "localId": 425,
+        "cloudUuid": "046bfdc0-79ff-48dd-9665-67953e33c8cb"
+      },
+      {
+        "localId": 426,
+        "cloudUuid": "94470e71-7bf4-4e25-8a7c-8d10a5167b1b"
+      },
+      {
+        "localId": 427,
+        "cloudUuid": "abec17d5-d91b-4054-8183-deb8d75de6d2"
+      },
+      {
+        "localId": 438,
+        "cloudUuid": "ab2a0541-f5c6-4ac5-853c-9c8db4a19914"
+      },
+      {
+        "localId": 444,
+        "cloudUuid": "05433b24-3eca-487c-85ad-5bbec2659c19"
+      },
+      {
+        "localId": 450,
+        "cloudUuid": "f9e98066-794b-4790-abc4-3f60bb75d753"
+      },
+      {
+        "localId": 456,
+        "cloudUuid": "200707e6-c0e3-493f-84db-422a9bf8f626"
+      },
+      {
+        "localId": 462,
+        "cloudUuid": "33f4e920-d0b8-4b17-b98c-c0125547de67"
+      },
+      {
+        "localId": 468,
+        "cloudUuid": "1854b2cc-ec38-441e-8eb9-58098e9bcdeb"
+      },
+      {
+        "localId": 474,
+        "cloudUuid": "e58236e4-0007-43cb-beb0-eaf54c728ce5"
+      },
+      {
+        "localId": 490,
+        "cloudUuid": "b8ee154a-2cdf-4436-bc00-83cff185850a"
+      },
+      {
+        "localId": 501,
+        "cloudUuid": "6b523e14-5028-4db3-ac58-68ac810842c6"
+      },
+      {
+        "localId": 522,
+        "cloudUuid": "08060d3f-abdc-49e2-81b3-77434031e3a7"
+      },
+      {
+        "localId": 533,
+        "cloudUuid": "acd7a056-24c1-440c-9e9a-c80138973553"
+      },
+      {
+        "localId": 544,
+        "cloudUuid": "dbe8f7be-4ed4-4c03-a1fa-f844baad043b"
+      },
+      {
+        "localId": 555,
+        "cloudUuid": "df61c1f6-3570-4b58-8fc2-beb2f5254c9e"
+      },
+      {
+        "localId": 566,
+        "cloudUuid": "f9a806fb-bb5c-41a2-ab9e-875ddad85d6a"
+      },
+      {
+        "localId": 587,
+        "cloudUuid": "bbc3c346-435a-483c-85e3-fb6ff3791e6b"
+      },
+      {
+        "localId": 608,
+        "cloudUuid": "8b3c2dee-a246-483b-b48c-48e51ef34737"
+      }
+    ],
+    "Customer": [
+      {
+        "localId": 18,
+        "cloudUuid": "a7d1c48a-b01a-41c9-a131-f7a8f7b46a2d"
+      },
+      {
+        "localId": 19,
+        "cloudUuid": "ddee708c-8534-46da-8993-9a5b33707889"
+      },
+      {
+        "localId": 20,
+        "cloudUuid": "9f374a00-40f4-4c52-b55c-f8698792561a"
+      },
+      {
+        "localId": 21,
+        "cloudUuid": "523ebf0f-9095-4039-b8af-a23df97c82e3"
+      },
+      {
+        "localId": 22,
+        "cloudUuid": "0d110f45-cfbf-4c88-b5eb-1aa93f2c2297"
+      },
+      {
+        "localId": 23,
+        "cloudUuid": "9a275798-3e10-4f6b-9226-47d173c7e7c4"
+      },
+      {
+        "localId": 24,
+        "cloudUuid": "098b77d8-2124-429e-a637-a24cae788082"
+      },
+      {
+        "localId": 25,
+        "cloudUuid": "1b296c37-b6fa-4e27-a601-5aefa00e9df5"
+      },
+      {
+        "localId": 26,
+        "cloudUuid": "80102ab2-de6a-4bce-8396-f4a7e6485af3"
+      },
+      {
+        "localId": 27,
+        "cloudUuid": "e65b3136-d677-4e90-be10-557562bad307"
+      },
+      {
+        "localId": 28,
+        "cloudUuid": "cfe5ab67-8b02-40e5-bbe1-9543f9864cdf"
+      },
+      {
+        "localId": 29,
+        "cloudUuid": "e4bcc8a0-6d85-4bea-be70-126ce74b544d"
+      },
+      {
+        "localId": 30,
+        "cloudUuid": "16f174ff-46c6-458b-8bf4-870bba9b55e0"
+      },
+      {
+        "localId": 31,
+        "cloudUuid": "492bf320-7327-4cec-8450-c542a30b3e94"
+      },
+      {
+        "localId": 32,
+        "cloudUuid": "5809f803-65ad-4af1-9619-2ef44b7aaafb"
+      },
+      {
+        "localId": 33,
+        "cloudUuid": "9b736d49-ff1d-41f7-864d-90afc4afbe89"
+      },
+      {
+        "localId": 34,
+        "cloudUuid": "462238fb-b6da-4c40-835f-aa8ab42d7baf"
+      },
+      {
+        "localId": 35,
+        "cloudUuid": "9e3c123a-3a2a-4bef-a048-e17ca30ce7dd"
+      },
+      {
+        "localId": 36,
+        "cloudUuid": "7d185d34-2dee-4a01-b7ab-32f603d31b9a"
+      },
+      {
+        "localId": 37,
+        "cloudUuid": "53752164-d6ae-40fc-aa78-79b0b94ebce4"
+      },
+      {
+        "localId": 38,
+        "cloudUuid": "87392c34-d021-4a3c-a0c0-6de9f12763f7"
+      },
+      {
+        "localId": 39,
+        "cloudUuid": "934f8aea-9337-42bc-b71e-7bf39811274e"
+      },
+      {
+        "localId": 40,
+        "cloudUuid": "a2eaee14-3723-4ab4-8336-b1fb7629cbc5"
+      },
+      {
+        "localId": 41,
+        "cloudUuid": "96a366b4-8c7e-4844-b463-2eb73e710274"
+      },
+      {
+        "localId": 42,
+        "cloudUuid": "c48cb869-4094-4c37-a2b0-0f80482ae4f8"
+      },
+      {
+        "localId": 43,
+        "cloudUuid": "1129ce70-27ca-418d-afa2-18f9d3a7bf97"
+      },
+      {
+        "localId": 44,
+        "cloudUuid": "538c97ad-6884-41d1-bbdf-16bda7811e01"
+      },
+      {
+        "localId": 45,
+        "cloudUuid": "a2983420-14eb-44ba-933f-4234544558b9"
+      },
+      {
+        "localId": 46,
+        "cloudUuid": "cdfb91de-6495-4a4b-8b15-6d474399f2fe"
+      },
+      {
+        "localId": 47,
+        "cloudUuid": "d6224527-d373-40ae-99c6-e6f6c0198856"
+      },
+      {
+        "localId": 48,
+        "cloudUuid": "ba2bb04e-d29b-4045-b282-34ad40aa7d4a"
+      },
+      {
+        "localId": 49,
+        "cloudUuid": "f751d54a-8cba-4106-851e-cbafa192ab6d"
+      },
+      {
+        "localId": 50,
+        "cloudUuid": "5797d270-f6ff-4aa2-ab18-9ee31ca6a9f0"
+      }
+    ],
+    "Sale": [
+      {
+        "localId": 54,
+        "cloudUuid": "b6f1d95a-f084-40a9-8c7b-05940696448a"
+      },
+      {
+        "localId": 55,
+        "cloudUuid": "1157908e-3630-4aa3-b5c5-a2b441b930c3"
+      },
+      {
+        "localId": 56,
+        "cloudUuid": "20d6e90e-7a0d-41fc-8104-71889dc1f2c3"
+      },
+      {
+        "localId": 57,
+        "cloudUuid": "40a8fab8-3217-4b60-8cfc-7fa35317de56"
+      },
+      {
+        "localId": 58,
+        "cloudUuid": "c2eb670e-2eac-4f9a-95d6-0986c10c439f"
+      },
+      {
+        "localId": 59,
+        "cloudUuid": "f8710fc7-8987-4504-9672-0b6e97ffdc66"
+      },
+      {
+        "localId": 60,
+        "cloudUuid": "1694f637-26e8-4562-92b0-13c37d963788"
+      },
+      {
+        "localId": 61,
+        "cloudUuid": "7340a1bc-2b1e-4e16-8a3a-028ecd55351c"
+      },
+      {
+        "localId": 62,
+        "cloudUuid": "ea761f8a-d3bc-4d38-bb84-c266ee3fec28"
+      },
+      {
+        "localId": 63,
+        "cloudUuid": "06d2d273-2975-44b9-9a21-a1e0ff813f28"
+      },
+      {
+        "localId": 64,
+        "cloudUuid": "13ebb747-9e31-428f-be79-30696d208714"
+      },
+      {
+        "localId": 65,
+        "cloudUuid": "dcf69212-1f09-4122-9930-f99d0b8ab4c1"
+      },
+      {
+        "localId": 66,
+        "cloudUuid": "a1b7cfbd-c166-412c-b141-e28ad3b4f913"
+      },
+      {
+        "localId": 67,
+        "cloudUuid": "7f80c2fa-ed6c-4563-85ff-841cd4c0a522"
+      },
+      {
+        "localId": 68,
+        "cloudUuid": "9bc89929-acd0-432e-85ba-d80cf49cbc3b"
+      },
+      {
+        "localId": 69,
+        "cloudUuid": "c28a8a48-9f52-4e7a-ad36-682ad44a9969"
+      },
+      {
+        "localId": 70,
+        "cloudUuid": "0c8cafee-65e2-47fb-9c6c-a0eba78cc6dc"
+      },
+      {
+        "localId": 71,
+        "cloudUuid": "b989a3e5-10b1-410b-bdda-4979f9ac8e89"
+      },
+      {
+        "localId": 72,
+        "cloudUuid": "1d1c0e6c-bd2a-426b-ad52-883f10dc8b7f"
+      },
+      {
+        "localId": 73,
+        "cloudUuid": "dbe5df36-b59d-4490-aae8-c0ccfdda1803"
+      },
+      {
+        "localId": 74,
+        "cloudUuid": "321b483b-3b39-4f50-a15b-1d724a7980c7"
+      },
+      {
+        "localId": 75,
+        "cloudUuid": "932bec38-ef21-4a40-b68a-bfc31a416d55"
+      },
+      {
+        "localId": 76,
+        "cloudUuid": "3329cb86-5c95-4572-9c9d-6caf9c5a04db"
+      },
+      {
+        "localId": 77,
+        "cloudUuid": "ca6879b4-c471-4ab0-aa65-cfc23c9f2d2b"
+      },
+      {
+        "localId": 78,
+        "cloudUuid": "d4a562a3-3df1-40cc-a1c2-148243c9f78b"
+      },
+      {
+        "localId": 79,
+        "cloudUuid": "082da164-3feb-418e-979c-2eadd6b50e37"
+      },
+      {
+        "localId": 80,
+        "cloudUuid": "cbbe2a31-de3f-4170-8c8f-a1c92767a0a6"
+      },
+      {
+        "localId": 81,
+        "cloudUuid": "f42b505a-3b09-46b6-b49d-98d4e7bfdecc"
+      },
+      {
+        "localId": 82,
+        "cloudUuid": "a667cb82-2a3e-469b-b150-71022852632f"
+      },
+      {
+        "localId": 83,
+        "cloudUuid": "ea0d6c66-a1ce-44ed-becb-4ae8ca620e65"
+      },
+      {
+        "localId": 84,
+        "cloudUuid": "a7228f18-0548-464e-a92d-d7f8dcbdc8e5"
+      },
+      {
+        "localId": 85,
+        "cloudUuid": "5ffffabe-9499-4878-bad0-d9227b3eb36c"
+      },
+      {
+        "localId": 86,
+        "cloudUuid": "c22393cc-807f-41bd-8997-e08bf0fe6af8"
+      },
+      {
+        "localId": 87,
+        "cloudUuid": "73c6b927-6126-4a75-9c3c-ea7e79956e24"
+      },
+      {
+        "localId": 88,
+        "cloudUuid": "f48a7e18-d34a-4b06-92e5-2963ca71fde5"
+      },
+      {
+        "localId": 89,
+        "cloudUuid": "073440ca-615f-4b5a-8e93-8777bdc095a8"
+      }
+    ],
+    "SaleItem": [
+      {
+        "localId": 84,
+        "cloudUuid": "fea952b9-c2e2-403c-97a3-7c7683ee05bb"
+      },
+      {
+        "localId": 85,
+        "cloudUuid": "5aaf63a0-e7ad-42cc-9410-da2a50f21d24"
+      },
+      {
+        "localId": 86,
+        "cloudUuid": "daf13d9c-4d18-4f3a-95ee-bc2345e8e3e8"
+      },
+      {
+        "localId": 87,
+        "cloudUuid": "24f5737f-27df-43f2-a91d-f5a8136528fa"
+      },
+      {
+        "localId": 88,
+        "cloudUuid": "804ab8fe-6069-4b64-89f0-e40f5951bd29"
+      },
+      {
+        "localId": 89,
+        "cloudUuid": "75ed9283-11f8-4747-9867-1add5eddf7f1"
+      },
+      {
+        "localId": 90,
+        "cloudUuid": "4d938eb4-1708-4f31-a5c7-eb026759c79d"
+      },
+      {
+        "localId": 91,
+        "cloudUuid": "b033e200-5f7b-447a-bf6a-a45a522644e7"
+      },
+      {
+        "localId": 92,
+        "cloudUuid": "834dd533-120c-485d-9e5b-f86e9169d580"
+      },
+      {
+        "localId": 93,
+        "cloudUuid": "58e6f086-dcd6-46f6-b019-3dd70f048ed3"
+      },
+      {
+        "localId": 94,
+        "cloudUuid": "e15b774b-7d8a-42c8-968c-1400b932f6ef"
+      },
+      {
+        "localId": 95,
+        "cloudUuid": "cae6453b-8f66-415f-ad89-be9d67c41c28"
+      },
+      {
+        "localId": 96,
+        "cloudUuid": "2f57d09e-5d06-46ce-aa15-25f572066aad"
+      },
+      {
+        "localId": 97,
+        "cloudUuid": "17f239ed-d053-4662-bbb7-3f07d540657c"
+      },
+      {
+        "localId": 98,
+        "cloudUuid": "3e2e965d-3399-4326-8ca6-fb08a7fc1a47"
+      },
+      {
+        "localId": 99,
+        "cloudUuid": "55c9e4b8-0b30-49fe-a6fe-e68ab0d2ef4d"
+      },
+      {
+        "localId": 100,
+        "cloudUuid": "cd926bf1-deb1-4036-a754-4209d142d769"
+      },
+      {
+        "localId": 101,
+        "cloudUuid": "901ff0f1-bdcb-4ad4-836d-f76a3f9dc291"
+      },
+      {
+        "localId": 102,
+        "cloudUuid": "c1f384d4-714e-45a5-8a4c-d219d4b75d96"
+      },
+      {
+        "localId": 103,
+        "cloudUuid": "9f91787f-6e80-4983-b703-fc07f8ee7078"
+      },
+      {
+        "localId": 104,
+        "cloudUuid": "767f28a2-6412-494f-a44c-80961d764086"
+      },
+      {
+        "localId": 105,
+        "cloudUuid": "2cf033d1-99c9-4748-9e81-59bf2b4628da"
+      },
+      {
+        "localId": 106,
+        "cloudUuid": "ec069fcf-5838-456b-9da1-02b34d6f81f2"
+      },
+      {
+        "localId": 107,
+        "cloudUuid": "789b8a6b-289d-4428-a3dd-318c1625f7c4"
+      },
+      {
+        "localId": 108,
+        "cloudUuid": "d345d7d8-131c-4a8a-bf06-78224a9de753"
+      },
+      {
+        "localId": 109,
+        "cloudUuid": "5ff9870f-5745-42b8-a470-b2518db15dfd"
+      },
+      {
+        "localId": 110,
+        "cloudUuid": "f36c8036-4e1a-4110-9269-9b85838a31bd"
+      },
+      {
+        "localId": 111,
+        "cloudUuid": "64229980-9666-4696-a962-ba8795edffe4"
+      },
+      {
+        "localId": 112,
+        "cloudUuid": "d128faca-d01a-47de-af31-aa37ef668621"
+      },
+      {
+        "localId": 113,
+        "cloudUuid": "aefddbca-f2d9-420f-88e4-c834350dbcac"
+      },
+      {
+        "localId": 114,
+        "cloudUuid": "1c2bf39c-6b5a-41df-8a04-650cc9809d12"
+      },
+      {
+        "localId": 115,
+        "cloudUuid": "061514d4-7092-4db7-a013-5068e2705529"
+      },
+      {
+        "localId": 116,
+        "cloudUuid": "1cfcb8d9-3e5c-401b-9488-9eea6f6769ce"
+      },
+      {
+        "localId": 117,
+        "cloudUuid": "ef25dbd5-6807-43e0-9198-ab3d9bddc564"
+      },
+      {
+        "localId": 118,
+        "cloudUuid": "f3731c33-2b01-46d8-8fa5-9519c925a4f8"
+      },
+      {
+        "localId": 119,
+        "cloudUuid": "955bea8a-c5a5-4950-bbaa-b2afc3e3581b"
+      }
+    ],
+    "Payment": [
+      {
+        "localId": 56,
+        "cloudUuid": "2162d70f-823a-4e42-96f1-6d7fde9b2f3e"
+      },
+      {
+        "localId": 57,
+        "cloudUuid": "92f28599-2f82-443a-aa77-1e74800b51f0"
+      },
+      {
+        "localId": 58,
+        "cloudUuid": "ac772412-4ade-4499-88c8-031b353a20ed"
+      },
+      {
+        "localId": 59,
+        "cloudUuid": "49c78376-c8e9-408f-abeb-bcbf57309633"
+      },
+      {
+        "localId": 60,
+        "cloudUuid": "b24cb49b-968e-40ce-a590-ef498e2736a5"
+      },
+      {
+        "localId": 61,
+        "cloudUuid": "3615f55e-a1ab-4f3f-ad92-18bce0db114c"
+      },
+      {
+        "localId": 62,
+        "cloudUuid": "c6cc94d5-80cf-4d48-b9b6-4ee400dee6e3"
+      },
+      {
+        "localId": 63,
+        "cloudUuid": "9be27a9c-343f-412c-88f2-d179456138d1"
+      },
+      {
+        "localId": 64,
+        "cloudUuid": "a1349fe8-80a7-424c-9918-c142ab6c73c9"
+      },
+      {
+        "localId": 65,
+        "cloudUuid": "7ce2c271-1ecd-42e9-a10b-b717d1a92ac1"
+      },
+      {
+        "localId": 66,
+        "cloudUuid": "38d6ff84-e475-46f2-917b-d0ed64f689c2"
+      },
+      {
+        "localId": 67,
+        "cloudUuid": "971185fe-22d4-4213-ba40-f098d50a8328"
+      },
+      {
+        "localId": 68,
+        "cloudUuid": "2622145b-d862-4f2a-81b3-2fa2e950607b"
+      },
+      {
+        "localId": 69,
+        "cloudUuid": "bd15e8d8-8e62-4bad-8b20-fcd2edae0af7"
+      },
+      {
+        "localId": 70,
+        "cloudUuid": "69e8514b-7075-4bac-8225-e9e3dd750c20"
+      },
+      {
+        "localId": 71,
+        "cloudUuid": "b3be85bd-a428-4cb5-b094-7916fca948d7"
+      },
+      {
+        "localId": 72,
+        "cloudUuid": "02bc2c6d-4663-46df-b973-1973ba020d62"
+      },
+      {
+        "localId": 73,
+        "cloudUuid": "2fdc887b-90a6-47fc-aa13-ad00873597b2"
+      },
+      {
+        "localId": 74,
+        "cloudUuid": "f58de715-8368-49af-8bd6-a6937ef2bf12"
+      },
+      {
+        "localId": 75,
+        "cloudUuid": "d2f0a720-875f-4592-be25-f18cd8a8581d"
+      },
+      {
+        "localId": 76,
+        "cloudUuid": "87ad6b23-d3f8-4a08-9fa0-d7678b8b607d"
+      },
+      {
+        "localId": 77,
+        "cloudUuid": "a8b4b611-9de0-4de6-9e51-ed525d3039ac"
+      },
+      {
+        "localId": 78,
+        "cloudUuid": "c8d838fb-d95f-4e32-893d-dd19be87d87c"
+      },
+      {
+        "localId": 79,
+        "cloudUuid": "b5a9537a-8a40-43e9-9283-6c9b399265ab"
+      },
+      {
+        "localId": 80,
+        "cloudUuid": "dab9cb8c-3c07-49d2-888e-af629f59e529"
+      },
+      {
+        "localId": 81,
+        "cloudUuid": "b355102b-8b5c-420e-8dd3-64b81b9e6a0e"
+      },
+      {
+        "localId": 82,
+        "cloudUuid": "a97b1fb8-8380-4280-a559-f2f267075c5f"
+      },
+      {
+        "localId": 83,
+        "cloudUuid": "744f7be4-c3cd-457e-865f-05a76548526e"
+      },
+      {
+        "localId": 84,
+        "cloudUuid": "fdf504e7-45b9-4b86-9988-9eba25af7b60"
+      },
+      {
+        "localId": 85,
+        "cloudUuid": "72a310fb-5e31-421d-ba5a-b278bf0d7469"
+      },
+      {
+        "localId": 86,
+        "cloudUuid": "a68b992f-5646-4cfd-9895-58b84b76a7d6"
+      },
+      {
+        "localId": 87,
+        "cloudUuid": "bae43e1a-5dcb-4346-8792-956a9dd66af6"
+      },
+      {
+        "localId": 88,
+        "cloudUuid": "1b9b759a-cd04-4ad6-a092-790f76bdf543"
+      },
+      {
+        "localId": 89,
+        "cloudUuid": "0a392282-5af5-4091-9ff5-58822b2ee063"
+      },
+      {
+        "localId": 90,
+        "cloudUuid": "5272bb91-45d3-4cbe-a7bf-7e7c4c560f9d"
+      },
+      {
+        "localId": 91,
+        "cloudUuid": "4854253b-cfb5-4a30-84d1-eedbf827cbeb"
+      }
+    ],
+    "Shift": [
+      {
+        "localId": 4,
+        "cloudUuid": "a115d130-4e42-4ab7-84dc-391af46a0406"
+      },
+      {
+        "localId": 5,
+        "cloudUuid": "8d744bac-76df-4bb7-b9de-8afceceadbe1"
+      },
+      {
+        "localId": 6,
+        "cloudUuid": "cee80d58-a518-4356-8435-1bb08139e20a"
+      },
+      {
+        "localId": 7,
+        "cloudUuid": "2f3e9e54-84b5-408f-8735-c231ffa0a9cf"
+      },
+      {
+        "localId": 8,
+        "cloudUuid": "326bb499-ff84-464e-947e-bc48deb048b2"
+      },
+      {
+        "localId": 9,
+        "cloudUuid": "84272fbf-45b0-480e-93c9-e1f0bf632039"
+      },
+      {
+        "localId": 10,
+        "cloudUuid": "de2071b9-8998-48a1-a61c-5a93cc6ab7a8"
+      },
+      {
+        "localId": 11,
+        "cloudUuid": "3f020ec8-dbc7-4d99-8af6-88f7f9d32fca"
+      },
+      {
+        "localId": 12,
+        "cloudUuid": "5711b2f3-7037-450a-8632-dd0789485913"
+      },
+      {
+        "localId": 13,
+        "cloudUuid": "c0fbe34e-1f26-4a69-8112-b3476e252674"
+      },
+      {
+        "localId": 14,
+        "cloudUuid": "de6e2700-c2ec-4a7b-8223-400106b668fd"
+      },
+      {
+        "localId": 15,
+        "cloudUuid": "4a5b15c0-0431-43ab-9abe-7f3e8ba8f908"
+      },
+      {
+        "localId": 16,
+        "cloudUuid": "138d4d43-6643-4988-a596-9bce2c40d2c1"
+      },
+      {
+        "localId": 17,
+        "cloudUuid": "bc5051a4-839b-48ac-8a81-d5070d5208b1"
+      }
+    ],
+    "User": [
+      {
+        "localId": 117,
+        "cloudUuid": "844084e7-0e68-4387-816c-ed72375eaa3e"
+      },
+      {
+        "localId": 128,
+        "cloudUuid": "dec687d6-1b72-4b41-909f-5d33ea3d9689"
+      },
+      {
+        "localId": 131,
+        "cloudUuid": "d9300199-f03d-4724-afc8-0949dba50a34"
+      },
+      {
+        "localId": 136,
+        "cloudUuid": "ebcba21f-8139-49df-8afa-44dbfa179ce8"
+      },
+      {
+        "localId": 139,
+        "cloudUuid": "5314ac71-cade-4a94-83c3-8215764ab68b"
+      },
+      {
+        "localId": 142,
+        "cloudUuid": "cab45d20-f119-4c43-8477-441df3b8ffd0"
+      },
+      {
+        "localId": 145,
+        "cloudUuid": "f0a425e5-a03f-4780-8858-2e79425cb458"
+      },
+      {
+        "localId": 148,
+        "cloudUuid": "5cf2003e-1052-42b8-bafc-1b333c2abc52"
+      },
+      {
+        "localId": 153,
+        "cloudUuid": "b04ac112-6b7d-457b-909c-f7cb49e25b09"
+      },
+      {
+        "localId": 157,
+        "cloudUuid": "36d61774-3288-4b43-bcbb-e04713129f99"
+      },
+      {
+        "localId": 159,
+        "cloudUuid": "fe112b75-5671-4e45-85ed-9f2c57f4d75c"
+      }
+    ],
+    "InventoryMovement": [
+      {
+        "localId": 61,
+        "cloudUuid": "0e7df24b-5774-459b-8c3c-9d3c49e4116b"
+      },
+      {
+        "localId": 62,
+        "cloudUuid": "392b987a-532b-4dfa-ab5f-6d7a42b81183"
+      },
+      {
+        "localId": 63,
+        "cloudUuid": "7290ad7b-d343-4c18-a60e-b726f7cdaf4d"
+      },
+      {
+        "localId": 64,
+        "cloudUuid": "2fc1b542-793c-4093-bf61-9f5fd3aeb525"
+      },
+      {
+        "localId": 65,
+        "cloudUuid": "0a05addb-c4c0-426b-b1ba-7026bc6171de"
+      },
+      {
+        "localId": 66,
+        "cloudUuid": "21f284d4-97cc-4e66-b8e7-b97da02e30d4"
+      },
+      {
+        "localId": 67,
+        "cloudUuid": "2d087c4a-244f-48ec-8d67-5774cc266b8b"
+      },
+      {
+        "localId": 68,
+        "cloudUuid": "5858d9f9-1b52-4191-9f94-5e52fc6ae82b"
+      },
+      {
+        "localId": 69,
+        "cloudUuid": "632fcce2-305f-44e5-b7f0-f4be17369112"
+      },
+      {
+        "localId": 70,
+        "cloudUuid": "f881a9b7-5d7a-4287-b0cd-2aae01b6ae7a"
+      },
+      {
+        "localId": 71,
+        "cloudUuid": "9586a28b-1115-437a-acf9-84e00b918bcf"
+      },
+      {
+        "localId": 72,
+        "cloudUuid": "8d26cd01-1fa9-4448-97f8-05baae8f6cd5"
+      },
+      {
+        "localId": 73,
+        "cloudUuid": "32e60ace-895f-443b-922a-cd0262276b33"
+      },
+      {
+        "localId": 74,
+        "cloudUuid": "bb73a117-775f-4dec-bf40-acec9cfc578e"
+      },
+      {
+        "localId": 75,
+        "cloudUuid": "b1d02747-a2cb-4be2-9998-6ac574ec981a"
+      },
+      {
+        "localId": 76,
+        "cloudUuid": "f98bb178-234d-48a3-b37b-cf4512683058"
+      },
+      {
+        "localId": 77,
+        "cloudUuid": "0b8f7e21-29fa-4c11-b07c-7d553134efa1"
+      },
+      {
+        "localId": 78,
+        "cloudUuid": "930a2b0e-45c2-454f-a3c9-0413e2df46fa"
+      },
+      {
+        "localId": 79,
+        "cloudUuid": "ebbe91d3-1fc5-442c-be02-bc8ad50165bf"
+      },
+      {
+        "localId": 80,
+        "cloudUuid": "ecc1400a-7da9-4869-9db0-49a90eebb540"
+      },
+      {
+        "localId": 81,
+        "cloudUuid": "5d15fdd6-5cc7-4441-bbc6-75a77aa31532"
+      },
+      {
+        "localId": 82,
+        "cloudUuid": "6103ae0f-b9e8-497f-801d-5d1a8cdcccd3"
+      },
+      {
+        "localId": 83,
+        "cloudUuid": "3efe1cea-8e8f-4d41-9dae-b3c23e25d84d"
+      },
+      {
+        "localId": 84,
+        "cloudUuid": "487a512d-e367-46ed-ba9a-17b2915f81a3"
+      },
+      {
+        "localId": 85,
+        "cloudUuid": "6927be3c-c29b-4c9a-a01a-b3accc462d59"
+      },
+      {
+        "localId": 86,
+        "cloudUuid": "ac04fafa-96a8-41db-b250-59996a6e0ea7"
+      },
+      {
+        "localId": 87,
+        "cloudUuid": "8f6c7b9a-e908-4b5c-907a-f30110e99e36"
+      },
+      {
+        "localId": 88,
+        "cloudUuid": "9e4271ad-6bd0-4bed-ac9b-588ea365e855"
+      },
+      {
+        "localId": 89,
+        "cloudUuid": "223e393c-88cc-4b82-a6f2-568351f71bf3"
+      },
+      {
+        "localId": 90,
+        "cloudUuid": "bffe2a9e-64f1-4ae7-a7fa-497e14b89790"
+      },
+      {
+        "localId": 91,
+        "cloudUuid": "afd295b3-2844-45a1-94b5-51a58f371762"
+      },
+      {
+        "localId": 92,
+        "cloudUuid": "5967d488-d46d-4ddf-b480-372748d44631"
+      },
+      {
+        "localId": 93,
+        "cloudUuid": "957933f2-2281-4eb2-b3aa-256be6d231bd"
+      }
+    ]
+  },
+  "extraInNeon": {
+    "supplier_collections": 2,
+    "supplier_payments": 2,
+    "expenses": 2,
+    "milk_product_daily_stocks": 1,
+    "returns": 1,
+    "return_items": 1
+  },
+  "tableMissingMappings": {
+    "User": {
+      "sqliteCount": 12,
+      "mappedCount": 11
+    },
+    "Supplier": {
+      "sqliteCount": 1,
+      "mappedCount": 0
+    },
+    "DailyRate": {
+      "sqliteCount": 23,
+      "mappedCount": 0
+    },
+    "SupplierCollection": {
+      "sqliteCount": 1,
+      "mappedCount": 0
+    }
+  },
+  "dependencyNotes": [],
+  "phase5Design": {}
+}

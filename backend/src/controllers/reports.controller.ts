@@ -561,7 +561,9 @@ export class ReportsController {
       });
 
       const f2Names = ['lassi', 'butter', 'ghee'];
-      const sales = allSales.filter(s => s.items.some(i => f2Names.includes(i.itemName)));
+      const isF2Item = (name: string) => f2Names.includes((name || '').trim().toLowerCase());
+
+      const sales = allSales.filter(s => s.items.some(i => isF2Item(i.itemName)));
 
       let netSales = 0, cashSales = 0, onlineSales = 0, splitSales = 0;
       const catTotals: Record<string, number> = {};
@@ -580,8 +582,9 @@ export class ReportsController {
         }
 
         for (const item of sale.items) {
-          if (f2Names.includes(item.itemName)) {
-            const label = item.itemName.charAt(0).toUpperCase() + item.itemName.slice(1);
+          if (isF2Item(item.itemName)) {
+            const raw = item.itemName.trim().toLowerCase();
+            const label = raw.charAt(0).toUpperCase() + raw.slice(1);
             catTotals[label] = money((catTotals[label] || 0) + item.totalPrice);
           }
         }

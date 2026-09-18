@@ -51,13 +51,23 @@ const targetSchemaPath = path.join(frontendBinDir, 'schema.prisma');
 fs.copyFileSync(schemaPath, targetSchemaPath);
 console.log('Copied schema.prisma');
 
+// Generate clean, fully-migrated & seeded template.db
+try {
+    console.log('Generating template.db...');
+    execSync('npx ts-node scripts/generate-template-db.ts', { cwd: rootDir, stdio: 'inherit' });
+} catch (e) {
+    console.error('Failed to generate template.db', e);
+    process.exit(1);
+}
+
 const templatePath = path.join(rootDir, 'prisma', 'template.db');
 const targetTemplatePath = path.join(frontendBinDir, 'template.db');
-if (fs.existsSync(templatePath)) {
+if (fs.existsSync(templatePath) && fs.statSync(templatePath).size > 10000) {
     fs.copyFileSync(templatePath, targetTemplatePath);
-    console.log('Copied template.db');
+    console.log(`Copied template.db (${fs.statSync(targetTemplatePath).size} bytes)`);
 } else {
-    console.warn('template.db not found at', templatePath, 'skipping');
+    console.error('template.db not found or invalid at', templatePath);
+    process.exit(1);
 }
 
 const envPath = path.join(rootDir, '.env');

@@ -22,6 +22,8 @@ const TABLE_MAP: Record<string, string> = {
   Return: 'returns',
   ReturnItem: 'return_items',
   AuditRecord: 'audit_records',
+  CashPerson: 'cash_persons',
+  CashbookTransaction: 'cashbook_transactions',
 };
 
 const ALLOWED_COLUMNS: Record<string, Set<string>> = {
@@ -55,7 +57,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
   ]),
   Sale: new Set([
     'sale_type', 'customer_uuid', 'customer_name', 'customer_phone', 'total_amount',
-    'paid_amount', 'remaining_balance', 'status', 'created_at', 'updated_at',
+    'paid_amount', 'remaining_balance', 'status', 'token_number', 'created_at', 'updated_at',
   ]),
   SaleItem: new Set([
     'sale_uuid', 'item_name', 'quantity', 'unit_price', 'total_price', 'created_at',
@@ -94,6 +96,12 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
   AuditRecord: new Set([
     'audit_date', 'executed_at', 'total_pos_bills', 'collected_receipts', 'matched',
     'missing', 'extra', 'duplicates', 'status', 'notes', 'audited_by', 'created_at',
+  ]),
+  CashPerson: new Set([
+    'name', 'phone', 'address', 'type', 'description', 'opening_balance', 'customer_type', 'status', 'created_at', 'updated_at',
+  ]),
+  CashbookTransaction: new Set([
+    'cash_person_uuid', 'cash_person_name', 'transaction_type', 'amount', 'description', 'date', 'created_by', 'created_at',
   ]),
 };
 
@@ -159,22 +167,50 @@ async function resolveEntity(client: any, entityType: string, cloudUuid: string,
   // Identity Conflict Check
   const foundIds = new Set([mappedId, incomingUuidId, bkId].filter(Boolean));
   if (foundIds.size > 1) {
-    // Strict conflict: if mappedId is present and disagrees, this is genuine corruption.
+    const hasTrueBusinessKey =
+      entityType === 'InventoryProduct' ||
+      entityType === 'Supplier' ||
+      entityType === 'User' ||
+      entityType === 'MilkProductDailyStock';
+
+    if (hasTrueBusinessKey && bkId) {
+      // If mappedId exists and is different from bkId, mappedId was a placeholder or duplicate.
+      // Re-point child foreign keys and clean up the stale row so unique constraints are never violated.
+      if (mappedId && mappedId !== bkId) {
+        console.warn(`[SyncBatch] Business key reconciliation: ${entityType} mapped ID ${mappedId} differs from unique BK record ${bkId}. Re-pointing references to ${bkId}.`);
+        try {
+          if (entityType === 'User') {
+            await client.query(`UPDATE shifts SET opened_by_uuid=$1 WHERE opened_by_uuid=$2`, [bkId, mappedId]);
+            await client.query(`UPDATE shifts SET closed_by_uuid=$1 WHERE closed_by_uuid=$2`, [bkId, mappedId]);
+            await client.query(`UPDATE inventory_movements SET user_uuid=$1 WHERE user_uuid=$2`, [bkId, mappedId]);
+            await client.query(`UPDATE supplier_collections SET created_by_uuid=$1 WHERE created_by_uuid=$2`, [bkId, mappedId]);
+            await client.query(`UPDATE supplier_payments SET created_by_uuid=$1 WHERE created_by_uuid=$2`, [bkId, mappedId]);
+            await client.query(`DELETE FROM users WHERE id=$1`, [mappedId]);
+          } else if (entityType === 'InventoryProduct') {
+            await client.query(`UPDATE inventory_movements SET product_uuid=$1 WHERE product_uuid=$2`, [bkId, mappedId]);
+            await client.query(`DELETE FROM inventory_products WHERE id=$1`, [mappedId]);
+          } else if (entityType === 'Supplier') {
+            await client.query(`UPDATE supplier_collections SET supplier_uuid=$1 WHERE supplier_uuid=$2`, [bkId, mappedId]);
+            await client.query(`UPDATE supplier_payments SET supplier_uuid=$1 WHERE supplier_uuid=$2`, [bkId, mappedId]);
+            await client.query(`UPDATE inventory_movements SET supplier_uuid=$1 WHERE supplier_uuid=$2`, [bkId, mappedId]);
+            await client.query(`DELETE FROM suppliers WHERE id=$1`, [mappedId]);
+          }
+        } catch (mergeErr: any) {
+          console.warn(`[SyncBatch] Notice during ${entityType} merge:`, mergeErr.message);
+        }
+      }
+      return bkId;
+    }
+
+    // Strict conflict: if mappedId is present and disagrees on non-BK entities, throw guard
     if (mappedId && (incomingUuidId || bkId) && mappedId !== incomingUuidId && mappedId !== bkId) {
       throw new Error(`IDENTITY CONFLICT: Mapped ID ${mappedId}, Incoming UUID ${incomingUuidId}, Business Key ID ${bkId} resolve to different records. Manual intervention required.`);
     }
 
-    // Soft conflict: mappedId is null but incomingUuidId and bkId disagree.
-    // For entities with true unique business keys, trust the BK record as authoritative.
-    // This handles the case where two cloud records drifted under different UUIDs for the
-    // same real-world entity (e.g. MILK product duplicated in Neon under two UUIDs).
     if (!mappedId && bkId && incomingUuidId && bkId !== incomingUuidId) {
-      const hasTrueBusinessKey = entityType === 'InventoryProduct' || entityType === 'Supplier' || entityType === 'User';
       if (hasTrueBusinessKey) {
-        console.warn(`[SyncBatch] Business key reconciliation: ${entityType} incoming UUID ${incomingUuidId} conflicts with BK record ${bkId}. Applying to BK record (authoritative).`);
         return bkId;
       }
-      // For entities without a reliable business key, keep the strict guard
       throw new Error(`IDENTITY CONFLICT: Mapped ID ${mappedId}, Incoming UUID ${incomingUuidId}, Business Key ID ${bkId} resolve to different records. Manual intervention required.`);
     }
   }
@@ -274,84 +310,206 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                 }
               }
             }
+          }
 
-            // Auto-provision user
-            if (payloadObj.user_uuid) {
-              let uCheck = await client.query('SELECT id FROM users WHERE id=$1', [payloadObj.user_uuid]);
-              if (uCheck.rowCount === 0) {
-                const uFallback = await client.query('SELECT id FROM users WHERE (device_id=$1 AND local_id=$2) OR local_id=$2 LIMIT 1', [deviceId, rawPayload.userId || rawPayload.createdById || 1]);
-                if (uFallback.rowCount && uFallback.rowCount > 0) {
-                  payloadObj.user_uuid = uFallback.rows[0].id;
-                } else {
-                   let uSuccess = false;
-                   for(let uTry = 0; uTry < 3 && !uSuccess; uTry++) {
-                     try {
-                       await client.query('SAVEPOINT prov_u');
-                       const uInsertRes = await client.query(
-                         `INSERT INTO users (id, device_id, local_id, name, email, password, role, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-                         [
-                           payloadObj.user_uuid, deviceId, rawPayload.userId || rawPayload.createdById || 1,
-                           rawPayload.userName || rawPayload.createdByName || 'Unknown User',
-                           `placeholder_${payloadObj.user_uuid}@local.invalid`, 'placeholder', rawPayload.userRole || 'cashier', 'active'
-                         ]
-                       );
-                       if (uInsertRes.rowCount && uInsertRes.rowCount > 0) payloadObj.user_uuid = uInsertRes.rows[0].id;
-                       await client.query('RELEASE SAVEPOINT prov_u');
-                       uSuccess = true;
-                     } catch(e: any) {
-                       await client.query('ROLLBACK TO SAVEPOINT prov_u');
-                       if (e.code === '23505') {
-                         const fb2 = await client.query('SELECT id FROM users WHERE (device_id=$1 AND local_id=$2) LIMIT 1', [deviceId, rawPayload.userId || rawPayload.createdById || 1]);
-                         if (fb2.rowCount && fb2.rowCount > 0) {
-                           payloadObj.user_uuid = fb2.rows[0].id;
-                           uSuccess = true;
-                         }
-                       } else throw e;
-                     }
-                   }
+          // Auto-provision & resolve user FKs (user_uuid, opened_by_uuid, closed_by_uuid, created_by_uuid)
+          const userFields = ['user_uuid', 'opened_by_uuid', 'closed_by_uuid', 'created_by_uuid'];
+          for (const uField of userFields) {
+            if (payloadObj[uField]) {
+              try {
+                let uCheck = await client.query('SELECT id FROM users WHERE id=$1', [payloadObj[uField]]);
+                if (uCheck.rowCount && uCheck.rowCount > 0) {
+                  payloadObj[uField] = uCheck.rows[0].id;
+                  continue;
                 }
-              }
-            }
 
-            // Auto-resolve shift_uuid — the shift may have been reconciled to a different UUID in Neon
-            if (payloadObj.shift_uuid) {
-              const sCheck = await client.query('SELECT id FROM shifts WHERE id=$1', [payloadObj.shift_uuid]);
-              if (sCheck.rowCount === 0) {
-                // Shift doesn't exist at that UUID — find it by device_id+local_id (the shift's local integer id)
-                const sLocalId = rawPayload.shiftId || rawPayload.shiftLocalId || null;
-                let sResolved = false;
-                if (sLocalId) {
-                  const sFallback = await client.query(
-                    'SELECT id FROM shifts WHERE device_id=$1 AND local_id=$2 LIMIT 1',
-                    [deviceId, sLocalId]
+                // Determine target local ID from rawPayload
+                let targetLocalId: number | null = null;
+                if (uField === 'opened_by_uuid') {
+                  targetLocalId = Number(rawPayload.openedById ?? (typeof rawPayload.openedBy === 'number' ? rawPayload.openedBy : rawPayload.openedBy?.id) ?? rawPayload.userId) || null;
+                } else if (uField === 'closed_by_uuid') {
+                  targetLocalId = Number(rawPayload.closedById ?? (typeof rawPayload.closedBy === 'number' ? rawPayload.closedBy : rawPayload.closedBy?.id)) || null;
+                } else if (uField === 'created_by_uuid') {
+                  targetLocalId = Number(rawPayload.createdById ?? (typeof rawPayload.createdBy === 'number' ? rawPayload.createdBy : rawPayload.createdBy?.id) ?? rawPayload.userId) || null;
+                } else {
+                  targetLocalId = Number(rawPayload.userId ?? (typeof rawPayload.user === 'number' ? rawPayload.user : rawPayload.user?.id)) || null;
+                }
+
+                // Try finding by device_id + local_id or local_id
+                if (targetLocalId) {
+                  const uFallback = await client.query(
+                    'SELECT id FROM users WHERE (device_id=$1 AND local_id=$2) OR local_id=$2 LIMIT 1',
+                    [deviceId, targetLocalId]
                   );
-                  if (sFallback.rowCount && sFallback.rowCount > 0) {
-                    payloadObj.shift_uuid = sFallback.rows[0].id;
-                    sResolved = true;
+                  if (uFallback.rowCount && uFallback.rowCount > 0) {
+                    payloadObj[uField] = uFallback.rows[0].id;
+                    continue;
                   }
                 }
-                if (!sResolved) {
-                  // Last resort: find any open shift on the same date for this device
-                  const shiftDate = rawPayload.date ? rawPayload.date.slice(0, 10) : null;
-                  if (shiftDate) {
-                    const sDateFallback = await client.query(
-                      `SELECT id FROM shifts WHERE shift_date=$1 ORDER BY created_at DESC LIMIT 1`,
-                      [shiftDate]
+
+                // Try provisioning the user in Neon
+                let uSuccess = false;
+                for (let uTry = 0; uTry < 3 && !uSuccess; uTry++) {
+                  try {
+                    await client.query('SAVEPOINT prov_u');
+                    const maxLocalRes = await client.query(
+                      'SELECT COALESCE(MAX(local_id), 0) + 1 AS next_id FROM users WHERE device_id=$1',
+                      [deviceId]
                     );
-                    if (sDateFallback.rowCount && sDateFallback.rowCount > 0) {
-                      payloadObj.shift_uuid = sDateFallback.rows[0].id;
-                      sResolved = true;
+                    const safeLocalId = targetLocalId || Number(maxLocalRes.rows[0]?.next_id) || 1;
+                    const safeEmail = `placeholder_${String(payloadObj[uField]).replace(/-/g, '').slice(0, 12)}_${safeLocalId}@local.invalid`;
+                    const safeName = rawPayload.userName || rawPayload.createdByName || rawPayload.openedByName || (typeof rawPayload.openedBy === 'string' ? rawPayload.openedBy : null) || `User ${safeLocalId}`;
+
+                    const uInsertRes = await client.query(
+                      `INSERT INTO users (id, device_id, local_id, name, email, password, role, status)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                       ON CONFLICT (id) DO UPDATE SET updated_at = NOW()
+                       RETURNING id`,
+                      [
+                        payloadObj[uField], deviceId, safeLocalId,
+                        safeName, safeEmail, 'placeholder', rawPayload.userRole || 'cashier', 'active'
+                      ]
+                    );
+                    if (uInsertRes.rowCount && uInsertRes.rowCount > 0) {
+                      payloadObj[uField] = uInsertRes.rows[0].id;
+                      uSuccess = true;
+                    }
+                    await client.query('RELEASE SAVEPOINT prov_u');
+                  } catch (e: any) {
+                    await client.query('ROLLBACK TO SAVEPOINT prov_u');
+                    if (e.code === '23505') {
+                      const fb2 = await client.query(
+                        'SELECT id FROM users WHERE (device_id=$1 AND local_id=$2) OR id=$3 LIMIT 1',
+                        [deviceId, targetLocalId || 1, payloadObj[uField]]
+                      );
+                      if (fb2.rowCount && fb2.rowCount > 0) {
+                        payloadObj[uField] = fb2.rows[0].id;
+                        uSuccess = true;
+                      }
                     }
                   }
                 }
-                if (!sResolved) {
-                  // Cannot resolve — clear it to avoid FK violation (movement still records product/quantity correctly)
-                  console.warn(`[Sync] InventoryMovement ${cloudUuid}: could not resolve shift_uuid ${rawPayload.shiftUuid}, clearing it.`);
-                  delete payloadObj.shift_uuid;
+
+                // Safety net: verify resolved user exists, or map to first active user in Neon
+                if (!uSuccess) {
+                  const checkAgain = await client.query('SELECT id FROM users WHERE id=$1', [payloadObj[uField]]);
+                  if (checkAgain.rowCount === 0) {
+                    const fallbackUser = await client.query("SELECT id FROM users WHERE status='active' ORDER BY created_at ASC LIMIT 1");
+                    if (fallbackUser.rowCount && fallbackUser.rowCount > 0) {
+                      payloadObj[uField] = fallbackUser.rows[0].id;
+                    } else if (uField === 'closed_by_uuid') {
+                      delete payloadObj[uField];
+                    }
+                  }
+                }
+              } catch (uErr) {
+                console.warn(`[Sync] Warning resolving ${uField} for ${entityType} ${cloudUuid}:`, uErr);
+                try {
+                  const fallbackUser = await client.query("SELECT id FROM users ORDER BY created_at ASC LIMIT 1");
+                  if (fallbackUser.rowCount && fallbackUser.rowCount > 0) {
+                    payloadObj[uField] = fallbackUser.rows[0].id;
+                  } else {
+                    delete payloadObj[uField];
+                  }
+                } catch {}
+              }
+            }
+          }
+
+          // Auto-resolve shift_uuid — the shift may have been reconciled to a different UUID in Neon
+          if (payloadObj.shift_uuid) {
+            const sCheck = await client.query('SELECT id FROM shifts WHERE id=$1', [payloadObj.shift_uuid]);
+            if (sCheck.rowCount === 0) {
+              // Shift doesn't exist at that UUID — find it by device_id+local_id (the shift's local integer id)
+              const sLocalId = rawPayload.shiftId || rawPayload.shiftLocalId || null;
+              let sResolved = false;
+              if (sLocalId) {
+                const sFallback = await client.query(
+                  'SELECT id FROM shifts WHERE device_id=$1 AND local_id=$2 LIMIT 1',
+                  [deviceId, sLocalId]
+                );
+                if (sFallback.rowCount && sFallback.rowCount > 0) {
+                  payloadObj.shift_uuid = sFallback.rows[0].id;
+                  sResolved = true;
+                }
+              }
+              if (!sResolved) {
+                // Last resort: find any open shift on the same date for this device
+                const shiftDate = rawPayload.date ? rawPayload.date.slice(0, 10) : null;
+                if (shiftDate) {
+                  const sDateFallback = await client.query(
+                    `SELECT id FROM shifts WHERE shift_date=$1 ORDER BY created_at DESC LIMIT 1`,
+                    [shiftDate]
+                  );
+                  if (sDateFallback.rowCount && sDateFallback.rowCount > 0) {
+                    payloadObj.shift_uuid = sDateFallback.rows[0].id;
+                    sResolved = true;
+                  }
+                }
+              }
+              if (!sResolved) {
+                // Cannot resolve — clear it to avoid FK violation (movement still records product/quantity correctly)
+                console.warn(`[Sync] ${entityType} ${cloudUuid}: could not resolve shift_uuid ${rawPayload.shiftUuid}, clearing it.`);
+                delete payloadObj.shift_uuid;
+              }
+            }
+          }
+
+          // Resolve supplier_uuid FK if needed
+          if (payloadObj.supplier_uuid) {
+            const supCheck = await client.query('SELECT id FROM suppliers WHERE id=$1', [payloadObj.supplier_uuid]);
+            if (supCheck.rowCount === 0) {
+              const supLocalId = rawPayload.supplierId || rawPayload.supplierLocalId;
+              if (supLocalId) {
+                const supFallback = await client.query('SELECT id FROM suppliers WHERE (device_id=$1 AND local_id=$2) OR local_id=$2 LIMIT 1', [deviceId, supLocalId]);
+                if (supFallback.rowCount && supFallback.rowCount > 0) {
+                  payloadObj.supplier_uuid = supFallback.rows[0].id;
                 }
               }
             }
           }
+
+          // Resolve customer_uuid FK if needed
+          if (payloadObj.customer_uuid) {
+            const custCheck = await client.query('SELECT id FROM customers WHERE id=$1', [payloadObj.customer_uuid]);
+            if (custCheck.rowCount === 0) {
+              const custLocalId = rawPayload.customerId || rawPayload.customerLocalId;
+              if (custLocalId) {
+                const custFallback = await client.query('SELECT id FROM customers WHERE (device_id=$1 AND local_id=$2) OR local_id=$2 LIMIT 1', [deviceId, custLocalId]);
+                if (custFallback.rowCount && custFallback.rowCount > 0) {
+                  payloadObj.customer_uuid = custFallback.rows[0].id;
+                }
+              }
+              // If still not resolved in Neon and this is a Sale, delete nullable customer_uuid to avoid FK violation
+              if (entityType === 'Sale') {
+                const custFinal = await client.query('SELECT id FROM customers WHERE id=$1', [payloadObj.customer_uuid]);
+                if (custFinal.rowCount === 0) {
+                  delete payloadObj.customer_uuid;
+                }
+              }
+            }
+          }
+
+          // Resolve cash_person_uuid FK if needed
+          if (payloadObj.cash_person_uuid) {
+            const cpCheck = await client.query('SELECT id FROM cash_persons WHERE id=$1', [payloadObj.cash_person_uuid]);
+            if (cpCheck.rowCount === 0) {
+              const cpLocalId = rawPayload.cashPersonId || rawPayload.cashPersonLocalId;
+              if (cpLocalId) {
+                const cpFallback = await client.query('SELECT id FROM cash_persons WHERE (device_id=$1 AND local_id=$2) OR local_id=$2 LIMIT 1', [deviceId, cpLocalId]);
+                if (cpFallback.rowCount && cpFallback.rowCount > 0) {
+                  payloadObj.cash_person_uuid = cpFallback.rows[0].id;
+                } else {
+                  throw new Error(`CashbookTransaction missing valid cash_person_uuid resolution for local ID ${cpLocalId}`);
+                }
+              } else {
+                throw new Error(`CashbookTransaction missing cash_person_uuid`);
+              }
+            }
+          }
+
+
+
           if (entityType === 'SupplierCollection' && (!payloadObj.shift || !payloadObj.shift.trim())) {
             payloadObj.shift = rawPayload.shift || 'Morning';
           }
@@ -386,6 +544,9 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
           } else if (entityType === 'User') {
             if (!payloadObj.role) payloadObj.role = 'user';
             if (!payloadObj.status) payloadObj.status = 'active';
+          } else if (entityType === 'CashPerson') {
+            if (payloadObj.opening_balance == null) payloadObj.opening_balance = 0;
+            if (!payloadObj.status) payloadObj.status = 'Active';
           }
         }
 

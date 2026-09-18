@@ -284,7 +284,7 @@ export const F2SalesReport: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {sales.map((sale) => {
                     const f2Items = sale.items?.filter(item =>
-                      ['Lassi', 'Butter', 'Ghee'].includes(item.itemName)
+                      ['lassi', 'butter', 'ghee'].includes((item.itemName || '').trim().toLowerCase())
                     ) || [];
                     return (
                       <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors">

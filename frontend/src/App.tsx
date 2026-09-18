@@ -74,23 +74,85 @@ function App() {
   const [backendReady, setBackendReady] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
 
-  // Poll for backend health on mount or refresh
+  // Helper to update the HTML splash screen text + progress bar
+  const setSplashStatus = (text: string, pct: number) => {
+    const splashEl = document.getElementById('splash-screen');
+    if (!splashEl) return;
+    const fillEl = splashEl.querySelector('.progress-fill') as HTMLElement | null;
+    const textEl = splashEl.querySelector('.progress-text') as HTMLElement | null;
+    if (fillEl) {
+      fillEl.style.animation = 'none';
+      fillEl.style.transition = 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+      fillEl.style.width = `${pct}%`;
+    }
+    if (textEl) textEl.textContent = text;
+  };
+
+  // Dismiss splash with a smooth fade-out
+  const dismissSplash = () => {
+    const splashEl = document.getElementById('splash-screen');
+    if (!splashEl) return;
+    setSplashStatus('Ready!', 100);
+    setTimeout(() => {
+      splashEl.style.transition = 'opacity 0.3s ease-out';
+      splashEl.style.opacity = '0';
+      splashEl.style.pointerEvents = 'none';
+      setTimeout(() => splashEl.remove(), 320);
+    }, 350);
+  };
+
+  // Poll backend health and drive loading screen progress
   useEffect(() => {
     if (backendReady) return;
 
     let isMounted = true;
+    let attempt = 0;
     let timeoutId: any;
 
+    // Status messages shown progressively while waiting for the backend
+    const statusStages = [
+      { after: 0,    text: 'Starting backend server…',   pct: 10 },
+      { after: 2000, text: 'Connecting to database…',    pct: 35 },
+      { after: 5000, text: 'Loading system data…',       pct: 55 },
+      { after: 9000, text: 'Almost ready…',              pct: 75 },
+      { after: 15000, text: 'Finalising startup…',       pct: 85 },
+    ];
+
+    const startTime = Date.now();
+
+    // Advance splash text based on elapsed time (independent of health polls)
+    const advanceSplash = () => {
+      const elapsed = Date.now() - startTime;
+      const stage = [...statusStages].reverse().find(s => elapsed >= s.after);
+      if (stage) setSplashStatus(stage.text, stage.pct);
+    };
+
+    // Initial splash state
+    setSplashStatus('Starting backend server…', 10);
+
+    const splashInterval = setInterval(() => {
+      if (isMounted) advanceSplash();
+    }, 500);
+
     const checkHealth = async () => {
+      attempt++;
       try {
         const res = await fetch('http://localhost:5000/api/health', { cache: 'no-store' });
         if (res.ok && isMounted) {
-          setBackendReady(true);
-          setBackendError(null);
+          clearInterval(splashInterval);
+          setSplashStatus('Backend ready!', 95);
+          // Brief pause so user sees "Backend ready!" before the login page appears
+          setTimeout(() => {
+            if (isMounted) {
+              setBackendReady(true);
+              setBackendError(null);
+              dismissSplash();
+            }
+          }, 400);
           return;
         }
-      } catch (e) {
-        // Backend not ready yet
+      } catch (_) {
+        // Backend not up yet — keep polling silently
       }
 
       if (isMounted) {
@@ -100,15 +162,17 @@ function App() {
 
     checkHealth();
 
-    // Fallback timeout warning after 45 seconds if backend still hasn't answered
+    // Timeout after 60 seconds
     const warningTimeout = setTimeout(() => {
       if (isMounted && !backendReady) {
-        setBackendError("POS backend is taking longer than usual to respond. Please ensure port 5000 is open.");
+        clearInterval(splashInterval);
+        setBackendError('POS backend did not start within 60 seconds. Please restart the application.');
       }
-    }, 45000);
+    }, 60000);
 
     return () => {
       isMounted = false;
+      clearInterval(splashInterval);
       clearTimeout(timeoutId);
       clearTimeout(warningTimeout);
     };
@@ -119,7 +183,7 @@ function App() {
   const { data } = useQuery({
     queryKey: ['connectionTest'],
     queryFn: () => apiClient.get('/connection-test'),
-    enabled: !!token && backendReady, // Only fetch connection test if user is logged in AND backend is ready
+    enabled: !!token && backendReady,
   });
 
   const handleRetry = () => {
@@ -134,7 +198,7 @@ function App() {
         <pre style={{ background: '#ffeeee', padding: '10px', borderRadius: '4px', maxWidth: '80%', whiteSpace: 'pre-wrap', color: '#333' }}>
           {backendError}
         </pre>
-        <button 
+        <button
           onClick={handleRetry}
           style={{ marginTop: '20px', padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
         >
@@ -144,13 +208,10 @@ function App() {
     );
   }
 
+  // Don't mount any routes until the backend is confirmed alive.
+  // The HTML splash screen covers the viewport while we wait.
   if (!backendReady) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
-        <h2>Starting Services...</h2>
-        <p>Please wait while the POS backend starts.</p>
-      </div>
-    );
+    return null;
   }
 
   return (

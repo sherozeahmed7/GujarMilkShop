@@ -148,7 +148,7 @@ export async function processSyncQueue() {
         payloads
       }, {
         headers: { 'x-sync-secret': SYNC_INTERNAL_SECRET },
-        timeout: 30000 // 30 seconds timeout (Neon can take 10s+ on cold start)
+        timeout: 90000 // 90 seconds timeout for Neon
       });
     } catch (err: any) {
       apiError = err;

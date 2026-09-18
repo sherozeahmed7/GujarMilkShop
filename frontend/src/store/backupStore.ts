@@ -5,6 +5,7 @@ import {
   deleteBackup as svcDeleteBackup,
   listBackups as svcListBackups,
   getBackupSettings,
+  getBackupFolderConfig,
 } from '../services/backupService';
 
 interface BackupSummary {
@@ -77,13 +78,14 @@ export const useBackupStore = create<BackupStore>((set, get) => ({
   loadInitialData: async () => {
     set({ isLoading: true });
     try {
-      const [{ backups, summary }, settings] = await Promise.all([
+      const [{ backups, summary }, settings, folderConfig] = await Promise.all([
         svcListBackups(),
         getBackupSettings(),
+        getBackupFolderConfig(),
       ]);
 
-      let folderPath = '';
-      if (backups.length > 0) {
+      let folderPath = folderConfig.backupFolder;
+      if (!folderPath && backups.length > 0) {
         const lastSlash = Math.max(
           backups[0].path.lastIndexOf('\\'),
           backups[0].path.lastIndexOf('/')

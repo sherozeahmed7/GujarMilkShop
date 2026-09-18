@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../config/database';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { SyncQueueService } from '../services/syncQueue.service';
 
 function toNum(val: any, defaultVal = 0): number {
   const n = Number(val);
@@ -119,7 +120,7 @@ export class CashbookController {
         });
 
         // Create opening transaction
-        await tx.cashbookTransaction.create({
+        const openingTxn = await tx.cashbookTransaction.create({
           data: {
             cashPersonId: person.id,
             cashPersonName: person.name,
@@ -130,6 +131,9 @@ export class CashbookController {
             createdBy: creatorName,
           },
         });
+
+        await SyncQueueService.enqueueCreate(tx, 'CashPerson', person.id, person, 0);
+        await SyncQueueService.enqueueCreate(tx, 'CashbookTransaction', openingTxn.id, openingTxn, 1);
 
         return person;
       });
@@ -159,9 +163,13 @@ export class CashbookController {
       if (description !== undefined) data.description = description ? description.trim() : null;
       if (status !== undefined) data.status = status;
 
-      const updated = await prisma.cashPerson.update({
-        where: { id },
-        data,
+      const updated = await prisma.$transaction(async (tx) => {
+        const u = await tx.cashPerson.update({
+          where: { id },
+          data,
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'CashPerson', u.id, u, 0, 'UPDATE');
+        return u;
       });
 
       return ApiResponse.success(res, 'Cash person updated.', {
@@ -185,9 +193,13 @@ export class CashbookController {
       if (!person) return ApiResponse.error(res, 'Cash person not found.', 404);
 
       const newStatus = person.status === 'Active' ? 'Disabled' : 'Active';
-      const updated = await prisma.cashPerson.update({
-        where: { id },
-        data: { status: newStatus },
+      const updated = await prisma.$transaction(async (tx) => {
+        const u = await tx.cashPerson.update({
+          where: { id },
+          data: { status: newStatus },
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'CashPerson', u.id, u, 0, 'UPDATE');
+        return u;
       });
 
       return ApiResponse.success(
@@ -277,22 +289,29 @@ export class CashbookController {
       const creatorName = req.user?.email ? req.user.email.split('@')[0] : 'Admin';
       const txnDate = date || new Date().toISOString().slice(0, 10);
 
-      const txn = await prisma.cashbookTransaction.create({
-        data: {
-          cashPersonId: personId,
-          cashPersonName: person.name,
-          transactionType,
-          amount: numAmount,
-          description: description ? description.trim() : null,
-          date: txnDate,
-          createdBy: creatorName,
-        },
-      });
+      const txn = await prisma.$transaction(async (tx) => {
+        const newTxn = await tx.cashbookTransaction.create({
+          data: {
+            cashPersonId: personId,
+            cashPersonName: person.name,
+            transactionType,
+            amount: numAmount,
+            description: description ? description.trim() : null,
+            date: txnDate,
+            createdBy: creatorName,
+          },
+        });
 
-      // Touch person updatedAt
-      await prisma.cashPerson.update({
-        where: { id: personId },
-        data: { updatedAt: new Date() },
+        // Touch person updatedAt
+        const updatedPerson = await tx.cashPerson.update({
+          where: { id: personId },
+          data: { updatedAt: new Date() },
+        });
+
+        await SyncQueueService.enqueueUpdate(tx, 'CashPerson', updatedPerson.id, updatedPerson, 0, 'UPDATE');
+        await SyncQueueService.enqueueCreate(tx, 'CashbookTransaction', newTxn.id, newTxn, 1);
+
+        return newTxn;
       });
 
       return ApiResponse.success(res, 'Transaction recorded successfully.', {
