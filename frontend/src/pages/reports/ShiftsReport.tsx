@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Cell, Legend
 } from 'recharts';
+import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
 
@@ -24,6 +25,12 @@ export const ShiftsReport: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter.label, filter.startDate?.toISOString(), searchTerm]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -141,7 +148,9 @@ export const ShiftsReport: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.length === 0 && <tr><td colSpan={12} className="py-10 text-center text-slate-400 text-sm">No shifts found for the selected period.</td></tr>}
-                  {filtered.map((s: any) => (
+                  {filtered
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((s: any) => (
                     <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-3 text-sm font-medium text-blue-600">{s.id}</td>
                       <td className="px-3 py-3 text-sm text-slate-600">{s.date}</td>
@@ -160,6 +169,17 @@ export const ShiftsReport: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="shifts"
+              />
+            )}
           </div>
         </>
       )}

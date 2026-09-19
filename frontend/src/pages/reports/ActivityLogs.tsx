@@ -4,7 +4,8 @@ import { ReportLayout } from '../../components/reports/ReportLayout';
 import { ReportHeader } from '../../components/reports/ReportHeader';
 import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, ErrorState } from '../../components/reports/ReportStates';
-import { Activity, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, Trash2 , ChevronLeft, ChevronRight} from 'lucide-react';
+import { Pagination } from '../../components/common/Pagination';
 
 const STATUS_STYLES: Record<string, string> = {
   'Success': 'bg-emerald-100 text-emerald-700',
@@ -13,7 +14,6 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const MODULES = ['All', 'Sales', 'Inventory', 'Customers', 'Suppliers', 'Shifts', 'Expenses', 'Returns', 'Backup'];
-const ITEMS_PER_PAGE = 15;
 
 export const ActivityLogs: React.FC = () => {
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
@@ -24,6 +24,7 @@ export const ActivityLogs: React.FC = () => {
   const [moduleFilter, setModuleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const loadLogs = async () => {
     setIsLoading(true); setError(null);
@@ -59,13 +60,12 @@ export const ActivityLogs: React.FC = () => {
     });
   }, [logs, searchTerm, moduleFilter, statusFilter]);
 
-  // Pagination logic
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [totalPages, currentPage]);
+    setCurrentPage(1);
+  }, [searchTerm, moduleFilter, statusFilter]);
 
-  const paginatedLogs = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const paginatedLogs = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
 
   const successCount = logs.filter(l => l.status === 'Success').length;
   const warningCount = logs.filter(l => l.status === 'Warning').length;
@@ -129,7 +129,7 @@ export const ActivityLogs: React.FC = () => {
       {error && <ErrorState message={error} onRetry={loadLogs} />}
 
       {!isLoading && !error && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[600px]">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
           <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h3 className="font-bold text-slate-800">Activity Log</h3>
@@ -146,7 +146,7 @@ export const ActivityLogs: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="w-full overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[850px]">
               <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                 <tr>
@@ -187,6 +187,17 @@ export const ActivityLogs: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {filtered.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              itemLabel="logs"
+            />
+          )}
         </div>
       )}
     </ReportLayout>

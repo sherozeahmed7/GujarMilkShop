@@ -88,8 +88,18 @@ export function startAutoBackupWorker() {
           // Handle retention
           handleRetention(backupDir, config.autoBackupSettings.retention);
 
-        } catch (error) {
+        } catch (error: any) {
           console.error('[AutoBackup] Error creating scheduled backup:', error);
+          const { NotificationService } = require('../services/notification.service');
+          NotificationService.create({
+            category: 'backup',
+            title: 'Backup Failed',
+            message: `Scheduled local database backup failed: ${error?.message || 'Unknown error'}.`,
+            actionUrl: '/settings/local-backup',
+            actionLabel: 'Backup Now',
+            metadata: { error: error?.message },
+            dedupeHours: 6,
+          }).catch(() => {});
         }
       }
     }

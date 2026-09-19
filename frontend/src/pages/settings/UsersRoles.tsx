@@ -64,7 +64,7 @@ export const UsersRoles: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
@@ -89,7 +89,7 @@ export const UsersRoles: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
 
         {/* Toolbar */}
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50/50 flex-shrink-0">
@@ -132,7 +132,7 @@ export const UsersRoles: React.FC = () => {
         </div>
 
         {/* Table Area */}
-        <div className="flex-1 overflow-auto custom-scrollbar relative">
+        <div className="w-full overflow-x-auto relative">
           {isLoading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
               <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>

@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
@@ -21,6 +22,12 @@ export const InventoryReport: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [supplierFilter, setSupplierFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter, supplierFilter, statusFilter]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -155,7 +162,9 @@ export const InventoryReport: React.FC = () => {
                   {filtered.length === 0 && (
                     <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">No products found matching your filters.</td></tr>
                   )}
-                  {filtered.map((p: any) => (
+                  {filtered
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((p: any) => (
                     <tr key={p.sku} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-slate-800">{p.name}</td>
                       <td className="px-4 py-3 text-sm text-slate-500">{p.sku}</td>
@@ -181,6 +190,17 @@ export const InventoryReport: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="products"
+              />
+            )}
           </div>
         </>
       )}

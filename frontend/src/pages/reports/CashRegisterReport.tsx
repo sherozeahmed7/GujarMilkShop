@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, LineChart, Line, Legend
 } from 'recharts';
+import { Pagination } from '../../components/common/Pagination';
 
 export const CashRegisterReport: React.FC = () => {
   const [filter, setFilter] = useState<DateFilterType>({
@@ -22,6 +23,12 @@ export const CashRegisterReport: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter.label, filter.startDate?.toISOString(), searchTerm]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -140,7 +147,9 @@ export const CashRegisterReport: React.FC = () => {
                   {filtered.length === 0 && (
                     <tr><td colSpan={12} className="px-4 py-10 text-center text-slate-400 text-sm">No records for the selected period.</td></tr>
                   )}
-                  {filtered.map((r: any) => (
+                  {filtered
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((r: any) => (
                     <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-3 text-sm text-slate-700">{r.date}</td>
                       <td className="px-3 py-3 text-sm text-slate-600">{r.cashier}</td>
@@ -163,6 +172,17 @@ export const CashRegisterReport: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="records"
+              />
+            )}
           </div>
         </>
       )}

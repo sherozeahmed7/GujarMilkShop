@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
+import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
@@ -24,6 +25,12 @@ export const SupplierReport: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter.label, filter.startDate?.toISOString(), searchTerm]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -128,7 +135,9 @@ export const SupplierReport: React.FC = () => {
                   {filtered.length === 0 && (
                     <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">No suppliers found.</td></tr>
                   )}
-                  {filtered.map((s: any) => (
+                  {filtered
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((s: any) => (
                     <tr key={s.id} className="hover:bg-slate-50 transition-colors cursor-pointer">
                       <td className="px-4 py-3 text-sm font-medium text-slate-800">{s.name}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{s.phone}</td>
@@ -152,6 +161,17 @@ export const SupplierReport: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="suppliers"
+              />
+            )}
           </div>
         </>
       )}

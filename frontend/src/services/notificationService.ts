@@ -1,12 +1,24 @@
 import { apiClient } from './apiClient';
 
+export interface AppNotificationMetadata {
+  actionUrl?: string;
+  actionLabel?: string;
+  productId?: number;
+  customerId?: number;
+  supplierId?: number;
+  shiftId?: number;
+  saleId?: number;
+  returnId?: number;
+  [key: string]: any;
+}
+
 export interface AppNotification {
   id: number;
-  category: 'inventory' | 'customer' | 'sale' | 'return' | 'khata' | 'shift' | 'system' | string;
+  category: 'inventory' | 'customer' | 'sale' | 'return' | 'khata' | 'shift' | 'supplier' | 'sync' | 'backup' | 'system' | string;
   title: string;
   message: string;
   isRead: boolean;
-  metadata?: any;
+  metadata?: AppNotificationMetadata | null;
   createdAt: string;
   updatedAt: string;
 }

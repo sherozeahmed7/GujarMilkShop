@@ -287,6 +287,8 @@ export class ReturnService {
       category: 'return',
       title: 'Sale Return Processed',
       message: `Return of Rs. ${refundAmount.toLocaleString()} processed for Bill #${billNumber}${customer ? ` (${customer})` : ''}.`,
+      actionUrl: '/returns',
+      actionLabel: 'Review Return',
       metadata: { returnId: result.id, billNumber, refundAmount, customer },
     }).catch(() => {});
 

@@ -7,6 +7,7 @@ import {
 import { CashPerson, CashPersonLedgerEntry } from '../../types/cashbook';
 import { getCashPersonById, getCashPersonLedger, getCashbookTransactions } from '../../services/cashbook.service';
 import { CashbookTransaction } from '../../types/cashbook';
+import { Pagination } from '../../components/common/Pagination';
 
 const fmt = (n: number) => `Rs. ${(isNaN(n) || !isFinite(n) ? 0 : Math.round(n)).toLocaleString()}`;
 
@@ -25,6 +26,8 @@ export const CashPersonLedger: React.FC = () => {
   const [person, setPerson] = useState<CashPerson | null>(null);
   const [entries, setEntries] = useState<CashPersonLedgerEntry[]>([]);
   const [allTxns, setAllTxns] = useState<CashbookTransaction[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -170,7 +173,9 @@ export const CashPersonLedger: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {entries.map((entry, idx) => {
+                {entries
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((entry, idx) => {
                   const isOpening = entry.transactionType === 'Opening Balance';
                   const isIn = entry.amountIn > 0;
                   return (
@@ -206,6 +211,17 @@ export const CashPersonLedger: React.FC = () => {
             </table>
           )}
         </div>
+
+        {entries.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={entries.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemLabel="entries"
+          />
+        )}
       </div>
     </div>
   );

@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell, Package, ShoppingCart, CreditCard, Undo2,
   Users, Clock, Check, CheckCheck, X, Loader2, Sparkles,
-  RefreshCw
+  RefreshCw, Truck, Cloud, HardDrive, ArrowUpRight, AlertTriangle
 } from 'lucide-react';
 import { notificationService, AppNotification } from '../../services/notificationService';
 
-type NotifCategory = 'all' | 'unread' | 'inventory' | 'customer' | 'sale' | 'return' | 'khata' | 'shift' | 'system';
+type NotifCategory = 'all' | 'unread' | 'inventory' | 'customer' | 'sale' | 'return' | 'khata' | 'shift' | 'supplier' | 'sync' | 'backup' | 'system';
 
 const CATEGORY_META: Record<string, { icon: React.ElementType; bg: string; iconColor: string; label: string }> = {
   inventory: { icon: Package,      bg: 'bg-amber-50 text-amber-600 border-amber-200/80',  iconColor: 'text-amber-600',  label: 'Inventory' },
@@ -15,7 +16,10 @@ const CATEGORY_META: Record<string, { icon: React.ElementType; bg: string; iconC
   return:    { icon: Undo2,        bg: 'bg-rose-50 text-rose-600 border-rose-200/80',     iconColor: 'text-rose-600',   label: 'Return' },
   khata:     { icon: CreditCard,   bg: 'bg-indigo-50 text-indigo-600 border-indigo-200/80', iconColor: 'text-indigo-600', label: 'Khata' },
   shift:     { icon: Clock,        bg: 'bg-purple-50 text-purple-600 border-purple-200/80', iconColor: 'text-purple-600', label: 'Shift' },
-  system:    { icon: Bell,         bg: 'bg-slate-50 text-slate-600 border-slate-200/80',  iconColor: 'text-slate-600',  label: 'System' },
+  supplier:  { icon: Truck,        bg: 'bg-teal-50 text-teal-600 border-teal-200/80',     iconColor: 'text-teal-600',   label: 'Supplier' },
+  sync:      { icon: Cloud,        bg: 'bg-orange-50 text-orange-600 border-orange-200/80', iconColor: 'text-orange-600', label: 'Sync' },
+  backup:    { icon: HardDrive,    bg: 'bg-red-50 text-red-600 border-red-200/80',        iconColor: 'text-red-600',    label: 'Backup' },
+  system:    { icon: AlertTriangle,bg: 'bg-slate-50 text-slate-600 border-slate-200/80',  iconColor: 'text-slate-600',  label: 'System' },
 };
 
 function timeAgo(iso: string): string {
@@ -35,15 +39,18 @@ function timeAgo(iso: string): string {
 interface NotificationItemProps {
   notif: AppNotification;
   onMarkRead: (id: number) => void;
+  onAction: (url: string, id: number) => void;
 }
 
-const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead }) => {
+const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead, onAction }) => {
   const meta = CATEGORY_META[notif.category] || CATEGORY_META.system;
   const Icon = meta.icon;
+  const actionUrl = notif.metadata?.actionUrl;
+  const actionLabel = notif.metadata?.actionLabel;
 
   return (
     <li
-      className={`group relative rounded-xl border p-4.5 transition-all duration-200 ${
+      className={`group relative rounded-xl border p-4 transition-all duration-200 ${
         !notif.isRead
           ? 'bg-blue-50/50 border-blue-100/90 shadow-2xs'
           : 'bg-white border-slate-100 hover:border-slate-200/80 hover:bg-slate-50/50'
@@ -54,15 +61,15 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead }
         <span className="absolute left-0 top-3.5 bottom-3.5 w-1 bg-blue-600 rounded-r-full" />
       )}
 
-      <div className="flex items-start gap-3.5">
+      <div className="flex items-start gap-3">
         {/* Category Icon */}
-        <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs mt-0.5 ${meta.bg}`}>
-          <Icon className="w-5 h-5" />
+        <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center border shadow-xs mt-0.5 ${meta.bg}`}>
+          <Icon className="w-4.5 h-4.5" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-xs ${notif.isRead ? 'font-semibold text-slate-700' : 'font-bold text-slate-900'}`}>
                 {notif.title}
@@ -76,13 +83,30 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead }
             </span>
           </div>
 
-          <p className="text-xs text-slate-600 leading-relaxed break-words pr-2">
+          <p className="text-xs text-slate-600 leading-relaxed break-words pr-1">
             {notif.message}
           </p>
+
+          {/* Action Button if actionable metadata exists */}
+          {actionUrl && (
+            <div className="mt-2.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction(actionUrl, notif.id);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 transition-all duration-150 shadow-2xs group/btn active:scale-95"
+              >
+                <span>{actionLabel || 'View Details'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Action: Tick button to mark as read */}
-        <div className="shrink-0 flex items-center self-center pl-1">
+        <div className="shrink-0 flex items-center self-start pt-0.5 pl-1">
           {!notif.isRead ? (
             <button
               onClick={(e) => {
@@ -90,13 +114,13 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead }
                 onMarkRead(notif.id);
               }}
               title="Mark as read"
-              className="w-8 h-8 rounded-lg bg-white hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 border border-slate-200 hover:border-emerald-300 flex items-center justify-center transition-all duration-150 shadow-2xs active:scale-95"
+              className="w-7 h-7 rounded-lg bg-white hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 border border-slate-200 hover:border-emerald-300 flex items-center justify-center transition-all duration-150 shadow-2xs active:scale-95"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <span title="Read" className="w-8 h-8 flex items-center justify-center text-slate-300">
-              <Check className="w-4 h-4" />
+            <span title="Read" className="w-7 h-7 flex items-center justify-center text-slate-300">
+              <Check className="w-3.5 h-3.5" />
             </span>
           )}
         </div>
@@ -106,6 +130,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notif, onMarkRead }
 };
 
 export const NotificationPanel: React.FC = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
@@ -194,6 +219,15 @@ export const NotificationPanel: React.FC = () => {
       console.error('Failed to mark notification as read:', err);
       loadNotifications();
     }
+  };
+
+  const handleAction = async (url: string, id: number) => {
+    const target = notifications.find((n) => n.id === id);
+    if (target && !target.isRead) {
+      handleMarkRead(id);
+    }
+    handleClose();
+    navigate(url);
   };
 
   const handleMarkAllRead = async () => {
@@ -287,13 +321,13 @@ export const NotificationPanel: React.FC = () => {
               </div>
 
               {/* Sub-header Actions & Filters */}
-              <div className="px-6 py-3.5 border-b border-slate-100 bg-white flex items-center justify-between shrink-0 gap-2 overflow-x-auto custom-scrollbar">
-                <div className="flex items-center gap-2">
-                  {(['all', 'unread', 'sale', 'return', 'inventory', 'customer'] as const).map((filter) => (
+              <div className="px-5 py-3 border-b border-slate-100 bg-white flex items-center justify-between shrink-0 gap-2 overflow-x-auto custom-scrollbar">
+                <div className="flex items-center gap-1.5">
+                  {(['all', 'unread', 'inventory', 'khata', 'shift', 'supplier', 'sale', 'return', 'sync'] as const).map((filter) => (
                     <button
                       key={filter}
                       onClick={() => setSelectedFilter(filter)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap ${
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap ${
                         selectedFilter === filter
                           ? 'bg-blue-600 text-white shadow-2xs'
                           : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/80'
@@ -307,10 +341,10 @@ export const NotificationPanel: React.FC = () => {
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors ml-auto"
+                    className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors ml-auto whitespace-nowrap"
                     title="Mark all notifications as read"
                   >
-                    <CheckCheck className="w-4 h-4" />
+                    <CheckCheck className="w-3.5 h-3.5" />
                     Mark all read
                   </button>
                 )}
@@ -332,7 +366,7 @@ export const NotificationPanel: React.FC = () => {
                     <p className="text-slate-400 text-xs mt-1.5 max-w-xs leading-relaxed">
                       {selectedFilter !== 'all'
                         ? `No notifications found under the "${selectedFilter}" category.`
-                        : 'Important events like sales, returns, customer additions, and stock changes will appear here.'}
+                        : 'Actionable alerts for low stock, pending payments, shift discrepancies, and sync health will appear here.'}
                     </p>
                   </div>
                 ) : (
@@ -342,6 +376,7 @@ export const NotificationPanel: React.FC = () => {
                         key={notif.id}
                         notif={notif}
                         onMarkRead={handleMarkRead}
+                        onAction={handleAction}
                       />
                     ))}
                   </ul>
@@ -352,7 +387,7 @@ export const NotificationPanel: React.FC = () => {
               <div className="px-6 py-3.5 border-t border-slate-100 bg-white flex items-center justify-between text-xs text-slate-500 shrink-0">
                 <span className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live sync active (5s)
+                  Live alerts active (5s)
                 </span>
                 <span className="font-medium text-slate-600">{filteredNotifications.length} notification{filteredNotifications.length !== 1 ? 's' : ''}</span>
               </div>
@@ -363,3 +398,4 @@ export const NotificationPanel: React.FC = () => {
     </>
   );
 };
+

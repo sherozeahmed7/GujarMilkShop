@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
+import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 const CATEGORIES = ['All', 'Utilities', 'Salaries', 'Rent', 'Maintenance', 'Marketing', 'Supplies'];
@@ -29,6 +30,12 @@ export const ExpensesReport: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter.label, filter.startDate?.toISOString(), searchTerm, categoryFilter, minAmount, maxAmount]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -173,7 +180,9 @@ export const ExpensesReport: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-slate-400 text-sm">No expenses match your filters.</td></tr>}
-                  {filtered.map((e: any) => (
+                  {filtered
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((e: any) => (
                     <tr key={e.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-sm text-slate-600">{e.date}</td>
                       <td className="px-4 py-3 text-sm font-medium text-amber-600">{e.id}</td>
@@ -181,13 +190,24 @@ export const ExpensesReport: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-slate-600 max-w-[200px] truncate">{e.description}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-slate-800">Rs. {e.amount.toLocaleString()}</td>
                       <td className="px-4 py-3 text-sm"><span className={`px-2 py-0.5 rounded text-xs font-medium ${e.paymentMethod === 'Cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{e.paymentMethod}</span></td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{e.addedBy}</td>
+                      <td className="px-4 py-3 text-slate-500 text-sm">{e.addedBy}</td>
                       <td className="px-4 py-3 text-sm"><span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">{e.status}</span></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="expenses"
+              />
+            )}
           </div>
         </>
       )}

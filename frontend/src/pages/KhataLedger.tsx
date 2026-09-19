@@ -21,6 +21,7 @@ import {
   DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw, MoreVertical
 } from 'lucide-react';
 import { CustomerTypeFilter, NameSortOrder } from '../components/customers/CustomerToolbar';
+import { Pagination } from '../components/common/Pagination';
 import * as XLSX from 'xlsx';
 import { savePdfDocument, saveExcelDocument } from '../utils/exportUtils';
 
@@ -97,12 +98,28 @@ export const KhataLedger: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [openActionMenu]);
 
+  const [customerPage, setCustomerPage] = useState(1);
+  const [customerItemsPerPage, setCustomerItemsPerPage] = useState(25);
+  const [supplierPage, setSupplierPage] = useState(1);
+  const [supplierItemsPerPage, setSupplierItemsPerPage] = useState(25);
+
   const debouncedSearch = useDebounce(searchQuery, 400);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCustomerPage(1);
+    setSupplierPage(1);
+  }, [debouncedSearch, filterMode, customerTypeFilter, supplierCycleFilter, nameSort, dateFilter, partyMode]);
 
   const sortedCustomers = useMemo(
     () => sortByName(customers, nameSort),
     [customers, nameSort]
   );
+
+  const paginatedCustomers = useMemo(() => {
+    const start = (customerPage - 1) * customerItemsPerPage;
+    return sortedCustomers.slice(start, start + customerItemsPerPage);
+  }, [sortedCustomers, customerPage, customerItemsPerPage]);
 
   const visibleSuppliers = useMemo(() => {
     const filtered = suppliers.filter((s) =>
@@ -110,6 +127,11 @@ export const KhataLedger: React.FC = () => {
     );
     return sortByName(filtered, nameSort);
   }, [suppliers, searchQuery, nameSort]);
+
+  const paginatedSuppliers = useMemo(() => {
+    const start = (supplierPage - 1) * supplierItemsPerPage;
+    return visibleSuppliers.slice(start, start + supplierItemsPerPage);
+  }, [visibleSuppliers, supplierPage, supplierItemsPerPage]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -439,7 +461,7 @@ export const KhataLedger: React.FC = () => {
         : `Paid (${summary.paidCount})`;
 
   return (
-    <div className="flex flex-col h-full gap-5 overflow-hidden">
+    <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Khata Ledger</h1>
@@ -524,7 +546,7 @@ export const KhataLedger: React.FC = () => {
         </div>
       )}
 
-      {partyMode === 'customers' ? <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
+      {partyMode === 'customers' ? <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex-shrink-0 flex items-center gap-3">
           <div className="relative w-56 flex-shrink-0">
             <button type="button" onClick={() => setPartyPickerOpen((open) => !open)} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm" aria-haspopup="listbox" aria-expanded={partyPickerOpen}>
@@ -571,7 +593,7 @@ export const KhataLedger: React.FC = () => {
           </select>
         </div>
 
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="w-full overflow-x-auto">
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
@@ -628,7 +650,7 @@ export const KhataLedger: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                sortedCustomers.map((c, index) => {
+                paginatedCustomers.map((c, index) => {
                   const currentDue = c.currentDue ?? 0;
                   const previousDue = c.previousDue ?? 0;
                   const totalToPay = c.totalAmount ?? currentDue + previousDue;
@@ -653,30 +675,26 @@ export const KhataLedger: React.FC = () => {
                   return (
                     <tr key={c.id} className="hover:bg-slate-50/70 transition-colors group">
                       <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 tabular-nums">
-                        {index + 1}
+                        {(customerPage - 1) * customerItemsPerPage + index + 1}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
-                            {initials}
-                          </div>
-                          <div className="min-w-0">
-                            <button 
-                              type="button"
-                              onClick={() => navigate(`/ledger/customers/${c.id}`)}
-                              className="font-semibold text-sm text-blue-600 hover:text-blue-800 hover:underline truncate text-left"
-                            >
-                              {c.name}
-                            </button>
-                            {c.address && (
-                              <p className="text-[10px] text-slate-400 truncate">
-                                {c.address}
-                              </p>
-                            )}
-                          </div>
+                      <td className="px-4 py-3 max-w-[220px]">
+                        <div className="min-w-0">
+                          <button 
+                            type="button"
+                            onClick={() => navigate(`/ledger/customers/${c.id}`)}
+                            className="font-semibold text-sm text-blue-600 hover:text-blue-800 hover:underline truncate text-left block w-full"
+                            title={c.name}
+                          >
+                            {c.name}
+                          </button>
+                          {c.address && (
+                            <p className="text-[10px] text-slate-400 truncate">
+                              {c.address}
+                            </p>
+                          )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 truncate">
+                      <td className="px-4 py-3 text-sm text-slate-600 truncate max-w-[140px]" title={c.phone?.trim() ? c.phone : 'Not Available'}>
                         {c.phone?.trim() ? c.phone : 'Not Available'}
                       </td>
                       <td className="px-4 py-3">
@@ -788,19 +806,18 @@ export const KhataLedger: React.FC = () => {
           </table>
         </div>
 
-        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex-shrink-0">
-          <p className="text-xs font-medium text-slate-500">
-            Showing {customers.length} of {totalCount} customers
-            {filterMode !== 'All' && ` · Filter: ${filterMode}`}
-            {nameSort !== 'default' && ` · Sort: ${nameSort === 'az' ? 'A–Z' : 'Z–A'}`}
-            {customerTypeFilter !== 'All' &&
-              ` · Type: ${
-                customerTypeFilter === 'daily_ledger' ? 'Daily' : 'Monthly'
-              }`}
-          </p>
-        </div>
+        {customers.length > 0 && (
+          <Pagination
+            currentPage={customerPage}
+            totalItems={sortedCustomers.length}
+            itemsPerPage={customerItemsPerPage}
+            onPageChange={setCustomerPage}
+            onItemsPerPageChange={setCustomerItemsPerPage}
+            itemLabel="customers"
+          />
+        )}
       </div> : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
             <div className="relative w-56 flex-shrink-0">
               <button
@@ -890,7 +907,7 @@ export const KhataLedger: React.FC = () => {
               Download Ledgers
             </button>
           </div>
-          <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="w-full overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-slate-50">
                 <tr>
@@ -912,7 +929,7 @@ export const KhataLedger: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {visibleSuppliers.map((supplier, index) => {
+                {paginatedSuppliers.map((supplier, index) => {
                     const current = supplier.currentAmount ?? 0;
                     const previous = supplier.previousAmount ?? 0;
                     const totalToPay = supplier.totalAmount ?? current + previous;
@@ -938,13 +955,14 @@ export const KhataLedger: React.FC = () => {
                     return (
                       <tr key={supplier.id} className="hover:bg-slate-50">
                         <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 tabular-nums">
-                          {index + 1}
+                          {(supplierPage - 1) * supplierItemsPerPage + index + 1}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-800">
+                        <td className="px-4 py-3 font-semibold text-slate-800 max-w-[200px]">
                           <button
                             type="button"
                             onClick={() => navigate(`/ledger/suppliers/${supplier.id}`)}
-                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                            className="text-blue-600 hover:text-blue-800 hover:underline truncate block w-full text-left"
+                            title={supplier.name}
                           >
                             {supplier.name}
                           </button>
@@ -1002,13 +1020,17 @@ export const KhataLedger: React.FC = () => {
               </tbody>
             </table>
           </div>
-          <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 text-xs font-medium text-slate-500">
-            Showing {visibleSuppliers.length} suppliers
-            {supplierCycleFilter !== 'All' && ` · Type: ${supplierCycleFilter}`}
-            {dateFilter.label !== 'All Time' && ` · ${dateFilter.label}`}
-            {nameSort !== 'default' && ` · Sort: ${nameSort === 'az' ? 'A–Z' : 'Z–A'}`}
+          {visibleSuppliers.length > 0 && (
+            <Pagination
+              currentPage={supplierPage}
+              totalItems={visibleSuppliers.length}
+              itemsPerPage={supplierItemsPerPage}
+              onPageChange={setSupplierPage}
+              onItemsPerPageChange={setSupplierItemsPerPage}
+              itemLabel="suppliers"
+            />
+          )}
         </div>
-      </div>
       )}
 
       {isFormOpen && (

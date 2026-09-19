@@ -3,6 +3,7 @@ import { Search, BookOpen, Banknote, Power, PowerOff, ChevronDown, Users } from 
 import { useNavigate } from 'react-router-dom';
 import { CashPerson, CashbookTransaction } from '../../types/cashbook';
 import { getCashPersons, getCashbookTransactions } from '../../services/cashbook.service';
+import { Pagination } from '../common/Pagination';
 
 interface Props {
   refreshKey: number;
@@ -33,10 +34,16 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
   const [persons, setPersons] = useState<CashPerson[]>([]);
   const [txns, setTxns] = useState<CashbookTransaction[]>([]);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [isLoading, setIsLoading] = useState(true);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const menuRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -127,7 +134,9 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.map((person) => {
+              {filtered
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((person) => {
                 const { totalReceived, totalPaid, balance } = calcBalance(person, txns);
                 const isActive = person.status === 'Active';
                 return (
@@ -253,6 +262,17 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
           </table>
         )}
       </div>
+
+      {filtered.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="persons"
+        />
+      )}
     </div>
   );
 };

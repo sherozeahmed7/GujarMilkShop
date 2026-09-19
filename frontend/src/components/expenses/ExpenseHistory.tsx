@@ -3,6 +3,7 @@ import { useExpenseStore } from '../../store/expenseStore';
 import { ExpenseRecord } from '../../types';
 import { Eye, Edit2, Trash2, FileText, Search } from 'lucide-react';
 import { ExpenseModals } from './ExpenseModals';
+import { Pagination } from '../common/Pagination';
 
 type FilterTab = 'Today' | 'This Week' | 'This Month' | 'All Time';
 
@@ -15,6 +16,8 @@ export const ExpenseHistory: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<FilterTab>('Today');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const [viewExpense, setViewExpense] = useState<ExpenseRecord | null>(null);
   const [editExpense, setEditExpense] = useState<ExpenseRecord | null>(null);
@@ -53,8 +56,12 @@ export const ExpenseHistory: React.FC = () => {
     return filtered;
   }, [expenses, activeTab, searchQuery]);
 
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-6 h-[440px]">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-6">
       <div className="border-b border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex space-x-1 overflow-x-auto custom-scrollbar">
           {(['Today', 'This Week', 'This Month', 'All Time'] as FilterTab[]).map((tab) => (
@@ -84,13 +91,13 @@ export const ExpenseHistory: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="w-full overflow-x-auto">
         {isLoading ? (
-          <div className="flex justify-center items-center h-full text-slate-500 text-sm">
+          <div className="flex justify-center items-center py-12 text-slate-500 text-sm">
             Loading expenses...
           </div>
         ) : filteredExpenses.length === 0 ? (
-          <div className="flex flex-col justify-center items-center h-full text-slate-500 py-10">
+          <div className="flex flex-col justify-center items-center text-slate-500 py-10">
             <FileText className="w-12 h-12 text-slate-300 mb-3" />
             <p className="font-semibold text-slate-600">No expenses found</p>
             <p className="text-sm mt-1">Add an expense above or change the filter.</p>
@@ -126,7 +133,9 @@ export const ExpenseHistory: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredExpenses.map((expense) => {
+              {filteredExpenses
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((expense) => {
                 const total = expense.amount ?? expense.netExpense ?? 0;
                 const paid = expense.paidAmount ?? 0;
                 const remaining =
@@ -192,6 +201,17 @@ export const ExpenseHistory: React.FC = () => {
           </table>
         )}
       </div>
+
+      {!isLoading && filteredExpenses.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredExpenses.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="expenses"
+        />
+      )}
 
       <ExpenseModals
         viewExpense={viewExpense}

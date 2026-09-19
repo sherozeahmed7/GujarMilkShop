@@ -137,7 +137,7 @@ export const DailyRates: React.FC = () => {
     'w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-2xl md:text-3xl font-black text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-70 tabular-nums';
 
   return (
-    <div className="flex flex-col h-full gap-6 min-h-0">
+    <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Daily Rates Configuration</h1>
@@ -284,12 +284,12 @@ export const DailyRates: React.FC = () => {
         )}
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <h2 className="text-lg font-bold text-slate-800">Rate History</h2>
         </div>
 
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="w-full overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-slate-50 border-b border-slate-100">
               <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">

@@ -170,12 +170,25 @@ export class ShiftService {
       return closed;
     });
 
-    NotificationService.create({
-      category: 'shift',
-      title: 'Shift Closed',
-      message: `Shift closed by ${updated.closedBy?.name || updated.closedBy?.email || 'User'} (Counted: Rs. ${countedCash.toLocaleString()}, ${differenceStatus}: Rs. ${Math.abs(difference).toLocaleString()}).`,
-      metadata: { shiftId: updated.id, countedCash, expectedCash: expected, difference, differenceStatus },
-    }).catch(() => {});
+    if (difference !== 0) {
+      NotificationService.create({
+        category: 'shift',
+        title: 'Cash Difference Alert',
+        message: `Register is Rs. ${Math.abs(difference).toLocaleString()} ${differenceStatus} (Expected: Rs. ${expected.toLocaleString()}, Counted: Rs. ${countedCash.toLocaleString()}).`,
+        actionUrl: '/cash-register',
+        actionLabel: 'Review Cash Register',
+        metadata: { shiftId: updated.id, countedCash, expectedCash: expected, difference, differenceStatus },
+      }).catch(() => {});
+    } else {
+      NotificationService.create({
+        category: 'shift',
+        title: 'Shift Closed (Balanced)',
+        message: `Shift closed by ${updated.closedBy?.name || updated.closedBy?.email || 'User'} with balanced cash of Rs. ${countedCash.toLocaleString()}.`,
+        actionUrl: '/shifts',
+        actionLabel: 'View Shifts',
+        metadata: { shiftId: updated.id, countedCash, expectedCash: expected, difference: 0, differenceStatus: 'Balanced' },
+      }).catch(() => {});
+    }
 
     const salesAgg = await getSalesAggregates(current.openedAt, closedAt);
     return { success: true, statusCode: 200, data: formatShift(updated, salesAgg) };

@@ -10,6 +10,7 @@ import { CustomerTable } from '../components/customers/CustomerTable';
 import { CustomerFormModal } from '../components/customers/CustomerFormModal';
 import { SplitKhataModal } from '../components/customers/SplitKhataModal';
 import { CollectConfirmModal } from '../components/customers/CollectConfirmModal';
+import { Pagination } from '../components/common/Pagination';
 import { customerService, CustomerSummaryStats } from '../services/customer.service';
 import { saleService, SaleRecord } from '../services/sale.service';
 import { getReturns } from '../services/returnsService';
@@ -144,8 +145,15 @@ export const Customers: React.FC = () => {
   const [customerTypeFilter, setCustomerTypeFilter] =
     useState<CustomerTypeFilter>('All');
   const [nameSort, setNameSort] = useState<NameSortOrder>('default');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const debouncedSearch = useDebounce(searchQuery, 400);
+
+  // Reset to page 1 on filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterType, customerTypeFilter, nameSort]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -371,7 +379,7 @@ export const Customers: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
@@ -405,7 +413,7 @@ export const Customers: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
         <CustomerToolbar
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -418,14 +426,14 @@ export const Customers: React.FC = () => {
           duesCount={summary.withDues}
         />
 
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="w-full overflow-x-auto">
           {loading ? (
             <div className="px-5 py-12 text-center text-slate-400 text-sm">
               Loading customers…
             </div>
           ) : (
             <CustomerTable
-              rows={rows}
+              rows={rows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onViewKhata={handleViewKhata}
@@ -433,6 +441,17 @@ export const Customers: React.FC = () => {
             />
           )}
         </div>
+
+        {!loading && rows.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={rows.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemLabel="customers"
+          />
+        )}
       </div>
 
       {isFormModalOpen && (

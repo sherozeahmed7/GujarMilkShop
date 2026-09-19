@@ -171,22 +171,22 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
 
   return (
     <tr className="hover:bg-slate-50/70 transition-colors group">
-      <td className="px-5 py-3">
-        <div className="flex items-center gap-3">
+      <td className="px-5 py-3 max-w-[220px]">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
             {initials}
           </div>
-          <div>
-            <div className="font-semibold text-sm text-slate-800">
+          <div className="min-w-0">
+            <div className="font-semibold text-sm text-slate-800 truncate" title={row.name}>
               {displayText(row.name)}
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[150px]">
+            <div className="text-[10px] text-slate-400 mt-0.5 truncate">
               {displayText(row.address)}
             </div>
           </div>
         </div>
       </td>
-      <td className="px-5 py-3 text-sm text-slate-600 font-medium">
+      <td className="px-5 py-3 text-sm text-slate-600 font-medium whitespace-nowrap">
         {displayText(row.phone)}
       </td>
       <td className="px-5 py-3">

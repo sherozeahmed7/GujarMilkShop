@@ -12,6 +12,7 @@ import {
   ResponsiveContainer, LineChart, Line, Legend
 } from 'recharts';
 import { CustomerMonthlyStatement } from '../../components/reports/CustomerMonthlyStatement';
+import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
@@ -32,6 +33,12 @@ export const CustomerReport: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter.label, filter.startDate?.toISOString(), searchTerm]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -167,7 +174,9 @@ export const CustomerReport: React.FC = () => {
                   {filtered.length === 0 && (
                     <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">No customers found.</td></tr>
                   )}
-                  {filtered.map((c: any) => (
+                  {filtered
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((c: any) => (
                     <tr
                       key={c.id}
                       className="hover:bg-blue-50 transition-colors cursor-pointer group"
@@ -198,6 +207,17 @@ export const CustomerReport: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="customers"
+              />
+            )}
           </div>
         </>
       )}

@@ -25,46 +25,26 @@ import {
 } from '../../services/sale.service';
 
 import {
-
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-
   ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend
-
 } from 'recharts';
-
-
+import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
-
-
 function getThisWeekFilter(): DateFilterType {
-
   const start = new Date();
-
   start.setHours(0, 0, 0, 0);
-
   const end = new Date();
-
   end.setHours(23, 59, 59, 999);
-
   const dow = start.getDay();
-
   start.setDate(start.getDate() - dow);
-
   return { label: 'This Week', startDate: start, endDate: end };
-
 }
-
-
 
 function money(n: number) {
-
   return Math.round(n || 0);
-
 }
-
-
 
 function renderPieLabel(props: {
   cx?: number;
@@ -98,147 +78,82 @@ function renderPieLabel(props: {
   );
 }
 
-
-
 function paymentLabel(sale: SaleRecord): string {
-
   const method = sale.payments?.[0]?.method;
-
   if (sale.saleType === 'walk_in') {
-
     return method === 'online' ? 'Online' : 'Cash';
-
   }
-
   if (sale.saleType === 'split') return 'Split';
-
   if (sale.saleType === 'ledger_daily' || sale.saleType === 'ledger_monthly') return 'Khata';
-
   return sale.saleType;
-
 }
-
-
 
 function saleTypeLabel(saleType: string): string {
-
   if (saleType === 'walk_in') return 'Walk-in';
-
   if (saleType === 'split') return 'Split';
-
   if (saleType === 'ledger_daily') return 'Daily Ledger';
-
   if (saleType === 'ledger_monthly') return 'Monthly Ledger';
-
   return saleType;
-
 }
-
-
 
 function saleCustomerLabel(s: SaleRecord): string {
-
   const name = s.customerName || s.customer?.name;
-
   if (name?.trim()) return name;
-
   if (s.saleType === 'walk_in') return 'Walk-in';
-
   if (s.saleType === 'split') return 'Split';
-
   return 'Not Available';
-
 }
-
-
 
 function statusLabel(status: string): string {
-
   if (status === 'paid') return 'Paid';
-
   if (status === 'partial') return 'Partial';
-
   if (status === 'pending') return 'Pending';
-
   return status;
-
 }
-
-
 
 function toInvoiceNo(id: number): string {
-
   return `INV-${String(id).padStart(5, '0')}`;
-
 }
-
-
 
 function productsLabel(sale: SaleRecord): string {
-
   const items = sale.items || [];
-
   if (items.length === 0) return '—';
-
   return items
-
     .map((item) => {
-
       const name = item.itemName
-
         ? item.itemName.charAt(0).toUpperCase() + item.itemName.slice(1)
-
         : 'Item';
-
       const qty = Number(item.quantity) || 0;
-
       return `${name} (${qty} kg)`;
-
     })
-
     .join(', ');
-
 }
 
-
-
 const EMPTY_ANALYTICS: SalesReportAnalytics = {
-
   summary: {
-
     netSales: 0,
-
     cashSales: 0,
-
     onlineSales: 0,
-
     splitSales: 0,
-
     totalBills: 0,
-
   },
-
   trend: [],
-
   paymentMethods: [],
-
   categoryBreakdown: [],
-
 };
 
-
-
 export const SalesReport: React.FC = () => {
-
   const [filter, setFilter] = useState<DateFilterType>(getThisWeekFilter);
-
   const [isLoading, setIsLoading] = useState(false);
-
   const [sales, setSales] = useState<SaleRecord[]>([]);
-
   const [analytics, setAnalytics] = useState<SalesReportAnalytics>(EMPTY_ANALYTICS);
-
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter.label, filter.startDate?.toISOString()]);
 
 
 
@@ -628,166 +543,99 @@ export const SalesReport: React.FC = () => {
 
                 <tbody className="divide-y divide-slate-100">
 
-                  {sales.map((s) => {
-
+                  {sales
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((s) => {
                     const pay = paymentLabel(s);
-
                     return (
-
                       <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-
                         <td className="px-4 py-3 text-sm font-medium text-blue-600">
-
                           {toInvoiceNo(s.id)}
-
                         </td>
-
                         <td className="px-4 py-3 text-sm text-slate-600">
-
                           <div>{new Date(s.createdAt).toLocaleDateString()}</div>
-
                           <div className="text-xs text-slate-400">
-
                             {new Date(s.createdAt).toLocaleTimeString([], {
-
                               hour: '2-digit',
-
                               minute: '2-digit',
-
                             })}
-
                           </div>
-
                         </td>
-
                         <td className="px-4 py-3 text-sm text-slate-700">
-
                           <div>
-
                             {saleCustomerLabel(s)}
-
                           </div>
-
                           {(s.customerPhone || s.customer?.phone) && (
-
                             <div className="text-xs text-slate-400">{s.customerPhone || s.customer?.phone}</div>
-
                           )}
-
                         </td>
-
                         <td className="px-4 py-3 text-sm text-slate-700 max-w-[220px]">
-
                           <div className="truncate" title={productsLabel(s)}>
-
                             {productsLabel(s)}
-
                           </div>
-
                         </td>
-
                         <td className="px-4 py-3 text-sm text-slate-600">
-
                           {saleTypeLabel(s.saleType)}
-
                         </td>
-
                         <td className="px-4 py-3 text-sm">
-
                           <span
-
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
-
                               pay === 'Cash'
-
                                 ? 'bg-emerald-100 text-emerald-700'
-
                                 : pay === 'Online'
-
                                   ? 'bg-purple-100 text-purple-700'
-
                                   : pay === 'Split'
-
                                     ? 'bg-amber-100 text-amber-800'
-
                                     : 'bg-blue-100 text-blue-700'
-
                             }`}
-
                           >
-
                             {pay}
-
                           </span>
-
                         </td>
-
                         <td className="px-4 py-3 text-sm text-slate-500">{fmt(s.totalAmount)}</td>
-
                         <td className="px-4 py-3 text-sm text-slate-700">{fmt(s.paidAmount)}</td>
-
                         <td className="px-4 py-3 text-sm text-rose-600 font-medium">
-
                           {s.remainingBalance > 0 ? fmt(s.remainingBalance) : 'Not Available'}
-
                         </td>
-
                         <td className="px-4 py-3 text-sm">
-
                           <span
-
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
-
                               s.status === 'paid'
-
                                 ? 'bg-emerald-100 text-emerald-700'
-
                                 : s.status === 'partial'
-
                                   ? 'bg-amber-100 text-amber-800'
-
                                   : 'bg-slate-100 text-slate-600'
-
                             }`}
-
                           >
-
                             {statusLabel(s.status)}
-
                           </span>
-
                         </td>
-
                       </tr>
-
                     );
-
                   })}
-
                   {sales.length === 0 && (
-
                     <tr>
-
                       <td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">
-
                         No sales found for the selected period. Complete a sale from POS to see it here.
-
                       </td>
-
                     </tr>
-
                   )}
-
                 </tbody>
-
               </table>
-
             </div>
 
+            {sales.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={sales.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="sales"
+              />
+            )}
           </div>
-
         </>
-
       )}
 
     </ReportLayout>

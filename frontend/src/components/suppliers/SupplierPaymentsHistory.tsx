@@ -4,6 +4,7 @@ import { Supplier, SupplierPaymentRecord } from '../../types';
 import { supplierService } from '../../services/supplier.service';
 import { shiftService } from '../../services/shift.service';
 import { ShiftRecord } from '../../types';
+import { Pagination } from '../common/Pagination';
 
 const todayStr = () => {
   const d = new Date();
@@ -53,6 +54,12 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
   const [shiftDate, setShiftDate] = useState('');
   const [method, setMethod] = useState('all');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [fromDate, toDate, supplierId, shiftDate, method, search]);
 
   useEffect(() => {
     if (initialSupplierId) setSupplierId(initialSupplierId);
@@ -266,7 +273,9 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {filtered.map((r) => (
+                {filtered
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50/80">
                     <td className="px-3 py-2.5 font-medium text-slate-800 whitespace-nowrap">{r.date}</td>
                     <td className="px-3 py-2.5">
@@ -309,6 +318,17 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
           </div>
         )}
       </div>
+
+      {!loading && filtered.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="payments"
+        />
+      )}
     </div>
   );
 };

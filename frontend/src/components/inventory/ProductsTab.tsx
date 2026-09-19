@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, PlusCircle, Edit2, Lock } from 'lucide-react';
 import { Product } from '../../types/inventory';
+import { Pagination } from '../common/Pagination';
 
 interface ProductsTabProps {
   products: Product[];
@@ -14,6 +15,12 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
   onEditClick,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const filteredProducts = products.filter(p => {
     return (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -24,7 +31,7 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
   const formatCurrency = (n: number) => `Rs. ${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col bg-white">
       {/* Filters */}
       <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -40,7 +47,7 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto custom-scrollbar">
+      <div className="w-full overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[900px]">
           <thead className="sticky top-0 bg-slate-50 z-10 shadow-sm border-b border-slate-200">
             <tr className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -56,18 +63,24 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredProducts.map((product) => (
+            {filteredProducts
+              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+              .map((product) => (
               <tr key={product.id} className="hover:bg-slate-50 transition-colors group">
                 <td className="px-4 py-3 text-sm font-medium text-slate-700">{product.code}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-800">{product.name}</span>
-                    <span className="text-sm text-slate-500">{product.description}</span>
-                    {product.tags.map(tag => (
-                      <span key={tag} className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-700 uppercase tracking-wider">
-                        {tag}
-                      </span>
-                    ))}
+                <td className="px-4 py-3 max-w-[240px]">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-slate-800 truncate" title={product.name}>{product.name}</span>
+                    {product.description && (
+                      <span className="text-xs text-slate-500 truncate" title={product.description}>{product.description}</span>
+                    )}
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      {product.tags.map(tag => (
+                        <span key={tag} className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-700 uppercase tracking-wider">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-slate-600">{product.category}</td>
@@ -115,6 +128,17 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
           </tbody>
         </table>
       </div>
+
+      {filteredProducts.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredProducts.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="products"
+        />
+      )}
     </div>
   );
 };
