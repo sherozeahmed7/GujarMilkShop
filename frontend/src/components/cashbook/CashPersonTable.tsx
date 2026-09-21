@@ -15,7 +15,7 @@ const fmt = (n: number) => `Rs. ${(isNaN(n) || !isFinite(n) ? 0 : n).toLocaleStr
 
 const calcBalance = (person: CashPerson, txns: CashbookTransaction[]) => {
   const personTxns = txns.filter(
-    (t) => t.cashPersonId === person.id && t.transactionType !== 'Opening Balance'
+    (t) => String(t.cashPersonId) === String(person.id) && t.transactionType !== 'Opening Balance'
   );
   const totalReceived = personTxns
     .filter((t) => t.transactionType === 'Receive Amount')
@@ -25,8 +25,8 @@ const calcBalance = (person: CashPerson, txns: CashbookTransaction[]) => {
     .reduce((s, t) => s + t.amount, 0);
   const balance =
     person.type === 'Incoming'
-      ? Math.max(0, person.openingBalance - totalReceived)
-      : Math.max(0, person.openingBalance - totalPaid);
+      ? (person.openingBalance || 0) + totalPaid - totalReceived
+      : (person.openingBalance || 0) + totalReceived - totalPaid;
   return { totalReceived, totalPaid, balance };
 };
 
@@ -191,12 +191,14 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
 
                     {/* Balance */}
                     <td className="px-4 py-4 text-right">
-                      <span className={`font-bold ${balance === 0 ? 'text-emerald-600' : person.type === 'Incoming' ? 'text-blue-600' : 'text-rose-600'}`}>
-                        {balance === 0 ? 'Settled ✓' : fmt(balance)}
+                      <span className={`font-bold ${balance === 0 ? 'text-emerald-600' : balance > 0 ? (person.type === 'Incoming' ? 'text-blue-600' : 'text-rose-600') : 'text-amber-600'}`}>
+                        {balance === 0 ? 'Settled ✓' : fmt(Math.abs(balance))}
                       </span>
-                      {balance > 0 && (
+                      {balance !== 0 && (
                         <p className="text-[10px] text-slate-400 mt-0.5">
-                          {person.type === 'Incoming' ? 'to receive' : 'to pay'}
+                          {person.type === 'Incoming'
+                            ? balance > 0 ? 'to receive' : 'advance / credit'
+                            : balance > 0 ? 'to pay' : 'advance / credit'}
                         </p>
                       )}
                     </td>

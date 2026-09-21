@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Search, Filter, Calendar, History,
   ArrowDownToLine, ArrowUpFromLine
@@ -6,6 +6,7 @@ import {
 import { CashbookTransaction, CashbookTransactionFilters } from '../../types/cashbook';
 import { getCashbookTransactions, getCashPersons } from '../../services/cashbook.service';
 import { CashPerson } from '../../types/cashbook';
+import { Pagination } from '../common/Pagination';
 
 interface Props {
   refreshKey: number;
@@ -31,7 +32,11 @@ type TypeFilter = typeof TYPE_FILTERS[number];
 const DATE_FILTERS = ['All Time', 'Today', 'This Week', 'This Month', 'Custom'] as const;
 type DateFilter = typeof DATE_FILTERS[number];
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const pad = (n: number) => String(n).padStart(2, '0');
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
   const [txns, setTxns] = useState<CashbookTransaction[]>([]);
@@ -42,6 +47,8 @@ export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
   const [dateFilter, setDateFilter] = useState<DateFilter>('All Time');
   const [fromDate, setFromDate] = useState(todayStr());
   const [toDate, setToDate] = useState(todayStr());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const loadTxns = async () => {
     setIsLoading(true);
@@ -53,23 +60,52 @@ export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
       filters.fromDate = fromDate;
       filters.toDate = toDate;
     }
-    const [t, p] = await Promise.all([getCashbookTransactions(filters), getCashPersons()]);
-    setTxns(t);
-    setPersons(p);
-    setIsLoading(false);
+    try {
+      const [t, p] = await Promise.all([getCashbookTransactions(filters), getCashPersons()]);
+      setTxns(t || []);
+      setPersons(p || []);
+    } catch (e) {
+      console.error('Failed to load cashbook transactions:', e);
+      setTxns([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => { loadTxns(); }, [refreshKey, typeFilter, dateFilter, fromDate, toDate]);
+  useEffect(() => {
+    loadTxns();
+  }, [refreshKey, typeFilter, dateFilter, fromDate, toDate]);
 
-  // Client-side search (by person name)
-  const filtered = txns.filter((t) => {
-    if (!search) return true;
-    return t.cashPersonName.toLowerCase().includes(search.toLowerCase());
-  });
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, dateFilter, fromDate, toDate]);
+
+  // Client-side search (by person name, description, amount, or creator)
+  const filtered = useMemo(() => {
+    return txns.filter((t) => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase().trim();
+      return (
+        t.cashPersonName.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q)) ||
+        (t.createdBy && t.createdBy.toLowerCase().includes(q)) ||
+        String(t.amount).includes(q)
+      );
+    });
+  }, [txns, search]);
+
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Totals from filtered
-  const totalAmountIn = filtered.filter(t => t.transactionType === 'Receive Amount').reduce((s, t) => s + t.amount, 0);
-  const totalAmountOut = filtered.filter(t => t.transactionType === 'Pay Amount').reduce((s, t) => s + t.amount, 0);
+  const totalAmountIn = filtered
+    .filter(t => t.transactionType === 'Receive Amount' || t.transactionType === 'Opening Balance')
+    .reduce((s, t) => s + t.amount, 0);
+  const totalAmountOut = filtered
+    .filter(t => t.transactionType === 'Pay Amount')
+    .reduce((s, t) => s + t.amount, 0);
 
   const personMap: Record<string, CashPerson> = {};
   persons.forEach(p => { personMap[p.id] = p; });
@@ -105,8 +141,8 @@ export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by person…"
-              className="pl-8 pr-4 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-44"
+              placeholder="Search transactions…"
+              className="pl-8 pr-4 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-48"
             />
           </div>
 
@@ -149,7 +185,6 @@ export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
             <input
               type="date"
               value={fromDate}
-              max={toDate}
               onChange={(e) => setFromDate(e.target.value)}
               className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
@@ -157,8 +192,6 @@ export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
             <input
               type="date"
               value={toDate}
-              min={fromDate}
-              max={todayStr()}
               onChange={(e) => setToDate(e.target.value)}
               className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
@@ -193,7 +226,7 @@ export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.map((txn) => {
+              {paginated.map((txn) => {
                 const isReceive = txn.transactionType === 'Receive Amount';
                 const isOpening = txn.transactionType === 'Opening Balance';
                 const person = personMap[txn.cashPersonId];
@@ -235,6 +268,18 @@ export const TransactionHistory: React.FC<Props> = ({ refreshKey }) => {
           </table>
         )}
       </div>
+
+      {/* Pagination Footer */}
+      {filtered.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemLabel="transactions"
+        />
+      )}
     </div>
   );
 };

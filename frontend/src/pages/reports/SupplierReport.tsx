@@ -91,30 +91,65 @@ export const SupplierReport: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Purchases by Supplier</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={data.purchasesBySupplier} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
-                    {data.purchasesBySupplier.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Purchases by Supplier</h3>
+              {(() => {
+                const chartData = (data.purchasesBySupplier || []).filter((item: any) => (item.value || 0) > 0);
+                if (chartData.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No purchase data available for this period
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={4}
+                        dataKey="value"
+                        nameKey="label"
+                      >
+                        {chartData.map((_: any, i: number) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Outstanding Balances</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={data.outstandingBySupplier} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
-                  <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={100} />
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                  <Bar dataKey="value" name="Outstanding" fill="#EF4444" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Outstanding Balances</h3>
+              {(() => {
+                const chartData = (data.outstandingBySupplier || []).filter((item: any) => (item.value || 0) > 0);
+                if (chartData.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No outstanding balances for this period
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <BarChart data={chartData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                      <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
+                      <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={100} />
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <Bar dataKey="value" name="Outstanding" fill="#EF4444" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
           </div>
 

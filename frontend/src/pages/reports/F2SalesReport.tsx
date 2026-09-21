@@ -14,6 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
 
@@ -81,6 +82,8 @@ export const F2SalesReport: React.FC = () => {
   const [analytics, setAnalytics] = useState<SalesReportAnalytics>(EMPTY_ANALYTICS);
   const [itemStock, setItemStock] = useState<MilkProductsDailyStock | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const loadReport = async () => {
     setIsLoading(true);
@@ -104,6 +107,7 @@ export const F2SalesReport: React.FC = () => {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     loadReport();
   }, [filter.label, filter.startDate?.toISOString(), filter.endDate?.toISOString()]);
 
@@ -282,7 +286,9 @@ export const F2SalesReport: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {sales.map((sale) => {
+                  {sales
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((sale) => {
                     const f2Items = sale.items?.filter(item =>
                       ['lassi', 'butter', 'ghee'].includes((item.itemName || '').trim().toLowerCase())
                     ) || [];
@@ -325,6 +331,17 @@ export const F2SalesReport: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {sales.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={sales.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="sales"
+              />
+            )}
           </div>
         </div>
       )}

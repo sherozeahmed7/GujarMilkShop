@@ -146,10 +146,12 @@ function calcRemainingForMonth(customerId: number, month: number, year: number):
 // Public service API
 // ---------------------------------------------------------------------------
 
+import { saleService, SaleRecord } from './sale.service';
+import { customerService } from './customer.service';
+
 export const customerMilkReportService = {
   /**
-   * Get the full monthly statement for a customer.
-   * Replace with: GET /api/customers/:id/monthly-statement?month=&year=
+   * Get the full monthly statement for a customer using real database sales and payments.
    */
   getCustomerMonthlyStatement: async (
     customerId: number,
@@ -158,23 +160,131 @@ export const customerMilkReportService = {
     month: number,
     year: number,
   ): Promise<MonthlyStatement> => {
-    await delay(300);
-    const rate = CUSTOMER_RATES[customerId] ?? 180;
-    const dailyEntries = buildDailyEntries(customerId, month, year, rate);
-    const previousBalance = calcRemainingForMonth(customerId, month, year);
+    // 1. Fetch all sales for this customer
+    let allSales: SaleRecord[] = [];
+    try {
+      allSales = await saleService.listSales({ customerId });
+    } catch (e) {
+      console.warn('Failed to fetch sales for customer', customerId, e);
+    }
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    // Filter sales in the requested month
+    const currentMonthSales = allSales.filter((s) => {
+      const d = new Date(s.createdAt);
+      return d >= monthStart && d <= monthEnd;
+    });
+
+    // Calculate previous balance (all sales before this month: totalAmount - paidAmount)
+    const priorSales = allSales.filter((s) => new Date(s.createdAt) < monthStart);
+    const previousBalance = Math.max(
+      0,
+      priorSales.reduce((sum, s) => sum + (s.remainingBalance ?? (s.totalAmount - s.paidAmount)), 0)
+    );
+
+    // Build day-by-day milk entries for current month
+    let defaultRate = 0;
+    const dailyEntries: DailyMilkEntry[] = Array.from({ length: daysInMonth }, (_, i) => ({
+      date: i + 1,
+      quantityKg: 0,
+      ratePerKg: 0,
+      amount: 0,
+    }));
+
+    currentMonthSales.forEach((sale) => {
+      const saleDate = new Date(sale.createdAt);
+      const day = saleDate.getDate();
+      if (day >= 1 && day <= daysInMonth) {
+        const entry = dailyEntries[day - 1];
+        // If sale has items, sum milk items
+        if (sale.items && sale.items.length > 0) {
+          const milkItems = sale.items.filter((item) =>
+            item.itemName.toLowerCase().includes('milk')
+          );
+          if (milkItems.length > 0) {
+            milkItems.forEach((item) => {
+              entry.quantityKg += item.quantity;
+              entry.amount += item.totalPrice;
+              if (item.unitPrice > 0) {
+                entry.ratePerKg = item.unitPrice;
+                defaultRate = item.unitPrice;
+              }
+            });
+          } else {
+            // General sale items
+            sale.items.forEach((item) => {
+              entry.quantityKg += item.quantity;
+              entry.amount += item.totalPrice;
+              if (item.unitPrice > 0) {
+                entry.ratePerKg = item.unitPrice;
+                defaultRate = item.unitPrice;
+              }
+            });
+          }
+        } else {
+          // Fallback if no item details attached
+          entry.amount += sale.totalAmount;
+        }
+      }
+    });
+
+    // Backfill any empty day's ratePerKg with the detected default rate
+    if (defaultRate > 0) {
+      dailyEntries.forEach((e) => {
+        if (e.ratePerKg === 0) e.ratePerKg = defaultRate;
+      });
+    }
+
+    // Collect payments made in this month
+    const realPayments: CustomerPayment[] = [];
+    currentMonthSales.forEach((s) => {
+      if (s.payments && s.payments.length > 0) {
+        s.payments.forEach((p) => {
+          if (p.amount > 0) {
+            realPayments.push({
+              id: `pay-${p.id}`,
+              date: p.createdAt || s.createdAt,
+              amount: p.amount,
+              method: (p.method === 'online' ? 'Online' : 'Cash') as any,
+              notes: `Bill #${s.id}`,
+              receivedBy: 'System',
+            });
+          }
+        });
+      } else if (s.paidAmount > 0) {
+        realPayments.push({
+          id: `sale-pay-${s.id}`,
+          date: s.createdAt,
+          amount: s.paidAmount,
+          method: 'Cash',
+          notes: `Bill #${s.id}`,
+          receivedBy: 'System',
+        });
+      }
+    });
+
+    // Also include any in-memory manually added payments for this month
     const pmtKey = `${customerId}-${month}-${year}`;
-    const payments = _paymentStore[pmtKey] ?? [];
+    const manualPayments = _paymentStore[pmtKey] ?? [];
+
+    const allPayments = [...realPayments, ...manualPayments];
+
+    // Determine final milk rate per kg display
+    const finalRate = defaultRate || CUSTOMER_RATES[customerId] || 180;
 
     return {
       customerId,
       customerName,
       customerPhone,
-      milkRatePerKg: rate,
+      milkRatePerKg: finalRate,
       month,
       year,
       dailyEntries,
       previousBalance,
-      payments,
+      payments: allPayments,
     };
   },
 
@@ -193,10 +303,8 @@ export const customerMilkReportService = {
 
   /**
    * Record a payment for a customer.
-   * Replace with: POST /api/customers/:id/payments
    */
   addPayment: async (payload: AddPaymentPayload): Promise<CustomerPayment> => {
-    await delay(400);
     const newPayment: CustomerPayment = {
       id: `pmt-${Date.now()}`,
       date: payload.date,
@@ -208,6 +316,15 @@ export const customerMilkReportService = {
     const key = `${payload.customerId}-${payload.month}-${payload.year}`;
     if (!_paymentStore[key]) _paymentStore[key] = [];
     _paymentStore[key].push(newPayment);
+
+    // Attempt to settle dues against backend customer if method is cash/online
+    try {
+      const backendMethod = payload.method === 'Online' ? 'online' : 'cash';
+      await customerService.settleAll(payload.customerId, backendMethod, payload.amount);
+    } catch (e) {
+      console.warn('Could not settle dues on backend:', e);
+    }
+
     return newPayment;
   },
 

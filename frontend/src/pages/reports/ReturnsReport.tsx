@@ -15,6 +15,11 @@ import { Pagination } from '../../components/common/Pagination';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
+import { saleService, SaleRecord } from '../../services/sale.service';
+import { posConfigService, POSConfigData } from '../../services/posConfig.service';
+import { ReceiptPreview } from '../../components/pos/ReceiptPreview';
+import { X, Printer } from 'lucide-react';
+
 export const ReturnsReport: React.FC = () => {
   const [filter, setFilter] = useState<DateFilterType>({
     label: 'This Month',
@@ -27,6 +32,27 @@ export const ReturnsReport: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
+  const [isLoadingSale, setIsLoadingSale] = useState(false);
+  const [posConfig, setPosConfig] = useState<POSConfigData | null>(null);
+
+  useEffect(() => {
+    posConfigService.getPOSConfig().then(setPosConfig).catch(() => {});
+  }, []);
+
+  const handleOpenBill = async (billNumber: string) => {
+    const cleanId = Number(String(billNumber).replace(/^(INV-0*|BILL-0*|#)/i, ''));
+    if (!cleanId || isNaN(cleanId)) return;
+    setIsLoadingSale(true);
+    try {
+      const sale = await saleService.getSale(cleanId);
+      setSelectedSale(sale);
+    } catch (e) {
+      console.error('Failed to load bill', e);
+    } finally {
+      setIsLoadingSale(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -91,49 +117,97 @@ export const ReturnsReport: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Return Amount Trend</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={data.dailyTrend}>
-                  <defs>
-                    <linearGradient id="colorReturns" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                  <Area type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorReturns)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Return Amount Trend</h3>
+              {(() => {
+                const trendData = (data.dailyTrend || []);
+                const hasTrend = trendData.some((t: any) => (t.value || 0) > 0);
+                if (!hasTrend && trendData.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No return trend data for this period
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <AreaChart data={trendData}>
+                      <defs>
+                        <linearGradient id="colorReturns" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <Area type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorReturns)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Returns by Category</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={data.byCategory} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
-                    {data.byCategory.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Returns by Category</h3>
+              {(() => {
+                const catData = (data.byCategory || []).filter((c: any) => (c.value || 0) > 0);
+                if (catData.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No returned items in this period
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <PieChart>
+                      <Pie
+                        data={catData}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={4}
+                        dataKey="value"
+                        nameKey="label"
+                      >
+                        {catData.map((_: any, i: number) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Return Reasons</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={data.byReason} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={120} />
-                  <RechartsTooltip />
-                  <Bar dataKey="value" name="Occurrences" fill="#F59E0B" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Return Reasons</h3>
+              {(() => {
+                const reasonData = (data.byReason || []).filter((r: any) => (r.value || 0) > 0);
+                if (reasonData.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No return reasons recorded
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <BarChart data={reasonData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                      <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={120} />
+                      <RechartsTooltip />
+                      <Bar dataKey="value" name="Occurrences" fill="#F59E0B" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
           </div>
 
@@ -157,7 +231,13 @@ export const ReturnsReport: React.FC = () => {
                     .map((r: any) => (
                     <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-rose-600">{r.id}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 hover:underline cursor-pointer">{r.originalSaleId}</td>
+                      <td
+                        onClick={() => handleOpenBill(r.originalSaleId)}
+                        className="px-4 py-3 text-sm text-blue-600 hover:underline cursor-pointer font-medium font-mono"
+                        title="Click to view original bill"
+                      >
+                        {r.originalSaleId}
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-600">{r.date}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{r.customer}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{r.items}</td>
@@ -189,6 +269,64 @@ export const ReturnsReport: React.FC = () => {
         </>
       )}
       {!isLoading && !error && !data && <EmptyState onRefresh={loadReport} />}
+
+      {/* Original Bill Modal */}
+      {selectedSale && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <ReceiptText className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-800">Original Bill Details</h3>
+              </div>
+              <button
+                onClick={() => setSelectedSale(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 flex justify-center bg-slate-50">
+              <ReceiptPreview
+                config={posConfig}
+                sale={{
+                  id: selectedSale.id,
+                  tokenNumber: selectedSale.tokenNumber,
+                  createdAt: selectedSale.createdAt,
+                  customerName: selectedSale.customerName,
+                  customerPhone: selectedSale.customerPhone,
+                  totalAmount: selectedSale.totalAmount,
+                  paidAmount: selectedSale.paidAmount,
+                  remainingBalance: selectedSale.remainingBalance,
+                  paymentMethod: selectedSale.payments?.[0]?.method || (selectedSale.saleType === 'split' ? 'Split' : 'Cash'),
+                  items: selectedSale.items?.map(i => ({
+                    name: i.itemName,
+                    qty: i.quantity,
+                    price: i.unitPrice,
+                    total: i.totalPrice,
+                  })) || [],
+                }}
+                showOuterContainer={false}
+              />
+            </div>
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-white">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                Print
+              </button>
+              <button
+                onClick={() => setSelectedSale(null)}
+                className="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-900 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ReportLayout>
   );
 };

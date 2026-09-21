@@ -360,10 +360,13 @@ export class CashbookController {
         }
       }
 
-      if (dateRange && dateRange !== 'Custom') {
+      if (dateRange && dateRange !== 'Custom' && dateRange !== 'All Time') {
         const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const formatYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
         if (dateRange === 'Today') {
-          where.date = now.toISOString().slice(0, 10);
+          where.date = formatYMD(now);
         } else if (dateRange === 'This Week') {
           const day = now.getDay();
           const from = new Date(now);
@@ -371,15 +374,15 @@ export class CashbookController {
           const to = new Date(from);
           to.setDate(from.getDate() + 6);
           where.date = {
-            gte: from.toISOString().slice(0, 10),
-            lte: to.toISOString().slice(0, 10),
+            gte: formatYMD(from),
+            lte: formatYMD(to),
           };
         } else if (dateRange === 'This Month') {
           const from = new Date(now.getFullYear(), now.getMonth(), 1);
           const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           where.date = {
-            gte: from.toISOString().slice(0, 10),
-            lte: to.toISOString().slice(0, 10),
+            gte: formatYMD(from),
+            lte: formatYMD(to),
           };
         }
       } else if (dateRange === 'Custom' && fromDate && toDate) {

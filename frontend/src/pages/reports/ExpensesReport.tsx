@@ -92,7 +92,11 @@ export const ExpensesReport: React.FC = () => {
         </div>
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
           className="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {CATEGORIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
+          <option value="All">All Categories</option>
+          {Array.from(new Set([
+            ...CATEGORIES.filter(c => c !== 'All'),
+            ...((data?.byCategory || []).map((c: any) => c.label).filter(Boolean))
+          ])).map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <input type="number" placeholder="Min amount" value={minAmount} onChange={e => setMinAmount(e.target.value)}
           className="w-28 py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -116,51 +120,99 @@ export const ExpensesReport: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Daily Expense Trend</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={data.dailyTrend}>
-                  <defs>
-                    <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <RechartsTooltip formatter={(v: any) => [`Rs. ${v.toLocaleString()}`, 'Expenses']} />
-                  <Area type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#expGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Daily Expense Trend</h3>
+              {(() => {
+                const trend = data.dailyTrend || [];
+                const hasExpenses = trend.some((t: any) => (t.value || 0) > 0);
+                if (!hasExpenses && trend.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No expenses recorded for this period
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <AreaChart data={trend}>
+                      <defs>
+                        <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <RechartsTooltip formatter={(v: any) => [`Rs. ${Number(v || 0).toLocaleString()}`, 'Expenses']} />
+                      <Area type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#expGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Expenses by Category</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={data.byCategory} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
-                    {data.byCategory.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Expenses by Category</h3>
+              {(() => {
+                const catData = (data.byCategory || []).filter((c: any) => (c.value || 0) > 0);
+                if (catData.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No expense data in this period
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <PieChart>
+                      <Pie
+                        data={catData}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={4}
+                        dataKey="value"
+                        nameKey="label"
+                      >
+                        {catData.map((_: any, i: number) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Category Histogram</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={data.byCategory} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
-                  <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={90} />
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
-                  <Bar dataKey="value" name="Amount" radius={[0,4,4,0]}>
-                    {data.byCategory.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-2">Category Histogram</h3>
+              {(() => {
+                const catData = (data.byCategory || []).filter((c: any) => (c.value || 0) > 0);
+                if (catData.length === 0) {
+                  return (
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                      No expense categories recorded
+                    </div>
+                  );
+                }
+                return (
+                  <ResponsiveContainer width="100%" height={230}>
+                    <BarChart data={catData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                      <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
+                      <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={90} />
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <Bar dataKey="value" name="Amount" radius={[0,4,4,0]}>
+                        {catData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
           </div>
 

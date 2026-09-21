@@ -223,40 +223,73 @@ export class ReportsController {
 
       const history = await Promise.all(shifts.map(async (s) => {
         const shiftEnd = s.closedAt ?? new Date();
-        const [sales, expenses] = await Promise.all([
-          prisma.sale.findMany({ where: { createdAt: { gte: s.openedAt, lte: shiftEnd } }, include: { payments: true } }),
-          prisma.expense.findMany({ where: { date: s.shiftDate } }),
-        ]);
+
+        // 1. Cash sales during shift
+        const sales = await prisma.sale.findMany({
+          where: { createdAt: { gte: s.openedAt, lte: shiftEnd } },
+          include: { payments: true },
+        });
         let cashSales = 0;
         for (const sale of sales) {
-          if (sale.saleType === 'walk_in' && sale.payments[0]?.method === 'cash') cashSales += sale.totalAmount;
-          if (sale.saleType === 'split') cashSales += (sale.payments[0]?.amount ?? 0);
+          const cashPmts = (sale.payments || []).filter(p => p.method === 'cash');
+          if (cashPmts.length > 0) {
+            cashSales += cashPmts.reduce((sum, p) => sum + (p.amount || 0), 0);
+          } else if (sale.saleType === 'walk_in') {
+            cashSales += (sale.paidAmount || sale.totalAmount || 0);
+          } else if (sale.saleType === 'split') {
+            cashSales += (sale.paidAmount || 0);
+          }
         }
-        const expenseTotal = expenses.reduce((sum, e) => sum + e.netExpense, 0);
+
+        // 2. Expenses paid in cash during this shift or on this shift date
+        const [expensePayments, dateExpenses, supplierCashPayments, returnsList] = await Promise.all([
+          prisma.expensePayment.findMany({ where: { shiftId: s.id } }),
+          prisma.expense.findMany({ where: { date: s.shiftDate } }),
+          prisma.supplierPayment.findMany({ where: { shiftId: s.id, method: 'cash' } }),
+          prisma.return.findMany({ where: { date: s.shiftDate, paymentMethod: 'Cash' } }),
+        ]);
+
+        const expensePaidTotal = expensePayments.length > 0
+          ? expensePayments.reduce((sum, ep) => sum + ep.amount, 0)
+          : dateExpenses.reduce((sum, e) => sum + e.netExpense, 0);
+
+        const supplierCashOut = supplierCashPayments.reduce((sum, sp) => sum + sp.amount, 0);
+        const refundsTotal = returnsList.reduce((sum, r) => sum + r.refundAmount, 0);
+
+        const cashIn = money(cashSales);
+        const cashOut = money(expensePaidTotal + supplierCashOut + refundsTotal);
+
+        // Expected cash: opening + cash in - cash out
+        const calculatedExpected = money(s.openingCash + cashIn - cashOut);
+        const expectedCash = s.status === 'Open' ? calculatedExpected : (s.expectedCash || calculatedExpected);
+        const countedCash = s.countedCash ?? (s.status === 'Open' ? calculatedExpected : 0);
+        const variance = s.difference ?? money(countedCash - expectedCash);
+
         return {
           id: `REG-${s.shiftDate}`,
           date: s.shiftDate,
-          cashier: s.openedBy.name || s.openedBy.email,
-          openingCash: s.openingCash,
+          cashier: s.openedBy?.name || s.openedBy?.email || 'Admin',
+          openingCash: money(s.openingCash),
           cashSales:   money(cashSales),
-          cashIn:      0,
-          cashOut:     0,
-          expenses:    money(expenseTotal),
-          refunds:     0,
-          expectedCash:s.expectedCash,
-          countedCash: s.countedCash ?? 0,
-          variance:    s.difference ?? 0,
-          closingCash: s.countedCash ?? 0,
-          status:      s.differenceStatus === 'Balanced' ? 'Balanced' : 'Variance',
+          cashIn,
+          cashOut,
+          expenses:    money(expensePaidTotal + supplierCashOut),
+          refunds:     money(refundsTotal),
+          expectedCash:money(expectedCash),
+          countedCash: money(countedCash),
+          variance:    money(variance),
+          closingCash: money(countedCash),
+          status:      Math.abs(variance) < 1 ? 'Balanced' : 'Variance',
         };
       }));
 
       const totals = {
         openingCash:  history.length ? history[0].openingCash : 0,
         cashSales:    money(history.reduce((s, r) => s + r.cashSales, 0)),
-        cashIn:       0, cashOut: 0,
+        cashIn:       money(history.reduce((s, r) => s + r.cashIn, 0)),
+        cashOut:      money(history.reduce((s, r) => s + r.cashOut, 0)),
         expenses:     money(history.reduce((s, r) => s + r.expenses, 0)),
-        refunds:      0,
+        refunds:      money(history.reduce((s, r) => s + r.refunds, 0)),
         expectedCash: money(history.reduce((s, r) => s + r.expectedCash, 0)),
         countedCash:  money(history.reduce((s, r) => s + r.countedCash, 0)),
         variance:     money(history.reduce((s, r) => s + r.variance, 0)),
@@ -265,8 +298,8 @@ export class ReportsController {
 
       const movementData = [...history].slice(0, 14).map(r => ({
         label: dayLabel(r.date),
-        cashIn:   r.cashSales,
-        cashOut:  r.expenses,
+        cashIn:   r.cashIn,
+        cashOut:  r.cashOut,
         expected: r.expectedCash,
         actual:   r.countedCash,
       }));
@@ -445,7 +478,10 @@ export class ReportsController {
         suppliers: suppliersSet,
         stockByCategory:  Object.entries(stockByCategory).map(([label, value]) => ({ label, value })),
         valueByCategory:  Object.entries(valueByCategory).map(([label, value]) => ({ label, value })),
-        lowStockProducts: rows.filter(r => r.stockStatus !== 'In Stock').map(r => ({ label: r.name.split(' ')[0], value: r.stock, max: 0 })),
+        lowStockProducts: rows.filter(r => r.stockStatus !== 'In Stock').map(r => {
+          const prod = products.find(p => p.code === r.sku);
+          return { label: r.name.split(' ')[0], value: Math.max(0, r.stock), max: prod?.lowStockThreshold || 0 };
+        }),
         topSellingProducts: [],
       });
     } catch (err) { next(err); }
