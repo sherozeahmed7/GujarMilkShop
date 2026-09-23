@@ -301,6 +301,17 @@ export const NotificationPanel: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Mark All as Read — primary action button in header */}
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      title="Mark all notifications as read"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition-all duration-150 shadow-sm shadow-blue-600/25 active:scale-95 whitespace-nowrap"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5 shrink-0" />
+                      Mark all read
+                    </button>
+                  )}
                   <button
                     onClick={() => loadNotifications(true)}
                     disabled={isRefreshing}
@@ -320,34 +331,21 @@ export const NotificationPanel: React.FC = () => {
                 </div>
               </div>
 
-              {/* Sub-header Actions & Filters */}
-              <div className="px-5 py-3 border-b border-slate-100 bg-white flex items-center justify-between shrink-0 gap-2 overflow-x-auto custom-scrollbar">
-                <div className="flex items-center gap-1.5">
-                  {(['all', 'unread', 'inventory', 'khata', 'shift', 'supplier', 'sale', 'return', 'sync'] as const).map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setSelectedFilter(filter)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap ${
-                        selectedFilter === filter
-                          ? 'bg-blue-600 text-white shadow-2xs'
-                          : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/80'
-                      }`}
-                    >
-                      {filter === 'all' ? 'All' : filter === 'unread' ? `Unread (${unreadCount})` : filter}
-                    </button>
-                  ))}
-                </div>
-
-                {unreadCount > 0 && (
+              {/* Sub-header Filters */}
+              <div className="px-5 py-3 border-b border-slate-100 bg-white flex items-center shrink-0 gap-1.5 overflow-x-auto custom-scrollbar">
+                {(['all', 'unread', 'inventory', 'khata', 'shift', 'supplier', 'sale', 'return', 'sync'] as const).map((filter) => (
                   <button
-                    onClick={handleMarkAllRead}
-                    className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors ml-auto whitespace-nowrap"
-                    title="Mark all notifications as read"
+                    key={filter}
+                    onClick={() => setSelectedFilter(filter)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all whitespace-nowrap ${
+                      selectedFilter === filter
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/80'
+                    }`}
                   >
-                    <CheckCheck className="w-3.5 h-3.5" />
-                    Mark all read
+                    {filter === 'all' ? 'All' : filter === 'unread' ? `Unread (${unreadCount})` : filter}
                   </button>
-                )}
+                ))}
               </div>
 
               {/* Drawer Body / Scrollable List with Generous Padding */}

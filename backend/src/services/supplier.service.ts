@@ -152,12 +152,6 @@ export class SupplierService {
       where.cycleType = filters.cycleType;
     }
 
-    let suppliers = await prisma.supplier.findMany({
-      where,
-      orderBy: { id: 'desc' },
-      include: { collections: true, payments: true },
-    });
-
     let rangeStart: string | null = null;
     let rangeEnd: string | null = null;
     if (filters?.fromDate) {
@@ -169,18 +163,150 @@ export class SupplierService {
       if (!Number.isNaN(d.getTime())) rangeEnd = localDateKey(d);
     }
 
+    // Filter suppliers if a date range is provided (only those with activity)
     if (rangeStart || rangeEnd) {
-      suppliers = suppliers.filter((s) =>
-        s.collections.some((c) => {
-          const date = String(c.date);
-          if (rangeStart && date < rangeStart) return false;
-          if (rangeEnd && date > rangeEnd) return false;
-          return true;
-        })
+      where.collections = {
+        some: {
+          ...(rangeStart ? { date: { gte: rangeStart } } : {}),
+          ...(rangeEnd ? { date: { lte: rangeEnd } } : {})
+        }
+      };
+    }
+
+    // 1. Fetch lean suppliers + opening balances
+    const suppliers = await prisma.supplier.findMany({
+      where,
+      orderBy: { id: 'desc' },
+      include: {
+        collections: {
+          where: { notes: 'Opening Balance' },
+          take: 1,
+          select: { amount: true }
+        }
+      }
+    });
+
+    if (suppliers.length === 0) return [];
+
+    const supplierIds = suppliers.map((s) => s.id);
+    const now = new Date();
+
+    // Group suppliers by cycleType to determine current period
+    const cycleGroups: Record<string, number[]> = {};
+    for (const s of suppliers) {
+      const c = s.cycleType || 'Monthly Cycle';
+      if (!cycleGroups[c]) cycleGroups[c] = [];
+      cycleGroups[c].push(s.id);
+    }
+
+    // 2. Parallel aggregates
+    // - total purchased all time
+    // - total paid all time
+    // - current period purchased per cycle group
+    // - previous period purchased per cycle group (before pStart)
+    const aggPromises: Promise<any>[] = [
+      prisma.supplierCollection.groupBy({
+        by: ['supplierId'],
+        where: { supplierId: { in: supplierIds } },
+        _sum: { amount: true }
+      }),
+      prisma.supplierPayment.groupBy({
+        by: ['supplierId'],
+        where: { supplierId: { in: supplierIds } },
+        _sum: { amount: true }
+      })
+    ];
+
+    // Current and Previous period aggregations
+    const cycleKeys = Object.keys(cycleGroups);
+    for (const cycle of cycleKeys) {
+      const pStart = rangeStart || supplierPeriodStart(cycle, now);
+      
+      // Current Period
+      aggPromises.push(
+        prisma.supplierCollection.groupBy({
+          by: ['supplierId'],
+          where: {
+            supplierId: { in: cycleGroups[cycle] },
+            date: {
+              gte: pStart,
+              ...(rangeEnd ? { lte: rangeEnd } : {})
+            }
+          },
+          _sum: { amount: true }
+        }).then(res => ({ cycle, type: 'current', data: res }))
+      );
+
+      // Previous Period (Strictly before pStart)
+      aggPromises.push(
+        prisma.supplierCollection.groupBy({
+          by: ['supplierId'],
+          where: {
+            supplierId: { in: cycleGroups[cycle] },
+            date: { lt: pStart }
+          },
+          _sum: { amount: true }
+        }).then(res => ({ cycle, type: 'previous', data: res }))
       );
     }
 
-    return suppliers.map((s) => shape(s, s.collections, s.payments, rangeStart, rangeEnd));
+    const results = await Promise.all(aggPromises);
+    const purchasedAgg = results[0];
+    const paidAgg = results[1];
+    
+    const purchasedMap = new Map<number, number>(purchasedAgg.map((r: any) => [r.supplierId, r._sum.amount || 0]));
+    const paidMap = new Map<number, number>(paidAgg.map((r: any) => [r.supplierId, r._sum.amount || 0]));
+    
+    const currentPurchasedMap = new Map<number, number>();
+    const previousPurchasedMap = new Map<number, number>();
+    
+    for (let i = 2; i < results.length; i++) {
+      const { type, data } = results[i] as { type: string, data: any[] };
+      for (const r of data) {
+        if (type === 'current') currentPurchasedMap.set(r.supplierId, r._sum.amount || 0);
+        if (type === 'previous') previousPurchasedMap.set(r.supplierId, r._sum.amount || 0);
+      }
+    }
+
+    // 3. Assemble response
+    return suppliers.map((s) => {
+      const purchased = purchasedMap.get(s.id) || 0;
+      const paid = paidMap.get(s.id) || 0;
+      const advance = Number(s.guaranteedAdvance) || 0;
+      
+      const openingBalance = s.collections?.[0] ? money(s.collections[0].amount) : 0;
+      
+      const currPurchased = currentPurchasedMap.get(s.id) || 0;
+      const prevPurchased = previousPurchasedMap.get(s.id) || 0;
+
+      const currentAmount = money(currPurchased);
+      const previousAmount = money(prevPurchased);
+      const totalAmount = money(purchased - advance);
+      const paidAmount = money(paid);
+      const remainingBalance = money(totalAmount - paidAmount);
+
+      return {
+        id: String(s.id),
+        name: s.name,
+        code: s.code,
+        phone: s.phone || '',
+        defaultRate: s.defaultRate,
+        cowRate: s.cowRate,
+        buffaloRate: s.buffaloRate,
+        cycleType: s.cycleType,
+        isActive: s.isActive,
+        guaranteedAdvance: advance,
+        openingBalance,
+        grossPayable: money(purchased - paid),
+        currentAmount,
+        previousAmount,
+        totalAmount,
+        paidAmount,
+        remainingBalance,
+        payableBalance: remainingBalance, // deprecated alias
+        nextCycleCredit: advance,
+      };
+    });
   }
 
   static async get(id: number) {

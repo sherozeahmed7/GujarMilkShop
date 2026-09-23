@@ -1,5 +1,7 @@
+import { apiClient } from './apiClient';
+
 export interface ActivityLogEntry {
-  id: string;
+  id: number;
   timestamp: string;
   user: string;
   userRole: string;
@@ -11,23 +13,24 @@ export interface ActivityLogEntry {
   status: 'Success' | 'Warning' | 'Error';
 }
 
-const LOGS_STORAGE_KEY = 'gujar_pos_activity_logs';
+export interface PaginatedActivityLogs {
+  data: ActivityLogEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
 
 export const activityLogger = {
-  log: (params: Omit<ActivityLogEntry, 'id' | 'timestamp' | 'user' | 'userRole'>) => {
+  log: async (params: Omit<ActivityLogEntry, 'id' | 'timestamp' | 'user' | 'userRole'>) => {
     try {
-      const existingLogs = JSON.parse(localStorage.getItem(LOGS_STORAGE_KEY) || '[]');
-      
-      const newLog: ActivityLogEntry = {
-        id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: new Date().toISOString(),
-        user: 'System Admin', // Mock active user
-        userRole: 'ADMIN',
+      const payload = {
+        user: localStorage.getItem('userName') || 'Unknown User',
+        userRole: (localStorage.getItem('role') || 'user').toUpperCase(),
         ...params
       };
-
-      existingLogs.unshift(newLog); // Add to beginning
-      localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(existingLogs));
+      
+      await apiClient.post('/activity-logs', payload);
       
       console.log(`[ACTIVITY LOG] [${params.module}] ${params.action}: ${params.description}`);
     } catch (e) {
@@ -35,12 +38,26 @@ export const activityLogger = {
     }
   },
 
-  getLogs: async (): Promise<ActivityLogEntry[]> => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return JSON.parse(localStorage.getItem(LOGS_STORAGE_KEY) || '[]');
-  },
-  
-  clearLogs: async (): Promise<void> => {
-    localStorage.removeItem(LOGS_STORAGE_KEY);
+  getLogs: async (params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    module?: string;
+    status?: string;
+  } = {}): Promise<PaginatedActivityLogs> => {
+    try {
+      const query = new URLSearchParams();
+      if (params.page)     query.set('page', String(params.page));
+      if (params.pageSize) query.set('pageSize', String(params.pageSize));
+      if (params.search)   query.set('search', params.search);
+      if (params.module)   query.set('module', params.module);
+      if (params.status)   query.set('status', params.status);
+
+      const response = await apiClient.get(`/activity-logs?${query.toString()}`);
+      return response;
+    } catch (e) {
+      console.error("Failed to fetch activity logs", e);
+      return { data: [], total: 0, page: 1, pageSize: 25, totalPages: 1 };
+    }
   }
 };

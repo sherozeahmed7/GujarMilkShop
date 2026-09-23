@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { History, Eye } from 'lucide-react';
+import { Pagination } from '../common/Pagination';
 import { useShiftStore } from '../../store/shiftStore';
 import { ShiftRecord, ShiftDifferenceStatus } from '../../types';
 import { ShiftDetailModal } from './ShiftDetailModal';
@@ -22,6 +23,8 @@ function formatTimestamp(iso?: string) {
 export const ShiftHistoryPanel: React.FC = () => {
   const { shifts } = useShiftStore();
   const [viewRecord, setViewRecord] = useState<ShiftRecord | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col h-full overflow-hidden">
@@ -46,7 +49,9 @@ export const ShiftHistoryPanel: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {shifts.map((shift) => (
+            {shifts
+              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+              .map((shift) => (
               <tr key={shift.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-slate-800">{shift.date}</td>
                 <td className="px-4 py-3 text-slate-600">{shift.openedBy}</td>
@@ -81,6 +86,17 @@ export const ShiftHistoryPanel: React.FC = () => {
             ))}
           </tbody>
         </table>
+
+        {shifts.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={shifts.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemLabel="shifts"
+          />
+        )}
       </div>
 
       {viewRecord && (

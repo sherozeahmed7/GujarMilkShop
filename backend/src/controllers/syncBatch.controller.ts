@@ -24,6 +24,7 @@ const TABLE_MAP: Record<string, string> = {
   AuditRecord: 'audit_records',
   CashPerson: 'cash_persons',
   CashbookTransaction: 'cashbook_transactions',
+  ActivityLog: 'activity_logs',
 };
 
 const ALLOWED_COLUMNS: Record<string, Set<string>> = {
@@ -102,6 +103,9 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
   ]),
   CashbookTransaction: new Set([
     'cash_person_uuid', 'cash_person_name', 'transaction_type', 'amount', 'description', 'date', 'created_by', 'created_at',
+  ]),
+  ActivityLog: new Set([
+    'timestamp', 'user', 'user_role', 'action', 'module', 'description', 'entity_id', 'ip', 'status', 'created_at', 'updated_at',
   ]),
 };
 
@@ -597,7 +601,7 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                 resolvedUuid = existingId;
                 const cols = Object.keys(payloadObj).filter(k => k !== 'id' && k !== 'local_id' && k !== 'device_id');
                 if (cols.length > 0) {
-                   const setStr = cols.map((c, i) => `${c}=$${i + 2}`).join(', ');
+                   const setStr = cols.map((c, i) => `"${c}"=$${i + 2}`).join(', ');
                    await client.query(`UPDATE ${table} SET ${setStr} WHERE id=$1`, [resolvedUuid, ...cols.map(c => payloadObj[c])]);
                 }
               } else {
@@ -607,7 +611,7 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                 payloadObj.local_id = localId;
                 const cols = Object.keys(payloadObj);
                 const placeholders = cols.map((_, i) => `$${i + 1}`).join(',');
-                await client.query(`INSERT INTO ${table} (${cols.join(',')}) VALUES(${placeholders})`, cols.map(c => payloadObj[c]));
+                await client.query(`INSERT INTO ${table} (${cols.map(c => `"${c}"`).join(',')}) VALUES(${placeholders})`, cols.map(c => payloadObj[c]));
                 resolvedUuid = cloudUuid;
               }
               

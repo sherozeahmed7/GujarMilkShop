@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBackupStore } from '../../../store/backupStore';
+import { Pagination } from '../../common/Pagination';
 import { Download, Trash2, RotateCcw, Loader2 } from 'lucide-react';
 import { BackupRecord } from '../../../types';
 import { toast } from 'react-hot-toast';
@@ -11,6 +12,8 @@ export const BackupTable: React.FC = () => {
   const [restoreModalBackup, setRestoreModalBackup] = useState<BackupRecord | null>(null);
   const [deleteModalBackup, setDeleteModalBackup] = useState<BackupRecord | null>(null);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const formatSize = (kb: number) => {
     if (kb > 1024) return `${(kb / 1024).toFixed(2)} MB`;
@@ -73,7 +76,9 @@ export const BackupTable: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {backups.map((backup) => (
+            {backups
+              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+              .map((backup) => (
               <tr key={backup.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4 font-medium text-slate-800 truncate" title={backup.filename}>
                   {backup.filename}
@@ -138,6 +143,17 @@ export const BackupTable: React.FC = () => {
             )}
           </tbody>
         </table>
+
+        {backups.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={backups.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemLabel="backups"
+          />
+        )}
       </div>
 
       {restoreModalBackup && (

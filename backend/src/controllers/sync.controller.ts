@@ -233,6 +233,21 @@ function buildInsert(entityType: string, p: any): { sql: string; vals: any[] } {
         vals: [p.id ?? p.cloudUuid, p.local_id, p.device_id, p.name, p.phone ?? null, p.customer_type ?? 'retail'],
       };
 
+    case 'ActivityLog':
+      return {
+        sql: `INSERT INTO activity_logs
+                (id,local_id,device_id,timestamp,"user",user_role,action,module,description,entity_id,ip,status,created_at,updated_at)
+              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+              ON CONFLICT(device_id,local_id) DO NOTHING`,
+        vals: [
+          p.id, p.local_id, p.device_id,
+          p.timestamp, p.user, p.user_role,
+          p.action, p.module, p.description,
+          p.entity_id ?? null, p.ip ?? null, p.status,
+          p.created_at, p.updated_at
+        ],
+      };
+
     default:
       throw new Error(`Unsupported entityType for migration: ${entityType}`);
   }

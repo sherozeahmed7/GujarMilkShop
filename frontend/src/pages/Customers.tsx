@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { CustomerSummary } from '../components/customers/CustomerSummary';
 import {
   CustomerToolbar,
@@ -17,6 +17,7 @@ import { getReturns } from '../services/returnsService';
 import { ApiCustomer, CustomerTableRow } from '../types/customer';
 import { ReturnRecord } from '../types/returns';
 import { useDebounce } from '../hooks/useDebounce';
+import { activityLogger } from '../services/activityLogger';
 
 function normalizePhone(phone: string | null | undefined): string {
   return (phone || '').replace(/\s+/g, '').toLowerCase();
@@ -134,6 +135,7 @@ export const Customers: React.FC = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<ApiCustomer | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CustomerTableRow | null>(null);
 
   const [khataRow, setKhataRow] = useState<CustomerTableRow | null>(null);
   const [khataSales, setKhataSales] = useState<SaleRecord[]>([]);
@@ -188,10 +190,10 @@ export const Customers: React.FC = () => {
           : customerService.getCustomers(customerFilters),
         skipWalkIn
           ? Promise.resolve([] as SaleRecord[])
-          : saleService.listSales({ saleType: 'walk_in' }),
+          : saleService.listSales({ saleType: 'walk_in', limit: 0 }),
         skipSplit
           ? Promise.resolve([] as SaleRecord[])
-          : saleService.listSales({ saleType: 'split' }),
+          : saleService.listSales({ saleType: 'split', limit: 0 }),
         customerService.getSummary(),
       ]);
 
@@ -270,23 +272,36 @@ export const Customers: React.FC = () => {
     setIsFormModalOpen(true);
   };
 
-  const handleDelete = async (row: CustomerTableRow) => {
+  const handleDelete = (row: CustomerTableRow) => {
     if (row.kind !== 'ledger' || deleting) return;
-    if (
-      !window.confirm(
-        `Delete customer "${row.name}"? They will be deactivated and hidden from the list.`
-      )
-    ) {
-      return;
-    }
+    setDeleteTarget(row);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
     setDeleting(true);
     setError(null);
     try {
-      await customerService.deleteCustomer(row.id);
+      await customerService.deleteCustomer(deleteTarget.id);
+      activityLogger.log({
+        action: 'CUSTOMER_DELETED',
+        module: 'Customers',
+        description: `Deleted customer "${deleteTarget.name}" (ID: ${deleteTarget.id}). They have been deactivated and hidden from the customer list.`,
+        entityId: String(deleteTarget.id),
+        status: 'Success',
+      });
+      setDeleteTarget(null);
       await loadData();
     } catch (err: any) {
-      setError(err?.message || 'Failed to delete customer');
+      const message = err?.message || 'Failed to delete customer';
+      activityLogger.log({
+        action: 'CUSTOMER_DELETED',
+        module: 'Customers',
+        description: `Failed to delete customer "${deleteTarget.name}" (ID: ${deleteTarget.id}): ${message}`,
+        entityId: String(deleteTarget.id),
+        status: 'Error',
+      });
+      setError(message);
     } finally {
       setDeleting(false);
     }
@@ -486,6 +501,57 @@ export const Customers: React.FC = () => {
           onClose={() => setCollectRow(null)}
           onConfirm={handleCollectConfirm}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-sm p-6 animate-in fade-in zoom-in duration-150">
+            {/* Icon + Title */}
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 leading-snug">Delete Customer?</h3>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  You are about to delete{' '}
+                  <span className="font-semibold text-slate-800">"{deleteTarget.name}"</span>.
+                  They will be deactivated and hidden from the customer list.
+                </p>
+              </div>
+            </div>
+
+            {/* Warning note */}
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 mb-5">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+              <p className="text-xs text-amber-700 font-medium">
+                This action cannot be undone from the customers list.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-xl transition-colors shadow-sm shadow-red-600/25 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deleting ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -115,6 +115,8 @@ model SupplierPayment {
   createdBy   User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
+  @@index([supplierId])
+  @@index([supplierId, date])
   @@index([shiftId])
 }
 
@@ -177,6 +179,10 @@ model Customer {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   sales        Sale[]
+
+  @@index([status])
+  @@index([customerType, status])
+  @@index([name])
 }
 
 // Master transaction record
@@ -196,6 +202,12 @@ model Sale {
   updatedAt        DateTime   @updatedAt
   items            SaleItem[]
   payments         Payment[]
+
+  @@index([createdAt])
+  @@index([saleType, createdAt])
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+  @@index([status])
 }
 
 // Line items per sale (unitPrice locked at sale time)
@@ -208,6 +220,9 @@ model SaleItem {
   unitPrice  Float    // price per kg at time of sale
   totalPrice Float    // quantity × unitPrice
   createdAt  DateTime @default(now())
+
+  @@index([saleId])
+  @@index([itemName])
 }
 
 // Payment records per sale
@@ -219,6 +234,9 @@ model Payment {
   amount    Float
   status    String   // "completed" | "partial" | "pending"
   createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([status])
 }
 
 // Daily stock record for F2 milk products (Lassi, Butter, Ghee)
@@ -491,4 +509,24 @@ model Notification {
   @@index([createdAt])
 }
 
+// ─── ACTIVITY LOGS ─────────────────────────────────────────────────────────
 
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  timestamp   DateTime @default(now())
+  user        String
+  userRole    String
+  action      String
+  module      String
+  description String
+  entityId    String?
+  ip          String?
+  status      String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([timestamp])
+  @@index([module])
+  @@index([action])
+}

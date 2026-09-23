@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { History, Eye, Printer } from 'lucide-react';
+import { Pagination } from '../common/Pagination';
 import { ReturnRecord, ReturnType } from '../../types';
 import { useReturnsStore } from '../../store/returnsStore';
 import { ReturnDetailModal } from './ReturnDetailModal';
@@ -33,6 +34,8 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
   const { returns, fetchReturns } = useReturnsStore();
   const [viewRecord, setViewRecord] = useState<ReturnRecord | null>(null);
   const [printRecord, setPrintRecord] = useState<ReturnRecord | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   useEffect(() => { fetchReturns(); }, []);
 
@@ -59,8 +62,10 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
           </div>
         )}
 
-        {returns.map((record, idx) => {
-          const isNew = highlightLatest && idx === 0;
+        {returns
+          .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+          .map((record, idx) => {
+          const isNew = highlightLatest && idx === 0 && currentPage === 1;
           return (
             <div
               key={record.returnId}
@@ -125,6 +130,17 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
             </div>
           );
         })}
+
+        {returns.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={returns.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemLabel="returns"
+          />
+        )}
       </div>
 
       {/* Modals */}

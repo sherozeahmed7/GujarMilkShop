@@ -225,6 +225,36 @@ async function runAutoMigrations() {
         console.error('⚠️ Auto-migration (Shift.shiftDate drop index):', error);
       }
     }
+
+    // Auto-create ActivityLog table if missing (for legacy databases during updates)
+    if (!tableNames.has('ActivityLog')) {
+      console.log('🔄 Auto-migrating: Creating ActivityLog table...');
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ActivityLog" (
+          "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          "timestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "user" TEXT NOT NULL,
+          "userRole" TEXT NOT NULL,
+          "action" TEXT NOT NULL,
+          "module" TEXT NOT NULL,
+          "description" TEXT NOT NULL,
+          "entityId" TEXT,
+          "ip" TEXT,
+          "status" TEXT NOT NULL,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      try {
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ActivityLog_timestamp_idx" ON "ActivityLog"("timestamp")`);
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ActivityLog_module_idx" ON "ActivityLog"("module")`);
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ActivityLog_action_idx" ON "ActivityLog"("action")`);
+      } catch (error) {
+        console.error('⚠️ Failed to create indexes for ActivityLog:', error);
+      }
+      console.log('✅ ActivityLog table created successfully.');
+    }
+
   } catch (error) {
     console.error('⚠️ Auto-migration notice:', error);
   }

@@ -166,48 +166,48 @@ export const ReceiptContent: React.FC<{
       {/* Header */}
       <div className="text-center w-full flex flex-col items-center">
         {config?.showLogoOnReceipt && (
-          <img src="/logo.png" alt="Logo" className="w-14 h-14 object-contain mb-1.5" />
+          <img src="/logo.png" alt="Logo" className="w-14 h-14 object-contain mb-1" />
         )}
         <div className="font-black text-[17px] tracking-wide uppercase leading-tight text-black">
           {shopName}
         </div>
-        <div className="font-bold text-[11px] text-slate-800 tracking-wider uppercase mt-0.5">
+        <div className="font-bold text-[11px] text-slate-800 tracking-wider uppercase mt-1">
           SALE RECEIPT
         </div>
-        <div className="font-black text-[34px] mt-0.5 tracking-tight leading-none text-black">
+        <div className="font-black text-[34px] mt-1 tracking-tight leading-none text-black">
           TOKEN {tokenFormatted}
         </div>
       </div>
 
       {/* Bill & Date */}
-      <div className="w-full flex justify-between items-center mt-2.5 font-bold text-[11px] text-black">
+      <div className="w-full flex justify-between items-center mt-1 font-bold text-[11px] text-black">
         <span>Bill: {billNo}</span>
         <span>{formattedDate}</span>
       </div>
 
       {/* Customer Name if present */}
       {sale?.customerName && (
-        <div className="w-full flex justify-between items-center font-bold text-[10.5px] text-slate-800 mt-0.5">
+        <div className="w-full flex justify-between items-center font-bold text-[10.5px] text-slate-800 mt-1">
           <span>Customer:</span>
           <span className="uppercase">{sale.customerName}</span>
         </div>
       )}
 
       {/* Paid Box with exact top & bottom solid divider lines */}
-      <div className="w-full border-t-[1.5px] border-b-[1.5px] border-black mt-1.5 py-1 text-center font-extrabold text-[13px] tracking-[0.15em] text-black">
+      <div className="w-full border-t-[1.5px] border-b-[1.5px] border-black mt-1 py-1 text-center font-extrabold text-[13px] tracking-[0.15em] text-black">
         PAID: {paymentMethod}
       </div>
 
       {/* Line Items */}
-      <div className="w-full mt-2">
+      <div className="w-full mt-1 flex flex-col gap-1">
         {items.map((item, idx) => (
-          <div key={idx} className="mb-2">
+          <div key={idx}>
             <div className="flex justify-between font-black text-[13px] items-center text-black leading-tight">
               <span className="whitespace-nowrap uppercase">{item.name}</span>
-              <span className="border-b-[1.5px] border-dotted border-black flex-grow mx-1.5 translate-y-[-2px]"></span>
+              <span className="border-b-[1.5px] border-dotted border-black flex-grow mx-1 translate-y-[-2px]"></span>
               <span className="whitespace-nowrap font-black">{currency}{item.total}</span>
             </div>
-            <div className="font-bold text-[11px] text-slate-800 mt-0.5">
+            <div className="font-bold text-[11px] text-slate-800 mt-1">
               {item.qty} x {currency}{item.price}
             </div>
           </div>
@@ -223,20 +223,20 @@ export const ReceiptContent: React.FC<{
       )}
 
       {/* Total */}
-      <div className="w-full border-t-[1.5px] border-black mt-1 pt-1.5 flex justify-between items-center font-black text-[22px] leading-none text-black">
+      <div className="w-full border-t-[1.5px] border-black mt-1 pt-1 flex justify-between items-center font-black text-[22px] leading-none text-black">
         <span>TOTAL</span>
         <span>{currency}{total}</span>
       </div>
 
       {/* Barcode & Footer */}
-      <div className="w-full mt-2.5 flex flex-col items-center">
-        <div className="w-full flex justify-center py-0.5">
+      <div className="w-full mt-1 flex flex-col items-center">
+        <div className="w-full flex justify-center py-1">
           <BarcodeSvg text={billNo} height={32} />
         </div>
         <div className="font-bold text-[9px] mt-1 tracking-[0.12em] uppercase text-black text-center">
           SCAN FOR RETURN / AUDIT
         </div>
-        <div className="font-bold text-[12px] mt-2 text-center whitespace-pre-wrap text-black leading-snug">
+        <div className="font-bold text-[12px] mt-1 text-center whitespace-pre-wrap text-black leading-snug">
           {config?.receiptFooterText || 'Thank you for your visit!'}
         </div>
       </div>

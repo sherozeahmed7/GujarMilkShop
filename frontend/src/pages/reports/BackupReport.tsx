@@ -5,6 +5,7 @@ import { ReportLayout } from '../../components/reports/ReportLayout';
 import { ReportHeader } from '../../components/reports/ReportHeader';
 import { SummaryCard } from '../../components/reports/SummaryCard';
 import { LoadingState, EmptyState, ErrorState } from '../../components/reports/ReportStates';
+import { Pagination } from '../../components/common/Pagination';
 import { Database, CheckCircle, Clock, AlertTriangle, HardDrive, Download, RefreshCw, Trash2, Search } from 'lucide-react';
 
 export const BackupReport: React.FC = () => {
@@ -13,6 +14,12 @@ export const BackupReport: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -149,7 +156,9 @@ export const BackupReport: React.FC = () => {
                   {filtered.length === 0 && (
                     <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">No backups found.</td></tr>
                   )}
-                  {filtered.map((b: any) => (
+                  {filtered
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((b: any) => (
                     <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-blue-600">{b.id}</td>
                       <td className="px-4 py-3 text-sm text-slate-700 font-mono text-xs">{b.fileName}</td>
@@ -179,6 +188,17 @@ export const BackupReport: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="backups"
+              />
+            )}
           </div>
         </>
       )}

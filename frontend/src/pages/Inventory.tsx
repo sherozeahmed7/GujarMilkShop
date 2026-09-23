@@ -21,10 +21,24 @@ export const Inventory: React.FC = () => {
     updateProduct,
     adjustStock,
     isLoading,
-    error
+    error,
+    loadMovements
   } = useInventory();
 
   const [activeTab, setActiveTab] = useState('Products');
+  const movementsLoadedRef = React.useRef(false);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Lazy-load movements only when the user first opens that tab
+    if (tab === 'Stock Movements' && !movementsLoadedRef.current) {
+      movementsLoadedRef.current = true;
+      loadMovements();
+    }
+    if (tab === 'Stock In' && stockInRecords.length === 0) {
+      // stockIn already loaded eagerly, nothing to do
+    }
+  };
   const [showToast, setShowToast] = useState('');
 
   // Modals state
@@ -96,7 +110,7 @@ export const Inventory: React.FC = () => {
           {['Products', 'Stock In', 'Stock Movements'].map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
               className={`py-3 px-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === tab 
                   ? 'border-blue-600 text-blue-700' 

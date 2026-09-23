@@ -402,6 +402,29 @@ CREATE TABLE IF NOT EXISTS cashbook_transactions (
 
 CREATE INDEX IF NOT EXISTS idx_cashbook_person ON cashbook_transactions(cash_person_uuid);
 CREATE INDEX IF NOT EXISTS idx_cashbook_date ON cashbook_transactions(date);
+
+-- Activity Logs (cloud-synced audit trail)
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  local_id INT NOT NULL,
+  device_id VARCHAR NOT NULL,
+  timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "user" VARCHAR NOT NULL,
+  user_role VARCHAR NOT NULL,
+  action VARCHAR NOT NULL,
+  module VARCHAR NOT NULL,
+  description TEXT NOT NULL,
+  entity_id VARCHAR,
+  ip VARCHAR,
+  status VARCHAR NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(device_id, local_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_module ON activity_logs(module);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
 `;
 
 async function executeMigration() {

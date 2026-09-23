@@ -19,20 +19,29 @@ export const useInventory = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [nextProducts, nextStockIn, nextMovements, nextSummary] = await Promise.all([
+      // Only load products, stock-in and summary eagerly.
+      // Movements are expensive and loaded lazily when the tab is opened.
+      const [nextProducts, nextStockIn, nextSummary] = await Promise.all([
         inventoryService.getProducts(),
         inventoryService.getStockInRecords(),
-        inventoryService.getMovements(),
         inventoryService.getSummary(),
       ]);
       setProducts(nextProducts);
       setStockInRecords(nextStockIn);
-      setMovements(nextMovements);
       setSummary(nextSummary);
     } catch (loadError: any) {
       setError(loadError?.message || 'Failed to load inventory.');
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const loadMovements = useCallback(async () => {
+    try {
+      const nextMovements = await inventoryService.getMovements();
+      setMovements(nextMovements);
+    } catch (loadError: any) {
+      setError(loadError?.message || 'Failed to load stock movements.');
     }
   }, []);
 
@@ -58,6 +67,8 @@ export const useInventory = () => {
   const adjustStock = async (productId: string, type: 'Add Stock' | 'Remove Stock' | 'Set Stock', quantity: number, reason: string, _user: string) => {
     await inventoryService.adjustStock(productId, type, quantity, reason);
     await loadData();
+    // Refresh movements if they've been loaded
+    if (movements.length > 0) await loadMovements();
   };
 
   return {
@@ -71,6 +82,7 @@ export const useInventory = () => {
     updateProduct,
     deleteProduct,
     adjustStock,
-    refresh: loadData
+    refresh: loadData,
+    loadMovements,
   };
 };

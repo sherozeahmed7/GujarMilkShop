@@ -17,9 +17,12 @@ const ALIGN_LEFT   = [ESC, 0x61, 0x00];
 const ALIGN_CENTER = [ESC, 0x61, 0x01];
 const ALIGN_RIGHT  = [ESC, 0x61, 0x02];
 
-// Bold
-const BOLD_ON      = [ESC, 0x45, 0x01];
-const BOLD_OFF     = [ESC, 0x45, 0x00];
+// Text Weights
+const BOLD_ON      = [ESC, 0x45, 0x01, ESC, 0x47, 0x01]; // Emphasized + Double-strike
+const BOLD_OFF     = [ESC, 0x45, 0x00, ESC, 0x47, 0x00];
+const SEMIBOLD_ON  = [ESC, 0x47, 0x01];                  // Double-strike only
+const SEMIBOLD_OFF = [ESC, 0x47, 0x00];
+const NORMAL_ON    = [ESC, 0x45, 0x00, ESC, 0x47, 0x00];
 
 // Size
 const DOUBLE_ON    = [GS,  0x21, 0x11]; // Double height + Double width
@@ -116,6 +119,17 @@ function dottedRow(left: string, right: string, cols: number): number[] {
   return [...encodeText(row), ...newline()];
 }
 
+function formatReceiptDate(dateInput?: string | Date): string {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  if (isNaN(d.getTime())) return '03 Sept 2026 03:56 AM';
+  const day = d.toLocaleDateString('en-GB', { day: '2-digit' });
+  let month = d.toLocaleDateString('en-GB', { month: 'short' });
+  if (month === 'Sep') month = 'Sept';
+  const year = d.toLocaleDateString('en-GB', { year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${day} ${month} ${year} ${time}`;
+}
+
 /**
  * Build ESC/POS Barcode (Code39)
  */
@@ -125,7 +139,7 @@ function buildBarcode(text: string): number[] {
 
   const bytes: number[] = [];
   bytes.push(...ALIGN_CENTER);
-  bytes.push(GS, 0x68, 48);   // Height: 48 dots
+  bytes.push(GS, 0x68, 34);   // Height: 34 dots (matching 34px in Preview)
   bytes.push(GS, 0x77, 2);    // Width multiplier: 2
   bytes.push(GS, 0x48, 0x00); // No automatic HRI text below
   // ESC/POS CODE39 format 1 (Null-terminated)
@@ -181,8 +195,9 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   const shopName = (sale.shopName || 'GUJAR MILK SHOP').toUpperCase();
   push(BOLD_ON);
   push(centeredLine(shopName, cols), newline());
-  push(BOLD_OFF);
+  
   push(centeredLine('SALE RECEIPT', cols), newline());
+  push(BOLD_OFF);
 
   // ── 3. Token number ───────────────────────────────────────────────────────
   if (sale.tokenNumber !== undefined && sale.tokenNumber !== null) {
@@ -193,20 +208,25 @@ export function buildReceipt(sale: ReceiptSale): number[] {
     push(DOUBLE_OFF, BOLD_OFF);
   }
 
-  // ── 4. Bill and date/time ─────────────────────────────────────────────────
+  // ── 4. Bill, Date, and Customer ───────────────────────────────────────────
   push(ALIGN_LEFT);
-  const date = new Date(sale.createdAt);
-  const dateStr = date.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-  const timeStr = date.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const formattedDate = formatReceiptDate(sale.createdAt);
 
-  push(twoCol(`Bill: BILL-${sale.id}`, `${dateStr} ${timeStr}`, cols));
+  push(BOLD_ON);
+  push(twoCol(`Bill: BILL-${sale.id}`, formattedDate, cols));
+  
+  if (sale.customerName) {
+    push(twoCol(`Customer:`, sale.customerName.toUpperCase(), cols));
+  }
+  push(BOLD_OFF);
 
   // ── 5. Payment method ─────────────────────────────────────────────────────
+  push(NORMAL_ON);
   push(separator('-', cols));
   push(ALIGN_CENTER, BOLD_ON);
   const method = (sale.paymentMethod || 'CASH').toUpperCase();
   push(centeredLine(`PAID: ${method}`, cols), newline());
-  push(BOLD_OFF);
+  push(BOLD_OFF, NORMAL_ON);
   push(separator('-', cols));
 
   // ── 6. Compact item rows ──────────────────────────────────────────────────
@@ -215,21 +235,30 @@ export function buildReceipt(sale: ReceiptSale): number[] {
     const itemUpper = item.itemName.toUpperCase();
     const itemTotalStr = `${currency}${item.totalPrice}`;
     
-    // Line 1: ITEM NAME ..................... Rs.XXX
+    // Line 1: ITEM NAME ..................... Rs.XXX (BOLD)
     push(BOLD_ON);
     push(dottedRow(itemUpper, itemTotalStr, cols));
     push(BOLD_OFF);
-
-    // Line 2: 3.5 x Rs.240
-    const subLine = `  ${item.quantity} x ${currency}${item.unitPrice}`;
+    
+    // Line 2: 3.5 x Rs.240 (SEMI-BOLD)
+    const subLine = `${item.quantity} x ${currency}${item.unitPrice}`;
+    push(SEMIBOLD_ON);
     push(encodeText(subLine), newline());
+    push(SEMIBOLD_OFF);
   }
 
-  // ── 7. Total ──────────────────────────────────────────────────────────────
+  // ── 7. Discount & Total ───────────────────────────────────────────────────
+  if (sale.discountAmount && sale.discountAmount > 0) {
+    push(BOLD_ON);
+    push(twoCol('Discount', `-${currency}${sale.discountAmount}`, cols));
+    push(BOLD_OFF);
+  }
+
+  push(NORMAL_ON);
   push(separator('-', cols));
 
-  push(BOLD_ON, DBL_HEIGHT);
-  push(twoCol('TOTAL', `${currency}${sale.totalAmount}`, cols));
+  push(BOLD_ON, DOUBLE_ON);
+  push(twoCol('TOTAL', `${currency}${sale.totalAmount}`, Math.floor(cols / 2)));
   push(DOUBLE_OFF, BOLD_OFF);
 
   // ── 8. Barcode and return instruction ─────────────────────────────────────
@@ -237,18 +266,20 @@ export function buildReceipt(sale: ReceiptSale): number[] {
     const barcodeCode = `BILL-${sale.id}`;
     push(buildBarcode(barcodeCode));
     push(ALIGN_CENTER);
-    push(separator('-', cols));
+    push(SEMIBOLD_ON);
     push(encodeText('SCAN FOR RETURN / AUDIT'), newline());
+    push(SEMIBOLD_OFF);
   } catch (_) {}
 
   // ── 9. Footer ─────────────────────────────────────────────────────────────
-  push(ALIGN_CENTER);
+  push(ALIGN_CENTER, SEMIBOLD_ON);
   const footer = sale.footerText || 'Thank you for your visit!';
   const footerLines = wrapText(footer, cols);
   footerLines.forEach(line => push(centeredLine(line, cols), newline()));
+  push(SEMIBOLD_OFF);
 
   // ── 10. Feed Paper & Cut ──────────────────────────────────────────────────
-  push(newline());
+  push(newline(), newline(), newline());
   if (sale.autoCutter !== false) {
     push(CUT);
   }

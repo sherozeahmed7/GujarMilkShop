@@ -116,6 +116,8 @@ export const saleService = {
     toDate?: string;
     dateFrom?: string;
     dateTo?: string;
+    page?: number;
+    limit?: number;
   }): Promise<SaleRecord[]> => {
     const params: Record<string, string | number> = {};
     if (filters?.saleType) params.saleType = filters.saleType;
@@ -126,12 +128,15 @@ export const saleService = {
     if (filters?.toDate) params.toDate = filters.toDate;
     if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
     if (filters?.dateTo) params.dateTo = filters.dateTo;
+    if (filters?.page) params.page = filters.page;
+    if (filters?.limit) params.limit = filters.limit;
 
     const response = await apiClient.get(
       '/sales',
       Object.keys(params).length ? params : undefined
     );
-    return (response.data || []) as SaleRecord[];
+    // Support paginated backend response structure { data, pagination }
+    return ((response as any).pagination ? (response.data || []) : (response.data || [])) as SaleRecord[];
   },
 
   /**

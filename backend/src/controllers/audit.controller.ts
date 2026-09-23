@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../config/database';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { SyncQueueService } from '../services/syncQueue.service';
 
 function formatAudit(a: any) {
   return {
@@ -39,19 +40,23 @@ export class AuditController {
 
       const auditedBy = req.user?.email || 'unknown';
 
-      const audit = await prisma.auditRecord.create({
-        data: {
-          auditDate,
-          totalPosBills:     Number(totalPosBills)     || 0,
-          collectedReceipts: Number(collectedReceipts) || 0,
-          matched:    JSON.stringify(matched    || []),
-          missing:    JSON.stringify(missing    || []),
-          extra:      JSON.stringify(extra      || []),
-          duplicates: JSON.stringify(duplicates || []),
-          status,
-          notes: notes || '',
-          auditedBy,
-        },
+      const audit = await prisma.$transaction(async (tx) => {
+        const created = await tx.auditRecord.create({
+          data: {
+            auditDate,
+            totalPosBills:     Number(totalPosBills)     || 0,
+            collectedReceipts: Number(collectedReceipts) || 0,
+            matched:    JSON.stringify(matched    || []),
+            missing:    JSON.stringify(missing    || []),
+            extra:      JSON.stringify(extra      || []),
+            duplicates: JSON.stringify(duplicates || []),
+            status,
+            notes: notes || '',
+            auditedBy,
+          },
+        });
+        await SyncQueueService.enqueueCreate(tx, 'AuditRecord', created.id, created, 0);
+        return created;
       });
       return ApiResponse.success(res, 'Audit saved.', formatAudit(audit), 201);
     } catch (e) { next(e); }

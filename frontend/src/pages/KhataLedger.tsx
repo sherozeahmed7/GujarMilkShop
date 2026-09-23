@@ -18,12 +18,13 @@ import { KhataSupplierFormModal } from '../components/khata/KhataSupplierFormMod
 import { useDebounce } from '../hooks/useDebounce';
 import {
   Search, Download, FileText, Printer, Filter, Plus, ChevronDown,
-  DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw, MoreVertical
+  DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw, MoreVertical, AlertTriangle
 } from 'lucide-react';
 import { CustomerTypeFilter, NameSortOrder } from '../components/customers/CustomerToolbar';
 import { Pagination } from '../components/common/Pagination';
 import * as XLSX from 'xlsx';
 import { savePdfDocument, saveExcelDocument } from '../utils/exportUtils';
+import { activityLogger } from '../services/activityLogger';
 
 function sortByName<T extends { name: string }>(list: T[], order: NameSortOrder): T[] {
   if (order === 'default') return list;
@@ -84,6 +85,8 @@ export const KhataLedger: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openActionMenu, setOpenActionMenu] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiCustomer | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -214,15 +217,37 @@ export const KhataLedger: React.FC = () => {
     );
   };
 
-  const handleDelete = async (c: ApiCustomer) => {
-    if (!window.confirm(`Remove ${c.name} from Khata? They will be marked inactive.`)) {
-      return;
-    }
+  const handleDelete = (c: ApiCustomer) => {
+    setDeleteTarget(c);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteLoading) return;
+    setDeleteLoading(true);
+    setError(null);
     try {
-      await customerService.deleteCustomer(c.id);
+      await customerService.deleteCustomer(deleteTarget.id);
+      activityLogger.log({
+        action: 'CUSTOMER_DELETED',
+        module: 'Customers',
+        description: `Removed customer "${deleteTarget.name}" (ID: ${deleteTarget.id}) from Khata Ledger. They have been marked as inactive.`,
+        entityId: String(deleteTarget.id),
+        status: 'Success',
+      });
+      setDeleteTarget(null);
       await refreshAfterAction();
     } catch (err: any) {
-      setError(err?.message || 'Failed to delete customer');
+      const message = err?.message || 'Failed to delete customer';
+      activityLogger.log({
+        action: 'CUSTOMER_DELETED',
+        module: 'Customers',
+        description: `Failed to remove customer "${deleteTarget.name}" (ID: ${deleteTarget.id}) from Khata Ledger: ${message}`,
+        entityId: String(deleteTarget.id),
+        status: 'Error',
+      });
+      setError(message);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -1085,6 +1110,57 @@ export const KhataLedger: React.FC = () => {
       )}
       {dailyLedgerOpen && (
         <SupplierDailyLedgerModal onClose={() => setDailyLedgerOpen(false)} />
+      )}
+
+      {/* Delete Customer Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-sm p-6 animate-in fade-in zoom-in duration-150">
+            {/* Icon + Title */}
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 leading-snug">Remove from Khata?</h3>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  You are about to remove{' '}
+                  <span className="font-semibold text-slate-800">"{deleteTarget.name}"</span>{' '}
+                  from the Khata ledger. They will be marked as inactive.
+                </p>
+              </div>
+            </div>
+
+            {/* Warning note */}
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 mb-5">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+              <p className="text-xs text-amber-700 font-medium">
+                This action cannot be undone from the Khata ledger.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-xl transition-colors shadow-sm shadow-red-600/25 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deleteLoading ? 'Removing…' : 'Yes, Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

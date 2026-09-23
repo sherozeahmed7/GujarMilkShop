@@ -171,7 +171,6 @@ export class CustomerService {
     const where: any = {};
     const andFilters: any[] = [];
 
-    // Default to active customers unless status is explicitly provided
     where.status = filters?.status?.trim() || 'active';
 
     if (filters?.customerType) {
@@ -247,78 +246,134 @@ export class CustomerService {
       where.AND = andFilters;
     }
 
+    const now = new Date();
+
+    // ── Optimised: fetch customers + run 3 parallel SQL aggregates ──────────
+    // Instead of loading every sale for every customer into JS memory,
+    // we compute sums directly in SQLite and join on customerIds.
     const customers = await prisma.customer.findMany({
       where,
       orderBy: { id: 'desc' },
+      // Only fetch the opening-balance sale to get that amount — all other
+      // balance calculations are done via aggregate queries below.
       include: {
         sales: {
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            remainingBalance: true,
-            totalAmount: true,
-            paidAmount: true,
-            createdAt: true,
-            status: true,
-            items: {
-              where: { itemName: 'Opening Balance' },
-              select: { totalPrice: true }
-            }
-          }
+          where: { items: { some: { itemName: 'Opening Balance' } } },
+          take: 1,
+          select: { id: true, totalAmount: true, createdAt: true }
         }
       }
     });
 
-    const now = new Date();
+    if (customers.length === 0) {
+      return { success: true, statusCode: 200, data: [] };
+    }
+
+    const customerIds = customers.map((c) => c.id);
+
+    // Compute period start per type
+    const periodStartDaily = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const periodStartMonthly = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
+    // Run all 4 aggregate queries in parallel for maximum speed
+    const [
+      remainingAgg,    // open dues per customer (pending/partial with remaining > 0)
+      paidAgg,         // total paid per customer across all time
+      currentDailyAgg, // totalAmount for daily ledger customers in current period
+      currentMonthlyAgg, // totalAmount for monthly ledger customers in current period
+      lastSaleAgg      // most recent sale date per customer
+    ] = await Promise.all([
+      // 1. Open remaining balance
+      prisma.sale.groupBy({
+        by: ['customerId'],
+        where: {
+          customerId: { in: customerIds },
+          status: { in: ['pending', 'partial'] },
+          remainingBalance: { gt: 0 }
+        },
+        _sum: { remainingBalance: true }
+      }),
+
+      // 2. Total paid amount across all time
+      prisma.sale.groupBy({
+        by: ['customerId'],
+        where: { customerId: { in: customerIds } },
+        _sum: { paidAmount: true }
+      }),
+
+      // 3a. Current period: daily_ledger customers (today onwards)
+      prisma.sale.groupBy({
+        by: ['customerId'],
+        where: {
+          customerId: { in: customerIds },
+          saleType: 'ledger_daily',
+          createdAt: {
+            gte: rangeStart || periodStartDaily,
+            ...(rangeEnd ? { lte: rangeEnd } : {})
+          }
+        },
+        _sum: { totalAmount: true }
+      }),
+
+      // 3b. Current period: monthly_ledger customers (this month onwards)
+      prisma.sale.groupBy({
+        by: ['customerId'],
+        where: {
+          customerId: { in: customerIds },
+          saleType: 'ledger_monthly',
+          createdAt: {
+            gte: rangeStart || periodStartMonthly,
+            ...(rangeEnd ? { lte: rangeEnd } : {})
+          }
+        },
+        _sum: { totalAmount: true }
+      }),
+
+      // 4. Last sale date
+      prisma.sale.groupBy({
+        by: ['customerId'],
+        where: { customerId: { in: customerIds } },
+        _max: { createdAt: true }
+      })
+    ]);
+
+    // Build lookup maps for O(1) access
+    const remainingMap = new Map(remainingAgg.map((r) => [r.customerId!, r._sum.remainingBalance || 0]));
+    const paidMap = new Map(paidAgg.map((r) => [r.customerId!, r._sum.paidAmount || 0]));
+    const currentDailyMap = new Map(currentDailyAgg.map((r) => [r.customerId!, r._sum.totalAmount || 0]));
+    const currentMonthlyMap = new Map(currentMonthlyAgg.map((r) => [r.customerId!, r._sum.totalAmount || 0]));
+    const lastSaleMap = new Map(lastSaleAgg.map((r) => [r.customerId!, r._max.createdAt]));
+
     const data = customers.map((c) => {
-      // When a date range is selected, "current" = sales inside that range
-      const periodStart =
-        rangeStart || customerPeriodStart(c.customerType, now);
-      let currentAmount = 0;
-      let previousAmount = 0;
-      let paidAmount = 0;
-      let remainingBalance = 0;
-
-      for (const sale of c.sales) {
-        paidAmount += sale.paidAmount || 0;
-        if (
-          (sale.status === 'pending' || sale.status === 'partial') &&
-          sale.remainingBalance > 0
-        ) {
-          remainingBalance += sale.remainingBalance;
-        }
-
-        const inCurrent =
-          sale.createdAt >= periodStart &&
-          (!rangeEnd || sale.createdAt <= rangeEnd);
-
-        if (inCurrent) currentAmount += sale.totalAmount || 0;
-        else if (sale.createdAt < periodStart) previousAmount += sale.totalAmount || 0;
-        // sales after rangeEnd (when filtering) are ignored for period columns
-      }
-
-      const openingSale = c.sales.find((s) => s.items && s.items.length > 0);
+      const openingSale = c.sales[0];
       const openingBalance = openingSale ? money(openingSale.totalAmount) : 0;
 
-      currentAmount = money(currentAmount);
-      previousAmount = money(previousAmount);
-      paidAmount = money(paidAmount);
-      remainingBalance = money(remainingBalance);
-      const totalAmount = money(currentAmount + previousAmount);
-      const lastSale = c.sales[0];
+      const remainingBalance = money(remainingMap.get(c.id) || 0);
+      const paidAmount = money(paidMap.get(c.id) || 0);
+      const currentDue = money(
+        c.customerType === 'daily_ledger'
+          ? (currentDailyMap.get(c.id) || 0)
+          : (currentMonthlyMap.get(c.id) || 0)
+      );
+
+      // previousDue = total billed - currentDue billing
+      const totalBilled = money(paidAmount + remainingBalance);
+      const previousDue = money(Math.max(0, totalBilled - currentDue));
+      const totalAmount = money(currentDue + previousDue);
+
+      const lastSaleDate = lastSaleMap.get(c.id);
 
       const { sales: _sales, ...rest } = c;
       return {
         ...rest,
         openingBalance,
-        currentDue: currentAmount,
-        previousDue: previousAmount,
+        currentDue,
+        previousDue,
         totalAmount,
         paidAmount,
         remainingBalance,
-        /** Open dues — same as remainingBalance */
         totalDue: remainingBalance,
-        lastSaleDate: lastSale ? lastSale.createdAt.toISOString() : null
+        lastSaleDate: lastSaleDate ? lastSaleDate.toISOString() : null
       };
     });
 
@@ -328,6 +383,8 @@ export class CustomerService {
       data
     };
   }
+
+
 
   /**
    * Dashboard summary.

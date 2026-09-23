@@ -35,7 +35,9 @@ export class SaleController {
         toDate,
         dateFrom,
         dateTo,
-        includeAnalytics
+        includeAnalytics,
+        page,
+        limit
       } = req.query;
 
       const withAnalytics = includeAnalytics === 'true';
@@ -49,7 +51,9 @@ export class SaleController {
           fromDate: fromDate as string | undefined,
           toDate: toDate as string | undefined,
           dateFrom: dateFrom as string | undefined,
-          dateTo: dateTo as string | undefined
+          dateTo: dateTo as string | undefined,
+          page: page ? Number(page) : undefined,
+          limit: limit !== undefined ? Number(limit) : undefined
         },
         withAnalytics
       );

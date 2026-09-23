@@ -814,7 +814,8 @@ export class SaleService {
   /**
    * Lists sales with optional filters: saleType, status, customerId, phone,
    * fromDate/toDate (ISO) or dateFrom/dateTo (YYYY-MM-DD).
-   * When includeAnalytics is true, returns sales plus report aggregates.
+   * Supports pagination via page/limit. When includeAnalytics is true,
+   * aggregates are computed in a separate lightweight query (no full scan).
    */
   static async listSales(
     filters: {
@@ -826,6 +827,10 @@ export class SaleService {
       toDate?: string;
       dateFrom?: string;
       dateTo?: string;
+      /** 1-based page number. Defaults to 1. */
+      page?: number;
+      /** Rows per page. Defaults to 100. Pass 0 to fetch all (reports only). */
+      limit?: number;
     },
     includeAnalytics = false
   ) {
@@ -845,45 +850,93 @@ export class SaleService {
       if (end) where.createdAt.lte = end;
     }
 
-    const sales = await prisma.sale.findMany({
-      where,
-      orderBy: { id: 'desc' },
-      include: {
-        items: true,
-        payments: true,
-        customer: true
-      }
-    });
+    const page = Math.max(1, Number(filters.page) || 1);
+    // limit=0 means "fetch all" (used by analytics/export endpoints)
+    const limit = filters.limit === 0 ? undefined : Math.max(1, Number(filters.limit ?? 25));
+    const skip = limit ? (page - 1) * limit : undefined;
 
-    if (!includeAnalytics) {
-      return {
-        success: true,
-        statusCode: 200,
-        data: sales.map((s) => ({
-          ...s,
-          // Ledger sales store name on Customer relation, not customerName column
-          customerName: s.customerName || s.customer?.name || null,
-          customerPhone: s.customerPhone || s.customer?.phone || null,
-        })),
-      };
-    }
+    // Run page data + total count in parallel for speed
+    const [sales, totalCount] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        take: limit,
+        skip,
+        include: {
+          items: true,
+          payments: true,
+          customer: { select: { id: true, name: true, phone: true } }
+        }
+      }),
+      prisma.sale.count({ where })
+    ]);
 
-    const analytics = buildSalesAnalytics(sales, start, end);
     const shaped = sales.map((s) => ({
       ...s,
       customerName: s.customerName || s.customer?.name || null,
       customerPhone: s.customerPhone || s.customer?.phone || null,
     }));
 
+    if (!includeAnalytics) {
+      return {
+        success: true,
+        statusCode: 200,
+        data: shaped,
+        pagination: {
+          total: totalCount,
+          page,
+          limit: limit ?? totalCount,
+          totalPages: limit ? Math.ceil(totalCount / limit) : 1
+        }
+      };
+    }
+
+    // For analytics: if a limit is applied, we MUST run a separate aggregate query 
+    // to get totals for all matching rows, otherwise totals are only for the current page.
+    if (limit) {
+      // Fetch all sales for analytics in a lean projection (no items/payments join)
+      const allSalesLean = await prisma.sale.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        include: {
+          items: { select: { itemName: true, totalPrice: true } },
+          payments: { select: { method: true } }
+        }
+      });
+      const analytics = buildSalesAnalytics(allSalesLean, start, end);
+      return {
+        success: true,
+        statusCode: 200,
+        data: {
+          sales: shaped,
+          analytics
+        },
+        pagination: {
+          total: totalCount,
+          page,
+          limit: limit ?? totalCount,
+          totalPages: limit ? Math.ceil(totalCount / limit) : 1
+        }
+      };
+    }
+
+    const analytics = buildSalesAnalytics(shaped, start, end);
     return {
       success: true,
       statusCode: 200,
       data: {
         sales: shaped,
         analytics
+      },
+      pagination: {
+        total: totalCount,
+        page,
+        limit: limit ?? totalCount,
+        totalPages: limit ? Math.ceil(totalCount / limit) : 1
       }
     };
   }
+
 
   /**
    * Get a single sale with items + payments

@@ -217,20 +217,63 @@ export class InventoryService {
     return { success: false, statusCode: 403, message: 'Inventory products cannot be deleted. Adjust stock instead.' };
   }
 
-  static async movements(productId?: number) {
-    const movements = await prisma.inventoryMovement.findMany({ where: productId ? { productId } : undefined, orderBy: [{ productId: 'asc' }, { date: 'asc' }, { id: 'asc' }], include: { product: true, supplier: true } });
+  static async movements(productId?: number, limit = 25) {
+    // Only apply pagination if it's for a specific product, otherwise global view might need more
+    const take = productId ? limit : 100;
+    
+    const movements = await prisma.inventoryMovement.findMany({ 
+      where: productId ? { productId } : undefined, 
+      orderBy: [{ date: 'desc' }, { id: 'desc' }], 
+      take,
+      include: { product: true, supplier: true } 
+    });
+
+    if (movements.length === 0) return [];
+
+    // Reverse to chronological order to calculate running balances
+    const chronological = [...movements].reverse();
+    
+    // Get the starting balance for the oldest row in our page
     const running = new Map<number, number>();
-    const withBalances = movements.map((movement) => {
+    const productIds = Array.from(new Set(chronological.map(m => m.productId)));
+    
+    for (const pId of productIds) {
+      const oldestInPage = chronological.find(m => m.productId === pId);
+      if (oldestInPage) {
+        // Find sum of all movements BEFORE the oldest movement in this page
+        const sumBefore = await prisma.inventoryMovement.aggregate({
+          where: {
+            productId: pId,
+            OR: [
+              { date: { lt: oldestInPage.date } },
+              { date: oldestInPage.date, id: { lt: oldestInPage.id } }
+            ]
+          },
+          _sum: { quantity: true }
+        });
+        running.set(pId, sumBefore._sum.quantity || 0);
+      }
+    }
+
+    const withBalances = chronological.map((movement) => {
       const previousStock = money(running.get(movement.productId) || 0);
       const newStock = money(previousStock + movement.quantity);
       running.set(movement.productId, newStock);
       return { ...movement, previousStock, newStock };
     });
-    return withBalances.sort((a, b) => b.date.getTime() - a.date.getTime() || b.id - a.id);
+    
+    // Return back in descending order for the UI
+    return withBalances.reverse();
   }
 
-  static async stockIn(productId?: number) {
-    return prisma.inventoryMovement.findMany({ where: { movementType: 'STOCK_IN', ...(productId ? { productId } : {}) }, orderBy: { date: 'desc' }, include: { product: true, supplier: true } });
+  static async stockIn(productId?: number, limit = 25) {
+    const take = productId ? limit : 100;
+    return prisma.inventoryMovement.findMany({ 
+      where: { movementType: 'STOCK_IN', ...(productId ? { productId } : {}) }, 
+      orderBy: { date: 'desc' }, 
+      take,
+      include: { product: true, supplier: true } 
+    });
   }
 
   static async record(userId: number, payload: any) {

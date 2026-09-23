@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Cloud, CloudOff, AlertCircle, HardDrive, Wifi, WifiOff, Clock, DownloadCloud, Play, Link2Off, Link2 } from 'lucide-react';
 import { cloudSyncService, CloudStatusData, SyncItem } from '../../services/cloudSync.service';
 import { RestoreCloudDataModal } from '../../components/settings/RestoreCloudDataModal';
+import { Pagination } from '../../components/common/Pagination';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -29,6 +30,7 @@ export const CloudSync: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const pollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadData = useCallback(async (silent = false) => {
@@ -163,11 +165,7 @@ export const CloudSync: React.FC = () => {
   const isOffline = statusData?.status === 'Offline';
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(queue.length / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const pageStart = (safePage - 1) * PAGE_SIZE;
-  const pageEnd = Math.min(pageStart + PAGE_SIZE, queue.length);
-  const pageItems = queue.slice(pageStart, pageEnd);
+  const pageItems = queue.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -371,11 +369,6 @@ export const CloudSync: React.FC = () => {
               <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-bold text-slate-800">Sync Queue</h2>
-                  {queue.length > 0 && (
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
-                      {pageStart + 1}–{pageEnd} of {queue.length}
-                    </span>
-                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -457,54 +450,15 @@ export const CloudSync: React.FC = () => {
                 </tbody>
               </table>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">
-                    Showing {pageStart + 1}–{pageEnd} of {queue.length} records
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={safePage === 1}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      ← Prev
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
-                      .reduce<(number | '...')[]>((acc, p, idx, arr) => {
-                        if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, idx) =>
-                        p === '...' ? (
-                          <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-xs">…</span>
-                        ) : (
-                          <button
-                            key={p}
-                            onClick={() => setCurrentPage(p as number)}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                              safePage === p
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        )
-                      )
-                    }
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={safePage === totalPages}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Next →
-                    </button>
-                  </div>
-                </div>
+              {queue.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={queue.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                  itemLabel="records"
+                />
               )}
             </div>
           </>
