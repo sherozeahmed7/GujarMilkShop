@@ -294,7 +294,7 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
   // ─── Early returns ────────────────────────────────────────────────────────
   if (loading && !supplier) {
     return (
-      <div className="flex h-full items-center justify-center text-slate-400 text-sm font-medium">
+      <div className="flex h-full items-center justify-center text-slate-400 dark:text-[#64916e] text-sm font-medium">
         Loading supplier ledger…
       </div>
     );
@@ -309,34 +309,34 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar bg-slate-50/50">
+    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar bg-slate-50/50 dark:bg-[#142119]">
 
       {/* ── Sticky Header ── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10">
+      <div className="bg-white dark:bg-[#1a2e1f] border-b border-slate-200 dark:border-[#2d4a35] px-6 py-4 sticky top-0 z-10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           {/* Left: back + title */}
           <div>
             <button
               onClick={() => navigate('/ledger')}
-              className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 transition-colors text-sm font-medium mb-1"
+              className="flex items-center gap-1.5 text-slate-500 dark:text-[#8ba895] hover:text-blue-600 transition-colors text-sm font-medium mb-1"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Khata / Ledger
             </button>
-            <h1 className="text-xl font-bold text-slate-800">Supplier Monthly Ledger</h1>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8]">Supplier Monthly Ledger</h1>
           </div>
 
           {/* Right: month nav + PDF */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              <button onClick={goPrev} className="p-1.5 hover:bg-white rounded-lg text-slate-600 transition-colors shadow-sm" title="Previous Month">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#111e14] p-1 rounded-xl">
+              <button onClick={goPrev} className="p-1.5 hover:bg-white dark:hover:bg-[#1a2e1f] rounded-lg text-slate-600 dark:text-[#a7c4ae] transition-colors shadow-sm" title="Previous Month">
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button onClick={goCurrent} className="px-3 py-1.5 hover:bg-white rounded-lg text-sm font-bold text-slate-700 transition-colors shadow-sm flex items-center gap-2">
+              <button onClick={goCurrent} className="px-3 py-1.5 hover:bg-white dark:hover:bg-[#1a2e1f] rounded-lg text-sm font-bold text-slate-700 dark:text-[#e2f5e8] transition-colors shadow-sm flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
               </button>
-              <button onClick={goNext} className="p-1.5 hover:bg-white rounded-lg text-slate-600 transition-colors shadow-sm" title="Next Month">
+              <button onClick={goNext} className="p-1.5 hover:bg-white dark:hover:bg-[#1a2e1f] rounded-lg text-slate-600 dark:text-[#a7c4ae] transition-colors shadow-sm" title="Next Month">
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -356,40 +356,40 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
       <div className="p-6 w-full space-y-6">
 
         {/* ── Supplier Info Card ── */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-wrap gap-x-12 gap-y-4 items-center">
+        <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 flex flex-wrap gap-x-12 gap-y-4 items-center">
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Supplier Name</p>
-            <p className="text-lg font-bold text-slate-800">{supplier?.name}</p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-[#64916e] uppercase tracking-wider mb-1">Supplier Name</p>
+            <p className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">{supplier?.name}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Phone</p>
-            <p className="text-base font-semibold text-slate-700">{supplier?.phone || 'N/A'}</p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-[#64916e] uppercase tracking-wider mb-1">Phone</p>
+            <p className="text-base font-semibold text-slate-700 dark:text-[#e2f5e8]">{supplier?.phone || 'N/A'}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Payment Cycle</p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-[#64916e] uppercase tracking-wider mb-1">Payment Cycle</p>
             <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold uppercase">
               {supplier?.cycleType}
             </span>
           </div>
           <div className="ml-auto">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Payable Balance</p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-[#64916e] uppercase tracking-wider mb-1">Payable Balance</p>
             <p className="text-xl font-black text-amber-600">{fmtAmount(supplier?.payableBalance ?? 0)}</p>
           </div>
         </div>
 
         {/* ── Full-Width Calendar ── */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
           {/* Calendar header */}
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-            <h3 className="font-bold text-slate-800 text-lg">
+          <div className="p-4 border-b border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex items-center justify-between">
+            <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] text-lg">
               Monthly Purchase Ledger &mdash; {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
             </h3>
           </div>
 
           {/* Weekday labels */}
-          <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+          <div className="grid grid-cols-7 border-b border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119]">
             {WEEK_DAYS.map(d => (
-              <div key={d} className="p-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider border-r border-slate-200 last:border-0 truncate">
+              <div key={d} className="p-3 text-center text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider border-r border-slate-200 dark:border-[#2d4a35] last:border-0 truncate">
                 {d}
               </div>
             ))}
@@ -397,11 +397,11 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
           {/* Calendar grid */}
           {loading ? (
-            <div className="p-12 text-center text-slate-400 text-sm">Loading calendar…</div>
+            <div className="p-12 text-center text-slate-400 dark:text-[#64916e] text-sm">Loading calendar…</div>
           ) : (
-            <div className="grid grid-cols-7 bg-slate-200 gap-px">
+            <div className="grid grid-cols-7 bg-slate-200 dark:bg-[#1e3124] gap-px">
               {calendarDays.map((day, idx) => {
-                if (!day) return <div key={`e-${idx}`} className="bg-slate-50 min-h-[120px]" />;
+                if (!day) return <div key={`e-${idx}`} className="bg-slate-50 dark:bg-[#142119] min-h-[120px]" />;
 
                 const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const dayEntries = entriesByDate.get(dateStr) ?? [];
@@ -417,11 +417,11 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                   <div
                     key={`d-${day}`}
                     onClick={() => hasTxn && setDetailDate({ date: dateStr, entries: dayEntries })}
-                    className={`bg-white min-h-[120px] p-3 flex flex-col ${hasTxn ? 'cursor-pointer hover:bg-amber-50/60 transition-colors' : ''}`}
+                    className={`bg-white dark:bg-[#1a2e1f] min-h-[120px] p-3 flex flex-col ${hasTxn ? 'cursor-pointer hover:bg-amber-50/60 transition-colors' : ''}`}
                   >
                     {/* Date number */}
                     <div className="flex justify-between items-start mb-2">
-                      <span className={`text-base font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday ? 'bg-amber-500 text-white shadow-sm' : hasTxn ? 'text-slate-700' : 'text-slate-400'}`}>
+                      <span className={`text-base font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday ? 'bg-amber-500 text-white shadow-sm' : hasTxn ? 'text-slate-700 dark:text-[#e2f5e8]' : 'text-slate-400 dark:text-[#64916e]'}`}>
                         {day}
                       </span>
                       {isToday && <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mt-1.5 mr-0.5">Today</span>}
@@ -432,11 +432,11 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                       <div className="flex flex-col mt-auto">
                         <p className="text-base font-bold text-amber-600">{fmtAmount(dailyAmt)}</p>
                         {dayEntries.length > 1 && (
-                          <span className="text-[10px] text-slate-400 mt-0.5">{dayEntries.length} entries</span>
+                          <span className="text-[10px] text-slate-400 dark:text-[#64916e] mt-0.5">{dayEntries.length} entries</span>
                         )}
                       </div>
                     ) : (
-                      <p className="text-xl text-slate-300 mt-auto font-medium">-</p>
+                      <p className="text-xl text-slate-300 dark:text-[#2d4a35] mt-auto font-medium">-</p>
                     )}
                   </div>
                 );
@@ -446,9 +446,9 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
           {/* Calendar footer: monthly total */}
           {!loading && (
-            <div className="border-t border-slate-200 bg-slate-50 p-4 flex items-center justify-end">
+            <div className="border-t border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] p-4 flex items-center justify-end">
               <div className="text-right">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Total Monthly Purchases</p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-0.5">Total Monthly Purchases</p>
                 <p className="text-xl font-bold text-amber-600">{fmtAmount(calendarTotal)}</p>
               </div>
             </div>
@@ -459,34 +459,34 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Monthly Summary */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex items-center gap-2">
               <Info className="w-5 h-5 text-amber-500" />
-              <h3 className="font-bold text-slate-800 text-lg">Monthly Summary</h3>
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] text-lg">Monthly Summary</h3>
             </div>
             {loading || !summary ? (
-              <div className="p-8 flex-1 flex items-center justify-center text-sm text-slate-400">Calculating…</div>
+              <div className="p-8 flex-1 flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">Calculating…</div>
             ) : (
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Current Month Purchases</p>
-                  <p className="text-xl font-bold text-slate-800">{fmtAmount(summary.currentMonthAmount)}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Current Month Purchases</p>
+                  <p className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8]">{fmtAmount(summary.currentMonthAmount)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Previous Balance</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Previous Balance</p>
                   <p className="text-xl font-bold text-amber-600">{fmtAmount(summary.previousBalance)}</p>
                 </div>
-                <div className="sm:col-span-2 h-px bg-slate-100" />
+                <div className="sm:col-span-2 h-px bg-slate-100 dark:bg-[#111e14]" />
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Payable</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Total Payable</p>
                   <p className="text-xl font-bold text-rose-600">{fmtAmount(summary.totalPayable)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Paid</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Total Paid</p>
                   <p className="text-xl font-bold text-emerald-600">{fmtAmount(summary.totalPaid)}</p>
                 </div>
                 <div className="sm:col-span-2 mt-2 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-                  <p className="text-sm font-bold text-slate-800 uppercase tracking-wider">Remaining Payable</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8] uppercase tracking-wider">Remaining Payable</p>
                   <p className="text-2xl font-black text-amber-600">{fmtAmount(summary.remaining)}</p>
                 </div>
               </div>
@@ -494,26 +494,26 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
           </div>
 
           {/* Payment Summary */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-emerald-500" />
-              <h3 className="font-bold text-slate-800 text-lg">Payment Summary</h3>
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] text-lg">Payment Summary</h3>
             </div>
 
             {/* Quick stats */}
             {!loading && (
-              <div className="grid grid-cols-3 border-b border-slate-100 p-5 gap-4">
+              <div className="grid grid-cols-3 border-b border-slate-100 dark:border-[#2d4a35] p-5 gap-4">
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Paid</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Total Paid</p>
                   <p className="text-lg font-bold text-emerald-600">{fmtAmount(summary?.totalPaid ?? 0)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Payments</p>
-                  <p className="text-lg font-bold text-slate-800">{payments.length}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Payments</p>
+                  <p className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">{payments.length}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Last Payment</p>
-                  <p className="text-sm font-bold text-slate-800 pt-0.5">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Last Payment</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8] pt-0.5">
                     {payments.length > 0
                       ? fmtDate(payments[payments.length - 1].date, { day: '2-digit', month: 'short' })
                       : '-'}
@@ -523,27 +523,27 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
             )}
 
             {/* Payment table */}
-            <div className="flex-1 overflow-auto bg-slate-50/50">
+            <div className="flex-1 overflow-auto bg-slate-50/50 dark:bg-[#142119]">
               {loading ? (
-                <div className="p-8 text-center text-sm text-slate-400">Loading payments…</div>
+                <div className="p-8 text-center text-sm text-slate-400 dark:text-[#64916e]">Loading payments…</div>
               ) : payments.length === 0 ? (
-                <div className="p-12 text-center text-sm text-slate-400 font-medium">No payments this month</div>
+                <div className="p-12 text-center text-sm text-slate-400 dark:text-[#64916e] font-medium">No payments this month</div>
               ) : (
                 <table className="w-full text-left">
-                  <thead className="bg-slate-100 border-b border-slate-200">
+                  <thead className="bg-slate-100 dark:bg-[#111e14] border-b border-slate-200 dark:border-[#2d4a35]">
                     <tr>
-                      <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                      <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Method</th>
-                      <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Reference</th>
-                      <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                      <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Date</th>
+                      <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Method</th>
+                      <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Reference</th>
+                      <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider text-right">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35] bg-white dark:bg-[#1a2e1f]">
                     {payments.map(p => (
-                      <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-5 py-3.5 text-sm font-semibold text-slate-700">{fmtDate(p.date)}</td>
-                        <td className="px-5 py-3.5 text-sm text-slate-600">{p.paymentMethod}</td>
-                        <td className="px-5 py-3.5 text-xs text-slate-500 font-mono">{p.reference || '-'}</td>
+                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                        <td className="px-5 py-3.5 text-sm font-semibold text-slate-700 dark:text-[#e2f5e8]">{fmtDate(p.date)}</td>
+                        <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-[#a7c4ae]">{p.paymentMethod}</td>
+                        <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-[#8ba895] font-mono">{p.reference || '-'}</td>
                         <td className="px-5 py-3.5 text-sm font-bold text-emerald-600 text-right">{fmtAmount(p.amount)}</td>
                       </tr>
                     ))}
@@ -555,34 +555,34 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
         </div>
 
         {/* ── Purchase Detail Table ── */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+        <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
+          <div className="p-5 border-b border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex items-center gap-2">
             <Package className="w-5 h-5 text-blue-500" />
-            <h3 className="font-bold text-slate-800 text-lg">Purchase Detail</h3>
-            <span className="ml-auto text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+            <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] text-lg">Purchase Detail</h3>
+            <span className="ml-auto text-xs font-semibold text-slate-400 dark:text-[#64916e] bg-slate-100 dark:bg-[#111e14] px-2.5 py-1 rounded-full">
               {entries.length} entries
             </span>
           </div>
           <div className="overflow-auto">
             {loading ? (
-              <div className="p-8 text-center text-sm text-slate-400">Loading purchases…</div>
+              <div className="p-8 text-center text-sm text-slate-400 dark:text-[#64916e]">Loading purchases…</div>
             ) : entries.length === 0 ? (
-              <div className="p-12 text-center text-sm text-slate-400 font-medium">No purchases this month</div>
+              <div className="p-12 text-center text-sm text-slate-400 dark:text-[#64916e] font-medium">No purchases this month</div>
             ) : (
               <table className="w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-slate-50 dark:bg-[#142119] border-b border-slate-200 dark:border-[#2d4a35]">
                   <tr>
-                    <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                    <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Product</th>
-                    <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Qty</th>
-                    <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Rate</th>
-                    <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Date</th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Product</th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Qty</th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Rate</th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider text-right">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                   {entries.map(e => (
-                    <tr key={e.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-5 py-3.5 text-sm text-slate-600">
+                    <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                      <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-[#a7c4ae]">
                         {fmtDate(e.date, { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-5 py-3.5">
@@ -590,18 +590,18 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                           {e.product}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm font-semibold text-slate-700">
+                      <td className="px-5 py-3.5 text-sm font-semibold text-slate-700 dark:text-[#e2f5e8]">
                         {e.quantity.toFixed(2)} {e.unit}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-slate-500">Rs. {e.rate.toLocaleString()}/{e.unit}</td>
-                      <td className="px-5 py-3.5 text-sm font-bold text-slate-800 text-right">{fmtAmount(e.amount)}</td>
+                      <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-[#8ba895]">Rs. {e.rate.toLocaleString()}/{e.unit}</td>
+                      <td className="px-5 py-3.5 text-sm font-bold text-slate-800 dark:text-[#e2f5e8] text-right">{fmtAmount(e.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
                 {/* Footer total row */}
-                <tfoot className="border-t-2 border-slate-200 bg-slate-50">
+                <tfoot className="border-t-2 border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119]">
                   <tr>
-                    <td colSpan={4} className="px-5 py-3 text-sm font-bold text-slate-700 text-right uppercase tracking-wider">
+                    <td colSpan={4} className="px-5 py-3 text-sm font-bold text-slate-700 dark:text-[#e2f5e8] text-right uppercase tracking-wider">
                       Total
                     </td>
                     <td className="px-5 py-3 text-base font-black text-amber-600 text-right">
@@ -623,17 +623,17 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
           onClick={() => setDetailDate(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
+            className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-lg">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] text-lg">
                 {fmtDate(detailDate.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </h3>
               <button
                 onClick={() => setDetailDate(null)}
-                className="text-slate-400 hover:text-slate-600 transition-colors text-lg leading-none"
+                className="text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] transition-colors text-lg leading-none"
                 title="Close"
               >
                 ✕
@@ -643,14 +643,14 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
             {/* Modal body */}
             <div className="p-5 flex-1 overflow-y-auto space-y-3">
               {detailDate.entries.map((e, i) => (
-                <div key={e.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 relative">
+                <div key={e.id} className="p-4 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] relative">
                   <div className="absolute -top-2.5 left-4 bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
                     DELIVERY {i + 1}
                   </div>
                   <div className="flex justify-between items-start mt-2">
                     <div>
-                      <p className="text-sm font-bold text-slate-800">{e.product}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{e.time} · {e.quantity.toFixed(2)} {e.unit} × Rs. {e.rate.toLocaleString()}/{e.unit}</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">{e.product}</p>
+                      <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-0.5">{e.time} · {e.quantity.toFixed(2)} {e.unit} × Rs. {e.rate.toLocaleString()}/{e.unit}</p>
                     </div>
                     <p className="text-base font-bold text-amber-600">{fmtAmount(e.amount)}</p>
                   </div>
@@ -659,8 +659,8 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
             </div>
 
             {/* Modal footer: daily total */}
-            <div className="px-5 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-              <span className="font-bold text-slate-800">Daily Total</span>
+            <div className="px-5 py-4 border-t border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex items-center justify-between">
+              <span className="font-bold text-slate-800 dark:text-[#e2f5e8]">Daily Total</span>
               <span className="text-lg font-black text-amber-600">
                 {fmtAmount(detailDate.entries.reduce((s, e) => s + e.amount, 0))}
               </span>

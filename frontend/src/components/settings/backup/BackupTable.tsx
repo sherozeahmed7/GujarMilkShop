@@ -55,18 +55,18 @@ export const BackupTable: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 mb-6 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-slate-400 animate-spin mr-3" />
-        <span className="text-slate-500">Loading backups...</span>
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-xl border border-slate-200 dark:border-[#2d4a35] shadow-sm p-12 mb-6 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-slate-400 dark:text-[#64916e] animate-spin mr-3" />
+        <span className="text-slate-500 dark:text-[#8ba895]">Loading backups...</span>
       </div>
     );
   }
 
   return (
     <>
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-        <table className="w-full text-left text-sm text-slate-600 table-fixed">
-          <thead className="bg-slate-50 text-slate-500 uppercase font-medium border-b border-slate-200">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden mb-6">
+        <table className="w-full text-left text-sm text-slate-600 dark:text-[#a7c4ae] table-fixed">
+          <thead className="bg-slate-50 dark:bg-[#142119] text-slate-500 dark:text-[#8ba895] uppercase font-medium border-b border-slate-200 dark:border-[#2d4a35]">
             <tr>
               <th className="px-6 py-4 w-full">File</th>
               <th className="px-6 py-4 w-28">Size</th>
@@ -75,12 +75,12 @@ export const BackupTable: React.FC = () => {
               <th className="px-6 py-4 w-32 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
             {backups
               .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
               .map((backup) => (
-              <tr key={backup.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 font-medium text-slate-800 truncate" title={backup.filename}>
+              <tr key={backup.id} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                <td className="px-6 py-4 font-medium text-slate-800 dark:text-[#e2f5e8] truncate" title={backup.filename}>
                   {backup.filename}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -93,7 +93,7 @@ export const BackupTable: React.FC = () => {
                   })}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">
+                  <span className="px-2.5 py-1 bg-slate-100 dark:bg-[#111e14] text-slate-600 dark:text-[#a7c4ae] rounded-full text-xs font-medium">
                     {backup.type || 'Manual'}
                   </span>
                 </td>
@@ -102,7 +102,7 @@ export const BackupTable: React.FC = () => {
                     <button
                       onClick={() => handleDownload(backup)}
                       disabled={downloadingFile === backup.filename}
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 text-slate-400 dark:text-[#64916e] hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Download"
                     >
                       {downloadingFile === backup.filename
@@ -113,7 +113,7 @@ export const BackupTable: React.FC = () => {
                     <button
                       onClick={() => setRestoreModalBackup(backup)}
                       disabled={!!downloadingFile}
-                      className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 text-slate-400 dark:text-[#64916e] hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Restore"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -121,7 +121,7 @@ export const BackupTable: React.FC = () => {
                     <button
                       onClick={() => setDeleteModalBackup(backup)}
                       disabled={!!downloadingFile}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 text-slate-400 dark:text-[#64916e] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -132,7 +132,7 @@ export const BackupTable: React.FC = () => {
             ))}
             {backups.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={5} className="px-6 py-12 text-center text-slate-400 dark:text-[#64916e]">
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-2xl">📦</span>
                     <span className="font-medium">No backups found</span>

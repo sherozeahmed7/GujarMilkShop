@@ -61,8 +61,8 @@ export const ExpenseHistory: React.FC = () => {
   }, [activeTab, searchQuery]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-6">
-      <div className="border-b border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden flex flex-col mt-6">
+      <div className="border-b border-slate-200 dark:border-[#2d4a35] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex space-x-1 overflow-x-auto custom-scrollbar">
           {(['Today', 'This Week', 'This Month', 'All Time'] as FilterTab[]).map((tab) => (
             <button
@@ -70,8 +70,8 @@ export const ExpenseHistory: React.FC = () => {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-slate-800 dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#223927]'
               }`}
             >
               {tab}
@@ -86,7 +86,7 @@ export const ExpenseHistory: React.FC = () => {
             placeholder="Search expenses..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 py-1.5 text-sm border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
+            className="pl-9 pr-4 py-1.5 text-sm border border-slate-200 dark:border-[#2d4a35] rounded-full bg-white dark:bg-[#142119] text-slate-700 dark:text-[#e2f5e8] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-[#22c55e] w-full sm:w-64"
           />
         </div>
       </div>
@@ -104,35 +104,19 @@ export const ExpenseHistory: React.FC = () => {
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 sticky top-0 z-10">
+            <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                  Product
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                  Notes
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Total
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Paid
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Remaining
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                  Added By
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                  Actions
-                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35]">Date</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35]">Product</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35]">Notes</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35] text-right">Total</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35] text-right">Paid</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35] text-right">Remaining</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35]">Added By</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-[#2d4a35]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
               {filteredExpenses
                 .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                 .map((expense) => {
@@ -141,53 +125,53 @@ export const ExpenseHistory: React.FC = () => {
                 const remaining =
                   expense.remaining ?? Math.max(0, total - paid);
                 return (
-                  <tr key={expense.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                  <tr key={expense.id} className="hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors">
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       {new Date(expense.date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8]">
                         {expense.category}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 max-w-[180px] truncate">
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 max-w-[180px] truncate">
                       {expense.reason || expense.description || '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap text-right tabular-nums">
+                    <td className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-[#e2f5e8] whitespace-nowrap text-right tabular-nums">
                       Rs. {money(total)}
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-emerald-700 whitespace-nowrap text-right tabular-nums">
+                    <td className="px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap text-right tabular-nums">
                       Rs. {money(paid)}
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold whitespace-nowrap text-right tabular-nums">
                       {remaining > 0 ? (
-                        <span className="text-amber-600">Rs. {money(remaining)}</span>
+                        <span className="text-amber-600 dark:text-amber-400">Rs. {money(remaining)}</span>
                       ) : (
-                        <span className="text-slate-400">Rs. 0</span>
+                        <span className="text-slate-400 dark:text-slate-500">Rs. 0</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
                       {expense.addedBy}
                     </td>
                     <td className="px-4 py-3 text-sm whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => setViewExpense(expense)}
-                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition-colors"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setEditExpense(expense)}
-                          className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                          className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded transition-colors"
                           title="Edit Expense"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setDeleteExpenseId(expense.id)}
-                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition-colors"
                           title="Delete Expense"
                         >
                           <Trash2 className="w-4 h-4" />

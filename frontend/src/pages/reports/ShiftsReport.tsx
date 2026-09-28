@@ -12,10 +12,12 @@ import {
   ResponsiveContainer, Cell, Legend
 } from 'recharts';
 import { Pagination } from '../../components/common/Pagination';
+import { useChartTheme } from '../../hooks/useChartTheme';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
 
 export const ShiftsReport: React.FC = () => {
+  const { grid, axis, tooltipStyle, tooltipLabelStyle } = useChartTheme();
   const [filter, setFilter] = useState<DateFilterType>({
     label: 'This Month',
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -83,24 +85,24 @@ export const ShiftsReport: React.FC = () => {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <SummaryCard title="Total Shifts" value={data.summary.totalShifts} icon={Clock} />
-            <SummaryCard title="Open Shifts" value={data.summary.openShifts} icon={Clock} valueColor="text-amber-600" />
-            <SummaryCard title="Closed Shifts" value={data.summary.closedShifts} icon={CheckCircle} valueColor="text-emerald-600" />
-            <SummaryCard title="Total Hours" value={`${data.summary.totalHours}h`} icon={Timer} valueColor="text-blue-600" />
+            <SummaryCard title="Open Shifts" value={data.summary.openShifts} icon={Clock} valueColor="text-amber-600 dark:text-amber-400" />
+            <SummaryCard title="Closed Shifts" value={data.summary.closedShifts} icon={CheckCircle} valueColor="text-emerald-600 dark:text-emerald-400" />
+            <SummaryCard title="Total Hours" value={`${data.summary.totalHours}h`} icon={Timer} valueColor="text-blue-600 dark:text-blue-400" />
             <SummaryCard title="Opening Cash" value={fmt(data.summary.openingCash)} icon={Banknote} />
-            <SummaryCard title="Expected Cash" value={fmt(data.summary.expectedCash)} icon={Banknote} valueColor="text-blue-600" />
-            <SummaryCard title="Counted Cash" value={fmt(data.summary.countedCash)} icon={Banknote} valueColor="text-emerald-600" />
-            <SummaryCard title="Total Variance" value={fmt(data.summary.totalVariance)} icon={AlertCircle} valueColor="text-rose-600" />
+            <SummaryCard title="Expected Cash" value={fmt(data.summary.expectedCash)} icon={Banknote} valueColor="text-blue-600 dark:text-blue-400" />
+            <SummaryCard title="Counted Cash" value={fmt(data.summary.countedCash)} icon={Banknote} valueColor="text-emerald-600 dark:text-emerald-400" />
+            <SummaryCard title="Total Variance" value={fmt(data.summary.totalVariance)} icon={AlertCircle} valueColor="text-rose-600 dark:text-rose-400" />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Cash Sales by Shift</h3>
+            <div className="xl:col-span-2 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-4">Cash Sales by Shift</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={data.salesByShift}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={grid} />
+                  <XAxis dataKey="label" stroke={axis} fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke={axis} fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                   <Bar dataKey="value" name="Cash Sales" radius={[4,4,0,0]}>
                     {data.salesByShift.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Bar>
@@ -108,62 +110,62 @@ export const ShiftsReport: React.FC = () => {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-              <h3 className="font-bold text-slate-800 mb-4">Sales by Cashier</h3>
+            <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-4">Sales by Cashier</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={data.byCashier} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
-                  <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={80} />
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={grid} />
+                  <XAxis type="number" stroke={axis} fontSize={10} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
+                  <YAxis type="category" dataKey="label" stroke={axis} fontSize={11} tickLine={false} axisLine={false} width={80} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                   <Bar dataKey="value" name="Cash Sales" fill="#8B5CF6" radius={[0,4,4,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
-            <div className="xl:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[280px]">
-              <h3 className="font-bold text-slate-800 mb-4">Cash Variance by Shift</h3>
+            <div className="xl:col-span-3 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[280px]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-4">Cash Variance by Shift</h3>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={data.varianceByShift}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={grid} />
+                  <XAxis dataKey="label" stroke={axis} fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke={axis} fontSize={11} tickLine={false} axisLine={false} />
+                  <RechartsTooltip formatter={(v: any) => `Rs. ${v.toLocaleString()}`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                   <Bar dataKey="value" name="Variance" fill="#F59E0B" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200"><h3 className="font-bold text-slate-800">Shift History</h3></div>
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2d4a35]"><h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Shift History</h3></div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[1000px]">
-                <thead className="bg-slate-50 sticky top-0">
+                <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0">
                   <tr>
                     {['Shift', 'Date', 'Opened By', 'Open Time', 'Closed By', 'Close Time', 'Opening', 'Cash Sales', 'Expected', 'Counted', 'Variance', 'Status'].map(h => (
-                      <th key={h} className="px-3 py-3 text-xs font-semibold text-slate-600 uppercase">{h}</th>
+                      <th key={h} className="px-3 py-3 text-xs font-semibold text-slate-600 dark:text-[#a7c4ae] uppercase">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filtered.length === 0 && <tr><td colSpan={12} className="py-10 text-center text-slate-400 text-sm">No shifts found for the selected period.</td></tr>}
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
+                  {filtered.length === 0 && <tr><td colSpan={12} className="py-10 text-center text-slate-400 dark:text-[#64916e] text-sm">No shifts found for the selected period.</td></tr>}
                   {filtered
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((s: any) => (
-                    <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-3 py-3 text-sm font-medium text-blue-600">{s.id}</td>
-                      <td className="px-3 py-3 text-sm text-slate-600">{s.date}</td>
-                      <td className="px-3 py-3 text-sm text-slate-700">{s.openedBy}</td>
-                      <td className="px-3 py-3 text-sm text-slate-500">{new Date(s.openTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td className="px-3 py-3 text-sm text-slate-700">{s.closedBy}</td>
-                      <td className="px-3 py-3 text-sm text-slate-500">{new Date(s.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td className="px-3 py-3 text-sm text-slate-600">{fmt(s.openingCash)}</td>
-                      <td className="px-3 py-3 text-sm text-emerald-600 font-medium">{fmt(s.cashSales)}</td>
-                      <td className="px-3 py-3 text-sm text-slate-700">{fmt(s.expectedCash)}</td>
-                      <td className="px-3 py-3 text-sm text-slate-700">{fmt(s.countedCash)}</td>
-                      <td className={`px-3 py-3 text-sm font-semibold ${s.variance < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{s.variance > 0 ? '+' : ''}Rs. {s.variance.toLocaleString()}</td>
-                      <td className="px-3 py-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">{s.status}</span></td>
+                    <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                      <td className="px-3 py-3 text-sm font-medium text-blue-600 dark:text-blue-400">{s.id}</td>
+                      <td className="px-3 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{s.date}</td>
+                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{s.openedBy}</td>
+                      <td className="px-3 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{new Date(s.openTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{s.closedBy}</td>
+                      <td className="px-3 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{new Date(s.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="px-3 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{fmt(s.openingCash)}</td>
+                      <td className="px-3 py-3 text-sm text-emerald-600 dark:text-emerald-400 font-medium">{fmt(s.cashSales)}</td>
+                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{fmt(s.expectedCash)}</td>
+                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{fmt(s.countedCash)}</td>
+                      <td className={`px-3 py-3 text-sm font-semibold ${s.variance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{s.variance > 0 ? '+' : ''}Rs. {s.variance.toLocaleString()}</td>
+                      <td className="px-3 py-3"><span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">{s.status}</span></td>
                     </tr>
                   ))}
                 </tbody>

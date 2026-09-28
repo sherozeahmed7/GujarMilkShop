@@ -63,8 +63,8 @@ export const Inventory: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Inventory Management</h1>
-          <p className="text-slate-500 text-sm mt-1">Track product levels, valuation, and refill status.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8]">Inventory Management</h1>
+          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">Track product levels, valuation, and refill status.</p>
         </div>
         <div className="flex items-center gap-3">
           <ExportButtons
@@ -103,18 +103,18 @@ export const Inventory: React.FC = () => {
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</div>}
 
       {/* Main Content Area */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden min-h-[500px]">
+      <div className="bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden min-h-[500px]">
         
         {/* Tabs */}
-        <div className="flex items-center gap-6 border-b border-slate-200 px-2 pt-2 bg-slate-50/50">
+        <div className="flex items-center gap-6 border-b border-slate-200 dark:border-[#2d4a35] px-2 pt-2 bg-slate-50/50 dark:bg-[#142119]/50">
           {['Products', 'Stock In', 'Stock Movements'].map(tab => (
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}
               className={`py-3 px-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === tab 
-                  ? 'border-blue-600 text-blue-700' 
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                  ? 'border-blue-600 text-blue-700 dark:border-[#22c55e] dark:text-[#22c55e]' 
+                  : 'border-transparent text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae] hover:border-slate-300 dark:hover:border-[#2d4a35]'
               }`}
             >
               {tab === 'Products' && <Package className="w-4 h-4" />}

@@ -74,19 +74,19 @@ export const GheeSection: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-xl border border-slate-200 dark:border-[#2d4a35] shadow-sm flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center">
+      <div className="bg-slate-50 dark:bg-[#142119] border-b border-slate-200 dark:border-[#2d4a35] px-4 py-3 flex justify-between items-center">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-slate-800">
+            <h3 className="text-base font-bold text-slate-800 dark:text-[#e2f5e8]">
               Desi Ghee
             </h3>
             <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
               Persistent
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-0.5">
             Rs. {effectiveRate.toLocaleString()} / kg
             {onAddToCart ? (
               <>
@@ -113,8 +113,7 @@ export const GheeSection: React.FC<Props> = ({
             onClick={() => setShowCustom((prev) => !prev)}
             className={`text-xs px-2.5 py-1 rounded-lg font-semibold border flex items-center gap-1.5 transition-colors ${
               showCustom
-                ? 'bg-orange-600 text-white border-orange-600'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                ? 'bg-orange-600 text-white border-orange-600' : 'bg-white dark:bg-[#1a2e1f] text-slate-700 dark:text-[#e2f5e8] border-slate-200 dark:border-[#2d4a35] hover:bg-slate-100 dark:hover:bg-[#1e3124]'
             }`}
           >
             <SlidersHorizontal className="w-3 h-3" />
@@ -126,7 +125,7 @@ export const GheeSection: React.FC<Props> = ({
       <div className="p-4 flex-1 flex flex-col gap-3">
         {/* Quick Presets Section */}
         {onAddToCart && (
-          <div className="space-y-2.5 pb-3 border-b border-slate-100">
+          <div className="space-y-2.5 pb-3 border-b border-slate-100 dark:border-[#2d4a35]">
             {/* 2x2 Weight Presets */}
             <div className="grid grid-cols-2 gap-2">
               {[0.25, 0.5, 1, 2].map((w) => {
@@ -138,7 +137,7 @@ export const GheeSection: React.FC<Props> = ({
                     onClick={() => handleWeightPreset(w)}
                     className="border border-orange-200/80 bg-orange-50/40 hover:bg-orange-100/70 hover:border-orange-400 rounded-xl p-2.5 flex flex-col items-center justify-center transition-all shadow-sm active:scale-95 group"
                   >
-                    <span className="font-bold text-slate-800 text-sm group-hover:text-orange-800">
+                    <span className="font-bold text-slate-800 dark:text-[#e2f5e8] text-sm group-hover:text-orange-800">
                       {w} kg
                     </span>
                     <span className="text-xs text-orange-700 font-semibold mt-0.5">
@@ -156,7 +155,7 @@ export const GheeSection: React.FC<Props> = ({
                   key={`ghee-amt-${amt}`}
                   type="button"
                   onClick={() => handleAmountPreset(amt)}
-                  className="border border-slate-200 bg-white hover:bg-orange-500 hover:text-white hover:border-orange-500 rounded-lg py-1.5 px-1 text-center font-bold text-xs text-slate-700 transition-all shadow-xs active:scale-95"
+                  className="border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] hover:bg-orange-500 hover:text-white hover:border-orange-500 rounded-lg py-1.5 px-1 text-center font-bold text-xs text-slate-700 dark:text-[#e2f5e8] transition-all shadow-xs active:scale-95"
                 >
                   {amt >= 1000 ? amt.toLocaleString() : amt}
                 </button>
@@ -166,7 +165,7 @@ export const GheeSection: React.FC<Props> = ({
             {/* Custom Sell Inputs (collapsible) */}
             {showCustom && (
               <div className="space-y-2 pt-2 border-t border-dashed border-orange-200">
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wide">
                   Custom Quantity & Rate
                 </p>
                 <div className="flex items-center gap-2">
@@ -182,8 +181,8 @@ export const GheeSection: React.FC<Props> = ({
                     accent="orange"
                     confirmLabel="+ Cart"
                     className="flex-1 min-w-0"
-                    triggerClassName={`text-xs py-1.5 border rounded-lg bg-white ${
-                      saleError ? 'border-red-400' : 'border-slate-200'
+                    triggerClassName={`text-xs py-1.5 border rounded-lg bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] ${
+                      saleError ? 'border-red-400' : 'border-slate-200 dark:border-[#2d4a35]'
                     }`}
                   />
                   <NumericKeypadInput
@@ -197,8 +196,8 @@ export const GheeSection: React.FC<Props> = ({
                     accent="orange"
                     confirmLabel="OK"
                     className="w-24 shrink-0"
-                    triggerClassName={`text-xs py-1.5 border rounded-lg bg-white ${
-                      saleError ? 'border-red-400' : 'border-slate-200'
+                    triggerClassName={`text-xs py-1.5 border rounded-lg bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] ${
+                      saleError ? 'border-red-400' : 'border-slate-200 dark:border-[#2d4a35]'
                     }`}
                   />
                   <button
@@ -217,20 +216,20 @@ export const GheeSection: React.FC<Props> = ({
 
         {/* Stock Details — from Inventory (exact) */}
         <div className="space-y-1.5 text-xs">
-          <div className="flex justify-between text-slate-500">
+          <div className="flex justify-between text-slate-500 dark:text-[#8ba895]">
             <span>Opening:</span>
-            <span className="font-medium text-slate-800">{stock.gheeOpening} kg</span>
+            <span className="font-medium text-slate-800 dark:text-[#e2f5e8]">{stock.gheeOpening} kg</span>
           </div>
-          <div className="flex justify-between text-slate-500">
+          <div className="flex justify-between text-slate-500 dark:text-[#8ba895]">
             <span>Added:</span>
-            <span className="font-medium text-slate-800">{stock.gheeProduced} kg</span>
+            <span className="font-medium text-slate-800 dark:text-[#e2f5e8]">{stock.gheeProduced} kg</span>
           </div>
-          <div className="flex justify-between text-slate-500">
+          <div className="flex justify-between text-slate-500 dark:text-[#8ba895]">
             <span>Sold:</span>
-            <span className="font-medium text-slate-800">{stock.gheeSold} kg</span>
+            <span className="font-medium text-slate-800 dark:text-[#e2f5e8]">{stock.gheeSold} kg</span>
           </div>
-          <div className="flex justify-between pt-1.5 border-t border-slate-100">
-            <span className="font-bold text-slate-700">Inventory stock:</span>
+          <div className="flex justify-between pt-1.5 border-t border-slate-100 dark:border-[#2d4a35]">
+            <span className="font-bold text-slate-700 dark:text-[#e2f5e8]">Inventory stock:</span>
             <span className="font-bold text-orange-600">{stock.gheeClosing} kg</span>
           </div>
         </div>

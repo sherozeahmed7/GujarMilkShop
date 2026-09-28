@@ -50,9 +50,9 @@ export const Cashbook: React.FC = () => {
             <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-600/30">
               <BookOpen className="w-4 h-4 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Cashbook</h1>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Cashbook</h1>
           </div>
-          <p className="text-sm text-slate-500 ml-10.5">
+          <p className="text-sm text-slate-500 dark:text-[#8ba895] ml-10.5">
             Track money received from and paid to other people.
           </p>
           <div className="mt-2 ml-10.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">

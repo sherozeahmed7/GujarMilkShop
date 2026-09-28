@@ -397,10 +397,10 @@ export const Customers: React.FC = () => {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">
             Customers &amp; Khata
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">
             Ledger accounts, walk-in bills, and split dues (grouped by phone).
           </p>
         </div>
@@ -428,7 +428,7 @@ export const Customers: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden">
         <CustomerToolbar
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -506,17 +506,17 @@ export const Customers: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-sm p-6 animate-in fade-in zoom-in duration-150">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl border border-slate-100 dark:border-[#2d4a35] w-full max-w-sm p-6 animate-in fade-in zoom-in duration-150">
             {/* Icon + Title */}
             <div className="flex items-start gap-4 mb-5">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 leading-snug">Delete Customer?</h3>
-                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                <h3 className="text-base font-bold text-slate-900 dark:text-[#e2f5e8] leading-snug">Delete Customer?</h3>
+                <p className="text-sm text-slate-500 dark:text-[#8ba895] mt-1 leading-relaxed">
                   You are about to delete{' '}
-                  <span className="font-semibold text-slate-800">"{deleteTarget.name}"</span>.
+                  <span className="font-semibold text-slate-800 dark:text-[#e2f5e8]">"{deleteTarget.name}"</span>.
                   They will be deactivated and hidden from the customer list.
                 </p>
               </div>
@@ -536,7 +536,7 @@ export const Customers: React.FC = () => {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-[#a7c4ae] bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#1e3124] rounded-xl transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

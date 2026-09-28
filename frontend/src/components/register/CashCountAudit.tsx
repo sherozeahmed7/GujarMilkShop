@@ -28,7 +28,7 @@ export const CashCountAudit: React.FC<CashCountAuditProps> = ({ onCountCashClick
       <button
         onClick={onCountCashClick}
         disabled={isClosed}
-        className="flex-shrink-0 flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 text-sm font-bold rounded-xl shadow-sm transition-all"
+        className="flex-shrink-0 flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:border-blue-400 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-[#e2f5e8] text-sm font-bold rounded-xl shadow-sm transition-all"
       >
         <Calculator className="w-4 h-4" />
         {buttonLabel}

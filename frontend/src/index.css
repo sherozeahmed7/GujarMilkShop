@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Global smooth color transitions for dark/light mode ── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 250ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Light Mode CSS Variables ── */
 :root {
   --color-primary: #166534;
   --color-primary-hover: #14532d;
@@ -11,36 +19,102 @@
   --color-cream-hover: #FDE68A;
   --color-cream-border: #FDE68A;
   --color-cream-text: #78350F;
+
+  /* Semantic tokens — Light */
+  --bg-base: #F9FBF9;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f8fafc;
+  --bg-sidebar: #F9FAF8;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: rgba(254, 243, 199, 0.5);
+  --bg-active: #166534;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-on-active: #ffffff;
+  --border-base: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* ── Dark Mode CSS Variables ── */
+html.dark {
+  --bg-base: #0d1a10;
+  --bg-surface: #142119;
+  --bg-surface-2: #1a2e1f;
+  --bg-sidebar: #111e14;
+  --bg-card: #1a2e1f;
+  --bg-input: #1e3124;
+  --bg-hover: rgba(34, 197, 94, 0.08);
+  --bg-active: #22c55e;
+  --text-primary: #e2f5e8;
+  --text-secondary: #a7c4ae;
+  --text-muted: #64916e;
+  --text-on-active: #0d1a10;
+  --border-base: #2d4a35;
+  --border-subtle: #1e3124;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2);
 }
 
 @layer base {
   body {
-    @apply bg-[#F9FBF9] text-slate-800 antialiased;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    @apply antialiased;
+  }
+
+  /* Smooth transition for html.dark toggle */
+  html {
+    transition: background-color 250ms ease, color 250ms ease;
   }
 }
 
 @layer components {
+  /* ── Buttons ── */
   .btn-primary {
     @apply bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white font-semibold rounded-xl transition-all duration-150 shadow-sm shadow-[#166534]/20 disabled:opacity-50 disabled:cursor-not-allowed;
   }
-  
+
+  html.dark .btn-primary {
+    @apply bg-[#22c55e] hover:bg-[#16a34a] active:bg-[#15803d] text-[#0d1a10] shadow-[#22c55e]/20;
+  }
+
   .btn-secondary {
     @apply bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#166534] border border-[#FDE68A] font-semibold rounded-xl transition-all duration-150 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
+  html.dark .btn-secondary {
+    @apply bg-[#1e3124] hover:bg-[#263d2b] text-[#86efac] border-[#2d4a35];
+  }
+
+  /* ── Badges ── */
   .badge-primary {
     @apply bg-[#dcfce7] text-[#166534] border border-[#bbf7d0] font-semibold rounded-lg px-2 py-0.5 text-xs;
+  }
+
+  html.dark .badge-primary {
+    @apply bg-[#1a3d24] text-[#86efac] border-[#2d4a35];
   }
 
   .badge-cream {
     @apply bg-[#FEF3C7] text-[#78350F] border border-[#FDE68A] font-bold rounded-lg px-2 py-0.5 text-xs;
   }
 
+  html.dark .badge-cream {
+    @apply bg-[#2a1f0a] text-[#fcd34d] border-[#3d2f12];
+  }
+
+  /* ── Cards ── */
   .card-cream {
     @apply bg-[#FFFDF5] border border-[#FEF3C7] rounded-2xl shadow-sm;
   }
 
-  /* Custom scrollbar styled with deep green/cream tone */
+  html.dark .card-cream {
+    @apply bg-[#1a2e1f] border-[#2d4a35];
+  }
+
+  /* ── Custom Scrollbar ── */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -52,11 +126,42 @@
     background: #cbd5e1;
     border-radius: 9999px;
   }
+  html.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #2d4a35;
+  }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #166534;
   }
+  html.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #22c55e;
+  }
+
+  /* ── Dark Mode Table Utilities ── */
+  html.dark .dark-table-row {
+    @apply bg-[#1a2e1f] border-[#2d4a35] text-[#e2f5e8];
+  }
+  html.dark .dark-table-row:hover {
+    @apply bg-[#1e3124];
+  }
+
+  /* ── Dark Mode Input ── */
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-base) !important;
+  }
+  html.dark input::placeholder,
+  html.dark textarea::placeholder {
+    color: var(--text-muted) !important;
+  }
+  html.dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(0.8);
+  }
 }
 
+/* ── Print Styles ── */
 @media print {
   .no-print {
     display: none !important;

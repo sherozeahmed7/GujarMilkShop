@@ -63,14 +63,14 @@ export const RegisterHeader: React.FC<RegisterHeaderProps> = ({ onCloseRegisterR
 
         <button
           onClick={handleExportExcel}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#142119] text-slate-700 dark:text-[#e2f5e8] text-sm font-semibold rounded-xl shadow-sm transition-all"
         >
           <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
           Excel
         </button>
         <button
           onClick={handleExportPdf}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#142119] text-slate-700 dark:text-[#e2f5e8] text-sm font-semibold rounded-xl shadow-sm transition-all"
         >
           <FileText className="w-4 h-4 text-rose-500" />
           PDF

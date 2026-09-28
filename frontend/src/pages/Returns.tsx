@@ -17,8 +17,8 @@ export const Returns: React.FC = () => {
       {/* Page Header */}
       <div className="flex items-start justify-between flex-shrink-0 gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Bill Corrections &amp; Refunds</h1>
-          <p className="text-slate-500 text-sm mt-1">Reverse sold items safely or correct mistakes.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Bill Corrections &amp; Refunds</h1>
+          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">Reverse sold items safely or correct mistakes.</p>
         </div>
         <div className="flex-1 flex justify-end min-w-0">
           <InfoBanner />

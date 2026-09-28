@@ -172,8 +172,8 @@ export const CloudSync: React.FC = () => {
       {/* Header */}
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Cloud &amp; Sync</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Cloud &amp; Sync</h1>
+          <p className="text-slate-500 dark:text-[#8ba895] text-sm mt-1">
             Connect your POS to the cloud for backup, remote reports, and multi-device synchronization.
           </p>
           <div className="inline-flex items-center gap-1.5 mt-2 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100 text-xs font-medium">
@@ -187,7 +187,7 @@ export const CloudSync: React.FC = () => {
             onClick={() => setIsRestoreModalOpen(true)}
             disabled={loading || syncing || actionInProgress || !statusData?.cloudConnected}
             title={!statusData?.cloudConnected ? 'Connect to cloud to restore data.' : 'Restore data from online cloud backup'}
-            className="flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] hover:bg-slate-50 dark:hover:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
           >
             <DownloadCloud className="w-4 h-4 text-blue-600" />
             Restore Cloud Data
@@ -226,20 +226,19 @@ export const CloudSync: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex flex-col gap-6">
         {loading && !statusData ? (
-          <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">Loading sync status...</div>
+          <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-[#64916e] text-sm">Loading sync status...</div>
         ) : (
           <>
             {/* Top Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-shrink-0">
 
               {/* Sync Status Card */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 flex items-center gap-4 shadow-sm">
+              <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] p-6 flex items-center gap-4 shadow-sm">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                   statusData?.status === 'Online'       ? 'bg-emerald-100 text-emerald-600' :
-                  statusData?.status === 'Disconnected' ? 'bg-slate-100 text-slate-500' :
+                  statusData?.status === 'Disconnected' ? 'bg-slate-100 dark:bg-[#111e14] text-slate-500 dark:text-[#8ba895]' :
                   statusData?.status === 'Syncing'      ? 'bg-blue-100 text-blue-600' :
-                  statusData?.status === 'Offline'      ? 'bg-amber-100 text-amber-600' :
-                  'bg-rose-100 text-rose-600'
+                  statusData?.status === 'Offline'      ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600'
                 }`}>
                   {statusData?.status === 'Online'       ? <Cloud className="w-6 h-6" /> :
                    statusData?.status === 'Disconnected' ? <CloudOff className="w-6 h-6" /> :
@@ -248,13 +247,12 @@ export const CloudSync: React.FC = () => {
                    <AlertCircle className="w-6 h-6" />}
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Sync Status</div>
+                  <div className="text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-0.5">Sync Status</div>
                   <div className={`text-xl font-black ${
                     statusData?.status === 'Online'       ? 'text-emerald-600' :
-                    statusData?.status === 'Disconnected' ? 'text-slate-700' :
+                    statusData?.status === 'Disconnected' ? 'text-slate-700 dark:text-[#e2f5e8]' :
                     statusData?.status === 'Syncing'      ? 'text-blue-600' :
-                    statusData?.status === 'Offline'      ? 'text-amber-600' :
-                    'text-rose-600'
+                    statusData?.status === 'Offline'      ? 'text-amber-600' : 'text-rose-600'
                   }`}>
                     {statusData?.status?.toUpperCase() ?? 'LOADING'}
                   </div>
@@ -262,23 +260,23 @@ export const CloudSync: React.FC = () => {
               </div>
 
               {/* Pending Items Card */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 flex items-center gap-4 shadow-sm">
+              <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] p-6 flex items-center gap-4 shadow-sm">
                 <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
                   <HardDrive className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Pending Items</div>
+                  <div className="text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-0.5">Pending Items</div>
                   <div className="text-xl font-black text-amber-600">{statusData?.pendingCount ?? 0}</div>
                 </div>
               </div>
 
               {/* Failed Items Card */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 flex items-center gap-4 shadow-sm">
+              <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] p-6 flex items-center gap-4 shadow-sm">
                 <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
                   <AlertCircle className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Failed Items</div>
+                  <div className="text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-0.5">Failed Items</div>
                   <div className="text-xl font-black text-rose-600">{statusData?.failedCount ?? 0}</div>
                 </div>
               </div>
@@ -286,43 +284,43 @@ export const CloudSync: React.FC = () => {
             </div>
 
             {/* Cloud Connection Details */}
-            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
-                <h2 className="text-lg font-bold text-slate-800">Cloud Connection</h2>
+            <div className="flex-shrink-0 bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35]">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">Cloud Connection</h2>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">API URL</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">API URL</label>
                     <div className="flex items-center gap-2">
-                      <Wifi className="w-4 h-4 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-800 break-all">{statusData?.vpsUrl || '—'}</span>
+                      <Wifi className="w-4 h-4 text-slate-400 dark:text-[#64916e]" />
+                      <span className="text-sm font-medium text-slate-800 dark:text-[#e2f5e8] break-all">{statusData?.vpsUrl || '—'}</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Device ID</label>
-                    <div className="text-sm font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded inline-block font-mono break-all">
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Device ID</label>
+                    <div className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8] bg-slate-100 dark:bg-[#111e14] px-2 py-1 rounded inline-block font-mono break-all">
                       {statusData?.deviceId || '—'}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Shop Name</label>
-                    <div className="text-sm font-medium text-slate-800">{statusData?.shopName || '—'}</div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Shop Name</label>
+                    <div className="text-sm font-medium text-slate-800 dark:text-[#e2f5e8]">{statusData?.shopName || '—'}</div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Last Checked</label>
-                    <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
-                      <Clock className="w-4 h-4 text-slate-400" />
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Last Checked</label>
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-[#e2f5e8]">
+                      <Clock className="w-4 h-4 text-slate-400 dark:text-[#64916e]" />
                       {formatTs(statusData?.lastChecked)}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Last Successful Sync</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-1">Last Successful Sync</label>
                     <div className="flex items-center gap-2 text-sm font-medium text-emerald-600">
                       <RefreshCw className="w-4 h-4" />
                       {formatTs(statusData?.lastSuccessfulSync)}
@@ -332,11 +330,11 @@ export const CloudSync: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="bg-slate-50 dark:bg-[#142119] px-6 py-4 border-t border-slate-100 dark:border-[#2d4a35] flex items-center justify-between">
                 <button
                   onClick={handleCheckConnection}
                   disabled={actionInProgress || syncing}
-                  className="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
+                  className="bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-100 dark:hover:bg-[#1e3124] text-slate-700 dark:text-[#e2f5e8] px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
                 >
                   Check Cloud Connection
                 </button>
@@ -345,7 +343,7 @@ export const CloudSync: React.FC = () => {
                   <button
                     onClick={handleReconnect}
                     disabled={actionInProgress || syncing}
-                    className="flex items-center gap-2 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
+                    className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] border border-emerald-200 hover:bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
                   >
                     <Link2 className="w-4 h-4" />
                     Reconnect
@@ -354,7 +352,7 @@ export const CloudSync: React.FC = () => {
                   <button
                     onClick={handleDisconnect}
                     disabled={actionInProgress || syncing}
-                    className="flex items-center gap-2 bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
+                    className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] border border-rose-200 hover:bg-rose-50 text-rose-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 shadow-sm"
                   >
                     <Link2Off className="w-4 h-4" />
                     Disconnect
@@ -364,17 +362,17 @@ export const CloudSync: React.FC = () => {
             </div>
 
             {/* Sync Queue */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+            <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden mb-6">
               {/* Queue Header */}
-              <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35] flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-bold text-slate-800">Sync Queue</h2>
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">Sync Queue</h2>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={handleRetryAll}
                     disabled={(statusData?.failedCount ?? 0) === 0 || actionInProgress || syncing}
-                    className="text-sm bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 shadow-sm"
+                    className="text-sm bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#1e3124] text-slate-700 dark:text-[#e2f5e8] px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50 shadow-sm"
                   >
                     Retry All Failed
                   </button>
@@ -383,8 +381,8 @@ export const CloudSync: React.FC = () => {
 
               {/* Table — natural height, no inner scroll */}
               <table className="w-full text-sm table-fixed">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                <thead className="bg-slate-50 dark:bg-[#142119] border-b border-slate-100 dark:border-[#2d4a35]">
+                  <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8ba895]">
                     <th className="px-5 py-3 w-2/5">Record</th>
                     <th className="px-5 py-3 w-28">Module</th>
                     <th className="px-5 py-3 w-20">Action</th>
@@ -396,36 +394,34 @@ export const CloudSync: React.FC = () => {
                 <tbody>
                   {queue.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
+                      <td colSpan={6} className="px-5 py-10 text-center text-slate-400 dark:text-[#64916e]">
                         No pending synchronization items. Everything is synced!
                       </td>
                     </tr>
                   ) : (
                     pageItems.map((item) => (
-                      <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/80">
-                        <td className="px-5 py-3.5 text-slate-800 font-bold truncate" title={item.record}>{item.record}</td>
-                        <td className="px-5 py-3.5 text-slate-600 font-medium truncate" title={item.module}>{item.module}</td>
+                      <tr key={item.id} className="border-b border-slate-100 dark:border-[#2d4a35] hover:bg-slate-50/80 dark:hover:bg-[#1e3124]">
+                        <td className="px-5 py-3.5 text-slate-800 dark:text-[#e2f5e8] font-bold truncate" title={item.record}>{item.record}</td>
+                        <td className="px-5 py-3.5 text-slate-600 dark:text-[#a7c4ae] font-medium truncate" title={item.module}>{item.module}</td>
                         <td className="px-5 py-3.5">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
                             item.action === 'CREATE' ? 'bg-emerald-100 text-emerald-700' :
-                            item.action === 'UPDATE' ? 'bg-blue-100 text-blue-700' :
-                            'bg-rose-100 text-rose-700'
+                            item.action === 'UPDATE' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'
                           }`}>
                             {item.action}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 text-slate-500 text-xs whitespace-nowrap">{formatTs(item.createdAt)}</td>
+                        <td className="px-5 py-3.5 text-slate-500 dark:text-[#8ba895] text-xs whitespace-nowrap">{formatTs(item.createdAt)}</td>
                         <td className="px-5 py-3.5">
                           <span className={`flex items-center gap-1.5 font-bold text-xs ${
                             item.status === 'Pending' ? 'text-amber-600' :
-                            item.status === 'Syncing' ? 'text-blue-600' :
-                            'text-rose-600'
+                            item.status === 'Syncing' ? 'text-blue-600' : 'text-rose-600'
                           }`}>
                             {item.status === 'Pending' ? <Clock className="w-3.5 h-3.5" /> :
                              item.status === 'Syncing' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> :
                              <AlertCircle className="w-3.5 h-3.5" />}
                             {item.status}
-                            {item.retryCount > 0 && <span className="text-slate-400 font-normal">(×{item.retryCount})</span>}
+                            {item.retryCount > 0 && <span className="text-slate-400 dark:text-[#64916e] font-normal">(×{item.retryCount})</span>}
                           </span>
                           {item.error && (
                             <div className="text-[10px] text-rose-400 mt-0.5 truncate" title={item.error}>

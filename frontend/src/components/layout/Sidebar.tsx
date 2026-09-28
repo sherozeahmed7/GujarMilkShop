@@ -144,12 +144,12 @@ export const Sidebar: React.FC = () => {
       <aside 
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`${isCollapsed ? 'w-[72px]' : 'w-[240px]'} transition-[width] duration-300 ease-in-out shrink-0 bg-[#F9FAF8] border-r border-slate-200 h-full flex flex-col text-slate-700`}
+        className={`${isCollapsed ? 'w-[72px]' : 'w-[240px]'} transition-[width] duration-300 ease-in-out shrink-0 bg-[#F9FAF8] dark:bg-[#111e14] border-r border-slate-200 dark:border-[#1e3124] h-full flex flex-col text-slate-700 dark:text-[#a7c4ae]`}
       >
         {/* Header / Logo */}
-        <div className={`p-5 flex items-center shrink-0 ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
+        <div className={`p-5 flex items-center shrink-0 border-b border-slate-100 dark:border-[#1e3124] ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
           <BrandLogo variant="sidebar" />
-          <span className={`text-sm font-bold tracking-tight text-[#166534] whitespace-nowrap transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
+          <span className={`text-sm font-bold tracking-tight text-[#166534] dark:text-[#22c55e] whitespace-nowrap transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
             Gujar Milk Shop
           </span>
         </div>
@@ -172,8 +172,8 @@ export const Sidebar: React.FC = () => {
                         : 'gap-3 px-3 py-2.5'
                     } ${
                       isActive
-                        ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
-                        : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
+                        ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] font-semibold shadow-sm shadow-[#166534]/25 dark:shadow-[#22c55e]/20'
+                        : 'text-slate-600 dark:text-[#7aab84] hover:bg-[#FEF3C7]/50 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
                     }`
                   }
                 >
@@ -202,8 +202,8 @@ export const Sidebar: React.FC = () => {
                       : 'justify-between px-3 py-2.5'
                   } ${
                     isReportActive && !reportsOpen
-                      ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
-                      : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
+                      ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] font-semibold shadow-sm shadow-[#166534]/25 dark:shadow-[#22c55e]/20'
+                      : 'text-slate-600 dark:text-[#7aab84] hover:bg-[#FEF3C7]/50 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -219,15 +219,15 @@ export const Sidebar: React.FC = () => {
 
                 {!isCollapsed && (
                   <div className={`overflow-hidden transition-all duration-300 ease-in-out ${reportsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                    <ul className="pl-6 space-y-1 border-l-2 border-slate-200/60 ml-4 my-1">
+                    <ul className="pl-6 space-y-1 border-l-2 border-slate-200/60 dark:border-[#2d4a35]/60 ml-4 my-1">
                       {visibleReportItems.map((item) => (
                         <li key={item.path}>
                           <NavLink
                             to={item.path}
                             className={({ isActive }) =>
                               `flex items-center px-3 py-2 rounded-lg text-xs transition-all whitespace-nowrap ${isActive
-                                ? 'bg-[#FEF3C7] text-[#166534] font-bold shadow-xs'
-                                : 'text-slate-500 hover:bg-[#FEF3C7]/30 hover:text-[#166534]'
+                                ? 'bg-[#FEF3C7] dark:bg-[#22c55e]/15 text-[#166534] dark:text-[#86efac] font-bold shadow-xs'
+                                : 'text-slate-500 dark:text-[#64916e] hover:bg-[#FEF3C7]/30 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
                               }`
                             }
                           >
@@ -256,8 +256,8 @@ export const Sidebar: React.FC = () => {
                       : 'justify-between px-3 py-2.5'
                   } ${
                     isSettingsActive && !settingsOpen
-                      ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
-                      : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
+                      ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] font-semibold shadow-sm shadow-[#166534]/25 dark:shadow-[#22c55e]/20'
+                      : 'text-slate-600 dark:text-[#7aab84] hover:bg-[#FEF3C7]/50 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -273,15 +273,15 @@ export const Sidebar: React.FC = () => {
 
                 {!isCollapsed && (
                   <div className={`overflow-hidden transition-all duration-300 ease-in-out ${settingsOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                    <ul className="pl-6 space-y-1 border-l-2 border-slate-200/60 ml-4 my-1">
+                    <ul className="pl-6 space-y-1 border-l-2 border-slate-200/60 dark:border-[#2d4a35]/60 ml-4 my-1">
                       {visibleSettingsItems.map((item) => (
                         <li key={item.path}>
                           <NavLink
                             to={item.path}
                             className={({ isActive }) =>
                               `flex items-center px-3 py-2 rounded-lg text-xs transition-all whitespace-nowrap ${isActive
-                                ? 'bg-[#FEF3C7] text-[#166534] font-bold shadow-xs'
-                                : 'text-slate-500 hover:bg-[#FEF3C7]/30 hover:text-[#166534]'
+                                ? 'bg-[#FEF3C7] dark:bg-[#22c55e]/15 text-[#166534] dark:text-[#86efac] font-bold shadow-xs'
+                                : 'text-slate-500 dark:text-[#64916e] hover:bg-[#FEF3C7]/30 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
                               }`
                             }
                           >
@@ -307,8 +307,8 @@ export const Sidebar: React.FC = () => {
                         ? 'justify-center p-2.5 mx-auto w-10 h-10' 
                         : 'gap-3 px-3 py-2.5'
                     } ${isActive
-                      ? 'bg-[#166534] text-white font-semibold shadow-sm shadow-[#166534]/25'
-                      : 'text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
+                      ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] font-semibold shadow-sm shadow-[#166534]/25 dark:shadow-[#22c55e]/20'
+                      : 'text-slate-600 dark:text-[#7aab84] hover:bg-[#FEF3C7]/50 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
                     }`
                   }
                 >
@@ -323,7 +323,7 @@ export const Sidebar: React.FC = () => {
         </nav>
 
         {/* Footer Area */}
-        <div className="p-4 border-t border-slate-200 mt-auto shrink-0 flex flex-col items-center">
+        <div className="p-4 border-t border-slate-200 dark:border-[#1e3124] mt-auto shrink-0 flex flex-col items-center">
           
           {/* User Profile */}
           <div className={`flex items-center mb-4 w-full ${isCollapsed ? 'justify-center' : 'gap-3 px-2'}`}>
@@ -335,13 +335,13 @@ export const Sidebar: React.FC = () => {
               const initial = displayName.charAt(0).toUpperCase();
               return (
                 <>
-                  <div className="w-8 h-8 shrink-0 rounded-full bg-[#FEF3C7] border border-[#FDE68A] flex items-center justify-center font-bold text-[#166534] text-sm shadow-xs">
+                  <div className="w-8 h-8 shrink-0 rounded-full bg-[#FEF3C7] dark:bg-[#22c55e]/20 border border-[#FDE68A] dark:border-[#22c55e]/40 flex items-center justify-center font-bold text-[#166534] dark:text-[#22c55e] text-sm shadow-xs">
                     {initial}
                   </div>
                   {!isCollapsed && (
                     <div className="flex flex-col whitespace-nowrap overflow-hidden">
-                      <span className="text-xs font-semibold text-slate-800 truncate">{displayName}</span>
-                      <span className="text-[10px] font-bold text-[#166534] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-md w-fit mt-0.5 uppercase tracking-wider">{role}</span>
+                      <span className="text-xs font-semibold text-slate-800 dark:text-[#e2f5e8] truncate">{displayName}</span>
+                      <span className="text-[10px] font-bold text-[#166534] dark:text-[#22c55e] bg-[#FEF3C7] dark:bg-[#22c55e]/15 border border-[#FDE68A] dark:border-[#22c55e]/30 px-2 py-0.5 rounded-md w-fit mt-0.5 uppercase tracking-wider">{role}</span>
                     </div>
                   )}
                 </>
@@ -350,14 +350,14 @@ export const Sidebar: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className={`flex text-slate-500 w-full ${isCollapsed ? 'flex-col items-center gap-2' : 'items-center justify-between px-2'}`}>
+          <div className={`flex text-slate-500 dark:text-[#64916e] w-full ${isCollapsed ? 'flex-col items-center gap-2' : 'items-center justify-between px-2'}`}>
             
             {/* Sidebar Toggle (Only show on normal pages) */}
             {!isPosPage && (
               <button 
                 onClick={() => setIsManuallyCollapsed(!isManuallyCollapsed)}
                 title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                className="p-1.5 hover:bg-slate-200 rounded-md transition-colors flex justify-center items-center"
+                className="p-1.5 hover:bg-slate-200 dark:hover:bg-[#1e3124] rounded-md transition-colors flex justify-center items-center"
               >
                 {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
               </button>
@@ -367,7 +367,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={() => setShowLogoutModal(true)}
               title={isCollapsed ? "Log Out" : undefined}
-              className={`p-1.5 hover:bg-slate-200 rounded-md transition-colors flex items-center justify-center gap-2 text-xs font-medium text-red-600 hover:text-red-700`}
+              className={`p-1.5 hover:bg-slate-200 dark:hover:bg-[#2d1515] rounded-md transition-colors flex items-center justify-center gap-2 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300`}
             >
               <LogOut className="w-4 h-4 shrink-0" />
               {!isCollapsed && <span className="whitespace-nowrap">Log Out</span>}
@@ -379,23 +379,23 @@ export const Sidebar: React.FC = () => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 text-slate-800 animate-in fade-in zoom-in duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl border border-slate-100 dark:border-[#2d4a35] max-w-sm w-full p-6 text-slate-800 dark:text-[#e2f5e8] animate-in fade-in zoom-in duration-150">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                 <LogOut className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Confirm Logout</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Are you sure you want to log out of your session?</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-[#e2f5e8]">Confirm Logout</h3>
+                <p className="text-xs text-slate-500 dark:text-[#64916e] mt-0.5">Are you sure you want to log out of your session?</p>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2.5 mt-6 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2.5 mt-6 pt-4 border-t border-slate-100 dark:border-[#2d4a35]">
               <button
                 type="button"
                 onClick={() => setShowLogoutModal(false)}
                 disabled={isLoggingOut}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

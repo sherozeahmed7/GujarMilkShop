@@ -40,25 +40,25 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
   useEffect(() => { fetchReturns(); }, []);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden h-full">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-100 dark:border-[#2d4a35] shadow-sm flex flex-col overflow-hidden h-full">
       {/* Panel Header */}
-      <div className="px-5 py-4 border-b border-slate-100 flex-shrink-0 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <History className="w-4 h-4 text-slate-500" />
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Recent Returns</h2>
+          <History className="w-4 h-4 text-slate-500 dark:text-[#86efac]" />
+          <h2 className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8] uppercase tracking-wider">Recent Returns</h2>
         </div>
-        <span className="text-xs text-slate-400 font-medium">{returns.length} record{returns.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">{returns.length} record{returns.length !== 1 ? 's' : ''}</span>
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50">
+      <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50 dark:divide-[#2d4a35]">
         {returns.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center px-5">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-              <History className="w-5 h-5 text-slate-300" />
+            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-[#142119] flex items-center justify-center mb-3">
+              <History className="w-5 h-5 text-slate-300 dark:text-slate-600" />
             </div>
-            <p className="text-slate-500 text-sm font-medium">No returns yet</p>
-            <p className="text-slate-400 text-xs mt-1">Confirmed returns will appear here.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">No returns yet</p>
+            <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">Confirmed returns will appear here.</p>
           </div>
         )}
 
@@ -69,18 +69,18 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
           return (
             <div
               key={record.returnId}
-              className={`px-4 py-3.5 transition-colors hover:bg-slate-50 ${isNew ? 'bg-emerald-50 border-l-4 border-emerald-400' : ''}`}
+              className={`px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-[#223927] ${isNew ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-4 border-emerald-400' : ''}`}
             >
               {/* Top row */}
               <div className="flex items-start justify-between gap-2 mb-1.5">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-slate-800 truncate">{record.returnId}</span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-[#e2f5e8] truncate">{record.returnId}</span>
                     {isNew && (
                       <span className="text-[10px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full flex-shrink-0">NEW</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5 font-mono">
                     {formatInvoiceNumber(record.billNumber)} · {record.customer}
                   </p>
                 </div>
@@ -88,7 +88,7 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
                   <button
                     id={`view-return-${record.returnId}`}
                     onClick={() => setViewRecord(record)}
-                    className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
+                    className="p-1.5 hover:bg-slate-200 dark:hover:bg-[#2d4a35] rounded-lg transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-[#e2f5e8]"
                     title="View Details"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -96,7 +96,7 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
                   <button
                     id={`print-return-${record.returnId}`}
                     onClick={() => setPrintRecord(record)}
-                    className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-slate-400 hover:text-blue-600"
+                    className="p-1.5 hover:bg-blue-100 dark:hover:bg-[#2d4a35] rounded-lg transition-colors text-slate-400 hover:text-blue-600 dark:hover:text-[#22c55e]"
                     title="Print Receipt"
                   >
                     <Printer className="w-3.5 h-3.5" />
@@ -109,10 +109,10 @@ export const RecentReturnsPanel: React.FC<RecentReturnsPanelProps> = ({ highligh
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${returnTypeColors[record.returnType]}`}>
                   {record.returnType}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#142119] text-slate-600 dark:text-slate-300">
                   {record.paymentMethod}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-[#223927] text-emerald-700 dark:text-[#86efac]">
                   {record.status}
                 </span>
               </div>

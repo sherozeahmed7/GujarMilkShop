@@ -489,15 +489,15 @@ export const KhataLedger: React.FC = () => {
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Khata Ledger</h1>
-          <p className="text-slate-500 text-sm mt-1">Manage credit customers and track payments</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Khata Ledger</h1>
+          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">Manage credit customers and track payments</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             type="button"
             onClick={refreshAfterAction}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#a7c4ae] rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-[#1e3124] shadow-sm transition-colors disabled:opacity-50"
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -505,25 +505,25 @@ export const KhataLedger: React.FC = () => {
           <button
             type="button"
             onClick={handleExcelExport}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#a7c4ae] rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-[#1e3124] shadow-sm transition-colors"
           >
-            <Download className="w-4 h-4 text-emerald-600" />
+            <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             Excel
           </button>
           <button
             type="button"
             onClick={handlePdfExport}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#a7c4ae] rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-[#1e3124] shadow-sm transition-colors"
           >
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             PDF
           </button>
           <button
             type="button"
             onClick={handleDailyPrint}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#a7c4ae] rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-[#1e3124] shadow-sm transition-colors"
           >
-            <Printer className="w-4 h-4 text-amber-600" />
+            <Printer className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             Daily Print
           </button>
           <button
@@ -532,7 +532,7 @@ export const KhataLedger: React.FC = () => {
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border shadow-sm transition-colors ${
               filterMode !== 'All'
                 ? 'bg-amber-500 text-white border-amber-500'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                : 'bg-white dark:bg-[#1a2e1f] text-slate-600 dark:text-[#a7c4ae] border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#1e3124]'
             }`}
           >
             <Filter className="w-4 h-4" />
@@ -550,7 +550,7 @@ export const KhataLedger: React.FC = () => {
       </div>
 
       {error && (
-        <div className="flex-shrink-0 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm font-medium">
+        <div className="flex-shrink-0 rounded-xl border border-rose-200 dark:border-rose-800/50 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 px-4 py-3 text-sm font-medium">
           {error}
         </div>
       )}
@@ -571,23 +571,23 @@ export const KhataLedger: React.FC = () => {
         </div>
       )}
 
-      {partyMode === 'customers' ? <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex-shrink-0 flex items-center gap-3">
+      {partyMode === 'customers' ? <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0 flex items-center gap-3">
           <div className="relative w-56 flex-shrink-0">
-            <button type="button" onClick={() => setPartyPickerOpen((open) => !open)} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm" aria-haspopup="listbox" aria-expanded={partyPickerOpen}>
+            <button type="button" onClick={() => setPartyPickerOpen((open) => !open)} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#e2f5e8] rounded-xl text-sm font-semibold shadow-sm" aria-haspopup="listbox" aria-expanded={partyPickerOpen}>
               {partyMode === 'customers' ? 'Customers' : 'Suppliers'}
-              <ChevronDown className="w-4 h-4 text-slate-400" />
+              <ChevronDown className="w-4 h-4 text-slate-400 dark:text-[#64916e]" />
             </button>
-            {partyPickerOpen && <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"><div className="relative mb-2"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input autoFocus type="search" value={partySearch} onChange={(e) => setPartySearch(e.target.value)} placeholder="Search party type..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none focus:border-blue-500" /></div>{(['customers', 'suppliers'] as const).filter((mode) => mode.includes(partySearch.toLowerCase().trim())).map((mode) => <button key={mode} type="button" onClick={() => { setPartyMode(mode); setPartySearch(''); setPartyPickerOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${partyMode === mode ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>{mode === 'customers' ? 'Customers' : 'Suppliers'}</button>)}</div>}
+            {partyPickerOpen && <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] p-2 shadow-xl"><div className="relative mb-2"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-[#64916e]" /><input autoFocus type="search" value={partySearch} onChange={(e) => setPartySearch(e.target.value)} placeholder="Search party type..." className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] py-2 pl-8 pr-2 text-xs text-slate-700 dark:text-[#e2f5e8] outline-none focus:border-blue-500" /></div>{(['customers', 'suppliers'] as const).filter((mode) => mode.includes(partySearch.toLowerCase().trim())).map((mode) => <button key={mode} type="button" onClick={() => { setPartyMode(mode); setPartySearch(''); setPartyPickerOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${partyMode === mode ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'}`}>{mode === 'customers' ? 'Customers' : 'Suppliers'}</button>)}</div>}
           </div>
           <div className="relative max-w-lg flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-[#64916e] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by name or phone…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
           <select
@@ -600,7 +600,7 @@ export const KhataLedger: React.FC = () => {
             onChange={(e) =>
               setCustomerTypeFilter(e.target.value as CustomerTypeFilter)
             }
-            className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+            className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
           >
             <option value="All">All Types</option>
             <option value="daily_ledger">Daily Ledger</option>
@@ -609,7 +609,7 @@ export const KhataLedger: React.FC = () => {
           <select
             value={nameSort}
             onChange={(e) => setNameSort(e.target.value as NameSortOrder)}
-            className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+            className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
             title="Sort by name"
           >
             <option value="default">Sort: Default</option>
@@ -620,44 +620,44 @@ export const KhataLedger: React.FC = () => {
 
         <div className="w-full overflow-x-auto">
           <table className="w-full table-fixed text-left border-collapse">
-            <thead className="bg-slate-50 sticky top-0 z-10">
+            <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0 z-10">
               <tr>
-                <th className="w-14 px-3 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-center">
+                <th className="w-14 px-3 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35] text-center">
                   #
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Name
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Phone
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Type
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Current Month / Day
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Previous Month / Day
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Total to Pay
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Paid
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Remaining Balance
                 </th>
-                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                <th className="px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
                   Last Sale
                 </th>
-                <th className="w-12 px-4 py-3.5 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
+                <th className="w-12 px-4 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35] text-right">
                   
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
               {loading && customers.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-5 py-16 text-center text-sm text-slate-400">
@@ -690,16 +690,16 @@ export const KhataLedger: React.FC = () => {
                   const isMonthly = c.customerType === 'monthly_ledger';
                   const fmtAmt = (n: number) =>
                     n > 0 ? (
-                      <span className="font-bold text-sm text-slate-700">
+                      <span className="font-bold text-sm text-slate-700 dark:text-[#e2f5e8]">
                         Rs. {Math.round(n).toLocaleString()}
                       </span>
                     ) : (
-                      <span className="text-sm font-medium text-slate-400">Rs. 0</span>
+                      <span className="text-sm font-medium text-slate-400 dark:text-[#64916e]">Rs. 0</span>
                     );
 
                   return (
-                    <tr key={c.id} className="hover:bg-slate-50/70 transition-colors group">
-                      <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 tabular-nums">
+                    <tr key={c.id} className="hover:bg-slate-50/70 dark:hover:bg-[#1e3124] transition-colors group">
+                      <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 dark:text-[#64916e] tabular-nums">
                         {(customerPage - 1) * customerItemsPerPage + index + 1}
                       </td>
                       <td className="px-4 py-3 max-w-[220px]">
@@ -707,27 +707,27 @@ export const KhataLedger: React.FC = () => {
                           <button 
                             type="button"
                             onClick={() => navigate(`/ledger/customers/${c.id}`)}
-                            className="font-semibold text-sm text-blue-600 hover:text-blue-800 hover:underline truncate text-left block w-full"
+                            className="font-semibold text-sm text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac] hover:underline truncate text-left block w-full"
                             title={c.name}
                           >
                             {c.name}
                           </button>
                           {c.address && (
-                            <p className="text-[10px] text-slate-400 truncate">
+                            <p className="text-[10px] text-slate-400 dark:text-[#64916e] truncate">
                               {c.address}
                             </p>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 truncate max-w-[140px]" title={c.phone?.trim() ? c.phone : 'Not Available'}>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae] truncate max-w-[140px]" title={c.phone?.trim() ? c.phone : 'Not Available'}>
                         {c.phone?.trim() ? c.phone : 'Not Available'}
                       </td>
                       <td className="px-4 py-3">
                         <span
                           className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
                             isMonthly
-                              ? 'bg-violet-100 text-violet-700'
-                              : 'bg-sky-100 text-sky-700'
+                              ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
+                              : 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400'
                           }`}
                         >
                           {typeBadge(c.customerType)}
@@ -737,22 +737,22 @@ export const KhataLedger: React.FC = () => {
                       <td className="px-4 py-3">{fmtAmt(previousDue)}</td>
                       <td className="px-4 py-3">{fmtAmt(totalToPay)}</td>
                       <td className="px-4 py-3">
-                        <span className="font-semibold text-sm text-emerald-600">
+                        <span className="font-semibold text-sm text-emerald-600 dark:text-emerald-400">
                           Rs. {Math.round(paid).toLocaleString()}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {balance > 0 ? (
-                          <span className="font-bold text-sm text-rose-600">
+                          <span className="font-bold text-sm text-rose-600 dark:text-rose-400">
                             Rs. {Math.round(balance).toLocaleString()}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-lg border border-emerald-100 dark:border-emerald-800/40">
                             <CheckCircle2 className="w-3 h-3" /> Clear
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-500">
+                      <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
                         {c.lastSaleDate
                           ? new Date(c.lastSaleDate).toLocaleDateString('en-GB', {
                               day: '2-digit',
@@ -765,14 +765,14 @@ export const KhataLedger: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setOpenActionMenu(openActionMenu === c.id ? null : c.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-[#e2f5e8] hover:bg-slate-100 dark:hover:bg-[#223927] transition-colors"
                             title="Actions"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
 
                           {openActionMenu === c.id && (
-                            <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 overflow-hidden">
+                            <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl border border-slate-200 dark:border-[#2d4a35] py-1 overflow-hidden">
                               {/* Cash Collect */}
                               <button
                                 type="button"
@@ -780,8 +780,8 @@ export const KhataLedger: React.FC = () => {
                                 disabled={balance <= 0}
                                 className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors ${
                                   balance > 0
-                                    ? 'text-emerald-700 hover:bg-emerald-50'
-                                    : 'text-slate-300 cursor-not-allowed'
+                                    ? 'text-emerald-700 dark:text-[#22c55e] hover:bg-emerald-50 dark:hover:bg-[#223927]'
+                                    : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
                                 }`}
                               >
                                 <DollarSign className="w-4 h-4" />
@@ -792,19 +792,19 @@ export const KhataLedger: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => { setLedgerCustomer(c); setOpenActionMenu(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-[#223927] transition-colors"
                               >
                                 <BookOpen className="w-4 h-4" />
                                 View Ledger
                               </button>
 
-                              <div className="h-px bg-slate-100 my-1" />
+                              <div className="h-px bg-slate-100 dark:bg-[#2d4a35] my-1" />
 
                               {/* Edit */}
                               <button
                                 type="button"
                                 onClick={() => { handleOpenEdit(c); setOpenActionMenu(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-[#e2f5e8] hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors"
                               >
                                 <Edit2 className="w-4 h-4" />
                                 Edit
@@ -814,7 +814,7 @@ export const KhataLedger: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => { handleDelete(c); setOpenActionMenu(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
                                 Delete
@@ -842,13 +842,13 @@ export const KhataLedger: React.FC = () => {
           />
         )}
       </div> : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
+        <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-[#2d4a35] flex items-center gap-3 flex-wrap">
             <div className="relative w-56 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setPartyPickerOpen((open) => !open)}
-                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold shadow-sm"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#e2f5e8] rounded-xl text-sm font-semibold shadow-sm"
                 aria-haspopup="listbox"
                 aria-expanded={partyPickerOpen}
               >
@@ -856,16 +856,16 @@ export const KhataLedger: React.FC = () => {
                 <ChevronDown className="w-4 h-4 text-slate-400" />
               </button>
               {partyPickerOpen && (
-                <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] p-2 shadow-xl">
                   <div className="relative mb-2">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-[#64916e]" />
                     <input
                       autoFocus
                       type="search"
                       value={partySearch}
                       onChange={(e) => setPartySearch(e.target.value)}
                       placeholder="Search party type..."
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none focus:border-blue-500"
+                      className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] py-2 pl-8 pr-2 text-xs text-slate-700 dark:text-[#e2f5e8] outline-none focus:border-blue-500"
                     />
                   </div>
                   {(['customers', 'suppliers'] as const)
@@ -881,8 +881,8 @@ export const KhataLedger: React.FC = () => {
                         }}
                         className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${
                           partyMode === mode
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-slate-600 hover:bg-slate-50'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                            : 'text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'
                         }`}
                       >
                         {mode === 'customers' ? 'Customers' : 'Suppliers'}
@@ -898,7 +898,7 @@ export const KhataLedger: React.FC = () => {
                 placeholder="Search suppliers by name or code..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
             <select
@@ -906,7 +906,7 @@ export const KhataLedger: React.FC = () => {
               onChange={(e) =>
                 setSupplierCycleFilter(e.target.value as SupplierCycleFilter)
               }
-              className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+              className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
             >
               <option value="All">All Types</option>
               <option value="Monthly Cycle">Monthly Cycle</option>
@@ -916,7 +916,7 @@ export const KhataLedger: React.FC = () => {
             <select
               value={nameSort}
               onChange={(e) => setNameSort(e.target.value as NameSortOrder)}
-              className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+              className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
               title="Sort by name"
             >
               <option value="default">Sort: Default</option>
@@ -934,26 +934,26 @@ export const KhataLedger: React.FC = () => {
           </div>
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0 z-10">
                 <tr>
-                  <th className="w-14 px-3 py-3 text-center text-xs uppercase text-slate-500">#</th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Supplier</th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Code</th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Cycle</th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Advance</th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500" title="Purchases in current month, week, or day">
+                  <th className="w-14 px-3 py-3 text-center text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">#</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Supplier</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Code</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Cycle</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Advance</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]" title="Purchases in current month, week, or day">
                     Current Month / Week / Day
                   </th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500" title="Purchases before current cycle">
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]" title="Purchases before current cycle">
                     Previous Month / Week / Day
                   </th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Total to Pay</th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Paid</th>
-                  <th className="px-4 py-3 text-xs uppercase text-slate-500">Remaining Balance</th>
-                  <th className="px-4 py-3 text-right text-xs uppercase text-slate-500">Actions</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Total to Pay</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Paid</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Remaining Balance</th>
+                  <th className="px-4 py-3 text-right text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                 {paginatedSuppliers.map((supplier, index) => {
                     const current = supplier.currentAmount ?? 0;
                     const previous = supplier.previousAmount ?? 0;
@@ -978,23 +978,23 @@ export const KhataLedger: React.FC = () => {
                       );
                     };
                     return (
-                      <tr key={supplier.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 tabular-nums">
+                      <tr key={supplier.id} className="hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors">
+                        <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 dark:text-slate-400 tabular-nums">
                           {(supplierPage - 1) * supplierItemsPerPage + index + 1}
                         </td>
-                        <td className="px-4 py-3 font-semibold text-slate-800 max-w-[200px]">
+                        <td className="px-4 py-3 font-semibold text-slate-800 dark:text-[#e2f5e8] max-w-[200px]">
                           <button
                             type="button"
                             onClick={() => navigate(`/ledger/suppliers/${supplier.id}`)}
-                            className="text-blue-600 hover:text-blue-800 hover:underline truncate block w-full text-left"
+                            className="text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac] hover:underline truncate block w-full text-left"
                             title={supplier.name}
                           >
                             {supplier.name}
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-500">{supplier.code}</td>
-                        <td className="px-4 py-3 text-sm text-slate-500">{supplier.cycleType}</td>
-                        <td className="px-4 py-3 text-sm font-semibold text-emerald-600">
+                        <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{supplier.code}</td>
+                        <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{supplier.cycleType}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                           {(supplier.guaranteedAdvance || 0) > 0
                             ? `−Rs. ${Math.round(supplier.guaranteedAdvance).toLocaleString()}`
                             : '—'}
@@ -1003,19 +1003,19 @@ export const KhataLedger: React.FC = () => {
                         <td className="px-4 py-3">{fmtAmt(previous)}</td>
                         <td className="px-4 py-3">{fmtAmt(totalToPay)}</td>
                         <td className="px-4 py-3">
-                          <span className="font-semibold text-sm text-emerald-600">
+                          <span className="font-semibold text-sm text-emerald-600 dark:text-emerald-400">
                             Rs. {Math.round(paid).toLocaleString()}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {remaining < 0 ? (
-                            <span className="font-bold text-emerald-600">
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
                               Rs. −{Math.abs(Math.round(remaining)).toLocaleString()}
                             </span>
                           ) : remaining === 0 ? (
-                            <span className="text-sm font-medium text-slate-400">Rs. 0</span>
+                            <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Rs. 0</span>
                           ) : (
-                            <span className="font-bold text-amber-600">
+                            <span className="font-bold text-amber-600 dark:text-amber-400">
                               Rs. {Math.round(remaining).toLocaleString()}
                             </span>
                           )}
@@ -1025,14 +1025,14 @@ export const KhataLedger: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setLedgerSupplier(supplier)}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                             >
                               Ledger
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditSupplier(supplier)}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                               title="Edit supplier name and remaining balance"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -1115,26 +1115,26 @@ export const KhataLedger: React.FC = () => {
       {/* Delete Customer Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-sm p-6 animate-in fade-in zoom-in duration-150">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl border border-slate-100 dark:border-[#2d4a35] w-full max-w-sm p-6 animate-in fade-in zoom-in duration-150">
             {/* Icon + Title */}
             <div className="flex items-start gap-4 mb-5">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5 text-red-600" />
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 leading-snug">Remove from Khata?</h3>
-                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                <h3 className="text-base font-bold text-slate-900 dark:text-[#e2f5e8] leading-snug">Remove from Khata?</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                   You are about to remove{' '}
-                  <span className="font-semibold text-slate-800">"{deleteTarget.name}"</span>{' '}
+                  <span className="font-semibold text-slate-800 dark:text-[#e2f5e8]">"{deleteTarget.name}"</span>{' '}
                   from the Khata ledger. They will be marked as inactive.
                 </p>
               </div>
             </div>
 
             {/* Warning note */}
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 mb-5">
+            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl px-3.5 py-2.5 mb-5">
               <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-              <p className="text-xs text-amber-700 font-medium">
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
                 This action cannot be undone from the Khata ledger.
               </p>
             </div>
@@ -1145,7 +1145,7 @@ export const KhataLedger: React.FC = () => {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleteLoading}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#223927] rounded-xl transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

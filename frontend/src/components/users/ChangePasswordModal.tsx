@@ -53,15 +53,15 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ user, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
-          <h2 className="text-lg font-bold text-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">
             {isChangingOwn ? 'Change My Password' : 'Change User Password'}
           </h2>
           <button 
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -81,16 +81,16 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ user, 
           )}
 
           {!isChangingOwn && (
-            <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Selected User</span>
-              <span className="text-sm font-bold text-slate-800">{user?.name}</span>
-              <span className="text-xs text-slate-500 ml-2">({user?.email})</span>
+            <div className="mb-6 p-4 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl">
+              <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider block mb-1">Selected User</span>
+              <span className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">{user?.name}</span>
+              <span className="text-xs text-slate-500 dark:text-[#8ba895] ml-2">({user?.email})</span>
             </div>
           )}
 
           <form id="password-form" onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">
                 {isChangingOwn ? 'Current Password' : 'Admin Login Password'}
               </label>
               <div className="relative">
@@ -98,36 +98,36 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ user, 
                   type={showAdminPassword ? "text" : "password"}
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full pl-4 pr-10 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowAdminPassword(!showAdminPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
                 >
                   {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
               {!isChangingOwn && (
-                <p className="text-xs text-slate-500 mt-1">Required to verify your authorization.</p>
+                <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-1">Required to verify your authorization.</p>
               )}
             </div>
 
             <div className="pt-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">New Password</label>
               <div className="relative">
                 <input
                   type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full pl-4 pr-10 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -135,19 +135,19 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ user, 
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Confirm New Password</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Confirm New Password</label>
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full pl-4 pr-10 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -157,11 +157,11 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ user, 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-[#a7c4ae] hover:text-slate-800 dark:hover:text-[#e2f5e8] hover:bg-slate-200 dark:hover:bg-[#1e3124] rounded-lg transition-colors"
           >
             Cancel
           </button>

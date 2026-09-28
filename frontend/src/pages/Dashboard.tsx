@@ -85,9 +85,9 @@ export const Dashboard: React.FC = () => {
     <div className="flex flex-col gap-6 relative">
 
       {/* ── Date Filter Bar ───────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-        <div className="flex items-center gap-2 text-slate-800 font-semibold">
-          <CalendarIcon className="w-5 h-5 text-[#166534]" />
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-[#1a2e1f] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35]">
+        <div className="flex items-center gap-2 text-slate-800 dark:text-[#e2f5e8] font-semibold">
+          <CalendarIcon className="w-5 h-5 text-[#166534] dark:text-[#22c55e]" />
           <span>Dashboard Overview</span>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 sm:pb-0">
@@ -96,7 +96,9 @@ export const Dashboard: React.FC = () => {
               key={preset.label}
               onClick={() => { setDateFilter({ label: preset.label, startDate: new Date(), endDate: new Date() }); setShowCustomPicker(false); }}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                dateFilter.label === preset.label ? 'bg-[#166534] text-white shadow-sm font-semibold shadow-[#166534]/20' : 'bg-slate-100 text-slate-600 hover:bg-[#FEF3C7]/60 hover:text-[#166534]'
+                dateFilter.label === preset.label
+                  ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-sm font-semibold'
+                  : 'bg-slate-100 dark:bg-[#1e3124] text-slate-600 dark:text-[#7aab84] hover:bg-[#FEF3C7]/60 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
               }`}
             >
               {preset.label}
@@ -108,29 +110,31 @@ export const Dashboard: React.FC = () => {
               ref={buttonRef}
               onClick={() => setShowCustomPicker(!showCustomPicker)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
-                isCustom ? 'bg-[#166534] text-white shadow-sm font-semibold shadow-[#166534]/20' : 'bg-white border border-slate-200 text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534]'
+                isCustom
+                  ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-sm font-semibold'
+                  : 'bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#7aab84] hover:bg-[#FEF3C7]/50 dark:hover:bg-[#22c55e]/10 hover:text-[#166534] dark:hover:text-[#86efac]'
               }`}
             >
               {isCustom ? dateFilter.label : 'Custom'}
             </button>
 
             {showCustomPicker && (
-              <div ref={popupRef} style={popupStyle} className="bg-white rounded-xl shadow-xl border border-slate-200 p-4 flex flex-col gap-3 min-w-[280px]">
-                <h4 className="text-sm font-bold text-slate-800">Select Custom Range</h4>
+              <div ref={popupRef} style={popupStyle} className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col gap-3 min-w-[280px]">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">Select Custom Range</h4>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-slate-500">Start Date</label>
+                  <label className="text-xs font-medium text-slate-500 dark:text-[#64916e]">Start Date</label>
                   <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#166534]" />
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm text-slate-700 dark:text-[#e2f5e8] bg-white dark:bg-[#1e3124] focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e]" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-slate-500">End Date</label>
+                  <label className="text-xs font-medium text-slate-500 dark:text-[#64916e]">End Date</label>
                   <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#166534]" />
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm text-slate-700 dark:text-[#e2f5e8] bg-white dark:bg-[#1e3124] focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e]" />
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
-                  <button onClick={() => setShowCustomPicker(false)} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                  <button onClick={() => setShowCustomPicker(false)} className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg transition-colors">Cancel</button>
                   <button onClick={handleApplyCustom} disabled={!customStart || !customEnd}
-                    className="px-3 py-1.5 text-xs font-semibold bg-[#166534] text-white rounded-lg hover:bg-[#14532d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs">Apply</button>
+                    className="px-3 py-1.5 text-xs font-semibold bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] rounded-lg hover:bg-[#14532d] dark:hover:bg-[#16a34a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs">Apply</button>
                 </div>
               </div>
             )}
@@ -199,7 +203,7 @@ export const Dashboard: React.FC = () => {
 
       {/* ── Error Banner ──────────────────────────────────────────────── */}
       {error && !isLoading && (
-        <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/40 rounded-xl px-4 py-3">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
@@ -235,48 +239,48 @@ export const Dashboard: React.FC = () => {
           subtitle="After refunds"
           icon={TrendingUp}
           trendIcon={TrendingUp}
-          bgColor="bg-white"
-          iconColor="text-slate-400"
+          bgColor="bg-white dark:bg-[#1a2e1f]"
+          iconColor="text-slate-400 dark:text-[#64916e]"
         />
         <StatCard
           title="Bills Served"
           value={metrics.totalBills.toLocaleString()}
           subtitle="Receipts issued"
           icon={FileText}
-          bgColor="bg-[#F4F8FF]"
-          iconColor="text-blue-500"
+          bgColor="bg-[#F4F8FF] dark:bg-[#162535]"
+          iconColor="text-blue-500 dark:text-blue-400"
         />
         <StatCard
           title="Expected Cash"
           value={fmt(metrics.expectedCash)}
           subtitle="Register total"
           icon={Banknote}
-          bgColor="bg-[#F5F3FF]"
-          iconColor="text-purple-500"
+          bgColor="bg-[#F5F3FF] dark:bg-[#1e1a35]"
+          iconColor="text-purple-500 dark:text-purple-400"
         />
         <StatCard
           title="Cash Collected"
           value={fmt(metrics.cashCollected)}
           subtitle="Cash tender"
           icon={Wallet}
-          bgColor="bg-[#FFF1F2]"
-          iconColor="text-rose-500"
+          bgColor="bg-[#FFF1F2] dark:bg-[#2d1515]"
+          iconColor="text-rose-500 dark:text-rose-400"
         />
         <StatCard
           title="Online Sales"
           value={fmt(metrics.onlineSales)}
           subtitle="JazzCash / bank"
           icon={CreditCard}
-          bgColor="bg-[#F0FDF4]"
-          iconColor="text-emerald-500"
+          bgColor="bg-[#F0FDF4] dark:bg-[#1a2e1f]"
+          iconColor="text-emerald-500 dark:text-emerald-400"
         />
         <StatCard
           title="Khata Dues"
           value={fmt(metrics.khataDues)}
           subtitle={`${metrics.khataCustomerCount} customers owe`}
           icon={AlertCircle}
-          bgColor="bg-[#FFFBEB]"
-          iconColor="text-amber-500"
+          bgColor="bg-[#FFFBEB] dark:bg-[#2a1f0a]"
+          iconColor="text-amber-500 dark:text-amber-400"
         />
       </div>
 

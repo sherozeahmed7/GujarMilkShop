@@ -47,8 +47,8 @@ export const KhataLedgerModal: React.FC<KhataLedgerModalProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-xl px-8 py-6 text-sm text-slate-500 font-medium">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl px-8 py-6 text-sm text-slate-500 dark:text-slate-400 font-medium">
           Loading ledger…
         </div>
       </div>
@@ -58,8 +58,8 @@ export const KhataLedgerModal: React.FC<KhataLedgerModalProps> = ({
   if (error) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4">
-          <p className="text-sm font-medium text-rose-600">{error}</p>
+        <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4">
+          <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{error}</p>
           <button
             type="button"
             onClick={onClose}

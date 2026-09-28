@@ -166,7 +166,7 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#edf1ee] overflow-hidden">
+    <div className="min-h-screen w-full bg-[#edf1ee] dark:bg-[#0d1a10] overflow-hidden">
       <div className="grid min-h-screen w-full lg:grid-cols-[1.2fr_0.8fr]">
         <div className="relative hidden lg:flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(254,243,199,0.7),_transparent_40%),linear-gradient(135deg,#fffdf5_0%,#fef3c7_30%,#f0fdf4_70%,#dcfce7_100%)] p-10">
           <div
@@ -225,24 +225,24 @@ export const Login: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex min-h-screen items-center justify-center bg-white px-6 py-10 sm:px-8 lg:px-10">
+        <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#142119] px-6 py-10 sm:px-8 lg:px-10">
           <div className="w-full max-w-md">
             <div className="flex flex-col items-center mb-8 lg:hidden">
               <BrandLogo variant="login" className="mb-4" />
-              <h1 className="text-2xl font-black text-[#166534] mt-2">Gujar Milk Shop</h1>
-              <p className="text-[11px] text-[#78350F] bg-[#FEF3C7] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-[0.2em] mt-1.5">
+              <h1 className="text-2xl font-black text-[#166534] dark:text-[#22c55e] mt-2">Gujar Milk Shop</h1>
+              <p className="text-[11px] text-[#78350F] dark:text-[#fcd34d] bg-[#FEF3C7] dark:bg-[#2a1f0a] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-[0.2em] mt-1.5">
                 POS Management System
               </p>
             </div>
 
             <div className="mb-6">
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#166534] mb-2">
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#166534] dark:text-[#22c55e] mb-2">
                 Welcome
               </div>
-              <h2 className="text-3xl font-black text-slate-900">
+              <h2 className="text-3xl font-black text-slate-900 dark:text-[#e2f5e8]">
                 {selected ? 'Enter password' : 'Who is signing in?'}
               </h2>
-              <p className="text-sm text-slate-500 mt-1.5">
+              <p className="text-sm text-slate-500 dark:text-[#64916e] mt-1.5">
                 {selected
                   ? `Continue as ${selected.name}`
                   : loadingUsers

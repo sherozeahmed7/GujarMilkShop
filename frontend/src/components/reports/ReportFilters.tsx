@@ -105,11 +105,11 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   const isCustom = !presets.some((p) => p.label === currentFilter.label);
 
   return (
-    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white dark:bg-[#1a2e1f] p-4 rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35]">
       
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 text-slate-800 font-semibold mr-2">
-          <Calendar className="w-5 h-5 text-blue-600" />
+        <div className="flex items-center gap-2 text-slate-800 dark:text-[#e2f5e8] font-semibold mr-2">
+          <Calendar className="w-5 h-5 text-blue-600 dark:text-[#22c55e]" />
           <span className="hidden sm:inline">Date Range</span>
         </div>
 
@@ -119,8 +119,8 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             onClick={() => handlePresetClick(preset.label)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
               currentFilter.label === preset.label 
-                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                ? 'bg-blue-50 dark:bg-[#142119] text-blue-700 dark:text-[#22c55e] border border-blue-200 dark:border-[#22c55e]/50' 
+                : 'bg-white dark:bg-transparent text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#223927]'
             }`}
           >
             {preset.label}
@@ -132,30 +132,30 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             onClick={() => setShowCustomPicker(!showCustomPicker)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
               isCustom 
-                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                ? 'bg-blue-50 dark:bg-[#142119] text-blue-700 dark:text-[#22c55e] border border-blue-200 dark:border-[#22c55e]/50' 
+                : 'bg-white dark:bg-transparent border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#223927]'
             }`}
           >
             {isCustom ? currentFilter.label : 'Custom'}
           </button>
 
           {showCustomPicker && (
-            <div className="absolute top-full mt-2 left-0 z-50 bg-white rounded-xl shadow-xl border border-slate-200 p-4 flex flex-col gap-3 min-w-[280px]">
-              <h4 className="text-sm font-bold text-slate-800">Custom Range</h4>
+            <div className="absolute top-full mt-2 left-0 z-50 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col gap-3 min-w-[280px]">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">Custom Range</h4>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-500">From Date</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">From Date</label>
                 <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm text-slate-700 dark:text-[#e2f5e8] bg-white dark:bg-[#142119] focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-[#22c55e]" />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-500">To Date</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">To Date</label>
                 <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm text-slate-700 dark:text-[#e2f5e8] bg-white dark:bg-[#142119] focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-[#22c55e]" />
               </div>
               <div className="flex justify-end gap-2 mt-2">
-                <button onClick={() => setShowCustomPicker(false)} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Reset</button>
+                <button onClick={() => setShowCustomPicker(false)} className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#223927] rounded-lg transition-colors">Reset</button>
                 <button onClick={handleApplyCustom} disabled={!customStart || !customEnd}
-                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">Apply</button>
+                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 dark:bg-[#22c55e] text-white dark:text-[#0d1a10] rounded-lg hover:bg-blue-700 dark:hover:bg-[#1ea34d] transition-colors disabled:opacity-50">Apply</button>
               </div>
             </div>
           )}
@@ -171,7 +171,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
               placeholder="Search in report..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-[#2d4a35] rounded-lg bg-white dark:bg-[#142119] text-slate-700 dark:text-[#e2f5e8] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-[#22c55e]"
             />
           </div>
         )}
@@ -179,7 +179,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
         <button 
           onClick={onRefresh}
           disabled={isLoading}
-          className="p-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors disabled:opacity-50"
+          className="p-2 border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#223927] rounded-lg transition-colors disabled:opacity-50"
           title="Refresh Data"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />

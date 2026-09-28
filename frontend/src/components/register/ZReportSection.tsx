@@ -28,14 +28,14 @@ export const ZReportSection: React.FC = () => {
 
   if (!display) {
     return (
-      <div id="z-report-section" className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div id="z-report-section" className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-100 dark:border-[#2d4a35] shadow-sm p-6">
         <p className="text-sm text-slate-400 text-center">No shift data available yet.</p>
       </div>
     );
   }
 
   return (
-    <div id="z-report-section" className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-6">
+    <div id="z-report-section" className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-100 dark:border-[#2d4a35] shadow-sm p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between border-b border-slate-100 pb-4">
         <div>

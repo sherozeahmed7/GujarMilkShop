@@ -80,7 +80,7 @@ export const CustomerMonthlyStatement: React.FC<Props> = ({
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-medium transition-colors"
+          className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-[#a7c4ae] hover:text-slate-900 dark:hover:text-[#e2f5e8] font-medium transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Customers
@@ -89,21 +89,21 @@ export const CustomerMonthlyStatement: React.FC<Props> = ({
         <div className="flex-1" />
 
         {/* Month navigator */}
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-1 py-1 shadow-sm">
+        <div className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] rounded-lg px-1 py-1 shadow-sm">
           <button
             onClick={goToPrevMonth}
-            className="p-1.5 hover:bg-slate-100 rounded transition-colors"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded transition-colors"
           >
-            <ChevronLeft className="w-4 h-4 text-slate-600" />
+            <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-[#a7c4ae]" />
           </button>
-          <span className="text-sm font-semibold text-slate-800 px-2 min-w-[130px] text-center">
+          <span className="text-sm font-semibold text-slate-800 dark:text-[#e2f5e8] px-2 min-w-[130px] text-center">
             {MONTH_NAMES[month]} {year}
           </span>
           <button
             onClick={goToNextMonth}
-            className="p-1.5 hover:bg-slate-100 rounded transition-colors"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded transition-colors"
           >
-            <ChevronRight className="w-4 h-4 text-slate-600" />
+            <ChevronRight className="w-4 h-4 text-slate-600 dark:text-[#a7c4ae]" />
           </button>
         </div>
 
@@ -130,17 +130,17 @@ export const CustomerMonthlyStatement: React.FC<Props> = ({
 
       {/* Customer heading */}
       <div className="mb-5">
-        <h2 className="text-xl font-bold text-slate-800">{customerName}</h2>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8]">{customerName}</h2>
         {customerPhone && (
-          <p className="text-sm text-slate-500">{customerPhone}</p>
+          <p className="text-sm text-slate-500 dark:text-[#8ba895]">{customerPhone}</p>
         )}
-        <p className="text-sm text-slate-400 mt-0.5">
+        <p className="text-sm text-slate-400 dark:text-[#64916e] mt-0.5">
           Monthly Milk Statement — {MONTH_NAMES[month]} {year}
         </p>
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center h-48 text-slate-400 gap-2">
+        <div className="flex items-center justify-center h-48 text-slate-400 dark:text-[#64916e] gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading statement...</span>
         </div>
@@ -153,7 +153,7 @@ export const CustomerMonthlyStatement: React.FC<Props> = ({
 
           {/* Calendar grid */}
           <div className="mb-2">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-[#a7c4ae] mb-3">
               Daily Milk — {MONTH_NAMES[month]} {year}
             </h3>
             <MilkCalendarGrid month={month} year={year} dailyEntries={stmt.dailyEntries} />

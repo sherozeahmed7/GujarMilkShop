@@ -16,14 +16,14 @@ export const Expenses: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 relative">
       {error && (
-        <div className="flex items-center justify-between gap-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-3 text-sm font-medium">
+        <div className="flex items-center justify-between gap-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 rounded-xl px-4 py-3 text-sm font-medium">
           <span>{error}</span>
-          <button onClick={clearError} className="text-rose-500 hover:text-rose-700 font-bold">✕</button>
+          <button onClick={clearError} className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 font-bold">✕</button>
         </div>
       )}
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-slate-500 bg-white border border-slate-100 rounded-xl px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-[#1a2e1f] border border-slate-100 dark:border-[#2d4a35] rounded-xl px-4 py-3 shadow-sm">
           <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
           Loading expenses…
         </div>
@@ -44,13 +44,13 @@ export const Expenses: React.FC = () => {
           <CostBreakdown />
           
           {/* Owner Notes */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Info className="w-5 h-5 text-blue-500" />
-              <h3 className="font-bold text-slate-800">Owner Notes</h3>
+              <Info className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Owner Notes</h3>
             </div>
             
-            <ul className="space-y-3 text-sm text-slate-600">
+            <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
               <li className="flex gap-2 items-start">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
                 <span>Shopping bags are tracked separately because they quietly eat margin on small sales.</span>

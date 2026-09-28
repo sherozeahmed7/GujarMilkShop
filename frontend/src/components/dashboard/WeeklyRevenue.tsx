@@ -60,23 +60,23 @@ export const WeeklyRevenue: React.FC<WeeklyRevenueProps> = ({
   const dotR = (data ?? []).length > 20 ? 0 : 3.5;
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col h-full relative">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col h-full relative">
       {/* Header */}
       <div className="flex justify-between items-start mb-5 gap-4">
         <div>
-          <h3 className="text-base font-bold text-slate-800">
-            Revenue &mdash; <span className="text-blue-600">{title}</span>
+          <h3 className="text-base font-bold text-slate-800 dark:text-[#e2f5e8]">
+            Revenue &mdash; <span className="text-[#166534] dark:text-[#22c55e]">{title}</span>
           </h3>
-          <p className="text-sm text-slate-400 mt-0.5">{sub}</p>
+          <p className="text-sm text-slate-400 dark:text-[#64916e] mt-0.5">{sub}</p>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-lg font-bold text-slate-800">
+          <div className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">
             Rs.&nbsp;{totalRevenue.toLocaleString()}
           </div>
           {bestPoint && (
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-400 dark:text-[#64916e] mt-0.5">
               Best:&nbsp;
-              <span className="font-medium text-slate-600">
+              <span className="font-medium text-slate-600 dark:text-[#a7c4ae]">
                 {bestPoint.label} &mdash; Rs.&nbsp;{bestPoint.value.toLocaleString()}
               </span>
             </p>
@@ -87,13 +87,13 @@ export const WeeklyRevenue: React.FC<WeeklyRevenueProps> = ({
       {/* Chart */}
       <div className="flex-1 w-full relative min-h-[200px] mt-1">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full gap-2 text-slate-400 text-sm">
-            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center justify-center h-full gap-2 text-slate-400 dark:text-[#64916e] text-sm">
+            <div className="w-4 h-4 border-2 border-[#166534] dark:border-[#22c55e] border-t-transparent rounded-full animate-spin" />
             Loading chart…
           </div>
         ) : !data || data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm gap-2">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-[#64916e] text-sm gap-2">
+            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-[#1e3124] flex items-center justify-center">
               <svg className="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
@@ -104,7 +104,7 @@ export const WeeklyRevenue: React.FC<WeeklyRevenueProps> = ({
           <>
             <div className="absolute left-0 right-0 flex flex-col justify-between pointer-events-none" style={{ top: 0, bottom: 28 }}>
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="border-t border-dashed border-slate-100 w-full" />
+                <div key={i} className="border-t border-dashed border-slate-100 dark:border-[#2d4a35] w-full" />
               ))}
             </div>
 
@@ -131,7 +131,7 @@ export const WeeklyRevenue: React.FC<WeeklyRevenueProps> = ({
 
             <div className="flex justify-between mt-1 overflow-hidden" style={{ height: 20 }}>
               {data.map((d, i) => (
-                <span key={i} className="flex-1 text-center text-[10px] font-medium text-slate-400 truncate px-0.5" style={{ visibility: showLabel(i) ? 'visible' : 'hidden' }}>
+                <span key={i} className="flex-1 text-center text-[10px] font-medium text-slate-400 dark:text-[#64916e] truncate px-0.5" style={{ visibility: showLabel(i) ? 'visible' : 'hidden' }}>
                   {d.label}
                 </span>
               ))}

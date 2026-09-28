@@ -20,7 +20,7 @@ function calculateHours(start?: string, end?: string) {
 
 export const ZReportSummaryCard: React.FC<ZReportSummaryCardProps> = ({ data }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden relative">
       {/* Decorative gradient */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-emerald-400 to-emerald-500"></div>
       

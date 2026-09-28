@@ -79,17 +79,17 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119]/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
               {isEdit ? <Edit2 className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">
                 {isEdit ? 'Edit Customer' : 'Add New Customer'}
               </h3>
-              <p className="text-xs font-medium text-slate-500">
+              <p className="text-xs font-medium text-slate-500 dark:text-[#8ba895]">
                 {isEdit
                   ? 'Update ledger customer details.'
                   : 'Create a daily or monthly ledger account.'}
@@ -99,7 +99,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+            className="p-2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] hover:bg-slate-200 dark:hover:bg-[#1e3124] rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -117,30 +117,30 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Customer Name *
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl text-sm font-medium text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Ledger Type *
             </label>
-            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+            <div className="flex gap-2 p-1 bg-slate-100 dark:bg-[#142119] rounded-xl">
               <button
                 type="button"
                 onClick={() => setCustomerType('daily_ledger')}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
                   customerType === 'daily_ledger'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-white dark:bg-[#1a2e1f] text-slate-800 dark:text-[#e2f5e8] shadow-sm'
+                    : 'text-slate-500 dark:text-[#8ba895] hover:text-slate-700 dark:hover:text-[#a7c4ae]'
                 }`}
               >
                 Daily
@@ -150,8 +150,8 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
                 onClick={() => setCustomerType('monthly_ledger')}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
                   customerType === 'monthly_ledger'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-white dark:bg-[#1a2e1f] text-slate-800 dark:text-[#e2f5e8] shadow-sm'
+                    : 'text-slate-500 dark:text-[#8ba895] hover:text-slate-700 dark:hover:text-[#a7c4ae]'
                 }`}
               >
                 Monthly
@@ -160,7 +160,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Phone
             </label>
             <input
@@ -168,26 +168,26 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="e.g. 0300-1234567"
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl text-sm font-medium text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Address
             </label>
             <input
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl text-sm font-medium text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Opening Balance{' '}
-              <span className="text-slate-400 font-normal normal-case">(optional)</span>
+              <span className="text-slate-400 dark:text-[#64916e] font-normal normal-case">(optional)</span>
             </label>
             <input
               type="number"
@@ -196,9 +196,9 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
               value={openingBalance}
               onChange={(e) => setOpeningBalance(e.target.value)}
               placeholder="e.g. 5000 — existing dues"
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl text-sm font-medium text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500 outline-none"
             />
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 dark:text-[#64916e]">
               {isEdit
                 ? 'Existing dues appear in Previous Month / Day and Remaining Balance.'
                 : 'Shows under Previous so you can register customers who already owe money.'}
@@ -206,12 +206,12 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           </div>
         </form>
 
-        <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
+        <div className="p-5 border-t border-slate-100 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex justify-end gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-100 transition-colors shadow-sm"
+            className="px-5 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#a7c4ae] rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors shadow-sm"
           >
             Cancel
           </button>

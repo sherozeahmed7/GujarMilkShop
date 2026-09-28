@@ -12,6 +12,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
 import { Pagination } from '../../components/common/Pagination';
+import { useChartTheme } from '../../hooks/useChartTheme';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
@@ -21,6 +22,7 @@ import { ReceiptPreview } from '../../components/pos/ReceiptPreview';
 import { X, Printer } from 'lucide-react';
 
 export const ReturnsReport: React.FC = () => {
+  const { grid, axis, tooltipStyle, tooltipLabelStyle } = useChartTheme();
   const [filter, setFilter] = useState<DateFilterType>({
     label: 'This Month',
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -109,22 +111,22 @@ export const ReturnsReport: React.FC = () => {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <SummaryCard title="Total Returns" value={data.summary.totalReturns} icon={Undo2} />
-            <SummaryCard title="Return Amount" value={fmt(data.summary.returnAmount)} icon={Banknote} valueColor="text-rose-600" />
-            <SummaryCard title="Cash Refunds" value={fmt(data.summary.cashRefunds)} icon={Banknote} valueColor="text-emerald-600" />
-            <SummaryCard title="Credit Refunds" value={fmt(data.summary.creditRefunds)} icon={CreditCard} valueColor="text-blue-600" />
+            <SummaryCard title="Return Amount" value={fmt(data.summary.returnAmount)} icon={Banknote} valueColor="text-rose-600 dark:text-rose-400" />
+            <SummaryCard title="Cash Refunds" value={fmt(data.summary.cashRefunds)} icon={Banknote} valueColor="text-emerald-600 dark:text-emerald-400" />
+            <SummaryCard title="Credit Refunds" value={fmt(data.summary.creditRefunds)} icon={CreditCard} valueColor="text-blue-600 dark:text-blue-400" />
             <SummaryCard title="Returned Bills" value={data.summary.returnedBills} icon={ReceiptText} />
             <SummaryCard title="Returned Items" value={data.summary.returnedItems} icon={Tag} />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
-              <h3 className="font-bold text-slate-800 mb-2">Return Amount Trend</h3>
+            <div className="xl:col-span-2 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Return Amount Trend</h3>
               {(() => {
                 const trendData = (data.dailyTrend || []);
                 const hasTrend = trendData.some((t: any) => (t.value || 0) > 0);
                 if (!hasTrend && trendData.length === 0) {
                   return (
-                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
                       No return trend data for this period
                     </div>
                   );
@@ -138,10 +140,10 @@ export const ReturnsReport: React.FC = () => {
                           <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <XAxis dataKey="label" stroke={axis} fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke={axis} fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `Rs.${v/1000}k`} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={grid} />
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                       <Area type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorReturns)" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -149,13 +151,13 @@ export const ReturnsReport: React.FC = () => {
               })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
-              <h3 className="font-bold text-slate-800 mb-2">Returns by Category</h3>
+            <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Returns by Category</h3>
               {(() => {
                 const catData = (data.byCategory || []).filter((c: any) => (c.value || 0) > 0);
                 if (catData.length === 0) {
                   return (
-                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
                       No returned items in this period
                     </div>
                   );
@@ -177,7 +179,7 @@ export const ReturnsReport: React.FC = () => {
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                       <Legend verticalAlign="bottom" height={36} iconType="circle" />
                     </PieChart>
                   </ResponsiveContainer>
@@ -185,13 +187,13 @@ export const ReturnsReport: React.FC = () => {
               })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
-              <h3 className="font-bold text-slate-800 mb-2">Return Reasons</h3>
+            <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Return Reasons</h3>
               {(() => {
                 const reasonData = (data.byReason || []).filter((r: any) => (r.value || 0) > 0);
                 if (reasonData.length === 0) {
                   return (
-                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
                       No return reasons recorded
                     </div>
                   );
@@ -199,10 +201,10 @@ export const ReturnsReport: React.FC = () => {
                 return (
                   <ResponsiveContainer width="100%" height={230}>
                     <BarChart data={reasonData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                      <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={120} />
-                      <RechartsTooltip />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={grid} />
+                      <XAxis type="number" stroke={axis} fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="label" stroke={axis} fontSize={11} tickLine={false} axisLine={false} width={120} />
+                      <RechartsTooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                       <Bar dataKey="value" name="Occurrences" fill="#F59E0B" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -211,44 +213,44 @@ export const ReturnsReport: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200"><h3 className="font-bold text-slate-800">Return History</h3></div>
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2d4a35]"><h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Return History</h3></div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[900px]">
-                <thead className="bg-slate-50 sticky top-0">
+                <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0">
                   <tr>
                     {['Return ID', 'Orig. Bill', 'Date', 'Customer', 'Items', 'Amount', 'Method', 'Reason', 'Created By'].map(h => (
-                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase">{h}</th>
+                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-[#a7c4ae] uppercase">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                   {filtered.length === 0 && (
-                    <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">No returns found for the selected period.</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 dark:text-[#64916e] text-sm">No returns found for the selected period.</td></tr>
                   )}
                   {filtered
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((r: any) => (
-                    <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-rose-600">{r.id}</td>
+                    <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-rose-600 dark:text-rose-400">{r.id}</td>
                       <td
                         onClick={() => handleOpenBill(r.originalSaleId)}
-                        className="px-4 py-3 text-sm text-blue-600 hover:underline cursor-pointer font-medium font-mono"
+                        className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium font-mono"
                         title="Click to view original bill"
                       >
                         {r.originalSaleId}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{r.date}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{r.customer}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{r.items}</td>
-                      <td className="px-4 py-3 text-sm font-bold text-slate-800">{fmt(r.amount)}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{r.date}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-[#a7c4ae]">{r.customer}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{r.items}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">{fmt(r.amount)}</td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.refundMethod === 'Cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.refundMethod === 'Cash' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400'}`}>
                           {r.refundMethod}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{r.reason}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{r.createdBy}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{r.reason}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{r.createdBy}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -273,20 +275,20 @@ export const ReturnsReport: React.FC = () => {
       {/* Original Bill Modal */}
       {selectedSale && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+          <div className="relative bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0">
               <div className="flex items-center gap-2">
-                <ReceiptText className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-800">Original Bill Details</h3>
+                <ReceiptText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">Original Bill Details</h3>
               </div>
               <button
                 onClick={() => setSelectedSale(null)}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 flex justify-center bg-slate-50">
+            <div className="flex-1 overflow-y-auto p-4 flex justify-center bg-slate-50 dark:bg-[#142119]">
               <ReceiptPreview
                 config={posConfig}
                 sale={{
@@ -309,17 +311,17 @@ export const ReturnsReport: React.FC = () => {
                 showOuterContainer={false}
               />
             </div>
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-white">
+            <div className="p-4 border-t border-slate-100 dark:border-[#2d4a35] flex justify-end gap-2 bg-white dark:bg-[#1a2e1f]">
               <button
                 onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#a7c4ae] rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors"
               >
                 <Printer className="w-4 h-4" />
                 Print
               </button>
               <button
                 onClick={() => setSelectedSale(null)}
-                className="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-900 transition-colors"
+                className="px-4 py-2 bg-slate-800 dark:bg-[#142119] text-white dark:text-[#e2f5e8] rounded-xl text-sm font-medium hover:bg-slate-900 dark:hover:bg-[#1e3124] transition-colors"
               >
                 Close
               </button>

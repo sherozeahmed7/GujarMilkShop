@@ -75,23 +75,23 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex items-center justify-center">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-8 flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-3" />
-        <span className="text-sm text-slate-500">Loading cash persons…</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">Loading cash persons…</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35]">
       {/* Table Header */}
-      <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-5 border-b border-slate-100 dark:border-[#2d4a35] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+          <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] flex items-center gap-2">
             <Users className="w-4 h-4 text-blue-500" />
             Cash Persons
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">{persons.length} total · {persons.filter(p => p.status === 'Active').length} active</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{persons.length} total · {persons.filter(p => p.status === 'Active').length} active</p>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -100,7 +100,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or phone…"
-            className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-64"
+            className="pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] placeholder-slate-400 dark:placeholder-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-64"
           />
         </div>
       </div>
@@ -109,18 +109,18 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
       <div className="w-full">
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
-            <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-slate-500">
+            <Users className="w-10 h-10 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
               {search ? 'No cash persons match your search.' : 'No cash persons yet.'}
             </p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
               {search ? 'Try a different name or phone number.' : 'Click "+ Add Cash Person" to get started.'}
             </p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 bg-slate-50/50">
+              <tr className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35] bg-slate-50/50 dark:bg-[#142119]">
                 <th className="text-left px-5 py-3">Name</th>
                 <th className="text-left px-4 py-3">Phone</th>
                 <th className="text-left px-4 py-3">Type</th>
@@ -133,7 +133,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
                 <th className="text-center px-4 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-50 dark:divide-[#2d4a35]">
               {filtered
                 .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                 .map((person) => {
@@ -142,60 +142,60 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
                 return (
                   <tr
                     key={person.id}
-                    className={`transition-colors hover:bg-slate-50/60 ${!isActive ? 'opacity-60' : ''} ${openMenu === person.id ? 'relative z-10' : ''}`}
+                    className={`transition-colors hover:bg-slate-50/60 dark:hover:bg-[#223927] ${!isActive ? 'opacity-60' : ''} ${openMenu === person.id ? 'relative z-10' : ''}`}
                   >
                     {/* Name */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${person.type === 'Incoming' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${person.type === 'Incoming' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
                           {person.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-800 truncate max-w-[140px]">{person.name}</p>
+                          <p className="font-semibold text-slate-800 dark:text-[#e2f5e8] truncate max-w-[140px]">{person.name}</p>
                           {person.description && (
-                            <p className="text-xs text-slate-400 truncate max-w-[140px]">{person.description}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 truncate max-w-[140px]">{person.description}</p>
                           )}
                         </div>
                       </div>
                     </td>
 
                     {/* Phone */}
-                    <td className="px-4 py-4 text-slate-500">{person.phone || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-4 text-slate-500 dark:text-slate-400">{person.phone || <span className="text-slate-300 dark:text-slate-600">—</span>}</td>
 
                     {/* Type */}
                     <td className="px-4 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${person.type === 'Incoming' ? 'bg-blue-50 text-blue-700' : 'bg-rose-50 text-rose-700'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${person.type === 'Incoming' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
                         {person.type}
                       </span>
                     </td>
 
                     {/* Role */}
                     <td className="px-4 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${person.customerType === 'Debtor' ? 'bg-amber-50 text-amber-700' : 'bg-violet-50 text-violet-700'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${person.customerType === 'Debtor' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'}`}>
                         {person.customerType === 'Debtor' ? 'They Owe Us' : 'We Owe Them'}
                       </span>
                     </td>
 
                     {/* Opening Balance */}
-                    <td className="px-4 py-4 text-right font-medium text-slate-700">{fmt(person.openingBalance)}</td>
+                    <td className="px-4 py-4 text-right font-medium text-slate-700 dark:text-slate-300">{fmt(person.openingBalance)}</td>
 
                     {/* Received */}
-                    <td className="px-4 py-4 text-right font-medium text-emerald-600">
-                      {totalReceived > 0 ? fmt(totalReceived) : <span className="text-slate-300">—</span>}
+                    <td className="px-4 py-4 text-right font-medium text-emerald-600 dark:text-emerald-400">
+                      {totalReceived > 0 ? fmt(totalReceived) : <span className="text-slate-300 dark:text-slate-600">—</span>}
                     </td>
 
                     {/* Paid */}
-                    <td className="px-4 py-4 text-right font-medium text-rose-500">
-                      {totalPaid > 0 ? fmt(totalPaid) : <span className="text-slate-300">—</span>}
+                    <td className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">
+                      {totalPaid > 0 ? fmt(totalPaid) : <span className="text-slate-300 dark:text-slate-600">—</span>}
                     </td>
 
                     {/* Balance */}
                     <td className="px-4 py-4 text-right">
-                      <span className={`font-bold ${balance === 0 ? 'text-emerald-600' : balance > 0 ? (person.type === 'Incoming' ? 'text-blue-600' : 'text-rose-600') : 'text-amber-600'}`}>
+                      <span className={`font-bold ${balance === 0 ? 'text-emerald-600 dark:text-emerald-400' : balance > 0 ? (person.type === 'Incoming' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400') : 'text-amber-600 dark:text-amber-400'}`}>
                         {balance === 0 ? 'Settled ✓' : fmt(Math.abs(balance))}
                       </span>
                       {balance !== 0 && (
-                        <p className="text-[10px] text-slate-400 mt-0.5">
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                           {person.type === 'Incoming'
                             ? balance > 0 ? 'to receive' : 'advance / credit'
                             : balance > 0 ? 'to pay' : 'advance / credit'}
@@ -205,7 +205,7 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
 
                     {/* Status */}
                     <td className="px-4 py-4 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-[#142119] text-slate-500 dark:text-slate-400'}`}>
                         {person.status}
                       </span>
                     </td>
@@ -218,17 +218,17 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
                       >
                         <button
                           onClick={() => setOpenMenu(openMenu === person.id ? null : person.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2d4a35] rounded-lg hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors"
                         >
                           Actions <ChevronDown className="w-3 h-3" />
                         </button>
 
                         {openMenu === person.id && (
-                          <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl ring-1 ring-black/5 border border-slate-200 z-50 overflow-hidden">
+                          <div className="absolute right-0 mt-1 w-44 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl ring-1 ring-black/5 border border-slate-200 dark:border-[#2d4a35] z-50 overflow-hidden">
                             {/* Ledger */}
                             <button
                               onClick={() => { setOpenMenu(null); navigate(`/register/cashbook/ledger/${person.id}`); }}
-                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-[#e2f5e8] hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors"
                             >
                               <BookOpen className="w-4 h-4 text-blue-500" /> Ledger
                             </button>
@@ -237,17 +237,17 @@ export const CashPersonTable: React.FC<Props> = ({ refreshKey, onAmountClick, on
                             <button
                               onClick={() => { setOpenMenu(null); if (isActive) onAmountClick(person); }}
                               disabled={!isActive}
-                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-[#e2f5e8] hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               <Banknote className="w-4 h-4 text-emerald-500" /> Amount
                             </button>
 
-                            <div className="border-t border-slate-100" />
+                            <div className="border-t border-slate-100 dark:border-[#2d4a35]" />
 
                             {/* Disable / Enable */}
                             <button
                               onClick={() => { setOpenMenu(null); onDisableClick(person); }}
-                              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold transition-colors ${isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold transition-colors ${isActive ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30' : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}`}
                             >
                               {isActive
                                 ? <><PowerOff className="w-4 h-4" /> Disable</>

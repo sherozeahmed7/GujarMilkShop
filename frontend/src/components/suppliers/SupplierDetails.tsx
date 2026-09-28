@@ -16,27 +16,27 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/30">
+    <div className="flex flex-col h-full bg-slate-50/30 dark:bg-[#142119]">
       {/* Header Section */}
-      <div className="bg-white border-b border-slate-100 p-5 flex flex-col gap-4 flex-shrink-0">
+      <div className="bg-white dark:bg-[#1a2e1f] border-b border-slate-100 dark:border-[#2d4a35] p-5 flex flex-col gap-4 flex-shrink-0">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-slate-800">{supplier.name}</h2>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8]">{supplier.name}</h2>
               <button 
                 onClick={() => setIsEditModalOpen(true)}
-                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex items-center gap-4 mt-2 text-sm text-slate-500 font-medium">
+            <div className="flex items-center gap-4 mt-2 text-sm text-slate-500 dark:text-slate-400 font-medium">
               <span>{supplier.code}</span>
               {supplier.phone && <span>{supplier.phone}</span>}
-              <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+              <span className="px-2 py-0.5 bg-slate-100 dark:bg-[#142119] rounded text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[10px]">
                 {supplier.cycleType}
               </span>
-              <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${supplier.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+              <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${supplier.isActive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
                 {supplier.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -45,22 +45,22 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
           <div className="flex items-center gap-4">
             <div className="flex items-end gap-4">
               <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total to Pay</span>
-                <span className="text-sm font-bold text-slate-700">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total to Pay</span>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Rs. {(supplier.totalAmount ?? (supplier.currentAmount ?? 0) + (supplier.previousAmount ?? 0)).toLocaleString()}
                 </span>
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Paid</span>
-                <span className="text-sm font-bold text-emerald-600">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paid</span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
                   Rs. {(supplier.paidAmount ?? 0).toLocaleString()}
                 </span>
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Remaining</span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Remaining</span>
                 <span
                   className={`text-2xl font-bold ${
-                    supplier.payableBalance < 0 ? 'text-emerald-600' : 'text-amber-600'
+                    supplier.payableBalance < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
                   }`}
                 >
                   {supplier.payableBalance < 0
@@ -82,21 +82,21 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
 
         <div className="flex items-center gap-6 mt-2">
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Default Rate</span>
-            <span className="text-sm font-semibold text-slate-700">Rs. {supplier.defaultRate}</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Default Rate</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Rs. {supplier.defaultRate}</span>
           </div>
-          <div className="w-px h-6 bg-slate-200"></div>
+          <div className="w-px h-6 bg-slate-200 dark:bg-[#2d4a35]"></div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cow Rate</span>
-            <span className="text-sm font-semibold text-slate-700">Rs. {supplier.cowRate}</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cow Rate</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Rs. {supplier.cowRate}</span>
           </div>
-          <div className="w-px h-6 bg-slate-200"></div>
+          <div className="w-px h-6 bg-slate-200 dark:bg-[#2d4a35]"></div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Buffalo Rate</span>
-            <span className="text-sm font-semibold text-slate-700">Rs. {supplier.buffaloRate}</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Buffalo Rate</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Rs. {supplier.buffaloRate}</span>
           </div>
-          <div className="w-px h-6 bg-slate-200"></div>
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100">
+          <div className="w-px h-6 bg-slate-200 dark:bg-[#2d4a35]"></div>
+          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-800/50">
             <AlertCircle className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-wider">
               Advance: −Rs. {(supplier.guaranteedAdvance || 0).toLocaleString()}
@@ -106,13 +106,13 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 px-5 bg-white flex-shrink-0">
+      <div className="flex border-b border-slate-200 dark:border-[#2d4a35] px-5 bg-white dark:bg-[#1a2e1f] flex-shrink-0">
         <button
           onClick={() => setActiveTab('daily')}
           className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
             activeTab === 'daily' 
-              ? 'border-blue-600 text-blue-600' 
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-blue-600 text-blue-600 dark:text-[#22c55e] dark:border-[#22c55e]' 
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-[#e2f5e8] hover:border-slate-300'
           }`}
         >
           Daily Collections
@@ -121,8 +121,8 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
           onClick={() => setActiveTab('cycle')}
           className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
             activeTab === 'cycle' 
-              ? 'border-blue-600 text-blue-600' 
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-blue-600 text-blue-600 dark:text-[#22c55e] dark:border-[#22c55e]' 
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-[#e2f5e8] hover:border-slate-300'
           }`}
         >
           Cycle Report & Statement

@@ -25,19 +25,19 @@ export const SessionExpiredModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-sm mx-4 overflow-hidden">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl border border-slate-100 dark:border-[#2d4a35] w-full max-w-sm mx-4 overflow-hidden">
         {/* Top accent bar */}
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 to-orange-500" />
 
         <div className="p-8 flex flex-col items-center text-center">
           {/* Icon */}
-          <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center mb-5">
+          <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700/40 flex items-center justify-center mb-5">
             <ShieldAlert className="w-8 h-8 text-amber-500" />
           </div>
 
           {/* Title */}
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Session Expired</h2>
-          <p className="text-sm text-slate-500 leading-relaxed mb-8">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Session Expired</h2>
+          <p className="text-sm text-slate-500 dark:text-[#64916e] leading-relaxed mb-8">
             Your session has expired or you are not authorized.<br />
             Please log in again to continue.
           </p>

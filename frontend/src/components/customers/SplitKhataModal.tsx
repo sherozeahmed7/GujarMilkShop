@@ -132,15 +132,15 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119]/50">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${accent}`}>
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800">{heading}</h3>
-              <p className="text-xs font-medium text-slate-500">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">{heading}</h3>
+              <p className="text-xs font-medium text-slate-500 dark:text-[#8ba895]">
                 {title}
                 {phone ? ` · ${phone}` : ''}
               </p>
@@ -149,16 +149,16 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg"
+            className="p-2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] hover:bg-slate-200 dark:hover:bg-[#1e3124] rounded-lg"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5 border-b border-slate-100">
-          <div className="bg-slate-50 rounded-xl p-3">
-            <p className="text-[10px] font-bold text-slate-500 uppercase">Bought</p>
-            <p className="text-lg font-bold text-slate-800 mt-1">{fmt(totalBill)}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5 border-b border-slate-100 dark:border-[#2d4a35]">
+          <div className="bg-slate-50 dark:bg-[#142119] rounded-xl p-3">
+            <p className="text-[10px] font-bold text-slate-500 dark:text-[#8ba895] uppercase">Bought</p>
+            <p className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8] mt-1">{fmt(totalBill)}</p>
           </div>
           <div className="bg-violet-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-violet-700 uppercase">Returned</p>
@@ -174,14 +174,14 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
           </div>
         </div>
 
-        <div className="px-5 pt-3 flex gap-2 border-b border-slate-100">
+        <div className="px-5 pt-3 flex gap-2 border-b border-slate-100 dark:border-[#2d4a35]">
           <button
             type="button"
             onClick={() => setTab('history')}
             className={`px-3 py-2 text-sm font-semibold rounded-t-lg border-b-2 transition-colors ${
               tab === 'history'
-                ? 'border-slate-800 text-slate-800'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                ? 'border-slate-800 text-slate-800 dark:text-[#e2f5e8]'
+                : 'border-transparent text-slate-500 dark:text-[#8ba895] hover:text-slate-700 dark:hover:text-[#a7c4ae]'
             }`}
           >
             Full history
@@ -191,8 +191,8 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
             onClick={() => setTab('bills')}
             className={`px-3 py-2 text-sm font-semibold rounded-t-lg border-b-2 transition-colors ${
               tab === 'bills'
-                ? 'border-slate-800 text-slate-800'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                ? 'border-slate-800 text-slate-800 dark:text-[#e2f5e8]'
+                : 'border-transparent text-slate-500 dark:text-[#8ba895] hover:text-slate-700 dark:hover:text-[#a7c4ae]'
             }`}
           >
             By bill
@@ -202,22 +202,22 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
         <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
           {tab === 'history' ? (
             history.length === 0 ? (
-              <p className="text-center text-slate-400 text-sm py-8">No ledger activity yet.</p>
+              <p className="text-center text-slate-400 dark:text-[#64916e] text-sm py-8">No ledger activity yet.</p>
             ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+              <div className="border border-slate-200 dark:border-[#2d4a35] rounded-xl overflow-hidden bg-white dark:bg-[#1a2e1f]">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
-                    <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                  <thead className="bg-slate-50 dark:bg-[#142119] border-b border-slate-200 dark:border-[#2d4a35] sticky top-0">
+                    <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500 dark:text-[#8ba895] font-bold">
                       <th className="px-3 py-2.5">When</th>
                       <th className="px-3 py-2.5">Event</th>
                       <th className="px-3 py-2.5 text-right">Charged (+)</th>
                       <th className="px-3 py-2.5 text-right">Cleared (−)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                     {history.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50/80">
-                        <td className="px-3 py-2.5 whitespace-nowrap text-xs text-slate-500 font-medium">
+                      <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-[#1e3124]">
+                        <td className="px-3 py-2.5 whitespace-nowrap text-xs text-slate-500 dark:text-[#8ba895] font-medium">
                           {row.dateLabel}
                         </td>
                         <td className="px-3 py-2.5">
@@ -235,12 +235,12 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
                               <Undo2 className="w-4 h-4 text-violet-500 mt-0.5 flex-shrink-0" />
                             )}
                             <div>
-                              <p className="font-semibold text-slate-800">{row.title}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">{row.detail}</p>
+                              <p className="font-semibold text-slate-800 dark:text-[#e2f5e8]">{row.title}</p>
+                              <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-0.5">{row.detail}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-right font-semibold text-slate-800 tabular-nums">
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-800 dark:text-[#e2f5e8] tabular-nums">
                           {row.delta > 0 ? fmt(row.delta) : '—'}
                         </td>
                         <td className="px-3 py-2.5 text-right font-semibold tabular-nums">
@@ -267,7 +267,7 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
               </div>
             )
           ) : sales.length === 0 && returns.length === 0 ? (
-            <p className="text-center text-slate-400 text-sm py-8">No purchases found.</p>
+            <p className="text-center text-slate-400 dark:text-[#64916e] text-sm py-8">No purchases found.</p>
           ) : (
             <>
               {sales.map((sale) => {
@@ -275,11 +275,11 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
                 const salePayments = (sale.payments || []).filter((p) => p.amount > 0);
                 return (
                   <div key={sale.id} className="space-y-2">
-                    <div className="border border-slate-200 rounded-xl overflow-hidden">
-                      <div className="px-4 py-3 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
+                    <div className="border border-slate-200 dark:border-[#2d4a35] rounded-xl overflow-hidden">
+                      <div className="px-4 py-3 bg-slate-50 dark:bg-[#142119] flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <span className="text-sm font-bold text-slate-800">Sale #{sale.id}</span>
-                          <span className="text-xs text-slate-400 ml-2">
+                          <span className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">Sale #{sale.id}</span>
+                          <span className="text-xs text-slate-400 dark:text-[#64916e] ml-2">
                             {new Date(sale.createdAt).toLocaleString()}
                           </span>
                         </div>
@@ -289,7 +289,7 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
                               ? 'bg-amber-100 text-amber-800'
                               : sale.status === 'paid'
                                 ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-slate-100 text-slate-600'
+                                : 'bg-slate-100 dark:bg-[#142119] text-slate-600 dark:text-[#a7c4ae]'
                           }`}
                         >
                           {sale.status}
@@ -298,39 +298,39 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
                       <div className="px-4 py-3">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-[10px] uppercase text-slate-400 font-bold">
+                            <tr className="text-[10px] uppercase text-slate-400 dark:text-[#64916e] font-bold">
                               <th className="text-left pb-2">Item</th>
                               <th className="text-right pb-2">Qty (kg)</th>
                               <th className="text-right pb-2">Rate</th>
                               <th className="text-right pb-2">Amount</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                             {(sale.items || []).map((item) => (
                               <tr key={item.id}>
-                                <td className="py-1.5 capitalize font-medium text-slate-700">
+                                <td className="py-1.5 capitalize font-medium text-slate-700 dark:text-[#a7c4ae]">
                                   {item.itemName}
                                 </td>
-                                <td className="py-1.5 text-right text-slate-600">{item.quantity}</td>
-                                <td className="py-1.5 text-right text-slate-600">
+                                <td className="py-1.5 text-right text-slate-600 dark:text-[#a7c4ae]">{item.quantity}</td>
+                                <td className="py-1.5 text-right text-slate-600 dark:text-[#a7c4ae]">
                                   {fmt(item.unitPrice)}
                                 </td>
-                                <td className="py-1.5 text-right font-semibold text-slate-800">
+                                <td className="py-1.5 text-right font-semibold text-slate-800 dark:text-[#e2f5e8]">
                                   {fmt(item.totalPrice)}
                                 </td>
                               </tr>
                             ))}
                             {(!sale.items || sale.items.length === 0) && (
                               <tr>
-                                <td colSpan={4} className="py-2 text-slate-400 text-center">
+                                <td colSpan={4} className="py-2 text-slate-400 dark:text-[#64916e] text-center">
                                   {NA}
                                 </td>
                               </tr>
                             )}
                           </tbody>
                         </table>
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-4 text-xs">
-                          <span className="text-slate-600">
+                        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-[#2d4a35] flex flex-wrap gap-4 text-xs">
+                          <span className="text-slate-600 dark:text-[#a7c4ae]">
                             Bill: <strong>{fmt(sale.totalAmount)}</strong>
                           </span>
                           <span className="text-emerald-700">
@@ -342,8 +342,8 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
                         </div>
 
                         {salePayments.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-[#2d4a35] space-y-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#64916e]">
                               Collections on this bill
                             </p>
                             {salePayments.map((pay) => {
@@ -353,7 +353,7 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
                                   key={pay.id}
                                   className="flex items-center justify-between text-xs gap-2"
                                 >
-                                  <span className="text-slate-600 flex items-center gap-1.5">
+                                  <span className="text-slate-600 dark:text-[#a7c4ae] flex items-center gap-1.5">
                                     {isDiscount ? (
                                       <Percent className="w-3.5 h-3.5 text-sky-500" />
                                     ) : (
@@ -456,7 +456,7 @@ export const SplitKhataModal: React.FC<SplitKhataModalProps> = ({
           )}
         </div>
 
-        <div className="p-4 border-t border-slate-100 flex justify-end">
+        <div className="p-4 border-t border-slate-100 dark:border-[#2d4a35] flex justify-end">
           <button
             type="button"
             onClick={onClose}

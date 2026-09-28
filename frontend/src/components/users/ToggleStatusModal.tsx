@@ -32,9 +32,9 @@ export const ToggleStatusModal: React.FC<ToggleStatusModalProps> = ({ user, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0">
           <div className={`flex items-center gap-2 ${isDeactivating ? 'text-orange-600' : 'text-emerald-600'}`}>
             <AlertCircle className="w-5 h-5" />
             <h2 className="text-lg font-bold">
@@ -43,7 +43,7 @@ export const ToggleStatusModal: React.FC<ToggleStatusModalProps> = ({ user, onCl
           </div>
           <button 
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -57,8 +57,8 @@ export const ToggleStatusModal: React.FC<ToggleStatusModalProps> = ({ user, onCl
             </div>
           )}
           
-          <p className="text-slate-600 text-sm">
-            Are you sure you want to change <span className="font-bold text-slate-800">{user.name}</span>'s status to{' '}
+          <p className="text-slate-600 dark:text-[#a7c4ae] text-sm">
+            Are you sure you want to change <span className="font-bold text-slate-800 dark:text-[#e2f5e8]">{user.name}</span>'s status to{' '}
             <span className={`font-bold ${isDeactivating ? 'text-orange-600' : 'text-emerald-600'}`}>
               {newStatus.toUpperCase()}
             </span>?
@@ -78,12 +78,12 @@ export const ToggleStatusModal: React.FC<ToggleStatusModalProps> = ({ user, onCl
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-[#a7c4ae] hover:text-slate-800 dark:hover:text-[#e2f5e8] hover:bg-slate-200 dark:hover:bg-[#1e3124] rounded-lg transition-colors"
           >
             Cancel
           </button>

@@ -173,12 +173,12 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
             onConfirm?.(value);
           }
         }}
-        className={`flex-1 min-w-0 text-left px-3 py-1.5 text-base bg-slate-50 rounded border border-transparent focus:outline-none focus:ring-2 ${colors.ring} ${triggerClassName}`}
+        className={`flex-1 min-w-0 text-left px-3 py-1.5 text-base bg-slate-50 dark:bg-[#1e3124] text-slate-800 dark:text-[#e2f5e8] rounded border border-transparent focus:outline-none focus:ring-2 ${colors.ring} ${triggerClassName}`}
       />
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="shrink-0 p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+        className="shrink-0 p-1.5 rounded-md text-slate-500 dark:text-[#64916e] hover:text-slate-800 dark:hover:text-[#e2f5e8] hover:bg-slate-100 dark:hover:bg-[#1e3124] transition-colors"
         title="Open keypad"
         aria-label="Open on-screen keypad"
       >
@@ -196,28 +196,28 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
               role="dialog"
               aria-modal="true"
               aria-labelledby={titleId}
-              className={`w-full max-w-[340px] rounded-2xl border bg-white shadow-2xl p-4 ${colors.border}`}
+              className={`w-full max-w-[340px] rounded-2xl border bg-white dark:bg-[#1a2e1f] dark:border-[#2d4a35] shadow-2xl p-4 ${colors.border}`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <h3 id={titleId} className="text-sm font-bold text-slate-800">
+                  <h3 id={titleId} className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">
                     {title || 'Enter value'}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{placeholder}</p>
+                  <p className="text-xs text-slate-500 dark:text-[#64916e] mt-0.5">{placeholder}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  className="p-1.5 rounded-lg text-slate-400 dark:text-[#64916e] hover:bg-slate-100 dark:hover:bg-[#1e3124] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
                   aria-label="Close keypad"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className={`mb-3 rounded-xl border border-slate-100 px-3 py-3 text-right ${colors.soft}`}>
-                <div className="text-3xl font-bold text-slate-800 tabular-nums tracking-wide min-h-[2rem]">
+              <div className={`mb-3 rounded-xl border border-slate-100 dark:border-[#2d4a35] px-3 py-3 text-right ${colors.soft} dark:bg-[#142119]`}>
+                <div className="text-3xl font-bold text-slate-800 dark:text-[#e2f5e8] tabular-nums tracking-wide min-h-[2rem]">
                   {draft || '0'}
                 </div>
               </div>
@@ -231,7 +231,7 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
                         type="button"
                         disabled={!allowDecimal}
                         onClick={() => press('.')}
-                        className={`h-16 rounded-xl border border-slate-200 bg-white text-2xl font-bold text-slate-700 shadow-sm transition-colors ${colors.btn} disabled:opacity-40`}
+                        className={`h-16 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1e3124] text-2xl font-bold text-slate-700 dark:text-[#e2f5e8] shadow-sm transition-colors ${colors.btn} disabled:opacity-40`}
                       >
                         .
                       </button>
@@ -243,7 +243,7 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
                         key={key}
                         type="button"
                         onClick={() => setDraft((d) => d.slice(0, -1))}
-                        className={`h-16 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 shadow-sm flex items-center justify-center transition-colors ${colors.btn}`}
+                        className={`h-16 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] text-slate-700 dark:text-[#e2f5e8] shadow-sm flex items-center justify-center transition-colors ${colors.btn}`}
                         aria-label="Backspace"
                       >
                         <Delete className="w-6 h-6" />
@@ -255,7 +255,7 @@ export const NumericKeypadInput: React.FC<NumericKeypadInputProps> = ({
                       key={key}
                       type="button"
                       onClick={() => press(key)}
-                      className={`h-16 rounded-xl border border-slate-200 bg-white text-2xl font-bold text-slate-800 shadow-sm transition-colors ${colors.btn}`}
+                      className={`h-16 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1e3124] text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] shadow-sm transition-colors ${colors.btn}`}
                     >
                       {key}
                     </button>

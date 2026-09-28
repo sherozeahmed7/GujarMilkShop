@@ -20,13 +20,13 @@ const SummaryCard: React.FC<CardProps> = ({
   title, value, sub, icon: Icon,
   borderColor, iconColor, valueColor
 }) => (
-  <div className={`bg-white border-2 ${borderColor} rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden`}>
+  <div className={`bg-white dark:bg-[#1a2e1f] border-2 ${borderColor} rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden`}>
     <div className={`absolute -right-4 -bottom-4 opacity-[0.06] ${iconColor}`}>
       <Icon className="w-24 h-24" />
     </div>
-    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">{title}</p>
+    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{title}</p>
     <p className={`text-2xl font-bold ${valueColor} leading-tight`}>{value}</p>
-    {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+    {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
   </div>
 );
 
@@ -49,7 +49,7 @@ export const CashbookSummaryCards: React.FC<Props> = ({ refreshKey = 0 }) => {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-5 h-[106px] animate-pulse" />
+          <div key={i} className="bg-white dark:bg-[#1a2e1f] border-2 border-slate-100 dark:border-[#2d4a35] rounded-2xl p-5 h-[106px] animate-pulse" />
         ))}
       </div>
     );

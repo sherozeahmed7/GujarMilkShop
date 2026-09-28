@@ -31,19 +31,19 @@ export const PermissionSelector: React.FC<PermissionSelectorProps> = ({
 
   const renderGroup = (title: string, screens: string[]) => (
     <div className="mb-6 last:mb-0">
-      <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{title}</h3>
+      <h3 className="text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider mb-3">{title}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {screens.map(screen => (
           <label
             key={screen}
             className={`flex items-center gap-2 p-2 rounded-lg border ${selectedScreens.includes(screen)
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                : 'bg-white dark:bg-[#142119] border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'
               } ${disabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer transition-colors'}`}
           >
             <input
               type="checkbox"
-              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 disabled:opacity-50"
+              className="w-4 h-4 text-emerald-600 rounded border-slate-300 dark:border-[#2d4a35] focus:ring-emerald-500 disabled:opacity-50"
               checked={selectedScreens.includes(screen)}
               onChange={() => handleToggle(screen)}
               disabled={disabled}
@@ -56,11 +56,11 @@ export const PermissionSelector: React.FC<PermissionSelectorProps> = ({
   );
 
   return (
-    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+    <div className="bg-slate-50 dark:bg-[#142119] p-4 rounded-xl border border-slate-200 dark:border-[#2d4a35]">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <span className="text-sm font-medium text-slate-700">Assigned Screens</span>
-          <p className="text-xs text-slate-500">{selectedScreens.length} of {ALL_SCREENS.length} screens selected</p>
+          <span className="text-sm font-medium text-slate-700 dark:text-[#a7c4ae]">Assigned Screens</span>
+          <p className="text-xs text-slate-500 dark:text-[#8ba895]">{selectedScreens.length} of {ALL_SCREENS.length} screens selected</p>
         </div>
         {!disabled && (
           <div className="flex gap-2">
@@ -74,7 +74,7 @@ export const PermissionSelector: React.FC<PermissionSelectorProps> = ({
             <button
               type="button"
               onClick={handleClearAll}
-              className="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1 rounded hover:bg-slate-200"
+              className="text-xs font-medium text-slate-500 dark:text-[#8ba895] hover:text-slate-700 dark:hover:text-[#a7c4ae] px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-[#1e3124]"
             >
               Clear All
             </button>

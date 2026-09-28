@@ -80,8 +80,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
               <CreditCard className="w-5 h-5" />
@@ -233,7 +233,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-[#1a2e1f] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

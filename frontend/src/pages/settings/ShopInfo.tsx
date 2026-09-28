@@ -89,7 +89,7 @@ export const ShopInfo: React.FC = () => {
           <button
             onClick={loadConfig}
             disabled={loading || saving}
-            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#142119] text-slate-700 dark:text-[#e2f5e8] px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -98,7 +98,7 @@ export const ShopInfo: React.FC = () => {
           <button
             onClick={handleReset}
             disabled={!hasChanges || loading || saving}
-            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+            className="bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#142119] text-slate-700 dark:text-[#e2f5e8] px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
           >
             Reset
           </button>
@@ -132,8 +132,8 @@ export const ShopInfo: React.FC = () => {
         ) : (
           <>
             {/* Section 1 - Basic Information */}
-            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
+            <div className="flex-shrink-0 bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35]">
                 <h2 className="text-lg font-bold text-slate-800">Basic Information</h2>
               </div>
               <div className="p-6">
@@ -144,7 +144,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.businessName}
                       onChange={(e) => handleChange('businessName', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -153,7 +153,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.ownerName}
                       onChange={(e) => handleChange('ownerName', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -162,7 +162,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.tagline}
                       onChange={(e) => handleChange('tagline', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -170,7 +170,7 @@ export const ShopInfo: React.FC = () => {
                     <select
                       value={config.businessType}
                       onChange={(e) => handleChange('businessType', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     >
                       <option value="Retail">Retail</option>
                       <option value="Wholesale">Wholesale</option>
@@ -183,8 +183,8 @@ export const ShopInfo: React.FC = () => {
             </div>
 
             {/* Section 2 - Contact Details */}
-            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
+            <div className="flex-shrink-0 bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35]">
                 <h2 className="text-lg font-bold text-slate-800">Contact Details</h2>
               </div>
               <div className="p-6">
@@ -195,7 +195,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.primaryPhone}
                       onChange={(e) => handleChange('primaryPhone', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -204,7 +204,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.secondaryPhone}
                       onChange={(e) => handleChange('secondaryPhone', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -213,7 +213,7 @@ export const ShopInfo: React.FC = () => {
                       type="email"
                       value={config.emailAddress}
                       onChange={(e) => handleChange('emailAddress', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -222,7 +222,7 @@ export const ShopInfo: React.FC = () => {
                       type="url"
                       value={config.website}
                       onChange={(e) => handleChange('website', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                 </div>
@@ -230,8 +230,8 @@ export const ShopInfo: React.FC = () => {
             </div>
 
             {/* Section 3 - Location */}
-            <div className="flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-              <div className="px-5 py-4 border-b border-slate-100">
+            <div className="flex-shrink-0 bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden mb-6">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35]">
                 <h2 className="text-lg font-bold text-slate-800">Location</h2>
               </div>
               <div className="p-6">
@@ -242,7 +242,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.addressLine1}
                       onChange={(e) => handleChange('addressLine1', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -251,7 +251,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.addressLine2}
                       onChange={(e) => handleChange('addressLine2', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -260,7 +260,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.city}
                       onChange={(e) => handleChange('city', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -269,7 +269,7 @@ export const ShopInfo: React.FC = () => {
                       type="text"
                       value={config.zipCode}
                       onChange={(e) => handleChange('zipCode', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                 </div>

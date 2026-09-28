@@ -10,10 +10,12 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { Pagination } from '../../components/common/Pagination';
+import { useChartTheme } from '../../hooks/useChartTheme';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
 export const InventoryReport: React.FC = () => {
+  const { grid, axis, tooltipStyle, tooltipLabelStyle } = useChartTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,27 +79,27 @@ export const InventoryReport: React.FC = () => {
       />
 
       {/* Real-time filters (no date filter for inventory) */}
-      <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-[#1a2e1f] p-4 rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35]">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 dark:text-[#64916e] absolute left-3 top-1/2 -translate-y-1/2" />
           <input type="text" placeholder="Search by name or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
-        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="py-2 px-3 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="All">All Categories</option>
           {data?.categories?.map((c: string) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} className="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} className="py-2 px-3 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="All">All Suppliers</option>
           {data?.suppliers?.map((s: string) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="py-2 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="py-2 px-3 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="All">All Statuses</option>
           <option value="In Stock">In Stock</option>
           <option value="Low Stock">Low Stock</option>
           <option value="Out of Stock">Out of Stock</option>
         </select>
-        <button onClick={loadReport} disabled={isLoading} className="p-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+        <button onClick={loadReport} disabled={isLoading} className="p-2 border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124] rounded-lg transition-colors">
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
@@ -109,21 +111,21 @@ export const InventoryReport: React.FC = () => {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <SummaryCard title="Total Products" value={data.summary.totalProducts} icon={Package} />
-            <SummaryCard title="Total Stock Units" value={data.summary.totalStock} icon={Package} valueColor="text-blue-600" />
-            <SummaryCard title="Low Stock Items" value={data.summary.lowStockItems} icon={AlertTriangle} valueColor="text-amber-500" />
-            <SummaryCard title="Out of Stock" value={data.summary.outOfStockItems} icon={XCircle} valueColor="text-rose-600" />
+            <SummaryCard title="Total Stock Units" value={data.summary.totalStock} icon={Package} valueColor="text-blue-600 dark:text-blue-400" />
+            <SummaryCard title="Low Stock Items" value={data.summary.lowStockItems} icon={AlertTriangle} valueColor="text-amber-500 dark:text-amber-400" />
+            <SummaryCard title="Out of Stock" value={data.summary.outOfStockItems} icon={XCircle} valueColor="text-rose-600 dark:text-rose-400" />
             <SummaryCard title="Cost Value" value={fmt(data.summary.costValue)} icon={DollarSign} />
-            <SummaryCard title="Retail Value" value={fmt(data.summary.estimatedRetailValue)} icon={Tag} valueColor="text-emerald-600" />
+            <SummaryCard title="Retail Value" value={fmt(data.summary.estimatedRetailValue)} icon={Tag} valueColor="text-emerald-600 dark:text-emerald-400" />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
-              <h3 className="font-bold text-slate-800 mb-2">Stock Value by Category</h3>
+            <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Stock Value by Category</h3>
               {(() => {
                 const chartData = (data.valueByCategory || []).filter((item: any) => (item.value || 0) > 0);
                 if (chartData.length === 0) {
                   return (
-                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
                       No stock value data available
                     </div>
                   );
@@ -145,7 +147,7 @@ export const InventoryReport: React.FC = () => {
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} />
+                      <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v || 0).toLocaleString()}`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                       <Legend verticalAlign="bottom" height={36} iconType="circle" />
                     </PieChart>
                   </ResponsiveContainer>
@@ -153,13 +155,13 @@ export const InventoryReport: React.FC = () => {
               })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px] flex flex-col">
-              <h3 className="font-bold text-slate-800 mb-2">Low Stock Products</h3>
+            <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px] flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Low Stock Products</h3>
               {(() => {
                 const chartData = (data.lowStockProducts || []);
                 if (chartData.length === 0) {
                   return (
-                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+                    <div className="flex-1 flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
                       All products have healthy stock levels
                     </div>
                   );
@@ -167,10 +169,10 @@ export const InventoryReport: React.FC = () => {
                 return (
                   <ResponsiveContainer width="100%" height={230}>
                     <BarChart data={chartData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                      <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis type="category" dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={100} />
-                      <RechartsTooltip />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={grid} />
+                      <XAxis type="number" stroke={axis} fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="label" stroke={axis} fontSize={11} tickLine={false} axisLine={false} width={100} />
+                      <RechartsTooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                       <Bar dataKey="value" name="Current Stock" fill="#EF4444" radius={[0, 4, 4, 0]} />
                       <Bar dataKey="max" name="Min Level" fill="#F59E0B" radius={[0, 4, 4, 0]} />
                     </BarChart>
@@ -180,46 +182,46 @@ export const InventoryReport: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="font-bold text-slate-800">Inventory Status</h3>
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2d4a35] flex justify-between items-center">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Inventory Status</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[950px]">
-                <thead className="bg-slate-50 sticky top-0">
+                <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0">
                   <tr>
                     {['Product', 'SKU', 'Category', 'Current Stock', 'Purchase Cost', 'Selling Price', 'Inventory Value', 'Status', 'Last Updated'].map(h => (
-                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase">{h}</th>
+                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-[#a7c4ae] uppercase">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                   {filtered.length === 0 && (
-                    <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">No products found matching your filters.</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 dark:text-[#64916e] text-sm">No products found matching your filters.</td></tr>
                   )}
                   {filtered
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((p: any) => (
-                    <tr key={p.sku} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-800">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{p.sku}</td>
+                    <tr key={p.sku} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-slate-800 dark:text-[#e2f5e8]">{p.name}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{p.sku}</td>
                       <td className="px-4 py-3 text-sm">
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-medium">{p.category}</span>
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-[#8ba895] rounded text-xs font-medium">{p.category}</span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-slate-700">{p.stock}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{fmt(p.costPrice)}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 font-medium">{fmt(p.salePrice)}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-slate-800">{fmt(p.inventoryValue)}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-[#a7c4ae]">{p.stock}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{fmt(p.costPrice)}</td>
+                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400 font-medium">{fmt(p.salePrice)}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-[#e2f5e8]">{fmt(p.inventoryValue)}</td>
                       <td className="px-4 py-3 text-sm">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          p.stockStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-700' :
-                          p.stockStatus === 'Low Stock' ? 'bg-amber-100 text-amber-700' :
-                          'bg-rose-100 text-rose-700'
+                          p.stockStatus === 'In Stock' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' :
+                          p.stockStatus === 'Low Stock' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' :
+                          'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400'
                         }`}>
                           {p.stockStatus}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{new Date(p.lastUpdated).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{new Date(p.lastUpdated).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>

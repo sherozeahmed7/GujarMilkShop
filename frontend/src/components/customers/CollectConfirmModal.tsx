@@ -82,22 +82,22 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
               <DollarSign className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800">Collect Payment</h3>
-              <p className="text-xs font-medium text-slate-500">{row.name}</p>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">Collect Payment</h3>
+              <p className="text-xs font-medium text-slate-500 dark:text-[#8ba895]">{row.name}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+            className="p-2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg"
           >
             <X className="w-5 h-5" />
           </button>
@@ -114,15 +114,15 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
             </div>
           </div>
 
-          <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 flex justify-between items-center">
-            <span className="text-sm font-medium text-slate-600">Total to collect</span>
+          <div className="rounded-xl bg-slate-50 dark:bg-[#142119] border border-slate-100 dark:border-[#2d4a35] p-4 flex justify-between items-center">
+            <span className="text-sm font-medium text-slate-600 dark:text-[#a7c4ae]">Total to collect</span>
             <span className="text-xl font-black text-rose-600">
               Rs. {totalAmount.toLocaleString()}
             </span>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Amount to collect now <span className="text-rose-500">*</span>
             </label>
             <input
@@ -133,16 +133,16 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
               placeholder={`Max: ${Math.round(totalAmount)}`}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+              className="w-full rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] px-3 py-2.5 text-sm font-medium text-slate-800 dark:text-[#e2f5e8] placeholder:text-slate-400 dark:placeholder:text-[#64916e] focus:border-slate-400 focus:outline-none"
               autoFocus
             />
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 dark:text-[#8ba895]">
               Required. Type the exact amount. Any unpaid balance stays on khata.
             </p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Discount amount
             </label>
             <input
@@ -152,32 +152,32 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
               value={discountAmount}
               onChange={(e) => setDiscountAmount(e.target.value)}
               placeholder="0"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+              className="w-full rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] px-3 py-2.5 text-sm font-medium text-slate-800 dark:text-[#e2f5e8] placeholder:text-slate-400 dark:placeholder:text-[#64916e] focus:border-slate-400 focus:outline-none"
             />
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 dark:text-[#8ba895]">
               Written off from remaining — discarded permanently (not counted as cash collected).
             </p>
           </div>
 
           {row.phone && (
-            <p className="text-xs text-slate-500">
-              Phone: <span className="font-semibold text-slate-700">{row.phone}</span>
+            <p className="text-xs text-slate-500 dark:text-[#8ba895]">
+              Phone: <span className="font-semibold text-slate-700 dark:text-[#a7c4ae]">{row.phone}</span>
             </p>
           )}
 
           <div>
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">
               Payment method
             </label>
-            <div className="mt-2 flex gap-2 p-1 bg-slate-100 rounded-xl">
+            <div className="mt-2 flex gap-2 p-1 bg-slate-100 dark:bg-[#142119] rounded-xl">
               <button
                 type="button"
                 onClick={() => setPaymentMethod('cash')}
                 disabled={submitting}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
                   paymentMethod === 'cash'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500'
+                    ? 'bg-white dark:bg-[#1a2e1f] text-slate-800 dark:text-[#e2f5e8] shadow-sm'
+                    : 'text-slate-500 dark:text-[#8ba895]'
                 }`}
               >
                 Cash
@@ -188,8 +188,8 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
                 disabled={submitting}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${
                   paymentMethod === 'online'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500'
+                    ? 'bg-white dark:bg-[#1a2e1f] text-slate-800 dark:text-[#e2f5e8] shadow-sm'
+                    : 'text-slate-500 dark:text-[#8ba895]'
                 }`}
               >
                 Online
@@ -204,12 +204,12 @@ export const CollectConfirmModal: React.FC<CollectConfirmModalProps> = ({
           )}
         </div>
 
-        <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+        <div className="p-5 border-t border-slate-100 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-100"
+            className="px-5 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#a7c4ae] rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-[#1e3124]"
           >
             Cancel
           </button>

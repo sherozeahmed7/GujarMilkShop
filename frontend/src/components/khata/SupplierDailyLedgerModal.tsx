@@ -221,8 +221,8 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-3 sm:p-6">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-100">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35]">
           <div>
             <h2 className="text-lg font-bold text-slate-800">Download Supplier Ledgers</h2>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -276,7 +276,7 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
               No milk collections for {date}.
             </div>
           ) : (
-            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            <div className="border border-slate-200 dark:border-[#2d4a35] rounded-xl overflow-hidden bg-white dark:bg-[#1a2e1f] shadow-sm">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                   <tr className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">

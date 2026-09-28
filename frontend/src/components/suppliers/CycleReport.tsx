@@ -255,7 +255,7 @@ export const CycleReport: React.FC<CycleReportProps> = ({ supplier }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-sm custom-scrollbar">
+      <div className="flex-1 overflow-y-auto border border-slate-200 dark:border-[#2d4a35] rounded-xl bg-white dark:bg-[#1a2e1f] shadow-sm custom-scrollbar">
         {ledger.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-sm">No entries found for this supplier.</div>
         ) : (

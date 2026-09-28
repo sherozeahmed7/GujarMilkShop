@@ -47,7 +47,7 @@ export const CountCashModal: React.FC<CountCashModalProps> = ({ onClose, onSaved
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+      <div className="relative bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
@@ -74,7 +74,7 @@ export const CountCashModal: React.FC<CountCashModalProps> = ({ onClose, onSaved
               value={countedValue}
               onChange={(e) => setCountedValue(e.target.value)}
               placeholder="Enter real cash counted..."
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-[#e2f5e8] bg-white dark:bg-[#142119] focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
@@ -99,7 +99,7 @@ export const CountCashModal: React.FC<CountCashModalProps> = ({ onClose, onSaved
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Explain any difference..."
               rows={2}
-              className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full border border-slate-200 dark:border-[#2d4a35] rounded-xl px-4 py-2 text-sm text-slate-700 dark:text-[#e2f5e8] bg-white dark:bg-[#142119] resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
         </div>

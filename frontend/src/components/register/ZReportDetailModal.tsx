@@ -24,7 +24,7 @@ export const ZReportDetailModal: React.FC<ZReportDetailModalProps> = ({ record, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl border border-slate-200 dark:border-[#2d4a35] w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Decorative gradient */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-emerald-400 to-emerald-500"></div>
         

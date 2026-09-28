@@ -29,18 +29,18 @@ export const DisablePersonModal: React.FC<Props> = ({ person, onClose, onSuccess
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full p-6">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl border border-slate-100 dark:border-[#2d4a35] max-w-sm w-full p-6">
         <div className="flex items-center gap-4 mb-4">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isDisabling ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">
+            <h3 className="text-base font-bold text-slate-900 dark:text-[#e2f5e8]">
               {isDisabling ? 'Disable Cash Person' : 'Enable Cash Person'}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">{person.name}</p>
+            <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-0.5">{person.name}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+          <button onClick={onClose} className="ml-auto p-2 hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg text-slate-400 dark:text-[#64916e] transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -64,12 +64,12 @@ export const DisablePersonModal: React.FC<Props> = ({ person, onClose, onSuccess
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-[#2d4a35]">
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -79,8 +79,7 @@ export const DisablePersonModal: React.FC<Props> = ({ person, onClose, onSuccess
             disabled={isSaving}
             className={`px-4 py-2 text-xs font-bold text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm ${
               isDisabling
-                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
             }`}
           >
             {isSaving ? (

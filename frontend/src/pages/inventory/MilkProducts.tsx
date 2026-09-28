@@ -104,7 +104,7 @@ export const MilkProducts: React.FC<{
 
   if (isLoadingStock && !stock)
     return (
-      <div className="p-8 flex items-center justify-center gap-2 text-slate-400 text-sm">
+      <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-[#64916e] text-sm">
         <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
         Loading stock dataâ€¦
       </div>
@@ -122,32 +122,32 @@ export const MilkProducts: React.FC<{
 
   if (!stock)
     return (
-      <div className="p-8 flex items-center justify-center gap-2 text-slate-400 text-sm">
+      <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-[#64916e] text-sm">
         <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
         Loading stock dataâ€¦
       </div>
     );
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#142119]">
+      <div className="bg-white dark:bg-[#1a2e1f] border-b border-slate-200 dark:border-[#2d4a35] px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Milk Products / F2</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8]">Milk Products / F2</h1>
+          <p className="text-sm text-slate-500 dark:text-[#8ba895] mt-1">
             Manage production and inventory for Lassi, Butter, and Ghee
           </p>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1.5 border border-slate-200">
-            <div className="pl-2 text-slate-500">
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-[#111e14] rounded-lg p-1.5 border border-slate-200 dark:border-[#2d4a35]">
+            <div className="pl-2 text-slate-500 dark:text-[#8ba895]">
               <Calendar className="w-4 h-4" />
             </div>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent border-none text-sm font-medium text-slate-700 focus:outline-none focus:ring-0"
+              className="bg-transparent border-none text-sm font-medium text-slate-700 dark:text-[#e2f5e8] focus:outline-none focus:ring-0"
             />
           </div>
 
@@ -158,7 +158,7 @@ export const MilkProducts: React.FC<{
               value={milkInput}
               onChange={(e) => setMilkInput(e.target.value)}
               placeholder="kg"
-              className="w-16 bg-white border border-[#BBF7D0] rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#166534]"
+              className="w-16 bg-white dark:bg-[#142119] border border-[#BBF7D0] rounded-lg px-2 py-1 text-sm text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-[#166534]"
             />
             <button
               onClick={handleAddMilk}

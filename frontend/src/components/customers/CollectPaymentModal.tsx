@@ -30,21 +30,21 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
               <DollarSign className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-800">Collect Payment</h3>
-              <p className="text-xs font-medium text-slate-500">From: {customer.name}</p>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">Collect Payment</h3>
+              <p className="text-xs font-medium text-slate-500 dark:text-[#8ba895]">From: {customer.name}</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -59,7 +59,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
               <button 
                 type="button" 
                 onClick={handleFullPayment}
-                className="text-[10px] font-bold text-rose-600 bg-white border border-rose-200 px-2 py-0.5 rounded hover:bg-rose-100 transition-colors"
+                className="text-[10px] font-bold text-rose-600 bg-white dark:bg-[#142119] border border-rose-200 px-2 py-0.5 rounded hover:bg-rose-100 transition-colors"
               >
                 PAY FULL
               </button>
@@ -67,10 +67,10 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Amount Collected *</label>
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">Amount Collected *</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Wallet className="h-5 w-5 text-slate-400" />
+                <Wallet className="h-5 w-5 text-slate-400 dark:text-[#64916e]" />
               </div>
               <input
                 type="number"
@@ -80,8 +80,8 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
                   setError('');
                 }}
                 placeholder="0.00"
-                className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-xl font-bold text-slate-800 focus:ring-2 transition-all ${
-                  error ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-200 focus:ring-emerald-500 focus:border-emerald-500'
+                className={`w-full pl-11 pr-4 py-3 bg-white dark:bg-[#142119] border rounded-xl text-xl font-bold text-slate-800 dark:text-[#e2f5e8] focus:ring-2 transition-all ${
+                  error ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-200 dark:border-[#2d4a35] focus:ring-emerald-500 focus:border-emerald-500'
                 }`}
                 autoFocus
                 required
@@ -91,11 +91,11 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Payment Method</label>
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">Payment Method</label>
             <select 
               value={method}
               onChange={(e) => setMethod(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-4 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl text-sm font-medium text-slate-700 dark:text-[#a7c4ae] focus:ring-2 focus:ring-emerald-500"
             >
               <option value="Cash">Cash</option>
               <option value="Bank Transfer">Bank Transfer</option>
@@ -104,13 +104,13 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Notes (Optional)</label>
+            <label className="text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider">Notes (Optional)</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Cleared monthly dues"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-4 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl text-sm text-slate-700 dark:text-[#a7c4ae] focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -118,7 +118,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({ custom
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors shadow-sm"
+              className="flex-1 px-4 py-3 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#a7c4ae] rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors shadow-sm"
             >
               Cancel
             </button>

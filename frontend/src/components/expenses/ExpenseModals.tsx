@@ -138,12 +138,12 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
     <>
       {viewExpense && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-bold text-slate-800">Expense Details</h3>
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-[#2d4a35]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Expense Details</h3>
               <button
                 onClick={onCloseView}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -151,29 +151,29 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Date</p>
-                  <p className="text-sm font-medium text-slate-800">
+                  <p className="text-xs text-slate-500 dark:text-[#8ba895] font-semibold mb-1">Date</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-[#e2f5e8]">
                     {new Date(viewExpense.date).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Product</p>
-                  <p className="text-sm font-medium text-slate-800">{viewExpense.category}</p>
+                  <p className="text-xs text-slate-500 dark:text-[#8ba895] font-semibold mb-1">Product</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-[#e2f5e8]">{viewExpense.category}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Total</p>
-                  <p className="text-sm font-bold text-slate-800">
+                  <p className="text-xs text-slate-500 dark:text-[#8ba895] font-semibold mb-1">Total</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">
                     Rs. {(viewExpense.amount ?? viewExpense.netExpense).toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Paid</p>
+                  <p className="text-xs text-slate-500 dark:text-[#8ba895] font-semibold mb-1">Paid</p>
                   <p className="text-sm font-bold text-emerald-700">
                     Rs. {(viewExpense.paidAmount || 0).toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold mb-1">Remaining</p>
+                  <p className="text-xs text-slate-500 dark:text-[#8ba895] font-semibold mb-1">Remaining</p>
                   <p className="text-sm font-bold text-amber-600">
                     Rs.{' '}
                     {(
@@ -188,21 +188,21 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
               </div>
 
               <div>
-                <p className="text-xs text-slate-500 font-semibold mb-1">Notes</p>
-                <p className="text-sm text-slate-700 bg-slate-50 p-2 rounded">
+                <p className="text-xs text-slate-500 dark:text-[#8ba895] font-semibold mb-1">Notes</p>
+                <p className="text-sm text-slate-700 dark:text-[#a7c4ae] bg-slate-50 dark:bg-[#142119] p-2 rounded">
                   {viewExpense.reason || viewExpense.description || 'None'}
                 </p>
               </div>
 
-              <div className="flex justify-between items-center text-xs text-slate-400 pt-2 border-t border-slate-100">
+              <div className="flex justify-between items-center text-xs text-slate-400 dark:text-[#64916e] pt-2 border-t border-slate-100 dark:border-[#2d4a35]">
                 <span>Added by: {viewExpense.addedBy}</span>
                 <span>{new Date(viewExpense.createdAt).toLocaleString()}</span>
               </div>
             </div>
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <div className="p-4 bg-slate-50 dark:bg-[#142119] border-t border-slate-200 dark:border-[#2d4a35] flex justify-end">
               <button
                 onClick={onCloseView}
-                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50"
+                className="px-4 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#a7c4ae] rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#1e3124]"
               >
                 Close
               </button>
@@ -213,36 +213,36 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
 
       {editExpense && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-bold text-slate-800">Edit Expense</h3>
-              <button onClick={onCloseEdit} className="text-slate-400 hover:text-slate-600">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-[#2d4a35]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Edit Expense</h3>
+              <button onClick={onCloseEdit} className="text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="p-5 flex flex-col gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Date</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-[#a7c4ae]">Date</label>
                 <input
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
                   required
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Product</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-[#a7c4ae]">Product</label>
                 <input
                   type="text"
                   value={editProduct}
                   onChange={(e) => setEditProduct(e.target.value)}
                   required
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Total amount (Rs)</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-[#a7c4ae]">Total amount (Rs)</label>
                 <input
                   type="number"
                   min="0"
@@ -253,12 +253,12 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                     setEditError(null);
                   }}
                   required
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] rounded-lg text-sm font-semibold text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-600">Paid amount (Rs)</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-[#a7c4ae]">Paid amount (Rs)</label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -294,24 +294,24 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                     setEditPaidAmount(e.target.value);
                     setEditError(null);
                   }}
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] rounded-lg text-sm font-semibold text-emerald-700 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
                 <div className="flex items-center justify-between text-[11px] mt-0.5">
-                  <span className="text-slate-500">
+                  <span className="text-slate-500 dark:text-[#8ba895]">
                     Previously paid: Rs. {(editExpense.paidAmount || 0).toLocaleString()}
                   </span>
-                  <span className={remainingInEdit > 0 ? 'text-amber-600 font-semibold' : 'text-slate-400'}>
+                  <span className={remainingInEdit > 0 ? 'text-amber-600 font-semibold' : 'text-slate-400 dark:text-[#64916e]'}>
                     Remaining: Rs. {remainingInEdit.toLocaleString()}
                   </span>
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Notes</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-[#a7c4ae]">Notes</label>
                 <input
                   type="text"
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="px-3 py-2 border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
               {editError && (
@@ -323,7 +323,7 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                 <button
                   type="button"
                   onClick={onCloseEdit}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-[#a7c4ae] bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#1e3124] rounded-lg"
                 >
                   Cancel
                 </button>
@@ -342,16 +342,16 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
 
       {payExpense && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="font-bold text-slate-800">Pay remaining</h3>
-              <button onClick={onClosePay} className="text-slate-400 hover:text-slate-600">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-[#2d4a35]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Pay remaining</h3>
+              <button onClick={onClosePay} className="text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handlePaySubmit} className="p-5 space-y-4">
-              <p className="text-sm text-slate-600">
-                <span className="font-semibold text-slate-800">{payExpense.category}</span>
+              <p className="text-sm text-slate-600 dark:text-[#a7c4ae]">
+                <span className="font-semibold text-slate-800 dark:text-[#e2f5e8]">{payExpense.category}</span>
                 {' · '}
                 Remaining{' '}
                 <span className="font-bold text-amber-600">
@@ -362,18 +362,18 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                   ).toLocaleString()}
                 </span>
               </p>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500 dark:text-[#8ba895]">
                 This payment is deducted from the currently open shift expected cash.
               </p>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-600">Amount to pay</label>
+                <label className="text-xs font-semibold text-slate-600 dark:text-[#a7c4ae]">Amount to pay</label>
                 <input
                   type="number"
                   min="0"
                   step="1"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="px-3 py-2 border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
                   autoFocus
                 />
               </div>
@@ -386,7 +386,7 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
                 <button
                   type="button"
                   onClick={onClosePay}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-[#a7c4ae] bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#1e3124] rounded-lg"
                 >
                   Cancel
                 </button>
@@ -405,19 +405,19 @@ export const ExpenseModals: React.FC<ExpenseModalsProps> = ({
 
       {deleteExpenseId && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div className="p-6 flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4">
                 <AlertTriangle className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Expense</h3>
-              <p className="text-sm text-slate-500 mb-6">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Delete Expense</h3>
+              <p className="text-sm text-slate-500 dark:text-[#8ba895] mb-6">
                 Are you sure you want to delete this expense? This action cannot be undone.
               </p>
               <div className="flex w-full gap-3">
                 <button
                   onClick={onCloseDelete}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-[#a7c4ae] bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#1e3124] rounded-lg"
                 >
                   Cancel
                 </button>

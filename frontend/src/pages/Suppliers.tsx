@@ -65,10 +65,10 @@ export const Suppliers: React.FC = () => {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between mb-4 flex-shrink-0 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">
             Suppliers & Milk Purchase
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">
             {pageView === 'farms'
               ? 'Select a farm to add entries or make payments.'
               : 'Payment history by farm, shift, method, and date.'}
@@ -76,14 +76,14 @@ export const Suppliers: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+          <div className="inline-flex rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] p-1 shadow-sm">
             <button
               type="button"
               onClick={() => setPageView('farms')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                 pageView === 'farms'
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-600 hover:bg-slate-50'
+                  ? 'bg-slate-800 dark:bg-[#22c55e] text-white dark:text-[#0d1a10]'
+                  : 'text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'
               }`}
             >
               Farms
@@ -93,8 +93,8 @@ export const Suppliers: React.FC = () => {
               onClick={() => setPageView('payments')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5 ${
                 pageView === 'payments'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-600 hover:bg-slate-50'
+                  ? 'bg-emerald-600 dark:bg-[#22c55e] text-white dark:text-[#0d1a10]'
+                  : 'text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'
               }`}
             >
               <Banknote className="w-3.5 h-3.5" />
@@ -105,41 +105,41 @@ export const Suppliers: React.FC = () => {
           {pageView === 'farms' && (
             <>
               <div className="relative w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-400 dark:text-[#64916e] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search anything..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
 
-              <div className="w-px h-10 bg-slate-200" />
+              <div className="w-px h-10 bg-slate-200 dark:bg-[#2d4a35]" />
 
               <div className="flex flex-col items-end">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-slate-500 dark:text-[#64916e] uppercase tracking-wider">
                   Today&apos;s Milk
                 </span>
-                <span className="text-lg font-bold text-slate-800">
+                <span className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">
                   {todaysMilk.toFixed(2)} kg
                 </span>
               </div>
-              <div className="w-px h-10 bg-slate-200" />
+              <div className="w-px h-10 bg-slate-200 dark:bg-[#2d4a35]" />
               <div className="flex flex-col items-end">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Total Payables
                 </span>
-                <span className="text-lg font-bold text-amber-600">
+                <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
                   {formatCurrency(totalPayables)}
                 </span>
               </div>
-              <div className="w-px h-10 bg-slate-200" />
+              <div className="w-px h-10 bg-slate-200 dark:bg-[#2d4a35]" />
               <div className="flex flex-col items-end">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Next-Cycle Credit
                 </span>
-                <span className="text-lg font-bold text-emerald-600">
+                <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(
                     suppliers.reduce((sum, s) => sum + (s.guaranteedAdvance || 0), 0)
                   )}
@@ -148,7 +148,7 @@ export const Suppliers: React.FC = () => {
               <button
                 type="button"
                 onClick={() => fetchData()}
-                className="ml-2 p-2 h-fit bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 shadow-sm transition-colors"
+                className="ml-2 p-2 h-fit bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#86efac] rounded-lg hover:bg-slate-50 dark:hover:bg-[#223927] shadow-sm transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
@@ -158,13 +158,13 @@ export const Suppliers: React.FC = () => {
       </div>
 
       {error && (
-        <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
+        <div className="mb-3 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-4 py-2 text-sm text-rose-700 dark:text-rose-300">
           {error}
         </div>
       )}
 
       {pageView === 'payments' ? (
-        <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="flex-1 min-h-0 bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] overflow-hidden">
           <SupplierPaymentsHistory
             suppliers={suppliers}
             initialSupplierId={selectedSupplierId || undefined}
@@ -172,11 +172,11 @@ export const Suppliers: React.FC = () => {
         </div>
       ) : (
         <div className="flex gap-6 flex-1 min-h-0">
-          <div className="w-[320px] bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden flex-shrink-0">
-            <div className="p-4 border-b border-slate-100 flex flex-col gap-3 flex-shrink-0 bg-slate-50/50">
+          <div className="w-[320px] bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden flex-shrink-0">
+            <div className="p-4 border-b border-slate-100 dark:border-[#2d4a35] flex flex-col gap-3 flex-shrink-0 bg-slate-50/50 dark:bg-[#142119]/50">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                  <UsersIcon className="w-4 h-4 text-blue-600" />
+                <h2 className="font-semibold text-slate-800 dark:text-[#e2f5e8] flex items-center gap-2">
+                  <UsersIcon className="w-4 h-4 text-blue-600 dark:text-[#22c55e]" />
                   Farms
                 </h2>
                 <div className="flex items-center gap-2">
@@ -207,31 +207,31 @@ export const Suppliers: React.FC = () => {
                   onClick={() => setSelectedSupplierId(sup.id)}
                   className={`w-full flex items-start justify-between p-3 rounded-xl mb-1 transition-all text-left ${
                     selectedSupplierId === sup.id
-                      ? 'bg-[#FEF3C7]/60 border border-[#FDE68A] shadow-xs'
-                      : 'hover:bg-[#FEF3C7]/30 border border-transparent'
+                      ? 'bg-[#FEF3C7]/60 dark:bg-[#22c55e]/10 border border-[#FDE68A] dark:border-[#22c55e]/40 shadow-xs'
+                      : 'hover:bg-[#FEF3C7]/30 dark:hover:bg-[#223927] border border-transparent'
                   } ${!sup.isActive ? 'opacity-60' : ''}`}
                 >
                   <div>
                     <h3
                       className={`font-bold text-sm ${
-                        selectedSupplierId === sup.id ? 'text-[#166534]' : 'text-slate-800'
+                        selectedSupplierId === sup.id ? 'text-[#166534] dark:text-[#22c55e]' : 'text-slate-800 dark:text-[#e2f5e8]'
                       }`}
                     >
                       {sup.name}
                     </h3>
-                    <span className="text-xs text-slate-500 font-mono mt-0.5 block">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5 block">
                       {sup.code}
                     </span>
                   </div>
                   <div className="text-right">
                     <div
                       className={`font-bold text-sm ${
-                        selectedSupplierId === sup.id ? 'text-[#166534]' : 'text-slate-700'
+                        selectedSupplierId === sup.id ? 'text-[#166534] dark:text-[#22c55e]' : 'text-slate-700 dark:text-slate-300'
                       }`}
                     >
                       {formatCurrency(sup.payableBalance)}
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mt-0.5">
                       {sup.cycleType}
                     </span>
                   </div>
@@ -240,13 +240,13 @@ export const Suppliers: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden relative">
+          <div className="flex-1 bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden relative">
             {selectedSupplier ? (
               <SupplierDetails supplier={selectedSupplier} />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
-                <Droplets className="w-12 h-12 text-slate-200" />
-                <p className="text-sm font-medium">
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-[#64916e] gap-3">
+                <Droplets className="w-12 h-12 text-slate-200 dark:text-[#2d4a35]" />
+                <p className="text-sm font-medium text-slate-500 dark:text-[#64916e]">
                   Select a farm from the list to view details
                 </p>
               </div>

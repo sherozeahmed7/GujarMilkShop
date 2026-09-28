@@ -20,19 +20,19 @@ export const ExpenseSummary: React.FC = () => {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-        <p className="text-xs font-semibold text-slate-500 mb-1">Total expenses</p>
-        <p className="text-lg font-bold text-slate-800">{formatCurrency(total)}</p>
+      <div className="bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] rounded-xl p-4 shadow-sm">
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Total expenses</p>
+        <p className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">{formatCurrency(total)}</p>
       </div>
 
-      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 shadow-sm">
-        <p className="text-xs font-semibold text-emerald-700 mb-1">Paid (cash out)</p>
-        <p className="text-lg font-bold text-emerald-800">{formatCurrency(paid)}</p>
+      <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/50 rounded-xl p-4 shadow-sm">
+        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">Paid (cash out)</p>
+        <p className="text-lg font-bold text-emerald-800 dark:text-emerald-300">{formatCurrency(paid)}</p>
       </div>
 
-      <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 shadow-sm col-span-2 md:col-span-1">
-        <p className="text-xs font-semibold text-amber-700 mb-1">Remaining to clear</p>
-        <p className="text-lg font-bold text-amber-800">{formatCurrency(remaining)}</p>
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-800/50 rounded-xl p-4 shadow-sm col-span-2 md:col-span-1">
+        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">Remaining to clear</p>
+        <p className="text-lg font-bold text-amber-800 dark:text-amber-300">{formatCurrency(remaining)}</p>
       </div>
     </div>
   );

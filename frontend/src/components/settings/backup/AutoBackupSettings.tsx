@@ -26,9 +26,9 @@ export const AutoBackupSettings: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden mb-6">
       <div className="p-6">
-        <div className="flex items-center gap-2 mb-6 text-slate-800">
+        <div className="flex items-center gap-2 mb-6 text-slate-800 dark:text-[#e2f5e8]">
           <Settings className="w-5 h-5 text-emerald-600" />
           <h2 className="text-lg font-bold">Auto Backup Settings</h2>
         </div>
@@ -36,8 +36,8 @@ export const AutoBackupSettings: React.FC = () => {
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-slate-700">Enable Automatic Backup</div>
-              <div className="text-xs text-slate-500">Run backups automatically based on schedule</div>
+              <div className="text-sm font-medium text-slate-700 dark:text-[#e2f5e8]">Enable Automatic Backup</div>
+              <div className="text-xs text-slate-500 dark:text-[#8ba895]">Run backups automatically based on schedule</div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input 
@@ -47,18 +47,18 @@ export const AutoBackupSettings: React.FC = () => {
                 onChange={(e) => handleChange('enabled', e.target.checked)}
                 disabled={isSaving}
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              <div className="w-11 h-6 bg-slate-200 dark:bg-[#1e3124] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
             </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Backup Schedule</label>
+              <label className="block text-xs font-medium text-slate-700 dark:text-[#e2f5e8] mb-1">Backup Schedule</label>
               <select 
                 value={autoBackupSettings.schedule}
                 onChange={(e) => handleChange('schedule', e.target.value)}
                 disabled={!autoBackupSettings.enabled || isSaving}
-                className="w-full rounded-lg border-slate-200 text-sm focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] text-sm focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 dark:disabled:bg-[#111e14] disabled:text-slate-400 dark:disabled:text-[#64916e]"
               >
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
@@ -67,23 +67,23 @@ export const AutoBackupSettings: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Backup Time</label>
+              <label className="block text-xs font-medium text-slate-700 dark:text-[#e2f5e8] mb-1">Backup Time</label>
               <input 
                 type="time" 
                 value={autoBackupSettings.time}
                 onChange={(e) => handleChange('time', e.target.value)}
                 disabled={!autoBackupSettings.enabled || isSaving}
-                className="w-full rounded-lg border-slate-200 text-sm focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] text-sm focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 dark:disabled:bg-[#111e14] disabled:text-slate-400 dark:disabled:text-[#64916e]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Retention</label>
+              <label className="block text-xs font-medium text-slate-700 dark:text-[#e2f5e8] mb-1">Retention</label>
               <select 
                 value={autoBackupSettings.retention}
                 onChange={(e) => handleChange('retention', e.target.value)}
                 disabled={!autoBackupSettings.enabled || isSaving}
-                className="w-full rounded-lg border-slate-200 text-sm focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] text-sm focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 dark:disabled:bg-[#111e14] disabled:text-slate-400 dark:disabled:text-[#64916e]"
               >
                 <option value="7">Keep last 7 backups</option>
                 <option value="30">Keep last 30 backups</option>

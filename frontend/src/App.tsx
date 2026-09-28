@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { Layout } from './components/layout/Layout';
 import { apiClient } from './services/apiClient';
 import { SessionExpiredModal } from './components/SessionExpiredModal';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Page Imports
 import { Login } from './pages/Login';
@@ -215,75 +216,77 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      {/* Global session-expired modal — shown whenever apiClient receives a 401 */}
-      <SessionExpiredModal />
-      <Routes>
-        {/* Public Routes (Accessible only when NOT logged in) */}
-        <Route element={<PublicOnlyRoute />}>
-          <Route path="/login" element={<Login />} />
-        </Route>
+    <ThemeProvider>
+      <BrowserRouter>
+        {/* Global session-expired modal — shown whenever apiClient receives a 401 */}
+        <SessionExpiredModal />
+        <Routes>
+          {/* Public Routes (Accessible only when NOT logged in) */}
+          <Route element={<PublicOnlyRoute />}>
+            <Route path="/login" element={<Login />} />
+          </Route>
 
-        {/* Protected Routes (Requires valid token in localStorage) */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="pos" element={<POS />} />
-            <Route path="products" element={<Products />} />
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="suppliers" element={<Suppliers />} />
-            <Route path="customers" element={<Customers />} />
-            <Route path="ledger">
-              <Route index element={<KhataLedger />} />
-              <Route path="customers/:customerId" element={<CustomerMonthlyMilkLedger />} />
-              <Route path="suppliers/:supplierId" element={<SupplierMonthlyPurchaseLedger />} />
-            </Route>
-            <Route path="returns" element={<Returns />} />
-            <Route path="audit" element={<ReceiptAudit />} />
-            <Route path="shifts" element={<Shifts />} />
-            <Route path="register">
-              <Route index element={<CashRegister />} />
-              <Route path="cashbook" element={<Cashbook />} />
-              <Route path="cashbook/ledger/:personId" element={<CashPersonLedger />} />
-            </Route>
-            <Route path="zreport" element={<ZReport />} />
-            <Route path="sales" element={<Sales />} />
+          {/* Protected Routes (Requires valid token in localStorage) */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="pos" element={<POS />} />
+              <Route path="products" element={<Products />} />
+              <Route path="inventory" element={<Inventory />} />
+              <Route path="suppliers" element={<Suppliers />} />
+              <Route path="customers" element={<Customers />} />
+              <Route path="ledger">
+                <Route index element={<KhataLedger />} />
+                <Route path="customers/:customerId" element={<CustomerMonthlyMilkLedger />} />
+                <Route path="suppliers/:supplierId" element={<SupplierMonthlyPurchaseLedger />} />
+              </Route>
+              <Route path="returns" element={<Returns />} />
+              <Route path="audit" element={<ReceiptAudit />} />
+              <Route path="shifts" element={<Shifts />} />
+              <Route path="register">
+                <Route index element={<CashRegister />} />
+                <Route path="cashbook" element={<Cashbook />} />
+                <Route path="cashbook/ledger/:personId" element={<CashPersonLedger />} />
+              </Route>
+              <Route path="zreport" element={<ZReport />} />
+              <Route path="sales" element={<Sales />} />
 
-            {/* Settings Routes */}
-            <Route path="settings">
-              <Route index element={<Navigate to="daily-rates" replace />} />
-              <Route path="daily-rates" element={<DailyRates />} />
-              <Route path="shop-info" element={<ShopInfo />} />
-              <Route path="pos-config" element={<POSConfig />} />
-              <Route path="users-roles" element={<UsersRoles />} />
-              <Route path="cloud-sync" element={<CloudSync />} />
-              <Route path="local-backup" element={<LocalBackup />} />
-            </Route>
+              {/* Settings Routes */}
+              <Route path="settings">
+                <Route index element={<Navigate to="daily-rates" replace />} />
+                <Route path="daily-rates" element={<DailyRates />} />
+                <Route path="shop-info" element={<ShopInfo />} />
+                <Route path="pos-config" element={<POSConfig />} />
+                <Route path="users-roles" element={<UsersRoles />} />
+                <Route path="cloud-sync" element={<CloudSync />} />
+                <Route path="local-backup" element={<LocalBackup />} />
+              </Route>
 
-            <Route path="expenses" element={<Expenses />} />
+              <Route path="expenses" element={<Expenses />} />
 
-            {/* Reports Routes */}
-            <Route path="reports">
-              <Route path="sales" element={<SalesReport />} />
-              <Route path="profit-loss" element={<ProfitLossReport />} />
-              <Route path="suppliers" element={<SupplierReport />} />
-              <Route path="customers" element={<CustomerReport />} />
-              <Route path="inventory" element={<InventoryReport />} />
-              <Route path="returns" element={<ReturnsReport />} />
-              <Route path="cash-register" element={<CashRegisterReport />} />
-              <Route path="shifts" element={<ShiftsReport />} />
-              <Route path="expenses" element={<ExpensesReport />} />
-              <Route path="backups" element={<BackupReport />} />
-              <Route path="logs" element={<ActivityLogs />} />
-              <Route path="f2-sales" element={<F2SalesReport />} />
+              {/* Reports Routes */}
+              <Route path="reports">
+                <Route path="sales" element={<SalesReport />} />
+                <Route path="profit-loss" element={<ProfitLossReport />} />
+                <Route path="suppliers" element={<SupplierReport />} />
+                <Route path="customers" element={<CustomerReport />} />
+                <Route path="inventory" element={<InventoryReport />} />
+                <Route path="returns" element={<ReturnsReport />} />
+                <Route path="cash-register" element={<CashRegisterReport />} />
+                <Route path="shifts" element={<ShiftsReport />} />
+                <Route path="expenses" element={<ExpensesReport />} />
+                <Route path="backups" element={<BackupReport />} />
+                <Route path="logs" element={<ActivityLogs />} />
+                <Route path="f2-sales" element={<F2SalesReport />} />
+              </Route>
             </Route>
           </Route>
-        </Route>
 
-        {/* Catch-all route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

@@ -19,50 +19,50 @@ export const KhataSummaryCards: React.FC<KhataSummaryCardsProps> = ({
 
   return (
     <div className="grid grid-cols-3 gap-5">
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-[#2d4a35] flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
           <BookOpen className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Khata Accounts</p>
-          <h3 className="text-3xl font-bold text-slate-800 mt-1">
+          <p className="text-xs font-bold text-slate-500 dark:text-[#64916e] uppercase tracking-wider">Khata Accounts</p>
+          <h3 className="text-3xl font-bold text-slate-800 dark:text-[#e2f5e8] mt-1">
             {loading ? '…' : summary.khataAccounts}
           </h3>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-rose-100 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 flex-shrink-0">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl p-5 shadow-sm border border-rose-100 dark:border-[#2d4a35] flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center text-rose-500 dark:text-rose-400 flex-shrink-0">
           <DollarSign className="w-6 h-6" />
         </div>
         <div>
           <p className="text-xs font-bold text-rose-400 uppercase tracking-wider">Total Outstanding</p>
-          <h3 className="text-2xl font-bold text-rose-600 mt-1">
+          <h3 className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">
             {loading ? '…' : formatCurrency(summary.totalOutstanding)}
           </h3>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl p-5 shadow-sm border border-emerald-100 dark:border-[#2d4a35] flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
           <CheckCircle className="w-6 h-6" />
         </div>
         <div>
           <p className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Collected Today</p>
-          <h3 className="text-2xl font-bold text-emerald-600 mt-1">
+          <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
             {loading ? '…' : formatCurrency(summary.collectedToday)}
           </h3>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-amber-100 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 flex-shrink-0">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl p-5 shadow-sm border border-amber-100 dark:border-[#2d4a35] flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
           <BookOpen className="w-6 h-6" />
         </div>
         <div>
           <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Supplier Payables</p>
           <h3
             className={`text-2xl font-bold mt-1 ${
-              (summary.supplierPayables || 0) < 0 ? 'text-emerald-600' : 'text-amber-600'
+              (summary.supplierPayables || 0) < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
             }`}
           >
             {loading ? '…' : formatCurrency(summary.supplierPayables || 0)}

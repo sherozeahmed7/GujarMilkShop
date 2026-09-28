@@ -86,12 +86,12 @@ export const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
 
   const menuContent = (
     <div 
-      className="user-actions-dropdown bg-white rounded-xl shadow-lg border border-slate-100 py-2 overflow-hidden flex flex-col"
+      className="user-actions-dropdown bg-white dark:bg-[#1a2e1f] rounded-xl shadow-lg border border-slate-100 dark:border-[#2d4a35] py-2 overflow-hidden flex flex-col"
       style={dropdownStyle}
     >
       <button
         onClick={() => handleAction(() => onViewPermissions(user))}
-        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors w-full text-left"
+        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors w-full text-left"
       >
         <Shield className="w-4 h-4 text-emerald-600" />
         View Permissions
@@ -99,7 +99,7 @@ export const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
       
       <button
         onClick={() => handleAction(() => onEdit(user))}
-        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors w-full text-left"
+        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors w-full text-left"
       >
         <Edit2 className="w-4 h-4 text-blue-600" />
         Edit User
@@ -107,21 +107,21 @@ export const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
 
       <button
         onClick={() => handleAction(() => onChangePassword(user))}
-        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors w-full text-left"
+        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors w-full text-left"
       >
         <Key className="w-4 h-4 text-amber-600" />
         Change Password
       </button>
 
-      <div className="h-px bg-slate-100 my-1 mx-4"></div>
+      <div className="h-px bg-slate-100 dark:bg-[#2d4a35] my-1 mx-4"></div>
 
       <button
         onClick={() => handleAction(() => onToggleStatus(user))}
         disabled={user.isPrimaryAdmin}
         className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors w-full text-left ${
           user.isPrimaryAdmin 
-            ? 'text-slate-400 opacity-50 cursor-not-allowed' 
-            : 'text-slate-700 hover:bg-slate-50'
+            ? 'text-slate-400 dark:text-[#64916e] opacity-50 cursor-not-allowed' 
+            : 'text-slate-700 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'
         }`}
       >
         {user.status?.toLowerCase() === 'active' ? (
@@ -137,14 +137,14 @@ export const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
         )}
       </button>
 
-      <div className="h-px bg-slate-100 my-1 mx-4"></div>
+      <div className="h-px bg-slate-100 dark:bg-[#2d4a35] my-1 mx-4"></div>
 
       <button
         onClick={() => handleAction(() => onDelete(user))}
         disabled={user.isPrimaryAdmin}
         className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors w-full text-left ${
           user.isPrimaryAdmin 
-            ? 'text-slate-400 opacity-50 cursor-not-allowed' 
+            ? 'text-slate-400 dark:text-[#64916e] opacity-50 cursor-not-allowed' 
             : 'text-red-600 hover:bg-red-50'
         }`}
       >
@@ -159,7 +159,7 @@ export const UserActionsMenu: React.FC<UserActionsMenuProps> = ({
       <button 
         ref={buttonRef}
         onClick={toggleMenu}
-        className={`p-1.5 rounded-lg transition-colors ${isOpen ? 'bg-slate-200 text-slate-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+        className={`p-1.5 rounded-lg transition-colors ${isOpen ? 'bg-slate-200 dark:bg-[#1e3124] text-slate-800 dark:text-[#e2f5e8]' : 'text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] hover:bg-slate-100 dark:hover:bg-[#1e3124]'}`}
       >
         <MoreVertical className="w-5 h-5" />
       </button>

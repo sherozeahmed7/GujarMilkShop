@@ -133,7 +133,7 @@ const ShiftCard: React.FC<ShiftCardProps> = ({ supplier, date, shift }) => {
           value={milkType} 
           onChange={(e) => setMilkType(e.target.value as MilkType)}
           disabled={!isEditing}
-          className="text-xs font-bold bg-white border border-slate-200 text-slate-600 rounded-md px-2 py-1 uppercase tracking-wider disabled:opacity-70 disabled:bg-slate-50"
+          className="text-xs font-bold bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#e2f5e8] rounded-md px-2 py-1 uppercase tracking-wider disabled:opacity-70 disabled:bg-slate-50 dark:disabled:bg-slate-800"
         >
           <option value="Mixed">Mixed</option>
           <option value="Cow">Cow</option>
@@ -141,8 +141,8 @@ const ShiftCard: React.FC<ShiftCardProps> = ({ supplier, date, shift }) => {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex flex-col gap-4">
-        <h5 className="text-sm font-bold text-slate-800 uppercase tracking-wide">{milkType} MILK</h5>
+      <div className="bg-white dark:bg-[#142119] rounded-xl p-4 shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col gap-4">
+        <h5 className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8] uppercase tracking-wide">{milkType} MILK</h5>
         
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">

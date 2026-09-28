@@ -68,10 +68,10 @@ export const KhataSupplierFormModal: React.FC<KhataSupplierFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35] bg-slate-50/50 dark:bg-slate-900/20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
               <Edit2 className="w-5 h-5" />
@@ -116,7 +116,7 @@ export const KhataSupplierFormModal: React.FC<KhataSupplierFormModalProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-500 uppercase tracking-wider">Cycle:</span>
-              <span className="font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-[#142119] px-2 py-0.5 rounded border border-slate-200 dark:border-[#2d4a35]">
                 {supplier.cycleType}
               </span>
             </div>
@@ -179,7 +179,7 @@ export const KhataSupplierFormModal: React.FC<KhataSupplierFormModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-100 transition-colors shadow-sm"
+            className="px-5 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] rounded-xl font-semibold hover:bg-slate-100 dark:hover:bg-[#1a2e1f] transition-colors shadow-sm"
           >
             Cancel
           </button>

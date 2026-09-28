@@ -33,9 +33,9 @@ export const MilkCalendarGrid: React.FC<MilkCalendarGridProps> = ({ month, year,
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden mb-6">
       {/* Day headers */}
-      <div className="grid grid-cols-7 bg-slate-800 text-white text-xs font-semibold text-center">
+      <div className="grid grid-cols-7 bg-slate-800 dark:bg-[#142119] text-white dark:text-[#e2f5e8] text-xs font-semibold text-center">
         {DAYS.map((d) => (
           <div key={d} className="py-2.5 px-1">{d}</div>
         ))}
@@ -43,10 +43,10 @@ export const MilkCalendarGrid: React.FC<MilkCalendarGridProps> = ({ month, year,
 
       {/* Calendar rows */}
       {rows.map((row, rowIdx) => (
-        <div key={rowIdx} className="grid grid-cols-7 divide-x divide-slate-100 border-b border-slate-100 last:border-b-0">
+        <div key={rowIdx} className="grid grid-cols-7 divide-x divide-slate-100 dark:divide-[#2d4a35] border-b border-slate-100 dark:border-[#2d4a35] last:border-b-0">
           {row.map((day, colIdx) => {
             if (day === null) {
-              return <div key={colIdx} className="min-h-[80px] bg-slate-50/50" />;
+              return <div key={colIdx} className="min-h-[80px] bg-slate-50/50 dark:bg-[#142119]/50" />;
             }
             const entry = entryByDay.get(day);
             const qty = entry?.quantityKg ?? 0;
@@ -58,27 +58,27 @@ export const MilkCalendarGrid: React.FC<MilkCalendarGridProps> = ({ month, year,
                 key={colIdx}
                 className={`min-h-[80px] p-2 flex flex-col gap-0.5 ${
                   hasEntry
-                    ? 'bg-white hover:bg-blue-50/30 transition-colors'
-                    : 'bg-slate-50/60'
+                    ? 'bg-white dark:bg-[#1a2e1f] hover:bg-blue-50/30 dark:hover:bg-[#22c55e]/10 transition-colors'
+                    : 'bg-slate-50/60 dark:bg-[#142119]/60'
                 }`}
               >
                 {/* Date number */}
                 <span className={`text-xs font-bold ${
-                  hasEntry ? 'text-slate-700' : 'text-slate-400'
+                  hasEntry ? 'text-slate-700 dark:text-[#a7c4ae]' : 'text-slate-400 dark:text-[#64916e]'
                 }`}>
                   {day}
                 </span>
 
                 {/* Milk quantity */}
                 <span className={`text-[11px] font-medium leading-tight ${
-                  hasEntry ? 'text-blue-600' : 'text-slate-400'
+                  hasEntry ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-[#64916e]'
                 }`}>
                   {hasEntry ? `${qty} kg` : '—'}
                 </span>
 
                 {/* Amount */}
                 {hasEntry && (
-                  <span className="text-[10px] text-emerald-600 font-medium leading-tight">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium leading-tight">
                     {fmtRs(amt)}
                   </span>
                 )}

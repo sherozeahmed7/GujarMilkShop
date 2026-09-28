@@ -60,13 +60,13 @@ export const ZReport: React.FC = () => {
         <div className="flex items-start gap-4">
           <button
             onClick={() => navigate('/register')}
-            className="mt-1 p-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors"
+            className="mt-1 p-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#223927] rounded-lg text-slate-500 dark:text-[#86efac] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Z-Report / End of Day Closing</h1>
-            <p className="text-slate-500 text-sm mt-1">
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Z-Report / End of Day Closing</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
               {display ? `Accountant-ready closing summary for ${display.date}` : 'No shift data available'}
             </p>
           </div>
@@ -78,22 +78,22 @@ export const ZReport: React.FC = () => {
               {display.status}
             </span>
           )}
-          <div className="w-px h-8 bg-slate-200 mx-1"></div>
+          <div className="w-px h-8 bg-slate-200 dark:bg-[#2d4a35] mx-1"></div>
           <button
             onClick={handleExportExcel}
             disabled={!display}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#223927] text-slate-700 dark:text-[#e2f5e8] text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />Excel
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-[#22c55e]" />Excel
           </button>
           <button
             onClick={handleExportPdf}
             disabled={!display}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#223927] text-slate-700 dark:text-[#e2f5e8] text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
           >
             <FileText className="w-4 h-4 text-rose-500" />PDF
           </button>
-          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-xl shadow-sm transition-all">
+          <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 dark:bg-[#22c55e] hover:bg-slate-900 dark:hover:bg-[#1ea34d] text-white dark:text-[#0d1a10] text-sm font-semibold rounded-xl shadow-sm transition-all">
             <Printer className="w-4 h-4" />Print Z-Report
           </button>
         </div>

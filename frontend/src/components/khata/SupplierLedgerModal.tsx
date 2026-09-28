@@ -20,8 +20,8 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-4xl h-[85vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <div className="relative bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-4xl h-[85vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35]">
           <div>
             <h2 className="text-lg font-bold text-slate-800">{supplier.name}</h2>
             <p className="text-xs text-slate-500">Supplier ledger · {supplier.code}</p>

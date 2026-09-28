@@ -15,6 +15,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { Pagination } from '../../components/common/Pagination';
+import { useChartTheme } from '../../hooks/useChartTheme';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B'];
 
@@ -76,6 +77,7 @@ function formatRs(value: number | undefined): string {
 }
 
 export const F2SalesReport: React.FC = () => {
+  const { grid, axis, tooltipStyle, tooltipLabelStyle } = useChartTheme();
   const [filter, setFilter] = useState<DateFilterType>(getThisWeekFilter);
   const [isLoading, setIsLoading] = useState(false);
   const [sales, setSales] = useState<SaleRecord[]>([]);
@@ -187,41 +189,42 @@ export const F2SalesReport: React.FC = () => {
               title="Net F2 Sales"
               value={`Rs. ${money(summary.netSales).toLocaleString()}`}
               icon={Banknote}
-              valueColor="text-emerald-700"
+              valueColor="text-emerald-700 dark:text-emerald-400"
             />
             <SummaryCard
               title="F2 Bills"
               value={summary.totalBills.toString()}
               icon={Package}
-              valueColor="text-blue-700"
+              valueColor="text-blue-700 dark:text-blue-400"
             />
             <SummaryCard
               title="Cash Sales"
               value={`Rs. ${money(summary.cashSales).toLocaleString()}`}
               icon={Banknote}
-              valueColor="text-amber-700"
+              valueColor="text-amber-700 dark:text-amber-400"
             />
             <SummaryCard
               title="Credit / Split"
               value={`Rs. ${money(summary.splitSales).toLocaleString()}`}
               icon={CreditCard}
-              valueColor="text-rose-700"
+              valueColor="text-rose-700 dark:text-rose-400"
             />
           </div>
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 col-span-2">
-              <h3 className="font-bold text-slate-800 mb-6">F2 Sales Trend</h3>
+            <div className="bg-white dark:bg-[#1a2e1f] p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] col-span-2">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-6">F2 Sales Trend</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analytics.trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(v: number) => `Rs.${v}`} dx={-10} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={grid} />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: axis }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: axis }} tickFormatter={(v: number) => `Rs.${v}`} dx={-10} />
                     <RechartsTooltip
-                      cursor={{ fill: '#F1F5F9' }}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      cursor={{ fill: 'transparent' }}
+                      contentStyle={tooltipStyle}
+                      labelStyle={tooltipLabelStyle}
                     />
                     <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={32} />
                   </BarChart>
@@ -229,8 +232,8 @@ export const F2SalesReport: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <h3 className="font-bold text-slate-800 mb-6">F2 Product Breakdown</h3>
+            <div className="bg-white dark:bg-[#1a2e1f] p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-6">F2 Product Breakdown</h3>
               <div className="h-[300px]">
                 {analytics.categoryBreakdown.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -250,13 +253,14 @@ export const F2SalesReport: React.FC = () => {
                         ))}
                       </Pie>
                       <RechartsTooltip
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        contentStyle={tooltipStyle}
+                        labelStyle={tooltipLabelStyle}
                       />
                       <Legend verticalAlign="bottom" height={36} iconType="circle" />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                  <div className="h-full flex items-center justify-center text-slate-400 dark:text-[#64916e] text-sm">
                     No data for selected period
                   </div>
                 )}
@@ -265,17 +269,17 @@ export const F2SalesReport: React.FC = () => {
           </div>
 
           {/* Transactions Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <Beaker className="w-5 h-5 text-blue-600" />
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
+            <div className="p-4 border-b border-slate-200 dark:border-[#2d4a35] bg-slate-50/50 dark:bg-[#142119] flex justify-between items-center">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] flex items-center gap-2">
+                <Beaker className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 F2 Transactions
               </h3>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                <thead className="bg-slate-50 dark:bg-[#142119] text-slate-500 dark:text-[#8ba895] font-bold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="px-6 py-4">Invoice</th>
                     <th className="px-6 py-4">Date & Time</th>
@@ -285,7 +289,7 @@ export const F2SalesReport: React.FC = () => {
                     <th className="px-6 py-4 text-right">Bill Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35] text-slate-700 dark:text-[#a7c4ae]">
                   {sales
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((sale) => {
@@ -293,29 +297,29 @@ export const F2SalesReport: React.FC = () => {
                       ['lassi', 'butter', 'ghee'].includes((item.itemName || '').trim().toLowerCase())
                     ) || [];
                     return (
-                      <tr key={sale.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 font-bold text-slate-800">{toInvoiceNo(sale.id)}</td>
+                      <tr key={sale.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1e3124] transition-colors">
+                        <td className="px-6 py-4 font-bold text-slate-800 dark:text-[#e2f5e8]">{toInvoiceNo(sale.id)}</td>
                         <td className="px-6 py-4">
                           <div className="font-medium">{new Date(sale.createdAt).toLocaleDateString()}</div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-slate-500 dark:text-[#8ba895]">
                             {new Date(sale.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
                         <td className="px-6 py-4 font-bold">{saleCustomerLabel(sale)}</td>
                         <td className="px-6 py-4">
-                          <span className="text-xs uppercase font-semibold text-slate-500">{paymentLabel(sale)}</span>
+                          <span className="text-xs uppercase font-semibold text-slate-500 dark:text-[#8ba895]">{paymentLabel(sale)}</span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="space-y-1">
                             {f2Items.map(item => (
-                              <div key={item.id} className="flex justify-between text-xs bg-amber-50 px-2 py-1 rounded">
-                                <span className="font-medium text-slate-700">{item.itemName}</span>
-                                <span className="font-bold text-slate-900">{item.quantity} kg</span>
+                              <div key={item.id} className="flex justify-between text-xs bg-amber-50 dark:bg-amber-500/15 px-2 py-1 rounded">
+                                <span className="font-medium text-slate-700 dark:text-[#a7c4ae]">{item.itemName}</span>
+                                <span className="font-bold text-slate-900 dark:text-[#e2f5e8]">{item.quantity} kg</span>
                               </div>
                             ))}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-bold text-slate-900">
+                        <td className="px-6 py-4 text-right font-bold text-slate-900 dark:text-[#e2f5e8]">
                           Rs. {money(sale.totalAmount).toLocaleString()}
                         </td>
                       </tr>
@@ -323,7 +327,7 @@ export const F2SalesReport: React.FC = () => {
                   })}
                   {sales.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
+                      <td colSpan={6} className="px-6 py-10 text-center text-slate-400 dark:text-[#64916e]">
                         No F2 sales found for this period.
                       </td>
                     </tr>

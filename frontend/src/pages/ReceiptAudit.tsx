@@ -90,8 +90,8 @@ export const ReceiptAudit: React.FC = () => {
       {/* Page Header */}
       <div className="flex items-start justify-between flex-shrink-0 gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Receipt Audit</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Receipt Audit</h1>
+          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">
             At closing, count the receipts kept by the item counter and compare them with POS bills.
           </p>
         </div>

@@ -122,7 +122,7 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-shrink-0 border-b border-slate-100 bg-white px-5 py-4 space-y-3">
+      <div className="flex-shrink-0 border-b border-slate-100 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] px-5 py-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -167,7 +167,7 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
             <select
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-700 font-medium bg-white"
+              className="border border-slate-200 dark:border-[#2d4a35] rounded-lg px-2.5 py-1.5 text-sm text-slate-700 dark:text-[#e2f5e8] font-medium bg-white dark:bg-[#142119]"
             >
               <option value="">All farms</option>
               {suppliers.map((s) => (
@@ -182,7 +182,7 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
             <select
               value={shiftDate}
               onChange={(e) => setShiftDate(e.target.value)}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-700 font-medium bg-white"
+              className="border border-slate-200 dark:border-[#2d4a35] rounded-lg px-2.5 py-1.5 text-sm text-slate-700 dark:text-[#e2f5e8] font-medium bg-white dark:bg-[#142119]"
             >
               <option value="">All shifts</option>
               {shifts.map((s) => (
@@ -197,7 +197,7 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
-              className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-700 font-medium bg-white"
+              className="border border-slate-200 dark:border-[#2d4a35] rounded-lg px-2.5 py-1.5 text-sm text-slate-700 dark:text-[#e2f5e8] font-medium bg-white dark:bg-[#142119]"
             >
               <option value="all">All methods</option>
               <option value="cash">Cash (from shift)</option>
@@ -272,7 +272,7 @@ export const SupplierPaymentsHistory: React.FC<Props> = ({ suppliers, initialSup
                   <th className="text-left px-3 py-2.5">By</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35] bg-white dark:bg-[#1a2e1f]">
                 {filtered
                   .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                   .map((r) => (

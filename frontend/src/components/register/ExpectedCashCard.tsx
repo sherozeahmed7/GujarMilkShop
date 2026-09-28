@@ -6,7 +6,7 @@ export const ExpectedCashCard: React.FC = () => {
   const expectedCash = currentRegister?.expectedCash ?? 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
       {/* Subtle decorative background pattern */}
       <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #e2e8f0 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
       

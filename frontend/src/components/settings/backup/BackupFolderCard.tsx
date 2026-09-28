@@ -37,16 +37,16 @@ export const BackupFolderCard: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+    <div className="bg-white dark:bg-[#1a2e1f] rounded-xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden mb-6">
       <div className="p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-2">Backup Folder</h2>
-        <p className="text-slate-500 text-sm mb-4">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">Backup Folder</h2>
+        <p className="text-slate-500 dark:text-[#8ba895] text-sm mb-4">
           Where every backup file is saved.
         </p>
 
-        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4 font-mono text-sm text-slate-800 break-all">
+        <div className="bg-slate-50 dark:bg-[#142119] p-3 rounded-lg border border-slate-200 dark:border-[#2d4a35] mb-4 font-mono text-sm text-slate-800 dark:text-[#e2f5e8] break-all">
           {backupFolder}
-          <div className="text-xs text-slate-500 mt-1 font-sans">Current folder location</div>
+          <div className="text-xs text-slate-500 dark:text-[#8ba895] mt-1 font-sans">Current folder location</div>
         </div>
 
         <div className="flex gap-3">
@@ -58,7 +58,7 @@ export const BackupFolderCard: React.FC = () => {
           </button>
           <button
             onClick={handleResetDefault}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-slate-100 dark:bg-[#111e14] hover:bg-slate-200 dark:hover:bg-[#1e3124] text-slate-700 dark:text-[#e2f5e8] text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             Reset to Default
           </button>

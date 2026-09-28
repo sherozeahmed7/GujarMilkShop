@@ -71,45 +71,45 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
 }) => {
   return (
     <table className="w-full text-left border-collapse">
-      <thead className="bg-slate-50 sticky top-0 z-10">
+      <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0 z-10">
         <tr>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Customer
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Phone
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Customer Type
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Payment Type
           </th>
           <th
-            className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100"
+            className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]"
             title="Billed this month (monthly) or today (daily)"
           >
             Current Month / Day
           </th>
           <th
-            className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100"
+            className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]"
             title="Billed before the current period"
           >
             Previous Month / Day
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Total to Pay
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Paid
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Remaining Balance
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35]">
             Last Sale
           </th>
-          <th className="px-5 py-4 font-semibold text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
+          <th className="px-5 py-4 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35] text-right">
             Actions
           </th>
         </tr>
@@ -170,23 +170,23 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
           .toUpperCase();
 
   return (
-    <tr className="hover:bg-slate-50/70 transition-colors group">
+    <tr className="hover:bg-slate-50/70 dark:hover:bg-[#1e3124] transition-colors group">
       <td className="px-5 py-3 max-w-[220px]">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-[#1e3124] flex items-center justify-center text-xs font-bold text-slate-600 dark:text-[#a7c4ae] flex-shrink-0">
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-sm text-slate-800 truncate" title={row.name}>
+            <div className="font-semibold text-sm text-slate-800 dark:text-[#e2f5e8] truncate" title={row.name}>
               {displayText(row.name)}
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+            <div className="text-[10px] text-slate-400 dark:text-[#64916e] mt-0.5 truncate">
               {displayText(row.address)}
             </div>
           </div>
         </div>
       </td>
-      <td className="px-5 py-3 text-sm text-slate-600 font-medium whitespace-nowrap">
+      <td className="px-5 py-3 text-sm text-slate-600 dark:text-[#a7c4ae] font-medium whitespace-nowrap">
         {displayText(row.phone)}
       </td>
       <td className="px-5 py-3">
@@ -196,7 +196,7 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
           {row.typeLabel}
         </span>
       </td>
-      <td className="px-5 py-3 text-sm font-medium text-slate-700">
+      <td className="px-5 py-3 text-sm font-medium text-slate-700 dark:text-[#a7c4ae]">
         {displayText(row.paymentType)}
       </td>
       <td className="px-5 py-3">{formatDueAmount(row.currentDue)}</td>
@@ -204,15 +204,15 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
       <td className="px-5 py-3">{formatDueAmount(row.totalAmount)}</td>
       <td className="px-5 py-3">
         {row.paidAmount === null || row.paidAmount === undefined ? (
-          <span className="text-sm text-slate-400">—</span>
+          <span className="text-sm text-slate-400 dark:text-[#64916e]">—</span>
         ) : (
-          <span className="font-semibold text-sm text-emerald-600">
+          <span className="font-semibold text-sm text-emerald-600 dark:text-emerald-400">
             Rs. {Math.round(row.paidAmount).toLocaleString()}
           </span>
         )}
       </td>
       <td className="px-5 py-3">{formatTotalDue(row.balance)}</td>
-      <td className="px-5 py-3 text-sm text-slate-500">
+      <td className="px-5 py-3 text-sm text-slate-500 dark:text-[#64916e]">
         {formatLastSale(row.lastSaleDate)}
       </td>
       <td className="px-5 py-3 text-right">

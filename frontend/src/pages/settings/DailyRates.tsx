@@ -140,15 +140,15 @@ export const DailyRates: React.FC = () => {
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Daily Rates Configuration</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Daily Rates Configuration</h1>
+          <p className="text-slate-500 dark:text-[#8ba895] text-sm mt-1">
             Set milk, yogurt, lassi, butter &amp; ghee rates per kg. POS uses these automatically.
           </p>
         </div>
         <button
           onClick={loadRates}
           disabled={loading}
-          className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] hover:bg-slate-50 dark:hover:bg-[#1e3124] text-slate-700 dark:text-[#e2f5e8] px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -168,13 +168,13 @@ export const DailyRates: React.FC = () => {
 
       <div className="flex-shrink-0 rounded-2xl bg-slate-900 text-white p-6 md:p-8 shadow-lg border border-slate-800">
         {loading && history.length === 0 ? (
-          <div className="py-10 text-center text-slate-400 text-sm">Loading rates…</div>
+          <div className="py-10 text-center text-slate-400 dark:text-[#64916e] text-sm">Loading rates…</div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
               <div>
                 <div className="text-base font-bold text-white mb-1">Milk</div>
-                <div className="text-xs text-slate-400 mb-2">Rs/kg</div>
+                <div className="text-xs text-slate-400 dark:text-[#64916e] mb-2">Rs/kg</div>
                 <input
                   type="number"
                   min="0"
@@ -192,7 +192,7 @@ export const DailyRates: React.FC = () => {
 
               <div>
                 <div className="text-base font-bold text-white mb-1">Yogurt</div>
-                <div className="text-xs text-slate-400 mb-2">Rs/kg</div>
+                <div className="text-xs text-slate-400 dark:text-[#64916e] mb-2">Rs/kg</div>
                 <input
                   type="number"
                   min="0"
@@ -210,7 +210,7 @@ export const DailyRates: React.FC = () => {
 
               <div>
                 <div className="text-base font-bold text-white mb-1">Lassi</div>
-                <div className="text-xs text-slate-400 mb-2">Rs/kg (F2)</div>
+                <div className="text-xs text-slate-400 dark:text-[#64916e] mb-2">Rs/kg (F2)</div>
                 <input
                   type="number"
                   min="0"
@@ -228,7 +228,7 @@ export const DailyRates: React.FC = () => {
 
               <div>
                 <div className="text-base font-bold text-white mb-1">Butter</div>
-                <div className="text-xs text-slate-400 mb-2">Rs/kg (F2)</div>
+                <div className="text-xs text-slate-400 dark:text-[#64916e] mb-2">Rs/kg (F2)</div>
                 <input
                   type="number"
                   min="0"
@@ -246,7 +246,7 @@ export const DailyRates: React.FC = () => {
 
               <div>
                 <div className="text-base font-bold text-white mb-1">Ghee</div>
-                <div className="text-xs text-slate-400 mb-2">Rs/kg (F2)</div>
+                <div className="text-xs text-slate-400 dark:text-[#64916e] mb-2">Rs/kg (F2)</div>
                 <input
                   type="number"
                   min="0"
@@ -264,9 +264,9 @@ export const DailyRates: React.FC = () => {
             </div>
 
             <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-400 dark:text-[#64916e]">
                 Last updated:{' '}
-                <span className="text-slate-200 font-medium">
+                <span className="text-slate-200 dark:text-[#2d4a35] font-medium">
                   {formatDisplayDate(lastUpdated)}
                   {lastUpdatedBy ? ` by ${formatRoleLabel(lastUpdatedBy)}` : ''}
                 </span>
@@ -275,7 +275,7 @@ export const DailyRates: React.FC = () => {
               <button
                 onClick={handleUpdate}
                 disabled={!hasChanges || saving || loading}
-                className="bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold px-6 py-3 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-amber-400 shadow-sm"
+                className="bg-amber-400 hover:bg-amber-300 text-slate-900 dark:text-[#e2f5e8] font-bold px-6 py-3 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-amber-400 shadow-sm"
               >
                 {saving ? 'Updating…' : 'Update Rates'}
               </button>
@@ -284,15 +284,15 @@ export const DailyRates: React.FC = () => {
         )}
       </div>
 
-      <div className="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex-shrink-0">
-          <h2 className="text-lg font-bold text-slate-800">Rate History</h2>
+      <div className="flex flex-col bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">Rate History</h2>
         </div>
 
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50 border-b border-slate-100">
-              <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+            <thead className="sticky top-0 bg-slate-50 dark:bg-[#142119] border-b border-slate-100 dark:border-[#2d4a35]">
+              <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8ba895]">
                 <th className="px-5 py-3">Date &amp; Time</th>
                 <th className="px-5 py-3">Milk</th>
                 <th className="px-5 py-3">Yogurt</th>
@@ -305,38 +305,38 @@ export const DailyRates: React.FC = () => {
             <tbody>
               {loading && history.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400 dark:text-[#64916e]">
                     Loading history…
                   </td>
                 </tr>
               ) : history.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400 dark:text-[#64916e]">
                     No rate history yet. Update rates to create the first entry.
                   </td>
                 </tr>
               ) : (
                 history.map((row) => (
-                  <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50/80">
-                    <td className="px-5 py-3.5 text-slate-700 font-medium">
+                  <tr key={row.id} className="border-b border-slate-100 dark:border-[#2d4a35] hover:bg-slate-50/80 dark:hover:bg-[#1e3124]">
+                    <td className="px-5 py-3.5 text-slate-700 dark:text-[#e2f5e8] font-medium">
                       {formatDisplayDate(row.date)}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                    <td className="px-5 py-3.5 text-slate-800 dark:text-[#e2f5e8] font-semibold tabular-nums">
                       {row.milkRate}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                    <td className="px-5 py-3.5 text-slate-800 dark:text-[#e2f5e8] font-semibold tabular-nums">
                       {row.yogurtRate}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                    <td className="px-5 py-3.5 text-slate-800 dark:text-[#e2f5e8] font-semibold tabular-nums">
                       {row.lassiRate ?? 0}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                    <td className="px-5 py-3.5 text-slate-800 dark:text-[#e2f5e8] font-semibold tabular-nums">
                       {row.butterRate ?? 0}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-800 font-semibold tabular-nums">
+                    <td className="px-5 py-3.5 text-slate-800 dark:text-[#e2f5e8] font-semibold tabular-nums">
                       {row.gheeRate ?? 0}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">
+                    <td className="px-5 py-3.5 text-slate-600 dark:text-[#a7c4ae]">
                       {formatRoleLabel(row.updatedByRole)}
                     </td>
                   </tr>

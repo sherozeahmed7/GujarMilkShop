@@ -77,9 +77,9 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
               {supplier ? <Edit2 className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
@@ -170,7 +170,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
                     type="number"
                     value={defaultRate}
                     onChange={(e) => setDefaultRate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm font-bold text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -180,7 +180,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
                     type="number"
                     value={cowRate}
                     onChange={(e) => setCowRate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm font-bold text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -190,7 +190,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
                     type="number"
                     value={buffaloRate}
                     onChange={(e) => setBuffaloRate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm font-bold text-slate-800 dark:text-[#e2f5e8] focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -246,7 +246,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-100 transition-colors shadow-sm"
+            className="px-5 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] rounded-xl font-semibold hover:bg-slate-100 dark:hover:bg-[#1a2e1f] transition-colors shadow-sm"
           >
             Cancel
           </button>

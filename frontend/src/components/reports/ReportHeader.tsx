@@ -20,12 +20,12 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   exportSummaryTitle
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1a2e1f] p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35]">
       <div className="flex items-center gap-4">
         <BrandLogo variant="report" className="hidden sm:block" />
         <div>
-          <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-          <p className="text-sm text-slate-500 mt-1">{description}</p>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8]">{title}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
         </div>
       </div>
       

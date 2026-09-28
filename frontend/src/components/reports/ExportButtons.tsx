@@ -108,7 +108,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, 
     <div className="flex items-center gap-2">
       <button 
         onClick={handleExportExcel}
-        className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-medium transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-sm font-medium transition-colors"
       >
         <Download className="w-4 h-4" />
         <span className="hidden sm:inline">Excel</span>
@@ -116,7 +116,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, 
       
       <button 
         onClick={handleExportPDF}
-        className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-sm font-medium transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 border border-rose-200 dark:border-rose-800/50 rounded-lg text-sm font-medium transition-colors"
       >
         <FileText className="w-4 h-4" />
         <span className="hidden sm:inline">PDF</span>
@@ -124,7 +124,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({ reportName, data, 
 
       <button 
         onClick={handlePrint}
-        className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-medium transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-[#142119] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#223927] border border-slate-200 dark:border-[#2d4a35] rounded-lg text-sm font-medium transition-colors"
       >
         <Printer className="w-4 h-4" />
         <span className="hidden sm:inline">Print</span>

@@ -34,7 +34,7 @@ export const LocalBackup: React.FC = () => {
         </div>
         <button 
           onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors shadow-sm text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] rounded-lg hover:bg-slate-50 dark:hover:bg-[#142119] transition-colors shadow-sm text-sm font-medium"
         >
           <RefreshCw className="w-4 h-4" />
           Refresh

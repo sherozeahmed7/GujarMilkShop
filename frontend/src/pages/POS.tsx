@@ -656,7 +656,7 @@ export const POS: React.FC = () => {
           <button
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'milk-yogurt'
               ? 'bg-[#166534] text-white shadow-sm shadow-[#166534]/25'
-              : 'bg-white text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534] border border-slate-200 shadow-xs'
+              : 'bg-white dark:bg-[#1a2e1f] text-slate-600 dark:text-[#e2f5e8] hover:bg-[#FEF3C7]/50 dark:hover:bg-[#142119] hover:text-[#166534] dark:hover:text-[#22c55e] border border-slate-200 dark:border-[#2d4a35] shadow-xs'
               }`}
             onClick={() => setActiveTab('milk-yogurt')}
           >
@@ -665,7 +665,7 @@ export const POS: React.FC = () => {
           <button
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'items'
               ? 'bg-[#166534] text-white shadow-sm shadow-[#166534]/25'
-              : 'bg-white text-slate-600 hover:bg-[#FEF3C7]/50 hover:text-[#166534] border border-slate-200 shadow-xs'
+              : 'bg-white dark:bg-[#1a2e1f] text-slate-600 dark:text-[#e2f5e8] hover:bg-[#FEF3C7]/50 dark:hover:bg-[#142119] hover:text-[#166534] dark:hover:text-[#22c55e] border border-slate-200 dark:border-[#2d4a35] shadow-xs'
               }`}
             onClick={() => setActiveTab('items')}
           >
@@ -673,7 +673,7 @@ export const POS: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 bg-white dark:bg-[#1a2e1f] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
           {activeTab === 'items' ? (
             <MilkProducts
               onAddToCart={(name, qty, unitPrice, customTotal) =>
@@ -710,20 +710,20 @@ export const POS: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl p-4 flex flex-col shadow-xs">
+              <div className="flex-1 bg-[#F0FDF4] dark:bg-[#1a3d24]/60 border border-[#BBF7D0] dark:border-[#2d4a35] rounded-2xl p-4 flex flex-col shadow-xs">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-black text-[#166534]">Milk</h2>
-                  <div className="flex items-center gap-2 bg-white rounded-xl p-2 border border-[#BBF7D0] shadow-sm">
-                    <div className="flex bg-slate-100 rounded-lg p-0.5">
+                  <h2 className="text-xl font-black text-[#166534] dark:text-[#22c55e]">Milk</h2>
+                  <div className="flex items-center gap-2 bg-white dark:bg-[#142119] rounded-xl p-2 border border-[#BBF7D0] dark:border-[#2d4a35] shadow-sm">
+                    <div className="flex bg-slate-100 dark:bg-[#1e3124] rounded-lg p-0.5">
                       <button
                         onClick={() => setMilkCustomType('rs')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'rs' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'rs' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         RS
                       </button>
                       <button
                         onClick={() => setMilkCustomType('kg')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'kg' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'kg' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         KG
                       </button>
@@ -741,7 +741,7 @@ export const POS: React.FC = () => {
                     />
                     <button
                       onClick={() => handleCustomAdd('milk')}
-                      className="bg-[#166534] text-white hover:bg-[#14532d] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
+                      className="bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] hover:bg-[#14532d] dark:hover:bg-[#16a34a] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
                     >
                       Add
                     </button>
@@ -772,22 +772,22 @@ export const POS: React.FC = () => {
                         <button
                           key={`milk-w-${item.preset.weight}-${i}`}
                           onClick={() => addToCart('Milk', item.preset.weight, 'kg', item.preset.price, milkRatePerKg)}
-                          className="border border-emerald-100/80 bg-white hover:border-[#166534] hover:bg-[#F0FDF4] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-emerald-100/80 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] hover:border-[#166534] dark:hover:border-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1e3124] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <div className="font-bold text-slate-800 group-hover:text-[#166534] text-lg">{item.preset.label}</div>
-                          <div className="text-xs text-slate-500 font-medium mt-1">Rs. {item.preset.price}</div>
+                          <div className="font-bold text-slate-800 dark:text-[#e2f5e8] group-hover:text-[#166534] dark:group-hover:text-[#22c55e] text-lg">{item.preset.label}</div>
+                          <div className="text-xs text-slate-500 dark:text-[#64916e] font-medium mt-1">Rs. {item.preset.price}</div>
                         </button>
                       ) : (
                         <button
                           key={`milk-rs-${item.preset.amount}`}
                           type="button"
                           onClick={() => addToCart('Milk', item.preset.weight, 'rs', item.preset.amount, milkRatePerKg)}
-                          className="rounded-xl border border-[#FDE68A] bg-[#FEF3C7]/40 hover:bg-[#FEF3C7] hover:border-[#FDE68A] p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="rounded-xl border border-[#FDE68A] dark:border-[#3d2f12] bg-[#FEF3C7]/40 dark:bg-[#2a1f0a] hover:bg-[#FEF3C7] dark:hover:bg-[#3d2f12] hover:border-[#FDE68A] p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <span className="font-black text-[#166534] text-base sm:text-lg">
+                          <span className="font-black text-[#166534] dark:text-[#fcd34d] text-base sm:text-lg">
                             {item.preset.amount}
                           </span>
-                          <span className="text-[10px] text-[#78350F] font-bold mt-0.5">
+                          <span className="text-[10px] text-[#78350F] dark:text-[#fcd34d]/80 font-bold mt-0.5">
                             {item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}
                           </span>
                         </button>
@@ -799,20 +799,20 @@ export const POS: React.FC = () => {
 
               <div className="hidden lg:block w-px bg-slate-100"></div>
 
-              <div className="flex-1 bg-[#FFFDF5] border border-[#FDE68A] rounded-2xl p-4 flex flex-col shadow-xs">
+              <div className="flex-1 bg-[#FFFDF5] dark:bg-[#2a1f0a]/40 border border-[#FDE68A] dark:border-[#3d2f12] rounded-2xl p-4 flex flex-col shadow-xs">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-black text-[#78350F]">Yogurt</h2>
-                  <div className="flex items-center gap-2 bg-white rounded-xl p-2 border border-[#FDE68A] shadow-sm">
-                    <div className="flex bg-slate-100 rounded-lg p-0.5">
+                  <h2 className="text-xl font-black text-[#78350F] dark:text-[#fcd34d]">Yogurt</h2>
+                  <div className="flex items-center gap-2 bg-white dark:bg-[#142119] rounded-xl p-2 border border-[#FDE68A] dark:border-[#3d2f12] shadow-sm">
+                    <div className="flex bg-slate-100 dark:bg-[#1e3124] rounded-lg p-0.5">
                       <button
                         onClick={() => setYogurtCustomType('rs')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'rs' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'rs' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         RS
                       </button>
                       <button
                         onClick={() => setYogurtCustomType('kg')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'kg' ? 'bg-[#166534] text-white shadow-xs' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'kg' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         KG
                       </button>
@@ -830,7 +830,7 @@ export const POS: React.FC = () => {
                     />
                     <button
                       onClick={() => handleCustomAdd('yogurt')}
-                      className="bg-[#166534] text-white hover:bg-[#14532d] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
+                      className="bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] hover:bg-[#14532d] dark:hover:bg-[#16a34a] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
                     >
                       Add
                     </button>
@@ -861,20 +861,20 @@ export const POS: React.FC = () => {
                         <button
                           key={`y-w-${item.preset.weight}-${i}`}
                           onClick={() => addToCart('Yogurt', item.preset.weight, 'kg', item.preset.price, yogurtRatePerKg)}
-                          className="border border-amber-100/80 bg-white hover:border-[#166534] hover:bg-[#F0FDF4] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-amber-100/80 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] hover:border-[#166534] dark:hover:border-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1e3124] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <div className="font-bold text-slate-800 group-hover:text-[#166534] text-lg">{item.preset.label}</div>
-                          <div className="text-xs text-slate-500 font-medium mt-1">Rs. {item.preset.price}</div>
+                          <div className="font-bold text-slate-800 dark:text-[#e2f5e8] group-hover:text-[#166534] dark:group-hover:text-[#22c55e] text-lg">{item.preset.label}</div>
+                          <div className="text-xs text-slate-500 dark:text-[#64916e] font-medium mt-1">Rs. {item.preset.price}</div>
                         </button>
                       ) : (
                         <button
                           key={`y-rs-${item.preset.amount}`}
                           type="button"
                           onClick={() => addToCart('Yogurt', item.preset.weight, 'rs', item.preset.amount, yogurtRatePerKg)}
-                          className="border border-[#FDE68A] bg-[#FEF3C7]/40 hover:bg-[#FEF3C7] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-[#FDE68A] dark:border-[#3d2f12] bg-[#FEF3C7]/40 dark:bg-[#2a1f0a] hover:bg-[#FEF3C7] dark:hover:bg-[#3d2f12] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
                         >
-                          <div className="font-black text-[#166534] text-lg">{item.preset.label}</div>
-                          <div className="text-xs text-[#78350F] font-bold mt-1">{item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}</div>
+                          <div className="font-black text-[#166534] dark:text-[#fcd34d] text-lg">{item.preset.label}</div>
+                          <div className="text-xs text-[#78350F] dark:text-[#fcd34d]/80 font-bold mt-1">{item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}</div>
                         </button>
                       );
                     });
@@ -888,7 +888,7 @@ export const POS: React.FC = () => {
 
       {/* Right Panel - Current Bill / Khata customer picker */}
       <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-4 min-h-0">
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden min-h-[520px] md:min-h-0">
+        <div className="flex-1 bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden min-h-[520px] md:min-h-0">
 
           {showKhataPicker ? (
             <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">
@@ -907,13 +907,13 @@ export const POS: React.FC = () => {
                     value={khataFilter}
                     onChange={(e) => setKhataFilter(e.target.value)}
                     placeholder="Filter by name or phone…"
-                    className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
+                    className="w-full pl-10 pr-3 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl text-sm font-medium text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e]"
                     autoFocus
                   />
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar bg-white min-h-0">
+              <div className="flex-1 overflow-y-auto custom-scrollbar bg-white dark:bg-[#1a2e1f] min-h-0">
                 {khataLoading && (
                   <div className="h-full flex items-center justify-center text-sm text-slate-400">
                     Loading customers…
@@ -986,7 +986,7 @@ export const POS: React.FC = () => {
                     setKhataFilter('');
                     setCheckoutError(null);
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-[#FEF3C7]/40 hover:text-[#166534] text-sm font-bold transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-600 dark:text-[#e2f5e8] hover:bg-[#FEF3C7]/40 dark:hover:bg-[#1a2e1f] hover:text-[#166534] dark:hover:text-[#22c55e] text-sm font-bold transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Back to Cash
@@ -1049,30 +1049,30 @@ export const POS: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-50 min-h-0">
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-50 dark:bg-[#142119] min-h-0">
                 {cart.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                  <div className="h-full flex items-center justify-center text-slate-400 dark:text-[#64916e] text-sm">
                     No items added yet
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {cart.map((item) => (
-                      <div key={item.id} className="bg-white p-3 rounded-xl border border-slate-200 flex items-center gap-3 group shadow-sm">
-                        <div className="font-bold text-slate-800 text-sm w-16">{item.name}</div>
-                        <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 focus-within:border-[#166534] focus-within:ring-1 focus-within:ring-[#166534]">
+                      <div key={item.id} className="bg-white dark:bg-[#1e3124] p-3 rounded-xl border border-slate-200 dark:border-[#2d4a35] flex items-center gap-3 group shadow-sm">
+                        <div className="font-bold text-slate-800 dark:text-[#e2f5e8] text-sm w-16">{item.name}</div>
+                        <div className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-lg px-2 py-1.5 focus-within:border-[#166534] dark:focus-within:border-[#22c55e] focus-within:ring-1 focus-within:ring-[#166534]">
                           <input
                             type="number"
                             value={item.quantity === 0 ? '' : Number(item.quantity.toFixed(3))}
                             onChange={(e) => updateCartItemQuantity(item.id, e.target.value)}
-                            className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none text-right"
+                            className="w-full bg-transparent text-sm font-bold text-slate-800 dark:text-[#e2f5e8] focus:outline-none text-right"
                             step="0.001"
                           />
-                          <span className="text-xs text-slate-500 font-medium whitespace-nowrap">{item.unit}</span>
+                          <span className="text-xs text-slate-500 dark:text-[#64916e] font-medium whitespace-nowrap">{item.unit}</span>
                         </div>
-                        <div className="font-bold text-slate-800 w-24 text-right tabular-nums">Rs. {item.total.toFixed(2)}</div>
+                        <div className="font-bold text-slate-800 dark:text-[#e2f5e8] w-24 text-right tabular-nums">Rs. {item.total.toFixed(2)}</div>
                         <button
                           onClick={() => removeFromCart(item.id)}
-                          className="text-slate-400 hover:text-rose-500 transition-colors p-1"
+                          className="text-slate-400 dark:text-[#64916e] hover:text-rose-500 transition-colors p-1"
                         >
                           <X className="w-5 h-5" />
                         </button>
@@ -1082,7 +1082,7 @@ export const POS: React.FC = () => {
                 )}
               </div>
 
-              <div className="p-5 border-t border-slate-100 bg-white">
+              <div className="p-5 border-t border-slate-100 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f]">
                 {heldCarts.length > 0 && (
                   <div className="mb-4 rounded-xl border border-[#FDE68A] bg-[#FEF3C7]/50 p-3">
                     <div className="mb-2 flex items-center justify-between">
@@ -1093,7 +1093,7 @@ export const POS: React.FC = () => {
                       {heldCarts.map((heldCart) => (
                         <div
                           key={heldCart.id}
-                          className="flex w-full items-center justify-between rounded-lg border border-[#FDE68A] bg-white px-2.5 py-2 hover:border-[#fcd34d]"
+                          className="flex w-full items-center justify-between rounded-lg border border-[#FDE68A] dark:border-[#3d2f12] bg-white dark:bg-[#142119] px-2.5 py-2 hover:border-[#fcd34d] dark:hover:border-[#524018]"
                         >
                           <button
                             type="button"
@@ -1125,22 +1125,22 @@ export const POS: React.FC = () => {
                   </div>
                 )}
                 <div className="flex justify-between items-center mb-2">
-                  <div className="text-sm font-medium text-slate-600">Subtotal:</div>
-                  <div className="text-sm font-bold text-slate-800">Rs. {subtotal.toFixed(2)}</div>
+                  <div className="text-sm font-medium text-slate-600 dark:text-[#a7c4ae]">Subtotal:</div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">Rs. {subtotal.toFixed(2)}</div>
                 </div>
 
                 {isDiscountOpen ? (
-                  <div className="flex justify-between items-center mb-4 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                    <div className="text-sm font-medium text-slate-600">Discount (Rs):</div>
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-md px-2 py-1 focus-within:border-[#166534] focus-within:ring-1 focus-within:ring-[#166534]">
+                  <div className="flex justify-between items-center mb-4 bg-slate-50 dark:bg-[#142119] p-2 rounded-lg border border-slate-200 dark:border-[#2d4a35]">
+                    <div className="text-sm font-medium text-slate-600 dark:text-[#a7c4ae]">Discount (Rs):</div>
+                    <div className="flex items-center gap-2 bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] rounded-md px-2 py-1 focus-within:border-[#166534] dark:focus-within:border-[#22c55e] focus-within:ring-1 focus-within:ring-[#166534]">
                       <input
                         type="number"
                         value={discount === 0 ? '' : discount}
                         onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                        className="w-16 text-sm text-right bg-transparent focus:outline-none font-bold text-slate-800"
+                        className="w-16 text-sm text-right bg-transparent focus:outline-none font-bold text-slate-800 dark:text-[#e2f5e8]"
                         placeholder="0"
                       />
-                      <button onClick={() => setIsDiscountOpen(false)} className="text-slate-400 hover:text-slate-600 p-0.5">
+                      <button onClick={() => setIsDiscountOpen(false)} className="text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae] p-0.5">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -1148,18 +1148,18 @@ export const POS: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => setIsDiscountOpen(true)}
-                    className="text-xs text-[#166534] hover:text-[#14532d] font-bold mb-4 flex items-center gap-1"
+                    className="text-xs text-[#166534] dark:text-[#22c55e] hover:text-[#14532d] dark:hover:text-[#86efac] font-bold mb-4 flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" /> Add Discount
                   </button>
                 )}
 
                 <div className="flex justify-between items-end mb-4">
-                  <div className="text-sm font-bold text-slate-800 tracking-wider">TOTAL</div>
-                  <div className="text-3xl font-black text-[#166534]">Rs. {finalTotal.toFixed(2)}</div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8] tracking-wider">TOTAL</div>
+                  <div className="text-3xl font-black text-[#166534] dark:text-[#22c55e]">Rs. {finalTotal.toFixed(2)}</div>
                 </div>
 
-                <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+                <div className="flex bg-slate-100 dark:bg-[#142119] p-1 rounded-xl mb-4">
                   {(['cash', 'online', 'split', 'khata'] as const).map((method) => (
                     <button
                       key={method}
@@ -1175,8 +1175,8 @@ export const POS: React.FC = () => {
                         }
                       }}
                       className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${paymentMethod === method
-                        ? 'bg-[#166534] text-white shadow-sm'
-                        : 'text-slate-600 hover:bg-[#FEF3C7]/60 hover:text-[#166534]'
+                        ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-sm'
+                        : 'text-slate-600 dark:text-[#a7c4ae] hover:bg-[#FEF3C7]/60 dark:hover:bg-[#22c55e]/15 hover:text-[#166534] dark:hover:text-[#22c55e]'
                         }`}
                     >
                       {method}
@@ -1196,7 +1196,7 @@ export const POS: React.FC = () => {
                         value={splitPaidAmount}
                         onChange={(e) => setSplitPaidAmount(e.target.value)}
                         placeholder={`Less than ${finalTotal.toFixed(0)}`}
-                        className="mt-1 w-full px-3 py-2 bg-white border border-[#FDE68A] rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
+                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-[#142119] border border-[#FDE68A] dark:border-[#3d2f12] rounded-lg text-sm font-bold text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e]"
                       />
                       {splitPaidAmount && !Number.isNaN(parseFloat(splitPaidAmount)) && (
                         <p className="text-[11px] text-[#78350F] mt-1 font-semibold">
@@ -1214,7 +1214,7 @@ export const POS: React.FC = () => {
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder="Customer name"
-                        className="mt-1 w-full px-3 py-2 bg-white border border-[#FDE68A] rounded-lg text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
+                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-[#142119] border border-[#FDE68A] dark:border-[#3d2f12] rounded-lg text-sm font-medium text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e]"
                       />
                     </div>
                     <div>
@@ -1226,7 +1226,7 @@ export const POS: React.FC = () => {
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         placeholder="e.g. 0300-1234567"
-                        className="mt-1 w-full px-3 py-2 bg-white border border-[#FDE68A] rounded-lg text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#166534]"
+                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-[#142119] border border-[#FDE68A] dark:border-[#3d2f12] rounded-lg text-sm font-medium text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e]"
                       />
                     </div>
                   </div>
@@ -1262,14 +1262,14 @@ export const POS: React.FC = () => {
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Name (optional)"
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#166534]"
+                      className="px-3 py-2 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-lg text-xs font-medium text-slate-700 dark:text-[#e2f5e8] focus:outline-none focus:ring-1 focus:ring-[#166534]"
                     />
                     <input
                       type="text"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="Phone (optional)"
-                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#166534]"
+                      className="px-3 py-2 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-lg text-xs font-medium text-slate-700 dark:text-[#e2f5e8] focus:outline-none focus:ring-1 focus:ring-[#166534]"
                     />
                   </div>
                 )}
@@ -1313,7 +1313,7 @@ export const POS: React.FC = () => {
                             data: bytes,
                           }).catch((e) => console.error('[PRINT] Manual reprint failed:', e));
                         }}
-                        className="ml-2 px-3 py-1 bg-white border border-[#BBF7D0] text-[#166534] hover:bg-[#F0FDF4] rounded shadow-sm text-xs font-semibold"
+                        className="ml-2 px-3 py-1 bg-white dark:bg-[#142119] border border-[#BBF7D0] dark:border-[#2d4a35] text-[#166534] dark:text-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1a2e1f] rounded shadow-sm text-xs font-semibold"
                       >
                         🖨 Reprint
                       </button>

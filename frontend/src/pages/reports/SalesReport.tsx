@@ -29,6 +29,7 @@ import {
   ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { Pagination } from '../../components/common/Pagination';
+import { useChartTheme } from '../../hooks/useChartTheme';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6'];
 
@@ -143,6 +144,7 @@ const EMPTY_ANALYTICS: SalesReportAnalytics = {
 };
 
 export const SalesReport: React.FC = () => {
+  const { grid, axis, tooltipStyle, tooltipLabelStyle } = useChartTheme();
   const [filter, setFilter] = useState<DateFilterType>(getThisWeekFilter);
   const [isLoading, setIsLoading] = useState(false);
   const [sales, setSales] = useState<SaleRecord[]>([]);
@@ -316,13 +318,13 @@ export const SalesReport: React.FC = () => {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
-            <SummaryCard title="Net Sales" value={fmt(summary.netSales)} icon={DollarSign} valueColor="text-emerald-600" />
+            <SummaryCard title="Net Sales" value={fmt(summary.netSales)} icon={DollarSign} valueColor="text-emerald-600 dark:text-emerald-400" />
 
-            <SummaryCard title="Cash (Walk-in)" value={fmt(summary.cashSales)} icon={Banknote} valueColor="text-emerald-600" />
+            <SummaryCard title="Cash (Walk-in)" value={fmt(summary.cashSales)} icon={Banknote} valueColor="text-emerald-600 dark:text-emerald-400" />
 
-            <SummaryCard title="Online (Walk-in)" value={fmt(summary.onlineSales)} icon={MonitorSmartphone} valueColor="text-purple-600" />
+            <SummaryCard title="Online (Walk-in)" value={fmt(summary.onlineSales)} icon={MonitorSmartphone} valueColor="text-purple-600 dark:text-purple-400" />
 
-            <SummaryCard title="Split Bills" value={fmt(summary.splitSales)} icon={CreditCard} valueColor="text-amber-600" />
+            <SummaryCard title="Split Bills" value={fmt(summary.splitSales)} icon={CreditCard} valueColor="text-amber-600 dark:text-amber-400" />
 
             <SummaryCard title="Total Bills" value={summary.totalBills} icon={ReceiptText} />
 
@@ -331,16 +333,14 @@ export const SalesReport: React.FC = () => {
 
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-1">Sales Trend</h3>
 
-            <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
-
-              <h3 className="font-bold text-slate-800 mb-1">Sales Trend</h3>
-
-              <p className="text-[10px] text-slate-400 mb-3 uppercase tracking-wider">{filter.label}</p>
+              <p className="text-[10px] text-slate-400 dark:text-[#8ba895] mb-3 uppercase tracking-wider">{filter.label}</p>
 
               {analytics.trend.length === 0 ? (
 
-                <div className="h-[220px] flex items-center justify-center text-sm text-slate-400">
+                <div className="h-[220px] flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
 
                   No sales in this period.
 
@@ -352,13 +352,13 @@ export const SalesReport: React.FC = () => {
 
                   <LineChart data={analytics.trend}>
 
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={grid} />
 
-                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="label" stroke={axis} fontSize={10} tickLine={false} axisLine={false} />
 
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `Rs.${v / 1000}k`} />
+                    <YAxis stroke={axis} fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `Rs.${v / 1000}k`} />
 
-                    <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v).toLocaleString()}`} />
+                    <RechartsTooltip formatter={(v: any) => `Rs. ${Number(v).toLocaleString()}`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
 
                     <Line type="monotone" dataKey="value" name="Net Sales" stroke="#3B82F6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
 
@@ -372,15 +372,14 @@ export const SalesReport: React.FC = () => {
 
 
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[300px]">
+            <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-1">Payment Methods</h3>
 
-              <h3 className="font-bold text-slate-800 mb-1">Payment Methods</h3>
-
-              <p className="text-[10px] text-slate-400 mb-3 uppercase tracking-wider">{filter.label}</p>
+              <p className="text-[10px] text-slate-400 dark:text-[#8ba895] mb-3 uppercase tracking-wider">{filter.label}</p>
 
               {analytics.paymentMethods.length === 0 ? (
 
-                <div className="h-[220px] flex items-center justify-center text-sm text-slate-400">
+                <div className="h-[220px] flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
 
                   No payment data in this period.
 
@@ -413,13 +412,17 @@ export const SalesReport: React.FC = () => {
 
                     </Pie>
 
-                    <RechartsTooltip formatter={(v: any, _name: any, props: any) => {
+                    <RechartsTooltip
+                      formatter={(v: any, _name: any, props: any) => {
 
                       const amount = props?.payload?.amount ?? 0;
 
                       return [`${v}% (Rs. ${Number(amount).toLocaleString()})`, props?.payload?.name];
 
-                    }} />
+                    }}
+                      contentStyle={tooltipStyle}
+                      labelStyle={tooltipLabelStyle}
+                    />
 
                     <Legend verticalAlign="bottom" height={36} />
 
@@ -433,75 +436,48 @@ export const SalesReport: React.FC = () => {
 
 
 
-            <div className="xl:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-[280px]">
-
-              <h3 className="font-bold text-slate-800 mb-1">Sales by Category</h3>
-
-              <p className="text-[10px] text-slate-400 mb-3 uppercase tracking-wider">{filter.label}</p>
-
+            <div className="xl:col-span-3 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[280px]">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8] mb-1">Sales by Category</h3>
+              <p className="text-[10px] text-slate-400 dark:text-[#8ba895] mb-3 uppercase tracking-wider">{filter.label}</p>
               {analytics.categoryBreakdown.length === 0 ? (
-
-                <div className="h-[200px] flex items-center justify-center text-sm text-slate-400">
-
+                <div className="h-[200px] flex items-center justify-center text-sm text-slate-400 dark:text-[#64916e]">
                   No category data in this period.
-
                 </div>
-
               ) : (
-
                 <ResponsiveContainer width="100%" height={200}>
-
                   <BarChart data={analytics.categoryBreakdown}>
-
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-
-                    <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-
-                    <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-
-                    <RechartsTooltip formatter={(v: any, _name: any, props: any) => {
-
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={grid} />
+                    <XAxis dataKey="label" stroke={axis} fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke={axis} fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                    <RechartsTooltip
+                      formatter={(v: any, _name: any, props: any) => {
                       const amount = props?.payload?.amount ?? 0;
-
                       return [`${v}% (Rs. ${Number(amount).toLocaleString()})`, props?.payload?.label];
-
-                    }} />
-
+                    }}
+                      contentStyle={tooltipStyle}
+                      labelStyle={tooltipLabelStyle}
+                    />
                     <Bar dataKey="value" name="Percentage" radius={[4, 4, 0, 0]}>
-
                       {analytics.categoryBreakdown.map((_, i) => (
-
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
-
                       ))}
-
                     </Bar>
-
                   </BarChart>
-
                 </ResponsiveContainer>
-
               )}
-
             </div>
-
           </div>
 
-
-
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-
-            <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center">
-
-              <h3 className="font-bold text-slate-800">Sales History</h3>
-
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2d4a35] flex justify-between items-center">
+              <h3 className="font-bold text-slate-800 dark:text-[#e2f5e8]">Sales History</h3>
             </div>
 
             <div className="overflow-x-auto">
 
               <table className="w-full text-left border-collapse min-w-[900px]">
 
-                <thead className="bg-slate-50 sticky top-0">
+                <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0">
 
                   <tr>
 
@@ -529,7 +505,7 @@ export const SalesReport: React.FC = () => {
 
                     ].map((h) => (
 
-                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase">
+                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-[#a7c4ae] uppercase">
 
                         {h}
 
@@ -541,70 +517,70 @@ export const SalesReport: React.FC = () => {
 
                 </thead>
 
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
 
                   {sales
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((s) => {
                     const pay = paymentLabel(s);
                     return (
-                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-blue-600">
+                      <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400">
                           {toInvoiceNo(s.id)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">
                           <div>{new Date(s.createdAt).toLocaleDateString()}</div>
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-slate-400 dark:text-[#64916e]">
                             {new Date(s.createdAt).toLocaleTimeString([], {
                               hour: '2-digit',
                               minute: '2-digit',
                             })}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-700">
+                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">
                           <div>
                             {saleCustomerLabel(s)}
                           </div>
                           {(s.customerPhone || s.customer?.phone) && (
-                            <div className="text-xs text-slate-400">{s.customerPhone || s.customer?.phone}</div>
+                            <div className="text-xs text-slate-400 dark:text-[#64916e]">{s.customerPhone || s.customer?.phone}</div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 max-w-[220px]">
+                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-[#a7c4ae] max-w-[220px]">
                           <div className="truncate" title={productsLabel(s)}>
                             {productsLabel(s)}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">
                           {saleTypeLabel(s.saleType)}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
                               pay === 'Cash'
-                                ? 'bg-emerald-100 text-emerald-700'
+                                ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                                 : pay === 'Online'
-                                  ? 'bg-purple-100 text-purple-700'
+                                  ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400'
                                   : pay === 'Split'
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-blue-100 text-blue-700'
+                                    ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400'
+                                    : 'bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400'
                             }`}
                           >
                             {pay}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-500">{fmt(s.totalAmount)}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{fmt(s.paidAmount)}</td>
-                        <td className="px-4 py-3 text-sm text-rose-600 font-medium">
+                        <td className="px-4 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{fmt(s.totalAmount)}</td>
+                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{fmt(s.paidAmount)}</td>
+                        <td className="px-4 py-3 text-sm text-rose-600 dark:text-rose-400 font-medium">
                           {s.remainingBalance > 0 ? fmt(s.remainingBalance) : 'Not Available'}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
                               s.status === 'paid'
-                                ? 'bg-emerald-100 text-emerald-700'
+                                ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                                 : s.status === 'partial'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-slate-100 text-slate-600'
+                                  ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400'
+                                  : 'bg-slate-100 dark:bg-[#142119] text-slate-600 dark:text-[#a7c4ae]'
                             }`}
                           >
                             {statusLabel(s.status)}
@@ -615,7 +591,7 @@ export const SalesReport: React.FC = () => {
                   })}
                   {sales.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">
+                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400 dark:text-[#64916e] text-sm">
                         No sales found for the selected period. Complete a sale from POS to see it here.
                       </td>
                     </tr>

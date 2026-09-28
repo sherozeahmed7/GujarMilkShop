@@ -9,7 +9,7 @@ export const SummaryCards: React.FC = () => {
   return (
     <div className="grid grid-cols-3 gap-4">
       {/* Opening Balance */}
-      <div className="bg-white border-2 border-blue-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+      <div className="bg-white dark:bg-[#1a2e1f] border-2 border-blue-100 dark:border-[#2d4a35] rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
         <div className="absolute -right-4 -bottom-4 opacity-5 text-blue-500">
           <Wallet className="w-24 h-24" />
         </div>
@@ -18,7 +18,7 @@ export const SummaryCards: React.FC = () => {
       </div>
 
       {/* Cash In */}
-      <div className="bg-white border-2 border-emerald-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+      <div className="bg-white dark:bg-[#1a2e1f] border-2 border-emerald-100 dark:border-[#2d4a35] rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
         <div className="absolute -right-4 -bottom-4 opacity-5 text-emerald-500">
           <TrendingUp className="w-24 h-24" />
         </div>
@@ -27,7 +27,7 @@ export const SummaryCards: React.FC = () => {
       </div>
 
       {/* Cash Out */}
-      <div className="bg-white border-2 border-rose-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+      <div className="bg-white dark:bg-[#1a2e1f] border-2 border-rose-100 dark:border-[#2d4a35] rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
         <div className="absolute -right-4 -bottom-4 opacity-5 text-rose-500">
           <TrendingDown className="w-24 h-24" />
         </div>
