@@ -39,11 +39,24 @@ async function resolveLocalId(
 ): Promise<number | null> {
   const localDeviceId = process.env.DEVICE_ID || require('../utils/deviceId').getDeviceId();
 
-  // 1. Existing LocalToCloudMapping by cloud UUID
-  const ownMapping = await tx.localToCloudMapping.findFirst({
-    where: { entityType, cloudUuid }
-  });
-  if (ownMapping) return ownMapping.localId;
+  // 1. Direct business table embedded cloudUuid resolution (Phase 6 target)
+  try {
+    const rows: any[] = await tx.$queryRawUnsafe(
+      `SELECT "id" FROM "${entityType}" WHERE "cloudUuid" = ?`,
+      cloudUuid
+    );
+    if (rows.length > 0 && rows[0]?.id != null) {
+      return Number(rows[0].id);
+    }
+  } catch (_) {}
+
+  // 2. Compatibility fallback to LocalToCloudMapping if table exists
+  try {
+    const ownMapping = await tx.localToCloudMapping?.findFirst?.({
+      where: { entityType, cloudUuid }
+    });
+    if (ownMapping) return ownMapping.localId;
+  } catch (_) {}
 
   // 2. Safe mapping healing specifically for InventoryProduct
   if (entityType === 'InventoryProduct') {
@@ -153,6 +166,14 @@ async function resolveIdentityForReconciliation(
   // 2. Strict entity-specific reconciliation
   const p = snakeToCamel(payload || {});
 
+  if (entityType === 'Customer' && p.customerType === 'walk_in') {
+    const customer = await tx.customer.findFirst({
+      where: { customerType: 'walk_in' },
+      orderBy: { id: 'asc' },
+    });
+    if (customer) return customer.id;
+  }
+
   // Shift: Do NOT match by shiftDate alone, as multiple shifts can occur on the same date.
   // Shifts are identified strictly by (deviceId, localId) mapping or cloud UUID.
   if (entityType === 'Shift') {
@@ -183,18 +204,31 @@ async function ensureMapping(
   cloudUuid: string,
   deviceId: string
 ): Promise<void> {
-  // Use upsert to handle the case where the mapping may already exist
-  await tx.localToCloudMapping.upsert({
-    where: {
-      deviceId_entityType_localId: {
-        deviceId,
-        entityType,
-        localId
-      }
-    },
-    update: { cloudUuid },
-    create: { deviceId, entityType, localId, cloudUuid }
-  });
+  // 1. Direct embedded cloudUuid update on business table
+  try {
+    await tx.$executeRawUnsafe(
+      `UPDATE "${entityType}" SET "cloudUuid" = ? WHERE "id" = ? AND ("cloudUuid" IS NULL OR "cloudUuid" = '')`,
+      cloudUuid,
+      localId
+    );
+  } catch (_) {}
+
+  // 2. Compatibility update on localToCloudMapping if model exists
+  try {
+    if (tx.localToCloudMapping?.upsert) {
+      await tx.localToCloudMapping.upsert({
+        where: {
+          deviceId_entityType_localId: {
+            deviceId,
+            entityType,
+            localId
+          }
+        },
+        update: { cloudUuid },
+        create: { deviceId, entityType, localId, cloudUuid }
+      });
+    }
+  } catch (_) {}
 }
 
 // -----------------------------------------------------------------------
@@ -211,13 +245,13 @@ const TRANSACTION_ENTITIES = new Set([
   'InventoryMovement',
   'Expense', 'ExpensePayment',
   'Return', 'ReturnItem',
-  'MilkProductTransaction', 'ButterGheeConversion',
+  'ButterGheeConversion',
   'Shift'
 ]);
 
-// F2 daily stock IS synced via UPSERT; audit/held carts stay local
+// Held carts are device-local drafts and are intentionally not replicated.
 const SKIP_ENTITIES = new Set([
-  'AuditRecord', 'HeldCart'
+  'HeldCart'
 ]);
 
 // -----------------------------------------------------------------------
@@ -493,6 +527,7 @@ async function applyCreate(
           paidAmount: Number(p.paidAmount ?? 0),
           remainingBalance: Number(p.remainingBalance ?? 0),
           status: p.status ?? 'paid',
+          tokenNumber: Number(p.tokenNumber ?? 0),
           createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
         }
       });
@@ -621,11 +656,14 @@ async function applyCreate(
         ? await resolveLocalId(tx, 'Expense', p.expenseUuid, sourceDeviceId)
         : null;
       if (!expenseLocalId) throw new Error(`Cannot apply ExpensePayment: missing Expense mapping`);
+      const shiftLocalId = p.shiftUuid
+        ? await resolveLocalId(tx, 'Shift', p.shiftUuid, sourceDeviceId)
+        : null;
       const rec = await tx.expensePayment.create({
         data: {
           expenseId: expenseLocalId,
           amount: Number(p.amount),
-          shiftId: null,
+          shiftId: shiftLocalId,
           date: p.date,
           addedBy: p.addedBy ?? 'sync',
           createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
@@ -641,6 +679,9 @@ async function applyCreate(
       if (!productLocalId) throw new Error(`Cannot apply InventoryMovement: missing InventoryProduct mapping`);
       const supplierLocalId = p.supplierUuid
         ? await resolveLocalId(tx, 'Supplier', p.supplierUuid, sourceDeviceId, p)
+        : null;
+      const shiftLocalId = p.shiftUuid
+        ? await resolveLocalId(tx, 'Shift', p.shiftUuid, sourceDeviceId, p)
         : null;
 
       if (p.reference) {
@@ -662,25 +703,11 @@ async function applyCreate(
           reference: p.reference,
           unitCost: p.unitCost != null ? Number(p.unitCost) : null,
           supplierId: supplierLocalId,
-          shiftId: null,
+          shiftId: shiftLocalId,
           date: p.date ? new Date(p.date) : new Date(),
         }
       });
       await ensureMapping(tx, 'InventoryMovement', rec.id, cloudUuid, localDeviceId);
-      break;
-    }
-    case 'MilkProductTransaction': {
-      const rec = await tx.milkProductTransaction.create({
-        data: {
-          date: p.date ? new Date(p.date) : new Date(),
-          product: p.product,
-          type: p.type,
-          quantity: Number(p.quantity),
-          reference: p.reference ?? null,
-          notes: p.notes ?? null,
-        }
-      });
-      await ensureMapping(tx, 'MilkProductTransaction', rec.id, cloudUuid, localDeviceId);
       break;
     }
     case 'ButterGheeConversion': {
@@ -696,9 +723,12 @@ async function applyCreate(
       break;
     }
     case 'Return': {
+      const saleLocalId = p.saleUuid
+        ? await resolveLocalId(tx, 'Sale', p.saleUuid, sourceDeviceId)
+        : null;
       const rec = await tx.return.create({
         data: {
-          saleId: null, // we don't resolve original sale cross-device for returns
+          saleId: saleLocalId,
           billNumber: p.billNumber,
           date: p.date,
           customer: p.customer,
@@ -730,6 +760,82 @@ async function applyCreate(
         }
       });
       await ensureMapping(tx, 'ReturnItem', rec.id, cloudUuid, localDeviceId);
+      break;
+    }
+    case 'AuditRecord': {
+      const asJsonString = (value: unknown) => typeof value === 'string' ? value : JSON.stringify(value ?? []);
+      const rec = await tx.auditRecord.create({
+        data: {
+          auditDate: p.auditDate,
+          executedAt: p.executedAt ? new Date(p.executedAt) : new Date(),
+          totalPosBills: Number(p.totalPosBills),
+          collectedReceipts: Number(p.collectedReceipts),
+          matched: asJsonString(p.matched),
+          missing: asJsonString(p.missing),
+          extra: asJsonString(p.extra),
+          duplicates: asJsonString(p.duplicates),
+          status: p.status,
+          notes: p.notes ?? '',
+          auditedBy: p.auditedBy,
+          createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
+        }
+      });
+      await ensureMapping(tx, 'AuditRecord', rec.id, cloudUuid, localDeviceId);
+      break;
+    }
+    case 'CashPerson': {
+      const rec = await tx.cashPerson.create({
+        data: {
+          name: p.name,
+          phone: p.phone ?? null,
+          address: p.address ?? null,
+          type: p.type,
+          description: p.description ?? null,
+          openingBalance: Number(p.openingBalance ?? 0),
+          customerType: p.customerType,
+          status: p.status ?? 'Active',
+          createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
+        }
+      });
+      await ensureMapping(tx, 'CashPerson', rec.id, cloudUuid, localDeviceId);
+      break;
+    }
+    case 'CashbookTransaction': {
+      const cashPersonLocalId = p.cashPersonUuid
+        ? await resolveLocalId(tx, 'CashPerson', p.cashPersonUuid, sourceDeviceId)
+        : null;
+      if (!cashPersonLocalId) throw new Error('Cannot apply CashbookTransaction: missing CashPerson mapping');
+      const rec = await tx.cashbookTransaction.create({
+        data: {
+          cashPersonId: cashPersonLocalId,
+          cashPersonName: p.cashPersonName,
+          transactionType: p.transactionType,
+          amount: Number(p.amount),
+          description: p.description ?? null,
+          date: p.date,
+          createdBy: p.createdBy ?? 'Admin',
+          createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
+        }
+      });
+      await ensureMapping(tx, 'CashbookTransaction', rec.id, cloudUuid, localDeviceId);
+      break;
+    }
+    case 'ActivityLog': {
+      const rec = await tx.activityLog.create({
+        data: {
+          timestamp: p.timestamp ? new Date(p.timestamp) : new Date(),
+          user: p.user,
+          userRole: p.userRole,
+          action: p.action,
+          module: p.module,
+          description: p.description,
+          entityId: p.entityId ?? null,
+          ip: p.ip ?? null,
+          status: p.status,
+          createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
+        }
+      });
+      await ensureMapping(tx, 'ActivityLog', rec.id, cloudUuid, localDeviceId);
       break;
     }
     case 'Shift': {
@@ -832,6 +938,21 @@ async function applyUpdate(
         });
         break;
       }
+      case 'CashPerson':
+        await tx.cashPerson.update({
+          where: { id: localId },
+          data: {
+            name: p.name,
+            phone: p.phone ?? null,
+            address: p.address ?? null,
+            type: p.type,
+            description: p.description ?? null,
+            openingBalance: Number(p.openingBalance ?? 0),
+            customerType: p.customerType,
+            status: p.status ?? 'Active',
+          }
+        });
+        break;
       // Transactions: UPDATE is allowed for status changes only (e.g. Sale paid off)
       case 'Sale':
         await tx.sale.update({
@@ -840,6 +961,7 @@ async function applyUpdate(
             paidAmount: Number(p.paidAmount ?? 0),
             remainingBalance: Number(p.remainingBalance ?? 0),
             status: p.status,
+            tokenNumber: p.tokenNumber != null ? Number(p.tokenNumber) : undefined,
           }
         });
         break;
@@ -1064,11 +1186,28 @@ export async function processDownstreamSync(): Promise<void> {
 
   } catch (err: any) {
     console.error('[Downstream] Worker error:', err.message);
+    
+    let errorMsg = err.message;
+
+    // Detect our custom 410 Gone / restoreRequired response
+    if (err.response?.status === 410 && err.response?.data?.restoreRequired) {
+      console.error('[Downstream] 🚨 SYNC_HISTORY_EXPIRED: The local cursor is too old and history was deleted.');
+      console.error('[Downstream] 🚨 A full manual Restore is required.');
+      errorMsg = 'RESTORE_REQUIRED: ' + (err.response.data.error || 'Sync history expired');
+      // Turn off downstream sync locally so it stops hammering the server until fixed
+      try {
+        await prisma.cloudSyncSettings.update({
+          where: { id: 1 },
+          data: { downstreamEnabled: false }
+        });
+      } catch (e) { /* ignore */ }
+    }
+
     // Network/API errors: record but don't advance cursor
     try {
       await prisma.downstreamSyncState.updateMany({
         where: { id: 1 },
-        data: { lastError: err.message }
+        data: { lastError: errorMsg }
       });
     } catch { /* ignore secondary error */ }
   } finally {

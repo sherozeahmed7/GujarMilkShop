@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Info } from 'lucide-react';
 import { Product } from '../../types/inventory';
 import { inventoryService } from '../../services/inventoryService';
 
@@ -21,21 +21,46 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  // When true the price fields were auto-filled from live data and are informational
+  const [priceLocked, setPriceLocked] = useState(false);
+  const [pricingNote, setPricingNote] = useState('');
 
   useEffect(() => {
     const name = formData.name.trim();
     if (!name) {
-      setFormData((current) => ({ ...current, cost: '', sellPrice: '' }));
+      setPriceLocked(false);
+      setPricingNote('');
       return;
     }
     const timer = window.setTimeout(async () => {
       try {
         const pricing = await inventoryService.getPricing(name);
-        setFormData((current) => ({ ...current, cost: pricing.averageCost ? String(pricing.averageCost) : '', sellPrice: pricing.sellingPrice ? String(pricing.sellingPrice) : '' }));
-        setErrors((current) => ({ ...current, cost: pricing.averageCost ? '' : 'No supplier cost available', sellPrice: pricing.sellingPrice ? '' : 'Selling price is not configured in Daily Rates' }));
+        const hasDynamicSell  = (pricing.sellingPrice || 0) > 0;
+        const hasDynamicCost  = (pricing.averageCost  || 0) > 0;
+
+        setFormData((current) => ({
+          ...current,
+          sellPrice: hasDynamicSell ? String(pricing.sellingPrice) : current.sellPrice,
+          cost:      hasDynamicCost  ? String(pricing.averageCost)  : current.cost,
+        }));
+
+        // Lock the field only when we have a live DailyRate-backed price
+        setPriceLocked(hasDynamicSell);
+
+        if (hasDynamicSell) {
+          setPricingNote('Sell price is auto-set from Daily Rates. Cost price is auto-set from supplier data.');
+        } else {
+          setPricingNote('No rate found in Daily Rates for this product name. Please enter prices manually.');
+        }
+
+        setErrors((current) => ({
+          ...current,
+          cost:      hasDynamicCost  ? '' : '',
+          sellPrice: hasDynamicSell  ? '' : '',
+        }));
       } catch {
-        setFormData((current) => ({ ...current, cost: '', sellPrice: '' }));
-        setErrors((current) => ({ ...current, cost: 'Supplier cost unavailable', sellPrice: 'Selling price is not configured in Daily Rates' }));
+        setPriceLocked(false);
+        setPricingNote('Could not load pricing. Please enter prices manually.');
       }
     }, 300);
     return () => window.clearTimeout(timer);
@@ -46,12 +71,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
     if (!formData.name) newErrors.name = 'Name is required';
     if (!formData.code) newErrors.code = 'Code is required';
     if (!formData.unit) newErrors.unit = 'Unit is required';
-    
-    if (isNaN(Number(formData.sellPrice)) || Number(formData.sellPrice) <= 0) {
-      newErrors.sellPrice = 'Selling price is not configured in Daily Rates';
+
+    const sell = Number(formData.sellPrice);
+    const cost = Number(formData.cost);
+
+    if (isNaN(sell) || sell <= 0) {
+      newErrors.sellPrice = 'Selling price must be greater than 0';
     }
-    if (isNaN(Number(formData.cost)) || Number(formData.cost) <= 0) {
-      newErrors.cost = 'No supplier cost is available for this product';
+    if (isNaN(cost) || cost <= 0) {
+      newErrors.cost = 'Cost price must be greater than 0';
     }
 
     setErrors(newErrors);
@@ -96,30 +124,38 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="p-6 flex-1 overflow-y-auto space-y-4">
             {errors.form && <div className="rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/30 px-3 py-2 text-sm font-medium text-rose-700">{errors.form}</div>}
+
+            {pricingNote && (
+              <div className="flex items-start gap-2 rounded-lg border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-sm text-blue-700 dark:text-blue-400">
+                <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{pricingNote}</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Product Code *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({...formData, code: e.target.value})}
-                  className={`w-full border bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] ${errors.code ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase`} 
-                  placeholder="e.g. MILK" 
+                  className={`w-full border bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] ${errors.code ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase`}
+                  placeholder="e.g. MILK"
                 />
                 {errors.code && <p className="text-xs text-rose-500 mt-1">{errors.code}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Product Name *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className={`w-full border bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] ${errors.name ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`} 
-                  placeholder="e.g. Fresh Milk" 
+                  className={`w-full border bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] ${errors.name ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="e.g. Fresh Milk"
                 />
                 {errors.name && <p className="text-xs text-rose-500 mt-1">{errors.name}</p>}
               </div>
@@ -127,10 +163,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Description</label>
-              <textarea 
+              <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="w-full border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={2}
                 placeholder="Brief description..."
               />
@@ -139,7 +175,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Unit *</label>
-                <select 
+                <select
                   value={formData.unit}
                   onChange={(e) => setFormData({...formData, unit: e.target.value})}
                   className="w-full border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -151,7 +187,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Tax</label>
-                <select 
+                <select
                   value={formData.tax}
                   onChange={(e) => setFormData({...formData, tax: e.target.value})}
                   className="w-full border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -164,32 +200,42 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSav
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Cost Price *</label>
-                <input 
-                  type="number" 
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">
+                  Cost Price *
+                  {priceLocked && <span className="ml-1 text-xs text-blue-500">(from supplier data)</span>}
+                </label>
+                <input
+                  type="number"
                   step="0.01"
                   value={formData.cost}
-                  readOnly
-                  className={`w-full border ${errors.cost ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm bg-slate-100 dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] focus:outline-none`}
-                  placeholder="0.00" 
+                  onChange={(e) => setFormData({...formData, cost: e.target.value})}
+                  className={`w-full border ${errors.cost ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="0.00"
                 />
                 {errors.cost && <p className="text-xs text-rose-500 mt-1">{errors.cost}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Sell Price *</label>
-                <input 
-                  type="number" 
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">
+                  Sell Price *
+                  {priceLocked && <span className="ml-1 text-xs text-blue-500">(from Daily Rates)</span>}
+                </label>
+                <input
+                  type="number"
                   step="0.01"
                   value={formData.sellPrice}
-                  readOnly
-                  className={`w-full border ${errors.sellPrice ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm bg-slate-100 dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] focus:outline-none`}
-                  placeholder="0.00" 
+                  onChange={(e) => !priceLocked && setFormData({...formData, sellPrice: e.target.value})}
+                  readOnly={priceLocked}
+                  className={`w-full border ${errors.sellPrice ? 'border-rose-500' : 'border-slate-200 dark:border-[#2d4a35]'} rounded-lg px-3 py-2 text-sm ${priceLocked ? 'bg-slate-100 dark:bg-[#142119] cursor-not-allowed' : 'bg-white dark:bg-[#142119]'} text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="0.00"
                 />
                 {errors.sellPrice && <p className="text-xs text-rose-500 mt-1">{errors.sellPrice}</p>}
+                {priceLocked && (
+                  <p className="text-xs text-slate-400 dark:text-[#64916e] mt-1">
+                    Update this in <strong>Daily Rates</strong> to change it.
+                  </p>
+                )}
               </div>
             </div>
-
-
           </div>
 
           <div className="px-6 py-4 border-t border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] flex justify-end gap-3">

@@ -168,7 +168,7 @@ export class CustomerService {
     fromDate?: string;
     toDate?: string;
   }) {
-    const where: any = {};
+    const where: any = { customerType: { in: [...CUSTOMER_TYPES] } };
     const andFilters: any[] = [];
 
     where.status = filters?.status?.trim() || 'active';
@@ -397,8 +397,8 @@ export class CustomerService {
     }
 
     const [activeLedgerCount, walkInCount, splitCount] = await Promise.all([
-      prisma.customer.count({ where: { status: 'active' } }),
-      prisma.sale.count({ where: { saleType: 'walk_in' } }),
+      prisma.customer.count({ where: { status: 'active', customerType: { in: [...CUSTOMER_TYPES] } } }),
+      prisma.customer.count({ where: { customerType: 'walk_in', status: 'active' } }),
       prisma.sale.count({ where: { saleType: 'split' } })
     ]);
 
@@ -481,7 +481,7 @@ export class CustomerService {
 
     const [khataAccounts, outstandingAgg, collectedAgg, pendingCount, paidCount, supplierStats] =
       await Promise.all([
-        prisma.customer.count({ where: { status: 'active' } }),
+        prisma.customer.count({ where: { status: 'active', customerType: { in: [...CUSTOMER_TYPES] } } }),
         prisma.sale.aggregate({
           where: {
             saleType: { in: ['ledger_daily', 'ledger_monthly'] },
@@ -505,7 +505,7 @@ export class CustomerService {
         }),
         prisma.customer.count({
           where: {
-            status: 'active',
+            status: 'active', customerType: { in: [...CUSTOMER_TYPES] },
             sales: {
               some: {
                 status: { in: ['pending', 'partial'] },
@@ -516,7 +516,7 @@ export class CustomerService {
         }),
         prisma.customer.count({
           where: {
-            status: 'active',
+            status: 'active', customerType: { in: [...CUSTOMER_TYPES] },
             sales: {
               none: {
                 status: { in: ['pending', 'partial'] },

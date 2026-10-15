@@ -16,26 +16,18 @@ function toYMD(d: Date): string {
 
 function dateParams(filter: DateFilterType): { from: string; to: string } {
   const now = new Date();
-  if (filter.label === 'Today') {
-    const s = toYMD(now); return { from: s, to: s };
+  // Always prefer actual startDate/endDate if present — they are set by ReportFilters
+  // and represent exactly what the user selected. Only fall back to label-based computation
+  // for named presets that need to recalculate relative to "now" (Today, Yesterday, etc.).
+  if (filter.startDate && filter.endDate) {
+    return { from: toYMD(filter.startDate), to: toYMD(filter.endDate) };
   }
-  if (filter.label === 'Yesterday') {
-    const y = new Date(now); y.setDate(y.getDate() - 1);
-    const s = toYMD(y); return { from: s, to: s };
-  }
-  if (filter.label === 'This Week') {
-    const start = new Date(now);
-    start.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-    return { from: toYMD(start), to: toYMD(now) };
-  }
-  if (filter.label === 'This Month') {
-    return { from: toYMD(new Date(now.getFullYear(), now.getMonth(), 1)), to: toYMD(now) };
-  }
+  // Fallback label-based computation (e.g. for 'All Time' which has null dates)
   if (filter.label === 'All Time') {
     return { from: '2020-01-01', to: toYMD(now) };
   }
-  const from = filter.startDate ? toYMD(filter.startDate) : toYMD(now);
-  const to   = filter.endDate   ? toYMD(filter.endDate)   : toYMD(now);
+  const from = toYMD(now);
+  const to   = toYMD(now);
   return { from, to };
 }
 

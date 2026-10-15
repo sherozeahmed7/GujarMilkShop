@@ -22,7 +22,55 @@ if (!fs.existsSync(logDir)) {
 }
 const logFile = path.join(logDir, 'backend.log');
 
+const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10 MB per log segment
+const MAX_BACKUPS = 3;
+
+function rotateLogIfNeeded() {
+  try {
+    if (!fs.existsSync(logFile)) return;
+    const stats = fs.statSync(logFile);
+    if (stats.size < MAX_LOG_SIZE) return;
+
+    // If existing log is huge (> 100MB, e.g. legacy 1.63GB production log), preserve it with timestamped archive
+    if (stats.size > 100 * 1024 * 1024) {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const archivePath = path.join(logDir, `backend.archive_${stamp}.log`);
+      try {
+        fs.renameSync(logFile, archivePath);
+        return;
+      } catch (_) {
+        // If rename fails due to open Windows file handle, truncate safely or write to fresh segment
+      }
+    }
+
+    // Standard numbered rotation: backend.3.log -> removed, backend.2.log -> backend.3.log, backend.1.log -> backend.2.log, backend.log -> backend.1.log
+    for (let i = MAX_BACKUPS; i >= 1; i--) {
+      const current = path.join(logDir, `backend.${i}.log`);
+      if (i === MAX_BACKUPS && fs.existsSync(current)) {
+        fs.unlinkSync(current);
+      } else if (fs.existsSync(current)) {
+        const next = path.join(logDir, `backend.${i + 1}.log`);
+        try { fs.renameSync(current, next); } catch (_) {}
+      }
+    }
+    const backup1 = path.join(logDir, 'backend.1.log');
+    try { fs.renameSync(logFile, backup1); } catch (_) {}
+  } catch (err) {
+    // Fail silently to never crash backend bootstrap
+  }
+}
+
+// Perform check once on initial startup
+try { rotateLogIfNeeded(); } catch (_) {}
+
+let logCounter = 0;
 function writeToLog(type: string, args: any[]) {
+  logCounter++;
+  if (logCounter >= 250) {
+    logCounter = 0;
+    rotateLogIfNeeded();
+  }
+
   const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
   const line = `[${new Date().toISOString()}] [${type}] ${msg}\n`;
   try {
@@ -36,17 +84,23 @@ const originalWarn = console.warn;
 
 console.log = function (...args: any[]) {
   writeToLog('INFO', args);
-  originalLog.apply(console, args);
+  try {
+    originalLog.apply(console, args);
+  } catch (_) {}
 };
 
 console.error = function (...args: any[]) {
   writeToLog('ERROR', args);
-  originalErr.apply(console, args);
+  try {
+    originalErr.apply(console, args);
+  } catch (_) {}
 };
 
 console.warn = function (...args: any[]) {
   writeToLog('WARN', args);
-  originalWarn.apply(console, args);
+  try {
+    originalWarn.apply(console, args);
+  } catch (_) {}
 };
 
 function log(msg: string) {

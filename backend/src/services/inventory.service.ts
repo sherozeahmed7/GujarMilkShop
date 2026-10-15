@@ -1,6 +1,7 @@
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
 import { NotificationService } from './notification.service';
+import { averageInventoryCost } from '../utils/inventoryCost';
 const MOVEMENT_TYPES = ['OPENING', 'STOCK_IN', 'SALE', 'RETURN', 'WASTAGE', 'ADJUSTMENT', 'CONVERSION'];
 const money = (value: number) => Math.round(value * 100) / 100;
 
@@ -132,9 +133,11 @@ export class InventoryService {
 
   static async productView(product: any, movements: any[] = [], rate: any = null) {
     const stock = money(movements.reduce((sum, movement) => sum + movement.quantity, 0));
-    const costRows = movements.filter((movement) => movement.unitCost !== null && movement.unitCost > 0);
-    const cost = costRows.length ? money(costRows.reduce((sum, movement) => sum + movement.unitCost, 0) / costRows.length) : 0;
-    const sellPrice = rateFor(product.name, rate);
+    const cost = averageInventoryCost(movements);
+    // Standard products (milk/yogurt/lassi/butter/ghee) use the live DailyRate.
+    // All other products fall back to the stored sellPrice on the product row.
+    const dynamicRate = rateFor(product.name, rate);
+    const sellPrice = dynamicRate > 0 ? dynamicRate : (product.sellPrice || 0);
     const status = stock <= 0 ? 'Out of Stock' : stock <= product.lowStockThreshold ? 'Warning: Low' : 'In Stock';
     return { ...product, stock, cost, sellPrice, status, tags: [] };
   }
@@ -167,12 +170,39 @@ export class InventoryService {
 
   static async createProduct(payload: any) {
     if (!payload.code?.trim() || !payload.name?.trim() || !payload.unit?.trim()) return { success: false, statusCode: 400, message: 'Product code, name, and unit are required.' };
+
     const rate = await this.currentRate();
-    if (rateFor(payload.name, rate) <= 0) return { success: false, statusCode: 422, message: 'Selling price is not configured in Daily Rates for this product.' };
-    if (await averageSupplierCost(payload.name) <= 0) return { success: false, statusCode: 422, message: 'No supplier cost is available for this product.' };
+    const dynamicRate = rateFor(payload.name, rate);
+
+    // For standard products (milk/yogurt/etc.), sell price comes from DailyRate — must be configured.
+    // For generic products, the user supplies a sell price via the payload.
+    const storedSellPrice = Number(payload.sellPrice || 0);
+    const effectiveSellPrice = dynamicRate > 0 ? dynamicRate : storedSellPrice;
+
+    if (effectiveSellPrice <= 0) {
+      return { success: false, statusCode: 422, message: 'Sell price is required. Please enter a selling price for this product.' };
+    }
+
+    // Cost price: for standard products prefer the live average supplier cost;
+    // for generic products fall back to the user-supplied cost in payload.
+    const supplierCost = await averageSupplierCost(payload.name);
+    const effectiveCost = supplierCost > 0 ? supplierCost : Number(payload.cost || 0);
+
     try {
       const product = await prisma.$transaction(async (tx) => {
-        const created = await tx.inventoryProduct.create({ data: { code: payload.code.trim().toUpperCase(), name: payload.name.trim(), description: payload.description?.trim() || null, category: payload.category?.trim() || 'Dairy', unit: payload.unit.trim(), tax: payload.tax?.trim() || 'Exempt', lowStockThreshold: Number(payload.lowStockThreshold) || 0, isLocked: Boolean(payload.isLocked) } });
+        const created = await tx.inventoryProduct.create({
+          data: {
+            code: payload.code.trim().toUpperCase(),
+            name: payload.name.trim(),
+            description: payload.description?.trim() || null,
+            category: payload.category?.trim() || 'Dairy',
+            unit: payload.unit.trim(),
+            tax: payload.tax?.trim() || 'Exempt',
+            sellPrice: dynamicRate > 0 ? 0 : storedSellPrice, // Standard: 0 (DailyRate overrides); generic: stored
+            lowStockThreshold: Number(payload.lowStockThreshold) || 0,
+            isLocked: Boolean(payload.isLocked),
+          },
+        });
         await SyncQueueService.enqueueCreate(tx, 'InventoryProduct', created.id, created, 0);
         return created;
       });
@@ -184,7 +214,9 @@ export class InventoryService {
         metadata: { productId: product.id, name: product.name, code: product.code },
       }).catch(() => {});
 
-      return { success: true, statusCode: 201, data: await this.productView(product, [], rate) };
+      // Attach effective computed values for the response view
+      const view = await this.productView(product, [], rate);
+      return { success: true, statusCode: 201, data: { ...view, cost: effectiveCost } };
     } catch (error: any) {
       if (error.code === 'P2002') return { success: false, statusCode: 409, message: 'Product code already exists.' };
       throw error;
@@ -200,7 +232,19 @@ export class InventoryService {
     const existing = await prisma.inventoryProduct.findUnique({ where: { id } });
     if (!existing) return { success: false, statusCode: 404, message: 'Product not found.' };
     const product = await prisma.$transaction(async (tx) => {
-      const updated = await tx.inventoryProduct.update({ where: { id }, data: { ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}), ...(payload.description !== undefined ? { description: payload.description?.trim() || null } : {}), ...(payload.unit !== undefined ? { unit: String(payload.unit).trim() } : {}), ...(payload.tax !== undefined ? { tax: String(payload.tax).trim() } : {}), ...(payload.category !== undefined ? { category: String(payload.category).trim() } : {}), ...(payload.lowStockThreshold !== undefined ? { lowStockThreshold: Number(payload.lowStockThreshold) } : {}), ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}) } });
+      const updated = await tx.inventoryProduct.update({
+        where: { id },
+        data: {
+          ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}),
+          ...(payload.description !== undefined ? { description: payload.description?.trim() || null } : {}),
+          ...(payload.unit !== undefined ? { unit: String(payload.unit).trim() } : {}),
+          ...(payload.tax !== undefined ? { tax: String(payload.tax).trim() } : {}),
+          ...(payload.category !== undefined ? { category: String(payload.category).trim() } : {}),
+          ...(payload.sellPrice !== undefined ? { sellPrice: Number(payload.sellPrice) } : {}),
+          ...(payload.lowStockThreshold !== undefined ? { lowStockThreshold: Number(payload.lowStockThreshold) } : {}),
+          ...(payload.isActive !== undefined ? { isActive: Boolean(payload.isActive) } : {}),
+        },
+      });
       await SyncQueueService.enqueueUpdate(tx, 'InventoryProduct', updated.id, updated, 0);
       return updated;
     });
@@ -210,11 +254,18 @@ export class InventoryService {
   static async deleteProduct(id: number) {
     const product = await prisma.inventoryProduct.findUnique({ where: { id } });
     if (!product) return { success: false, statusCode: 404, message: 'Product not found.' };
-    // Core shop items (and all inventory rows) must stay — stock is adjusted, not deleted
     if (product.isLocked) {
       return { success: false, statusCode: 403, message: 'This product is locked and cannot be deleted.' };
     }
-    return { success: false, statusCode: 403, message: 'Inventory products cannot be deleted. Adjust stock instead.' };
+    // Soft-delete: mark inactive so historical movements remain intact
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.inventoryProduct.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'InventoryProduct', updated.id, updated, 0);
+    });
+    return { success: true, statusCode: 200, data: null };
   }
 
   static async movements(productId?: number, limit = 25) {

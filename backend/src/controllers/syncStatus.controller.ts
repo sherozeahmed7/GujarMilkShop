@@ -25,11 +25,16 @@ export async function getSyncStatus(req: Request, res: Response) {
     const syncing = await prisma.syncQueue.count({ where: { status: 'SYNCING' } });
     const failed  = await prisma.syncQueue.count({ where: { status: 'FAILED' } });
 
-    const lastSyncedEvent = await prisma.syncQueue.findFirst({
-      where: { status: 'SYNCED' },
-      orderBy: { updatedAt: 'desc' },
-      select: { updatedAt: true }
-    });
+    // Prefer durable timestamp from settings; fallback to latest SYNCED queue record
+    let lastSuccessfulSync = settings.lastSuccessfulUpstreamSyncAt;
+    if (!lastSuccessfulSync) {
+      const lastSyncedEvent = await prisma.syncQueue.findFirst({
+        where: { status: 'SYNCED' },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true }
+      });
+      lastSuccessfulSync = lastSyncedEvent?.updatedAt ?? null;
+    }
 
     // Lightweight Neon connectivity check
     let cloudConnected = false;
@@ -55,7 +60,7 @@ export async function getSyncStatus(req: Request, res: Response) {
       pending,
       syncing,
       failed,
-      lastSuccessfulSync: lastSyncedEvent?.updatedAt ?? null,
+      lastSuccessfulSync: lastSuccessfulSync ?? null,
       lastChecked: new Date().toISOString(),
       cloudConnected,
     });
@@ -161,5 +166,29 @@ export async function checkConnection(req: Request, res: Response) {
     res.json({ success: true, message: 'Cloud connection verified.' });
   } catch (err: any) {
     res.status(503).json({ success: false, message: 'Cloud connection failed: ' + err.message });
+  }
+}
+
+// GET /api/sync/failed-diagnostics — read-only diagnostics on FAILED SyncQueue rows
+export async function getFailedDiagnostics(req: Request, res: Response) {
+  try {
+    const { SyncRetentionService } = await import('../services/syncRetention.service');
+    const diagnostics = await SyncRetentionService.getFailedEventsDiagnostic();
+    res.json({ success: true, diagnostics });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// POST /api/sync/prune — manual retention cleanup execution
+export async function runManualPrune(req: Request, res: Response) {
+  try {
+    const { SyncRetentionService } = await import('../services/syncRetention.service');
+    const daysThreshold = parseInt(req.body?.daysThreshold as string, 10) || 7;
+    const vacuum = req.body?.vacuum === true;
+    const result = await SyncRetentionService.pruneSyncedHistory({ daysThreshold, vacuum });
+    res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 }

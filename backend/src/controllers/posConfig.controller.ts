@@ -14,6 +14,7 @@ const DEFAULT_CONFIG = {
   printerName: 'Black Copper BC-105',
   autoCutter: true,
   cashDrawer: false,
+  printMode: 'raster',
   requireCustomerName: false,
   allowDiscount: true,
   maxDiscountPercent: 10,

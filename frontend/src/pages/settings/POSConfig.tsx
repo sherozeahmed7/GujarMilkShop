@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { posConfigService, POSConfigData } from '../../services/posConfig.service';
-import { buildTestPage } from '../../utils/escposBuilder';
+import { buildTestPage, buildPixelPerfectTestPage } from '../../utils/escposBuilder';
 import { ReceiptPreview } from '../../components/pos/ReceiptPreview';
 
 // Tauri invoke — safe lazy wrapper, avoids top-level await which breaks React module loading
@@ -29,6 +29,7 @@ export const POSConfig: React.FC = () => {
     printerName: '',
     autoCutter: true,
     cashDrawer: false,
+    printMode: 'raster',
     requireCustomerName: false,
     allowDiscount: true,
     maxDiscountPercent: 10,
@@ -450,9 +451,61 @@ export const POSConfig: React.FC = () => {
                     <p className="text-xs text-slate-400 dark:text-[#64916e]">Not implemented — requires hardware confirmation.</p>
                   </div>
                 </label>
+
+                {/* Print Mode Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-2">
+                    🖨 Print Mode
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label
+                      className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        (config as any).printMode !== 'text'
+                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                          : 'border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] hover:border-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="printMode"
+                        value="raster"
+                        disabled={!config.printerEnabled}
+                        checked={(config as any).printMode !== 'text'}
+                        onChange={() => handleChange('printMode' as any, 'raster')}
+                        className="mt-0.5 accent-emerald-600"
+                      />
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">Pixel-Perfect (Recommended)</p>
+                        <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-0.5">Renders receipt as a high-res bitmap image — matches preview 100%. Supports any TrueType font, bold weights, solid borders &amp; dot leaders.</p>
+                      </div>
+                    </label>
+                    <label
+                      className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        (config as any).printMode === 'text'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                          : 'border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] hover:border-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="printMode"
+                        value="text"
+                        disabled={!config.printerEnabled}
+                        checked={(config as any).printMode === 'text'}
+                        onChange={() => handleChange('printMode' as any, 'text')}
+                        className="mt-0.5 accent-amber-500"
+                      />
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">Legacy Text Mode</p>
+                        <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-0.5">Uses ESC/POS character commands. No font or weight accuracy. Faster on very old printers but receipt will NOT match preview.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
                 
-                {/* Test Printer Button */}
-                <div className="pt-4 border-t border-slate-100 flex justify-end">
+                {/* Test Printer Buttons */}
+                <div className="pt-4 border-t border-slate-100 dark:border-[#2d4a35] flex flex-wrap gap-3 justify-end">
+                  {/* Text Mode Test */}
                   <button
                     type="button"
                     disabled={!config.printerEnabled || !config.printerName}
@@ -470,14 +523,41 @@ export const POSConfig: React.FC = () => {
                           printerName: config.printerName,
                           data: bytes
                         });
-                        toast.success('Test receipt print sent to printer!');
+                        toast.success('Text mode test receipt sent!');
                       } catch (err: any) {
                         toast.error(`Print Failed: ${err}`);
                       }
                     }}
-                    className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-xl hover:bg-slate-700 disabled:opacity-50 transition-colors shadow-sm"
+                    className="px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-xl hover:bg-slate-700 disabled:opacity-50 transition-colors shadow-sm"
                   >
-                    🖨 Test Printer Connection
+                    🖨 Test Text Mode
+                  </button>
+                  {/* Pixel-Perfect Raster Test */}
+                  <button
+                    type="button"
+                    disabled={!config.printerEnabled || !config.printerName}
+                    onClick={async () => {
+                      try {
+                        const bytes = await buildPixelPerfectTestPage(
+                          config.printerName,
+                          config.autoCutter,
+                          config.shopName,
+                          config.receiptFooterText,
+                          config.currencySymbol,
+                          config.receiptWidth
+                        );
+                        await safeInvoke('print_raw_bytes', {
+                          printerName: config.printerName,
+                          data: bytes
+                        });
+                        toast.success('Pixel-perfect test receipt sent! Compare with the preview.');
+                      } catch (err: any) {
+                        toast.error(`Pixel-Perfect Print Failed: ${err}`);
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-700 text-white text-sm font-bold rounded-xl hover:bg-emerald-800 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    ✅ Test Pixel-Perfect Print
                   </button>
                 </div>
               </div>

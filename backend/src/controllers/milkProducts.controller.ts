@@ -140,16 +140,6 @@ export const addMilk = async (req: Request, res: Response, next: NextFunction) =
           update: { milkTotal: { increment: money(qty) } },
         });
 
-        await tx.milkProductTransaction.create({
-          data: {
-            date: range.dayStart,
-            product: 'Milk',
-            type: 'milk_added',
-            quantity: money(qty),
-            reference: ref,
-            notes: 'Deducted from inventory milk',
-          },
-        });
 
         await SyncQueueService.enqueueUpdate(
           tx,
@@ -186,14 +176,14 @@ export const addLassiProduction = async (req: Request, res: Response, next: Next
     const qty = Number(quantity);
     if (!qty || qty <= 0 || isNaN(qty)) return ApiResponse.error(res, 'quantity must be > 0.', 400);
 
-    const stock = await prisma.milkProductDailyStock.upsert({
-      where:  { date: range.dayStart },
-      create: { date: range.dayStart, lassiProduced: money(qty), lassiRemaining: money(qty) },
-      update: { lassiProduced: { increment: money(qty) }, lassiRemaining: { increment: money(qty) } },
-    });
-
-    await prisma.milkProductTransaction.create({
-      data: { date: range.dayStart, product: 'Lassi', type: 'lassi_produced', quantity: money(qty) },
+    const stock = await prisma.$transaction(async (tx) => {
+      const updated = await tx.milkProductDailyStock.upsert({
+        where:  { date: range.dayStart },
+        create: { date: range.dayStart, lassiProduced: money(qty), lassiRemaining: money(qty) },
+        update: { lassiProduced: { increment: money(qty) }, lassiRemaining: { increment: money(qty) } },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
 
     return ApiResponse.success(res, 'Lassi production recorded.', stock);
@@ -210,14 +200,14 @@ export const addButterProduction = async (req: Request, res: Response, next: Nex
     const qty = Number(quantity);
     if (!qty || qty <= 0 || isNaN(qty)) return ApiResponse.error(res, 'quantity must be > 0.', 400);
 
-    const stock = await prisma.milkProductDailyStock.upsert({
-      where:  { date: range.dayStart },
-      create: { date: range.dayStart, butterProduced: money(qty), butterClosing: money(qty) },
-      update: { butterProduced: { increment: money(qty) }, butterClosing: { increment: money(qty) } },
-    });
-
-    await prisma.milkProductTransaction.create({
-      data: { date: range.dayStart, product: 'Butter', type: 'butter_produced', quantity: money(qty) },
+    const stock = await prisma.$transaction(async (tx) => {
+      const updated = await tx.milkProductDailyStock.upsert({
+        where:  { date: range.dayStart },
+        create: { date: range.dayStart, butterProduced: money(qty), butterClosing: money(qty) },
+        update: { butterProduced: { increment: money(qty) }, butterClosing: { increment: money(qty) } },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
 
     return ApiResponse.success(res, 'Butter production recorded.', stock);
@@ -234,14 +224,14 @@ export const addGheeProduction = async (req: Request, res: Response, next: NextF
     const qty = Number(quantity);
     if (!qty || qty <= 0 || isNaN(qty)) return ApiResponse.error(res, 'quantity must be > 0.', 400);
 
-    const stock = await prisma.milkProductDailyStock.upsert({
-      where:  { date: range.dayStart },
-      create: { date: range.dayStart, gheeProduced: money(qty), gheeClosing: money(qty) },
-      update: { gheeProduced: { increment: money(qty) }, gheeClosing: { increment: money(qty) } },
-    });
-
-    await prisma.milkProductTransaction.create({
-      data: { date: range.dayStart, product: 'Ghee', type: 'ghee_produced', quantity: money(qty) },
+    const stock = await prisma.$transaction(async (tx) => {
+      const updated = await tx.milkProductDailyStock.upsert({
+        where:  { date: range.dayStart },
+        create: { date: range.dayStart, gheeProduced: money(qty), gheeClosing: money(qty) },
+        update: { gheeProduced: { increment: money(qty) }, gheeClosing: { increment: money(qty) } },
+      });
+      await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
+      return updated;
     });
 
     return ApiResponse.success(res, 'Ghee production recorded.', stock);
@@ -298,12 +288,9 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
       return ApiResponse.error(res, 'date query param is required and must be YYYY-MM-DD.', 400);
     }
 
-    const transactions = await prisma.milkProductTransaction.findMany({
-      where:   { date: { gte: range.dayStart, lte: range.dayEnd } },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    return ApiResponse.success(res, 'Transactions fetched.', transactions);
+    // MilkProductTransaction removed in migration 005. Serve from InventoryMovement.
+    const result = await MilkProductsService.getTransactions(req.query.date as string);
+    return ApiResponse.success(res, 'Transactions fetched.', result.data);
   } catch (err) { next(err); }
 };
 
@@ -325,24 +312,11 @@ export const getConversions = async (req: Request, res: Response, next: NextFunc
 };
 
 // ─── POST /api/milk-products/transactions ────────────────────────────────────
+// MilkProductTransaction was consolidated into InventoryMovement (migration 005).
+// This endpoint is deprecated and returns 410 Gone.
 export const addTransaction = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { date, product, type, quantity, reference, notes } = req.body;
-    const range = parseDateParam(date);
-    if (!range) return ApiResponse.error(res, 'date must be YYYY-MM-DD.', 400);
-
-    const qty = Number(quantity);
-    if (!qty || qty <= 0) return ApiResponse.error(res, 'quantity must be > 0.', 400);
-
-    const tx = await prisma.milkProductTransaction.create({
-      data: {
-        date: range.dayStart, product, type,
-        quantity: money(qty),
-        reference: reference || null,
-        notes:     notes     || null,
-      },
-    });
-
-    return ApiResponse.success(res, 'Transaction recorded.', tx, 201);
-  } catch (err) { next(err); }
+  return res.status(410).json({
+    success: false,
+    message: 'MilkProductTransaction has been removed. Use InventoryMovement directly.',
+  });
 };

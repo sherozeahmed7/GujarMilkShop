@@ -12,6 +12,10 @@ import {
   CheckCircle2,
   ArrowLeft,
   UserRound,
+  Clock,
+  AlertCircle,
+  Banknote,
+  Sparkles,
 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 
@@ -113,6 +117,24 @@ export const Login: React.FC = () => {
     setAuthError('');
   };
 
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [openingBalance, setOpeningBalance] = useState('');
+  const [openingNotes, setOpeningNotes] = useState('');
+  const [shiftSubmitting, setShiftSubmitting] = useState(false);
+  const [shiftError, setShiftError] = useState('');
+  const [pendingLoginData, setPendingLoginData] = useState<{ accessToken: string; user: any } | null>(null);
+
+  const completeLoginSession = (accessToken: string, user: any) => {
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('userId', String(user.id));
+    localStorage.setItem('role', user.role);
+    localStorage.setItem('userName', user.name || user.email || 'User');
+    localStorage.setItem('assignedScreens', JSON.stringify(user.assignedScreens));
+
+    toast.success('Login successful! Redirecting...');
+    setTimeout(() => navigate('/'), 400);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
@@ -136,15 +158,43 @@ export const Login: React.FC = () => {
 
       if (response && response.status === 'success' && response.data) {
         const { accessToken, user } = response.data;
+        const roleKey = (user.role || '').toLowerCase().trim();
 
+        // If user is super_admin, proceed directly without shift prompt
+        if (roleKey === 'super_admin') {
+          completeLoginSession(accessToken, user);
+          return;
+        }
+
+        // For any role other than super_admin:
+        // Set token temporarily in localStorage so shift API calls work with auth header
         localStorage.setItem('token', accessToken);
-        localStorage.setItem('userId', String(user.id));
-        localStorage.setItem('role', user.role);
-        localStorage.setItem('userName', user.name || user.email || 'User');
-        localStorage.setItem('assignedScreens', JSON.stringify(user.assignedScreens));
 
-        toast.success('Login successful! Redirecting...');
-        setTimeout(() => navigate('/'), 500);
+        try {
+          // Check if there is already an open shift
+          const shiftRes = await apiClient.get('/shifts');
+          const shifts = (shiftRes.data || []) as any[];
+          const hasOpenShift = shifts.some((s: any) => s.status === 'Open');
+
+          if (hasOpenShift) {
+            // Already an open shift, complete login directly
+            completeLoginSession(accessToken, user);
+          } else {
+            // Prompt for opening balance popup
+            setPendingLoginData({ accessToken, user });
+            setOpeningBalance('');
+            setOpeningNotes('');
+            setShiftError('');
+            setShowShiftModal(true);
+          }
+        } catch (shiftFetchErr) {
+          // If check fails, still prompt opening balance modal to allow auto-open
+          setPendingLoginData({ accessToken, user });
+          setOpeningBalance('');
+          setOpeningNotes('');
+          setShiftError('');
+          setShowShiftModal(true);
+        }
       } else {
         const msg = response.message || '';
         if (msg.toLowerCase().includes('inactive')) {
@@ -163,6 +213,50 @@ export const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenShiftAndProceed = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingLoginData) return;
+
+    const cash = parseFloat(openingBalance);
+    if (isNaN(cash) || cash < 0) {
+      setShiftError('Please enter a valid opening balance (0 or greater).');
+      return;
+    }
+
+    setShiftSubmitting(true);
+    setShiftError('');
+    try {
+      await apiClient.post('/shifts', {
+        openingCash: cash,
+        openingNotes: openingNotes.trim(),
+      });
+      toast.success(`Shift opened with Rs. ${cash.toLocaleString()} opening balance!`);
+      setShowShiftModal(false);
+      completeLoginSession(pendingLoginData.accessToken, pendingLoginData.user);
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to open shift. Please try again.';
+      // If error is that a shift is already open, proceed anyway
+      if (msg.toLowerCase().includes('currently open') || msg.toLowerCase().includes('already open')) {
+        setShowShiftModal(false);
+        completeLoginSession(pendingLoginData.accessToken, pendingLoginData.user);
+      } else {
+        setShiftError(msg);
+      }
+    } finally {
+      setShiftSubmitting(false);
+    }
+  };
+
+  const handleCancelShiftModal = () => {
+    // Clear temporary token if user cancels shift opening
+    localStorage.removeItem('token');
+    setShowShiftModal(false);
+    setPendingLoginData(null);
+    setOpeningBalance('');
+    setOpeningNotes('');
+    setShiftError('');
   };
 
   return (
@@ -395,6 +489,112 @@ export const Login: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Auto-Open Shift: Opening Balance Popup Modal */}
+      {showShiftModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#1a2e1f] rounded-3xl shadow-2xl border border-slate-100 dark:border-[#2d4a35] max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header Banner */}
+            <div className="bg-[radial-gradient(ellipse_at_top,_rgba(254,243,199,0.8),_transparent_60%),linear-gradient(135deg,#f0fdf4_0%,#dcfce7_100%)] dark:bg-[linear-gradient(135deg,#162b1b_0%,#1e3b26_100%)] px-6 py-5 border-b border-slate-100 dark:border-[#2d4a35] relative">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] flex items-center justify-center shadow-md shadow-[#166534]/20 shrink-0">
+                  <Banknote className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-[#166534] dark:text-[#22c55e]">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    Auto Shift Start
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-[#e2f5e8] leading-snug">
+                    Enter Opening Balance
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleOpenShiftAndProceed} className="p-6 space-y-4">
+              <div className="bg-amber-50 dark:bg-[#2a1f0a] border border-amber-200 dark:border-[#3d2f12] rounded-2xl p-3.5 flex items-start gap-3">
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-900 dark:text-[#fcd34d] font-medium leading-relaxed">
+                  Logging in as <span className="font-bold">{pendingLoginData?.user?.name || selected?.name}</span> ({formatRole(pendingLoginData?.user?.role || selected?.role || '')}). Please specify starting cash drawer amount to open your shift.
+                </p>
+              </div>
+
+              {shiftError && (
+                <div className="flex items-start gap-2 p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl text-xs text-rose-700 dark:text-rose-300 font-semibold">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{shiftError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#a7c4ae] mb-1.5">
+                  Opening Cash Balance (PKR) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 dark:text-[#64916e]">
+                    Rs.
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    autoFocus
+                    required
+                    value={openingBalance}
+                    onChange={(e) => {
+                      setOpeningBalance(e.target.value);
+                      setShiftError('');
+                    }}
+                    placeholder="0.00"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-900 dark:text-[#e2f5e8] font-bold text-base rounded-xl focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e] transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#a7c4ae] mb-1.5">
+                  Opening Notes <span className="text-slate-400 dark:text-slate-500 font-normal lowercase">(optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={openingNotes}
+                  onChange={(e) => setOpeningNotes(e.target.value)}
+                  placeholder="e.g., Morning counter cash float..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e] resize-none transition-all"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-[#2d4a35]">
+                <button
+                  type="button"
+                  onClick={handleCancelShiftModal}
+                  disabled={shiftSubmitting}
+                  className="flex-1 py-3 text-sm font-bold text-slate-600 dark:text-[#a7c4ae] bg-slate-100 hover:bg-slate-200 dark:bg-[#142119] dark:hover:bg-[#223927] border border-slate-200 dark:border-[#2d4a35] rounded-xl transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={shiftSubmitting || !openingBalance.trim()}
+                  className="flex-[1.4] flex items-center justify-center gap-2 py-3 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white font-bold text-sm rounded-xl shadow-md shadow-[#166534]/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {shiftSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Opening Shift...
+                    </>
+                  ) : (
+                    'Start Shift & Enter'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

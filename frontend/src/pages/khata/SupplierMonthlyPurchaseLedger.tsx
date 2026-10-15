@@ -21,6 +21,18 @@ const MONTH_NAMES = [
 ];
 
 const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const SHIFTS = ['Morning', 'Evening'] as const;
+
+function shiftQuantity(entries: PurchaseEntry[], shift: PurchaseEntry['shift']): string {
+  const deliveries = entries.filter(entry => entry.shift === shift && entry.quantity > 0);
+  if (deliveries.length === 0) return '-';
+  return `${deliveries.reduce((sum, entry) => sum + entry.quantity, 0).toLocaleString('en-GB', { maximumFractionDigits: 3 })} kg`;
+}
+
+function shiftAmount(entries: PurchaseEntry[], shift: PurchaseEntry['shift']): string {
+  const deliveries = entries.filter(entry => entry.shift === shift && entry.quantity > 0);
+  return deliveries.length > 0 ? fmtAmount(deliveries.reduce((sum, entry) => sum + entry.amount, 0)) : '-';
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -203,8 +215,8 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
           if (!day) return '';
           const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const dayEntries = entriesByDate.get(dateStr) ?? [];
-          const amt = dayEntries.reduce((s, e) => s + e.amount, 0);
-          return amt > 0 ? `${day}\nRs. ${Math.round(amt).toLocaleString()}` : `${day}\n—`;
+          const dailyAmount = dayEntries.reduce((sum, entry) => sum + entry.amount, 0);
+          return `${day}\n${SHIFTS.map(shift => `${shift}: ${shiftQuantity(dayEntries, shift)}\n${shiftAmount(dayEntries, shift)}`).join('\n')}\nTotal: ${dayEntries.length ? fmtAmount(dailyAmount) : '-'}`;
         });
         while (rowCells.length < 7) rowCells.push('');
         calRows.push(rowCells);
@@ -265,6 +277,7 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
         const purchaseRows = entries.map(e => [
           e.date ? new Date(e.date).toLocaleDateString('en-GB') : '—',
+          e.shift || '-',
           e.product || 'Milk',
           `${Number(e.quantity || 0).toFixed(2)} ${e.unit || 'kg'}`,
           `Rs. ${Number(e.rate || 0).toLocaleString()}`,
@@ -272,7 +285,7 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
         ]);
 
         autoTable(doc, {
-          head: [['Date', 'Product', 'Quantity', 'Rate', 'Total']],
+          head: [['Date', 'Shift', 'Product', 'Quantity', 'Rate', 'Total']],
           body: purchaseRows,
           startY: nextY + 3,
           styles: { fontSize: 8, cellPadding: 2.5 },
@@ -405,8 +418,7 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
                 const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const dayEntries = entriesByDate.get(dateStr) ?? [];
-                const dailyAmt = dayEntries.reduce((s, e) => s + e.amount, 0);
-                const hasTxn = dailyAmt > 0;
+                const hasTxn = dayEntries.length > 0;
 
                 const isToday =
                   today.getDate() === day &&
@@ -427,17 +439,20 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                       {isToday && <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mt-1.5 mr-0.5">Today</span>}
                     </div>
 
-                    {/* Daily amount */}
-                    {hasTxn ? (
-                      <div className="flex flex-col mt-auto">
-                        <p className="text-base font-bold text-amber-600">{fmtAmount(dailyAmt)}</p>
-                        {dayEntries.length > 1 && (
-                          <span className="text-[10px] text-slate-400 dark:text-[#64916e] mt-0.5">{dayEntries.length} entries</span>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xl text-slate-300 dark:text-[#2d4a35] mt-auto font-medium">-</p>
-                    )}
+                    <div className="mt-auto space-y-2">
+                      {SHIFTS.map(shift => (
+                        <div key={shift} className="flex flex-wrap items-baseline justify-between gap-x-2 text-xs">
+                          <span className="text-slate-500 dark:text-[#8ba895]">{shift}</span>
+                          <span className="font-bold text-amber-600 tabular-nums">{shiftQuantity(dayEntries, shift)}</span>
+                          <span className="w-full text-right font-semibold text-slate-700 dark:text-[#e2f5e8] tabular-nums">{shiftAmount(dayEntries, shift)}</span>
+                        </div>
+                      ))}
+                      {hasTxn && (
+                        <div className="border-t border-slate-200 dark:border-[#2d4a35] pt-2 text-sm font-bold text-amber-600 tabular-nums">
+                          Total: {fmtAmount(dayEntries.reduce((sum, entry) => sum + entry.amount, 0))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -574,6 +589,7 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                   <tr>
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Date</th>
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Product</th>
+                    <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Shift</th>
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Qty</th>
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">Rate</th>
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider text-right">Amount</th>
@@ -591,6 +607,9 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-sm font-semibold text-slate-700 dark:text-[#e2f5e8]">
+                        {e.shift || '-'}
+                      </td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-slate-700 dark:text-[#e2f5e8]">
                         {e.quantity.toFixed(2)} {e.unit}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-[#8ba895]">Rs. {e.rate.toLocaleString()}/{e.unit}</td>
@@ -601,7 +620,7 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                 {/* Footer total row */}
                 <tfoot className="border-t-2 border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119]">
                   <tr>
-                    <td colSpan={4} className="px-5 py-3 text-sm font-bold text-slate-700 dark:text-[#e2f5e8] text-right uppercase tracking-wider">
+                    <td colSpan={5} className="px-5 py-3 text-sm font-bold text-slate-700 dark:text-[#e2f5e8] text-right uppercase tracking-wider">
                       Total
                     </td>
                     <td className="px-5 py-3 text-base font-black text-amber-600 text-right">
@@ -642,7 +661,10 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
 
             {/* Modal body */}
             <div className="p-5 flex-1 overflow-y-auto space-y-3">
-              {detailDate.entries.map((e, i) => (
+              {SHIFTS.map(shift => (
+                <div key={shift} className="space-y-3">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-[#e2f5e8]">{shift}: {shiftQuantity(detailDate.entries, shift)}</h4>
+                  {detailDate.entries.filter(e => e.shift === shift).map((e, i) => (
                 <div key={e.id} className="p-4 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] relative">
                   <div className="absolute -top-2.5 left-4 bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
                     DELIVERY {i + 1}
@@ -654,6 +676,8 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
                     </div>
                     <p className="text-base font-bold text-amber-600">{fmtAmount(e.amount)}</p>
                   </div>
+                </div>
+                  ))}
                 </div>
               ))}
             </div>

@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { SaleService } from '../services/sale.service';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { DashboardController } from './dashboard.controller';
 
 export class SaleController {
   /**
@@ -14,6 +15,8 @@ export class SaleController {
       if (!result.success) {
         return ApiResponse.error(res, result.message!, result.statusCode);
       }
+
+      DashboardController.clearCache();
 
       return ApiResponse.success(res, result.message!, result.data, result.statusCode);
     } catch (error) {
@@ -108,6 +111,7 @@ export class SaleController {
         return ApiResponse.error(res, result.message!, result.statusCode);
       }
 
+      DashboardController.clearCache();
       return ApiResponse.success(res, result.message!, result.data, result.statusCode);
     } catch (error) {
       next(error);

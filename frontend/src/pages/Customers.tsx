@@ -54,14 +54,19 @@ function mapLedgerRow(c: ApiCustomer): CustomerTableRow {
   };
 }
 
-function mapWalkInRow(sale: SaleRecord): CustomerTableRow {
-  const method = sale.payments?.[0]?.method;
+function mapWalkInRow(sales: SaleRecord[]): CustomerTableRow | null {
+  if (!sales.length) return null;
+  const ordered = [...sales].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const latest = ordered[0];
+  const methods = new Set(sales.map((sale) => sale.payments?.[0]?.method).filter(Boolean));
   return {
-    key: `walkin-${sale.id}`,
+    key: 'walkin-canonical',
     kind: 'walk_in',
-    id: sale.id,
-    name: sale.customerName || 'Walk-in Customer',
-    phone: sale.customerPhone,
+    id: latest.customerId || latest.id,
+    name: 'Walk-In Customer',
+    phone: null,
     address: null,
     typeLabel: 'Walk-in',
     currentDue: null,
@@ -69,10 +74,12 @@ function mapWalkInRow(sale: SaleRecord): CustomerTableRow {
     totalAmount: null,
     paidAmount: null,
     balance: 0,
-    lastSaleDate: sale.createdAt,
-    status: sale.status,
-    paymentType: method === 'online' ? 'Online' : method === 'cash' ? 'Cash' : null,
-    saleIds: [sale.id],
+    lastSaleDate: latest.createdAt,
+    status: 'paid',
+    paymentType: methods.size === 1
+      ? (methods.has('online') ? 'Online' : methods.has('cash') ? 'Cash' : null)
+      : 'Mixed',
+    saleIds: ordered.map((sale) => sale.id),
   };
 }
 
@@ -214,7 +221,8 @@ export const Customers: React.FC = () => {
       }
       setSplitSalesByPhone(byPhone);
 
-      let walkRows = walkIns.map(mapWalkInRow);
+      const walkInRow = mapWalkInRow(walkIns);
+      let walkRows = walkInRow ? [walkInRow] : [];
       let splitRows = mapSplitGroups(splits);
 
       if (debouncedSearch.trim()) {

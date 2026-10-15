@@ -3,6 +3,7 @@ import { prisma } from '../config/database';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { SyncQueueService } from '../services/syncQueue.service';
+import { DashboardController } from './dashboard.controller';
 
 function money(n: number) {
   return Math.round(n * 100) / 100;
@@ -166,6 +167,8 @@ export class ExpenseController {
         include: { payments: true },
       });
 
+      DashboardController.clearCache();
+
       return ApiResponse.success(res, 'Expense created.', mapExpense(full), 201);
     } catch (e) {
       next(e);
@@ -217,6 +220,7 @@ export class ExpenseController {
         return updatedExp;
       });
 
+      DashboardController.clearCache();
       return ApiResponse.success(res, 'Payment recorded.', mapExpense(updated));
     } catch (e) {
       next(e);
@@ -314,6 +318,7 @@ export class ExpenseController {
         return updatedExp;
       });
 
+      DashboardController.clearCache();
       return ApiResponse.success(res, 'Expense updated.', mapExpense(updated));
     } catch (e) {
       next(e);
@@ -329,6 +334,8 @@ export class ExpenseController {
         await tx.expense.delete({ where: { id } });
         await SyncQueueService.enqueueUpdate(tx, 'Expense', id, { id }, 1, 'DELETE');
       });
+
+      DashboardController.clearCache();
       return ApiResponse.success(res, 'Expense deleted.', null);
     } catch (e) {
       next(e);

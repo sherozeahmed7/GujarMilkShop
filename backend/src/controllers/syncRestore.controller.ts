@@ -134,6 +134,9 @@ export async function restoreCloudData(req: Request, res: Response): Promise<voi
       const dailyRatesRes = await client.query('SELECT * FROM daily_rates ORDER BY date ASC');
       snapshot['DailyRate'] = dailyRatesRes.rows;
 
+      const cashPersonsRes = await client.query('SELECT * FROM cash_persons ORDER BY created_at ASC');
+      snapshot['CashPerson'] = cashPersonsRes.rows;
+
       // Layer 1: Sessions & Transactions Headers
       const dailyStockRes = await client.query('SELECT * FROM milk_product_daily_stocks ORDER BY date ASC');
       snapshot['MilkProductDailyStock'] = dailyStockRes.rows;
@@ -172,11 +175,17 @@ export async function restoreCloudData(req: Request, res: Response): Promise<voi
       const inventoryMovementsRes = await client.query('SELECT * FROM inventory_movements ORDER BY date ASC');
       snapshot['InventoryMovement'] = inventoryMovementsRes.rows;
 
-      const milkTxRes = await client.query('SELECT * FROM milk_product_transactions ORDER BY date ASC');
-      snapshot['MilkProductTransaction'] = milkTxRes.rows;
-
       const conversionsRes = await client.query('SELECT * FROM butter_ghee_conversions ORDER BY date ASC');
       snapshot['ButterGheeConversion'] = conversionsRes.rows;
+
+      const cashbookTransactionsRes = await client.query('SELECT * FROM cashbook_transactions ORDER BY created_at ASC');
+      snapshot['CashbookTransaction'] = cashbookTransactionsRes.rows;
+
+      const auditRecordsRes = await client.query('SELECT * FROM audit_records ORDER BY created_at ASC');
+      snapshot['AuditRecord'] = auditRecordsRes.rows;
+
+      const activityLogsRes = await client.query('SELECT * FROM activity_logs ORDER BY created_at ASC');
+      snapshot['ActivityLog'] = activityLogsRes.rows;
 
       await client.query('COMMIT');
     } catch (neonErr: any) {
@@ -198,18 +207,43 @@ export async function restoreCloudData(req: Request, res: Response): Promise<voi
           const cloudUuid = row.id;
           if (!cloudUuid) continue;
 
-          // Check if already mapped locally
-          const existingMapping = await tx.localToCloudMapping.findFirst({
-            where: { entityType, cloudUuid }
-          });
+          // Check if already mapped locally (first via direct cloudUuid, then fallback to LocalToCloudMapping)
+          let localId: number | null = null;
+          try {
+            const delegate = (tx as any)[entityType.charAt(0).toLowerCase() + entityType.slice(1)];
+            if (delegate && typeof delegate.findFirst === 'function') {
+              const directMatch = await delegate.findFirst({
+                where: { cloudUuid },
+                select: { id: true }
+              });
+              if (directMatch) {
+                localId = directMatch.id;
+              }
+            }
+          } catch {
+            // Model doesn't support cloudUuid
+          }
 
-          if (existingMapping) {
+          if (!localId) {
+            try {
+              const existingMapping = await tx.localToCloudMapping.findFirst({
+                where: { entityType, cloudUuid }
+              });
+              if (existingMapping) {
+                localId = existingMapping.localId;
+              }
+            } catch {
+              // LocalToCloudMapping table dropped in Migration 009
+            }
+          }
+
+          if (localId) {
             // Reconcile/update master records if already present
-            if (['Customer', 'Supplier', 'InventoryProduct', 'User'].includes(entityType)) {
+            if (['Customer', 'Supplier', 'InventoryProduct', 'User', 'CashPerson'].includes(entityType)) {
               try {
-                await applyUpdate(tx, entityType, existingMapping.localId, cloudUuid, row, localDeviceId);
+                await applyUpdate(tx, entityType, localId, cloudUuid, row, localDeviceId);
               } catch (updateErr: any) {
-                console.warn(`[Restore] ⚠️ Mapped ${entityType} #${existingMapping.localId} (UUID: ${cloudUuid}) could not be updated (${updateErr?.message || updateErr}). Recreating locally...`);
+                console.warn(`[Restore] ⚠️ Mapped ${entityType} #${localId} (UUID: ${cloudUuid}) could not be updated (${updateErr?.message || updateErr}). Recreating locally...`);
                 await applyCreate(tx, entityType, cloudUuid, row, localDeviceId, localDeviceId);
                 count++;
               }
@@ -230,6 +264,7 @@ export async function restoreCloudData(req: Request, res: Response): Promise<voi
       await processEntityLayer('InventoryProduct', snapshot['InventoryProduct']);
       await processEntityLayer('Customer', snapshot['Customer']);
       await processEntityLayer('DailyRate', snapshot['DailyRate']);
+      await processEntityLayer('CashPerson', snapshot['CashPerson']);
 
       // Layer 1: Sessions & Headers
       await processEntityLayer('MilkProductDailyStock', snapshot['MilkProductDailyStock']);
@@ -246,8 +281,10 @@ export async function restoreCloudData(req: Request, res: Response): Promise<voi
       await processEntityLayer('ExpensePayment', snapshot['ExpensePayment']);
       await processEntityLayer('ReturnItem', snapshot['ReturnItem']);
       await processEntityLayer('InventoryMovement', snapshot['InventoryMovement']);
-      await processEntityLayer('MilkProductTransaction', snapshot['MilkProductTransaction']);
       await processEntityLayer('ButterGheeConversion', snapshot['ButterGheeConversion']);
+      await processEntityLayer('CashbookTransaction', snapshot['CashbookTransaction']);
+      await processEntityLayer('AuditRecord', snapshot['AuditRecord']);
+      await processEntityLayer('ActivityLog', snapshot['ActivityLog']);
 
       // 7. Update cursor ONLY after all entities have successfully committed
       await tx.downstreamSyncState.upsert({

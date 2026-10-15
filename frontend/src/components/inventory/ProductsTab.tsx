@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, PlusCircle, Edit2, Lock } from 'lucide-react';
+import { Search, PlusCircle, Edit2, Lock, Trash2 } from 'lucide-react';
 import { Product } from '../../types/inventory';
 import { Pagination } from '../common/Pagination';
 
@@ -7,12 +7,14 @@ interface ProductsTabProps {
   products: Product[];
   onAddStockClick: (productId: string) => void;
   onEditClick: (product: Product) => void;
+  onDeleteClick: (product: Product) => void;
 }
 
 export const ProductsTab: React.FC<ProductsTabProps> = ({
   products,
   onAddStockClick,
   onEditClick,
+  onDeleteClick,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -113,9 +115,15 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
                       <button onClick={() => onEditClick(product)} className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded" title="Edit">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-[#223927] rounded cursor-not-allowed" title="Cannot delete">
-                        <Lock className="w-4 h-4" />
-                      </button>
+                      {product.isLocked ? (
+                        <button className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-[#223927] rounded cursor-not-allowed" title="Locked — cannot delete">
+                          <Lock className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button onClick={() => onDeleteClick(product)} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded" title="Delete Product">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

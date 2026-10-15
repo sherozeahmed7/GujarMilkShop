@@ -19,7 +19,38 @@ function rangeBounds(from: string, to: string): { start: Date; end: Date } {
   return { start: s, end: e };
 }
 
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+const metricsCache = new Map<string, CacheEntry<any>>();
+const revenueTrendCache = new Map<string, CacheEntry<any>>();
+let recentSalesCache: CacheEntry<any> | null = null;
+let khataCustomersCache: CacheEntry<any> | null = null;
+
+function getCached<T>(key: string, map: Map<string, CacheEntry<T>>): T | null {
+  const entry = map.get(key);
+  if (entry && Date.now() < entry.expiresAt) return entry.data;
+  if (entry) map.delete(key);
+  return null;
+}
+
+function setCached<T>(key: string, data: T, ttlMs: number, map: Map<string, CacheEntry<T>>): void {
+  map.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
 export class DashboardController {
+  /**
+   * Invalidate all in-memory dashboard caches when a sale, payment, or expense changes.
+   */
+  static clearCache() {
+    metricsCache.clear();
+    revenueTrendCache.clear();
+    recentSalesCache = null;
+    khataCustomersCache = null;
+  }
+
   /**
    * GET /api/dashboard/metrics?from=YYYY-MM-DD&to=YYYY-MM-DD
    * Returns all KPI metrics needed by the dashboard stat cards.
@@ -31,6 +62,12 @@ export class DashboardController {
       const today = new Date().toISOString().split('T')[0];
       const fromDate = from || today;
       const toDate   = to   || today;
+
+      const cacheKey = `${fromDate}_${toDate}`;
+      const cached = getCached(cacheKey, metricsCache);
+      if (cached) {
+        return ApiResponse.success(res, 'Dashboard metrics fetched (cached).', cached);
+      }
 
       const { start, end } = rangeBounds(fromDate, toDate);
 
@@ -94,7 +131,7 @@ export class DashboardController {
       const openShift = await prisma.shift.findFirst({ where: { status: 'Open' } });
       const expectedCash = openShift ? money(openShift.expectedCash) : cashSales;
 
-      return ApiResponse.success(res, 'Dashboard metrics fetched.', {
+      const result = {
         grossSales,
         netSales,
         refunds: totalRefunds,
@@ -109,7 +146,10 @@ export class DashboardController {
         cashCollected: cashSales,
         khataDues,
         khataCustomerCount,
-      });
+      };
+
+      setCached(cacheKey, result, 30_000, metricsCache);
+      return ApiResponse.success(res, 'Dashboard metrics fetched.', result);
     } catch (e) { next(e); }
   }
 
@@ -119,6 +159,10 @@ export class DashboardController {
    */
   static async getRecentSales(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
+      if (recentSalesCache && Date.now() < recentSalesCache.expiresAt) {
+        return ApiResponse.success(res, 'Recent sales fetched (cached).', recentSalesCache.data);
+      }
+
       const sales = await prisma.sale.findMany({
         take: 8,
         orderBy: { createdAt: 'desc' },
@@ -154,6 +198,7 @@ export class DashboardController {
         };
       });
 
+      recentSalesCache = { data: rows, expiresAt: Date.now() + 15_000 };
       return ApiResponse.success(res, 'Recent sales fetched.', rows);
     } catch (e) { next(e); }
   }
@@ -164,6 +209,10 @@ export class DashboardController {
    */
   static async getKhataCustomers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
+      if (khataCustomersCache && Date.now() < khataCustomersCache.expiresAt) {
+        return ApiResponse.success(res, 'Khata customers fetched (cached).', khataCustomersCache.data);
+      }
+
       const customers = await prisma.customer.findMany({
         where: { status: 'active' },
         include: {
@@ -193,6 +242,7 @@ export class DashboardController {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 8);
 
+      khataCustomersCache = { data: rows, expiresAt: Date.now() + 15_000 };
       return ApiResponse.success(res, 'Khata customers fetched.', rows);
     } catch (e) { next(e); }
   }
@@ -207,6 +257,12 @@ export class DashboardController {
       const today = new Date().toISOString().split('T')[0];
       const fromDate = from || today;
       const toDate   = to   || today;
+
+      const cacheKey = `${fromDate}_${toDate}`;
+      const cached = getCached(cacheKey, revenueTrendCache);
+      if (cached) {
+        return ApiResponse.success(res, 'Revenue trend fetched (cached).', cached);
+      }
 
       const { start, end } = rangeBounds(fromDate, toDate);
 
@@ -234,6 +290,7 @@ export class DashboardController {
         cursor.setDate(cursor.getDate() + 1);
       }
 
+      setCached(cacheKey, points, 30_000, revenueTrendCache);
       return ApiResponse.success(res, 'Revenue trend fetched.', points);
     } catch (e) { next(e); }
   }

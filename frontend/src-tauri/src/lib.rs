@@ -5,12 +5,14 @@ use std::sync::{Arc, Mutex};
 use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::Graphics::Printing::{
-    ClosePrinter, EndDocPrinter, EndPagePrinter, OpenPrinterW, StartDocPrinterW, StartPagePrinter,
-    WritePrinter, DOC_INFO_1W,
+    ClosePrinter, EndDocPrinter, EndPagePrinter, EnumPrintersW, OpenPrinterW, StartDocPrinterW,
+    StartPagePrinter, WritePrinter, DOC_INFO_1W, PRINTER_ENUM_CONNECTIONS, PRINTER_ENUM_LOCAL,
+    PRINTER_INFO_1W,
 };
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+use tauri::Manager;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -36,54 +38,128 @@ fn open_onscreen_keyboard() -> Result<(), String> {
     Ok(())
 }
 
-/// List installed Windows printers via PowerShell
+
+/// List installed Windows printers via native Win32 EnumPrintersW API (~1ms vs ~3500ms PowerShell)
 #[tauri::command]
 fn list_printers() -> Result<Vec<String>, String> {
-    let mut cmd = std::process::Command::new("powershell");
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    unsafe {
+        let flags = PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS;
+        let mut bytes_needed: u32 = 0;
+        let mut count: u32 = 0;
 
-    let output = cmd
-        .args(&[
-            "-NoProfile",
-            "-Command",
-            "Get-Printer | Select-Object -ExpandProperty Name",
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
+        // First call to determine buffer size needed (Level 1 returns PRINTER_INFO_1W)
+        let _ = EnumPrintersW(
+            flags,
+            PCWSTR::null(),
+            1,
+            None,
+            &mut bytes_needed,
+            &mut count,
+        );
 
-    let text = String::from_utf8_lossy(&output.stdout);
-    let mut printers = Vec::new();
-    for line in text.lines() {
-        let name = line.trim();
-        if !name.is_empty() {
-            printers.push(name.to_string());
+        if bytes_needed == 0 {
+            return Ok(Vec::new());
         }
+
+        let mut buffer: Vec<u8> = vec![0u8; bytes_needed as usize];
+        let result = EnumPrintersW(
+            flags,
+            PCWSTR::null(),
+            1,
+            Some(buffer.as_mut_slice()),
+            &mut bytes_needed,
+            &mut count,
+        );
+
+        if result.is_ok() && count > 0 {
+            let p_info = buffer.as_ptr() as *const PRINTER_INFO_1W;
+            let mut printers = Vec::with_capacity(count as usize);
+
+            for i in 0..count as usize {
+                let info = &*p_info.add(i);
+                if !info.pName.is_null() {
+                    let mut len = 0;
+                    while *info.pName.0.add(len) != 0 {
+                        len += 1;
+                    }
+                    let slice = std::slice::from_raw_parts(info.pName.0, len);
+                    let name = String::from_utf16_lossy(slice).trim().to_string();
+                    if !name.is_empty() && !printers.contains(&name) {
+                        printers.push(name);
+                    }
+                }
+            }
+
+            return Ok(printers);
+        }
+
+        Ok(Vec::new())
     }
-    Ok(printers)
 }
 
 /// Send raw ESC/POS bytes directly to a Windows printer via the Spooler RAW datatype.
-/// No print dialog, no preview — bytes go directly to the printer head.
+/// Executed on a dedicated background thread so Windows Spooler I/O can NEVER block Tauri webview UI thread.
 #[tauri::command]
-fn print_raw_bytes(printer_name: String, data: Vec<u8>) -> Result<bool, String> {
+async fn print_raw_bytes(printer_name: String, data: Vec<u8>) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        print_raw_bytes_blocking(printer_name, data)
+    })
+    .await
+    .map_err(|e| format!("Print thread failed: {e}"))?
+}
+
+fn print_raw_bytes_blocking(printer_name: String, data: Vec<u8>) -> Result<bool, String> {
     unsafe {
-        let printer_name_wide: Vec<u16> = OsStr::new(&printer_name)
+        let mut target_printer = printer_name.trim().to_string();
+        if target_printer.is_empty() {
+            if let Ok(printers) = list_printers() {
+                if let Some(first) = printers.first() {
+                    target_printer = first.clone();
+                }
+            }
+        }
+
+        let printer_name_wide: Vec<u16> = OsStr::new(&target_printer)
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
         let mut h_printer: HANDLE = HANDLE::default();
 
-        let ok = OpenPrinterW(
+        let mut ok = OpenPrinterW(
             PCWSTR(printer_name_wide.as_ptr()),
             &mut h_printer,
             Some(ptr::null_mut()),
         );
 
+        // If specific printer failed to open, try to find an alternative active printer
+        if (ok.is_err() || h_printer.is_invalid()) && !target_printer.is_empty() {
+            if let Ok(printers) = list_printers() {
+                for alt in printers {
+                    if alt != target_printer {
+                        let alt_wide: Vec<u16> = OsStr::new(&alt)
+                            .encode_wide()
+                            .chain(std::iter::once(0))
+                            .collect();
+                        let mut alt_h: HANDLE = HANDLE::default();
+                        let alt_ok = OpenPrinterW(
+                            PCWSTR(alt_wide.as_ptr()),
+                            &mut alt_h,
+                            Some(ptr::null_mut()),
+                        );
+                        if alt_ok.is_ok() && !alt_h.is_invalid() {
+                            h_printer = alt_h;
+                            ok = alt_ok;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         if ok.is_err() || h_printer.is_invalid() {
             return Err(format!(
-                "Failed to open printer '{}'. Make sure it is installed in Windows Settings \u{2192} Printers & Scanners.",
-                printer_name
+                "Failed to open printer '{}'. Make sure it is installed and turned on in Windows Settings -> Printers & Scanners.",
+                target_printer
             ));
         }
 
@@ -147,7 +223,9 @@ fn kill_port_or_orphan_backend() {
 
         let mut cmd2 = std::process::Command::new("taskkill");
         cmd2.creation_flags(CREATE_NO_WINDOW);
-        let _ = cmd2.args(&["/F", "/IM", "backend-x86_64-pc-windows-msvc.exe", "/T"]).output();
+        let _ = cmd2
+            .args(&["/F", "/IM", "backend-x86_64-pc-windows-msvc.exe", "/T"])
+            .output();
 
         // 2. Kill whatever process is occupying port 5000 using netstat/powershell silently
         let script = r#"
@@ -163,7 +241,9 @@ fn kill_port_or_orphan_backend() {
         "#;
         let mut ps_cmd = std::process::Command::new("powershell");
         ps_cmd.creation_flags(CREATE_NO_WINDOW);
-        let _ = ps_cmd.args(&["-NoProfile", "-NonInteractive", "-Command", script]).output();
+        let _ = ps_cmd
+            .args(&["-NoProfile", "-NonInteractive", "-Command", script])
+            .output();
 
         // Allow Windows socket stack a brief moment to free the port completely
         std::thread::sleep(std::time::Duration::from_millis(200));
@@ -180,6 +260,12 @@ pub fn run() {
     let child_handle_exit = Arc::clone(&child_handle);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let _ = app
+                .get_webview_window("main")
+                .expect("no main window")
+                .set_focus();
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

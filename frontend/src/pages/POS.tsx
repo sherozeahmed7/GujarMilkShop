@@ -8,7 +8,7 @@ import { customerService } from '../services/customer.service';
 import { ApiCustomer } from '../types/customer';
 import { MilkProducts } from './inventory/MilkProducts';
 import { posConfigService, POSConfigData } from '../services/posConfig.service';
-import { buildReceipt } from '../utils/escposBuilder';
+import { buildReceipt, buildPixelPerfectReceipt } from '../utils/escposBuilder';
 import { NumericKeypadInput } from '../components/pos/NumericKeypadInput';
 import { inventoryService } from '../services/inventoryService';
 
@@ -65,23 +65,12 @@ function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number):
     });
   }
 
-  // Send qty + unitPrice such that money(qty * unitPrice) === line total (backend recomputes total that way)
+  // Keep the effective rate at full precision: rounding both weight and rate
+  // can change the agreed rupee amount when the backend multiplies them.
   return raw.map((r, idx) => {
     const line = lineTotals[idx];
-    let qty = qtyMoney(r.quantity);
-    if (qty <= 0) qty = qtyMoney(r.quantity) || 0.001;
-    let unitPrice = qty > 0 ? money(line / qty) : 0;
-    // Fix rare 0.01 drift from rounding
-    if (qty > 0 && money(qty * unitPrice) !== line) {
-      unitPrice = money(line / qty);
-      if (money(qty * unitPrice) !== line) {
-        // Last resort: nudge qty so product matches the intended rupees
-        qty = unitPrice > 0 ? qtyMoney(line / unitPrice) : qty;
-        if (money(qty * unitPrice) !== line && qty > 0) {
-          unitPrice = money(line / qty);
-        }
-      }
-    }
+    const qty = qtyMoney(r.quantity) || 0.001;
+    const unitPrice = line / qty;
     return { itemName: r.itemName, quantity: qty, unitPrice };
   });
 }
@@ -135,6 +124,27 @@ export const POS: React.FC = () => {
   // Duplicate-print protection: track which sale IDs have already been sent to the printer
   const printedSaleIds = useRef<Set<number>>(new Set());
 
+  // Shared print helper — used by auto-print and Reprint button
+  const executePrint = React.useCallback(async (saleData: any) => {
+    if (!posConfig) return;
+    const useRaster = (posConfig as any).printMode !== 'text';
+    let receiptBytes: number[];
+    if (useRaster) {
+      try {
+        receiptBytes = await buildPixelPerfectReceipt(saleData);
+      } catch (rasterErr) {
+        console.warn('[PRINT] Rasterizer failed, falling back to text ESC/POS mode:', rasterErr);
+        receiptBytes = buildReceipt(saleData);
+      }
+    } else {
+      receiptBytes = buildReceipt(saleData);
+    }
+    await invoke<boolean>('print_raw_bytes', {
+      printerName: posConfig.printerName || '',
+      data: receiptBytes,
+    });
+  }, [posConfig]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -165,7 +175,7 @@ export const POS: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const loadHeldCarts = async () => {
+  const loadHeldCarts = React.useCallback(async () => {
     setHeldCartsLoading(true);
     try {
       setHeldCarts(await heldCartService.list());
@@ -174,16 +184,14 @@ export const POS: React.FC = () => {
     } finally {
       setHeldCartsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadHeldCarts();
   }, []);
 
-  // Load registered ledger customers when Khata is selected
+  // Preload registered ledger customers on mount so switching to Khata is instant
   useEffect(() => {
-    if (paymentMethod !== 'khata') return;
-
     let cancelled = false;
     setKhataLoading(true);
     setKhataLoadError(null);
@@ -209,7 +217,7 @@ export const POS: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [paymentMethod]);
+  }, []);
 
   const filteredKhataCustomers = useMemo(() => {
     const q = khataFilter.trim().toLowerCase();
@@ -224,8 +232,8 @@ export const POS: React.FC = () => {
   const milkRatePerKg = prices?.milkRatePerKg ?? 0;
   const yogurtRatePerKg = prices?.yogurtRatePerKg ?? 0;
 
-  const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
-  const finalTotal = Math.max(0, money(subtotal - (discount || 0)));
+  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.total, 0), [cart]);
+  const finalTotal = useMemo(() => Math.max(0, money(subtotal - (discount || 0))), [subtotal, discount]);
 
   const setCartLineModePersisted = (mode: 'combine' | 'new') => {
     setCartLineMode(mode);
@@ -272,12 +280,12 @@ export const POS: React.FC = () => {
           return prev.map((item, idx) =>
             idx === lastIdx
               ? {
-                  ...item,
-                  quantity: newQty,
-                  total: newTotal,
-                  pricePerKg: rate,
-                  unit: unit === 'rs' || existing.unit === 'rs' ? 'rs' : 'kg',
-                }
+                ...item,
+                quantity: newQty,
+                total: newTotal,
+                pricePerKg: rate,
+                unit: unit === 'rs' || existing.unit === 'rs' ? 'rs' : 'kg',
+              }
               : item
           );
         }
@@ -330,13 +338,13 @@ export const POS: React.FC = () => {
     else setYogurtCustomAmount('');
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(cart.filter(item => item.id !== id));
-  };
+  const removeFromCart = React.useCallback((id: string) => {
+    setCart(prev => prev.filter(item => item.id !== id));
+  }, []);
 
-  const updateCartItemQuantity = (id: string, newQuantityStr: string) => {
+  const updateCartItemQuantity = React.useCallback((id: string, newQuantityStr: string) => {
     const newQuantity = parseFloat(newQuantityStr);
-    setCart(cart.map(item => {
+    setCart(prev => prev.map(item => {
       if (item.id === id) {
         if (isNaN(newQuantity) || newQuantity < 0) {
           return { ...item, quantity: 0, total: 0 };
@@ -351,9 +359,9 @@ export const POS: React.FC = () => {
       }
       return item;
     }));
-  };
+  }, []);
 
-  const resetAfterSale = () => {
+  const resetAfterSale = React.useCallback(() => {
     setCart([]);
     setDiscount(0);
     setIsDiscountOpen(false);
@@ -363,7 +371,7 @@ export const POS: React.FC = () => {
     setSelectedKhataCustomer(null);
     setKhataFilter('');
     setPaymentMethod('cash');
-  };
+  }, []);
 
   const holdCurrentBill = async () => {
     if (cart.length === 0) {
@@ -495,10 +503,15 @@ export const POS: React.FC = () => {
       }
     }
 
-    // Recompute total from item lines so it always matches backend validation
-    const totalAmount = money(
+    // Never silently replace the bill shown to the cashier with a rounded product.
+    const totalAmount = money(finalTotal);
+    const itemsTotal = money(
       items.reduce((sum, i) => sum + money(i.quantity * i.unitPrice), 0)
     );
+    if (itemsTotal !== totalAmount) {
+      setCheckoutError('Item totals do not match the bill. Please review the cart.');
+      return;
+    }
     if (totalAmount <= 0) {
       setCheckoutError('Sale total must be greater than 0.');
       return;
@@ -596,7 +609,7 @@ export const POS: React.FC = () => {
         const saleId: number = sale.id;
         if (!printedSaleIds.current.has(saleId)) {
           printedSaleIds.current.add(saleId);
-          const receiptBytes = buildReceipt({
+          const saleData = {
             id: sale.id,
             tokenNumber: sale.tokenNumber,
             shopName: posConfig.shopName || 'Gujar Milk Shop',
@@ -617,15 +630,11 @@ export const POS: React.FC = () => {
             receiptWidth: posConfig.receiptWidth || '80mm',
             footerText: posConfig.receiptFooterText,
             autoCutter: posConfig.autoCutter,
-          });
-          // Fire-and-forget: printing MUST NOT affect the committed sale
-          invoke<boolean>('print_raw_bytes', {
-            printerName: posConfig.printerName,
-            data: receiptBytes,
-          }).catch((printErr) => {
+          };
+          // Trigger native ESC/POS print immediately in the background without delay
+          executePrint(saleData).catch((printErr) => {
             console.error('[PRINT] Failed to print receipt:', printErr);
-            setCheckoutError(`Receipt printing failed: ${printErr}. Sale #${sale.id} was saved successfully.`);
-            // Remove from set so a manual retry is possible
+            setCheckoutError(`Receipt printing notice: ${printErr}. Sale #${sale.id} was saved successfully.`);
             printedSaleIds.current.delete(saleId);
           });
         }
@@ -1284,9 +1293,9 @@ export const POS: React.FC = () => {
                     <span className="text-[#166534] font-semibold">{checkoutSuccess}</span>
                     {lastSaleDetails && posConfig?.printerEnabled && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (!lastSaleDetails || !posConfig) return;
-                          const bytes = buildReceipt({
+                          const saleData = {
                             id: lastSaleDetails.id,
                             tokenNumber: lastSaleDetails.tokenNumber,
                             shopName: posConfig.shopName || 'Gujar Milk Shop',
@@ -1307,11 +1316,13 @@ export const POS: React.FC = () => {
                             receiptWidth: posConfig.receiptWidth || '80mm',
                             footerText: posConfig.receiptFooterText,
                             autoCutter: posConfig.autoCutter,
-                          });
-                          invoke<boolean>('print_raw_bytes', {
-                            printerName: posConfig.printerName,
-                            data: bytes,
-                          }).catch((e) => console.error('[PRINT] Manual reprint failed:', e));
+                          };
+                          try {
+                            await executePrint(saleData);
+                          } catch (e) {
+                            console.error('[PRINT] Manual reprint failed:', e);
+                            setCheckoutError(`Reprint failed: ${e}`);
+                          }
                         }}
                         className="ml-2 px-3 py-1 bg-white dark:bg-[#142119] border border-[#BBF7D0] dark:border-[#2d4a35] text-[#166534] dark:text-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1a2e1f] rounded shadow-sm text-xs font-semibold"
                       >

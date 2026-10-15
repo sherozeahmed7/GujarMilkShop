@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getNeonPool } from '../config/neonDb';
+import { claimEventUuid, ensurePermanentReplayGuard } from '../services/neonIdempotency.service';
 
 // ─── Per-entity INSERT builders ───────────────────────────────────────────────
 // Each returns { sql, vals } for the specific Neon table.
@@ -52,7 +53,7 @@ function buildInsert(entityType: string, p: any): { sql: string; vals: any[] } {
         sql: `INSERT INTO customers
                 (id,local_id,device_id,name,phone,address,customer_type,status,created_at,updated_at)
               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-              ON CONFLICT(device_id,local_id) DO NOTHING`,
+              ON CONFLICT DO NOTHING`,
         vals: [p.id,p.local_id,p.device_id,p.name,p.phone,p.address,
                p.customer_type,p.status,p.created_at,p.updated_at],
       };
@@ -154,16 +155,6 @@ function buildInsert(entityType: string, p: any): { sql: string; vals: any[] } {
         vals: [p.id,p.local_id,p.device_id,p.product_uuid,p.quantity,p.movement_type,
                p.source,p.reference,p.unit_cost,p.supplier_uuid,p.shift_uuid,
                p.user_uuid,p.date,p.created_at],
-      };
-
-    case 'MilkProductTransaction':
-      return {
-        sql: `INSERT INTO milk_product_transactions
-                (id,local_id,device_id,date,product,type,quantity,reference,notes,created_at)
-              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-              ON CONFLICT(device_id,local_id) DO NOTHING`,
-        vals: [p.id,p.local_id,p.device_id,p.date,p.product,p.type,
-               p.quantity,p.reference,p.notes,p.created_at],
       };
 
     case 'ButterGheeConversion':
@@ -269,6 +260,7 @@ export const migrateBatch = async (req: Request, res: Response): Promise<void> =
   let skippedCount = 0;
 
   try {
+    await ensurePermanentReplayGuard(client);
     await client.query('BEGIN');
 
     for (const item of payloads) {
@@ -281,9 +273,8 @@ export const migrateBatch = async (req: Request, res: Response): Promise<void> =
         throw new Error(`Migration only supports CREATE operations. Got: ${operation}`);
       }
 
-      // 1. Idempotency check — inside transaction
-      const idem = await client.query('SELECT 1 FROM idempotency_log WHERE event_uuid=$1', [eventUuid]);
-      if (idem.rowCount && idem.rowCount > 0) {
+      // 1. Permanent idempotency claim — inside the migration transaction.
+      if (!(await claimEventUuid(client, eventUuid))) {
         skippedCount++;
         continue;
       }
@@ -293,11 +284,7 @@ export const migrateBatch = async (req: Request, res: Response): Promise<void> =
       const { sql, vals } = buildInsert(entityType, payloadObj);
       await client.query(sql, vals);
 
-      // 3. Record idempotency INSIDE same transaction (committed or rolled back together)
-      await client.query(
-        `INSERT INTO idempotency_log (event_uuid,device_id,entity_type,operation) VALUES($1,$2,$3,$4)`,
-        [eventUuid, deviceId, entityType, operation]
-      );
+      // 3. Replay protection is permanently handled by processed_event_keys (claimed above)
 
       insertedCount++;
     }

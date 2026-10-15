@@ -1,5 +1,7 @@
+import crypto from 'crypto';
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
+import { getOrCreateWalkInCustomer } from './walkInCustomer.service';
 import { NotificationService } from './notification.service';
 
 const SALE_TYPES = ['walk_in', 'split', 'ledger_daily', 'ledger_monthly'] as const;
@@ -84,20 +86,33 @@ function localDateKey(d: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-async function getInventoryStockByCode(db: any, code: string): Promise<number> {
-  const product = await db.inventoryProduct.findFirst({
-    where: { code: code.toUpperCase() },
-  });
-  if (!product) {
-    const all = await db.inventoryProduct.findMany({ where: { isActive: true } });
-    const match = all.find((p: any) => String(p.name).toLowerCase() === code.toLowerCase());
-    if (!match) return 0;
-    const sum = await db.inventoryMovement.aggregate({
-      where: { productId: match.id },
-      _sum: { quantity: true },
-    });
-    return money(sum._sum.quantity || 0);
+// In-memory cache for core inventory product IDs to avoid redundant DB table scans
+const CORE_PRODUCT_CACHE = new Map<string, { id: number; code: string; name: string }>();
+
+async function getCachedProduct(db: any, codeOrName: string) {
+  const normalized = codeOrName.trim().toUpperCase();
+  if (CORE_PRODUCT_CACHE.has(normalized)) {
+    return CORE_PRODUCT_CACHE.get(normalized)!;
   }
+  let product = await db.inventoryProduct.findFirst({
+    where: {
+      OR: [
+        { code: normalized },
+        { name: codeOrName.trim() }
+      ]
+    },
+    select: { id: true, code: true, name: true }
+  });
+  if (product) {
+    CORE_PRODUCT_CACHE.set(normalized, product);
+    CORE_PRODUCT_CACHE.set(product.name.trim().toUpperCase(), product);
+  }
+  return product;
+}
+
+async function getInventoryStockByCode(db: any, code: string): Promise<number> {
+  const product = await getCachedProduct(db, code);
+  if (!product) return 0;
   const sum = await db.inventoryMovement.aggregate({
     where: { productId: product.id },
     _sum: { quantity: true },
@@ -139,7 +154,7 @@ async function assertButterGheeInventoryStock(
 }
 
 async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput[], userId?: number) {
-  const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' } });
+  const shift = await tx.shift.findFirst({ where: { status: 'Open' }, orderBy: { openedAt: 'asc' }, select: { id: true } });
 
   // Merge same itemName into one stock movement
   const byName = new Map<string, number>();
@@ -148,19 +163,23 @@ async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput
     byName.set(key, money((byName.get(key) || 0) + item.quantity));
   }
 
+  const syncEvents: Array<{
+    entityType: string;
+    localId: number;
+    cloudUuid: string;
+    operation: 'CREATE';
+    payload: any;
+    layer: number;
+  }> = [];
+
   for (const [itemName, quantity] of byName) {
-    let product = await tx.inventoryProduct.findFirst({
-      where: { code: itemName.toUpperCase() },
-    });
-    if (!product) {
-      const all = await tx.inventoryProduct.findMany({ where: { isActive: true } });
-      product = all.find((p: any) => String(p.name).toLowerCase() === itemName) || null;
-    }
+    const product = await getCachedProduct(tx, itemName);
 
     if (product) {
       const reference = `sale-${saleId}-${itemName}`;
-      const existing = await tx.inventoryMovement.findUnique({ where: { reference } });
+      const existing = await tx.inventoryMovement.findUnique({ where: { reference }, select: { id: true } });
       if (!existing) {
+        const movementCloudUuid = crypto.randomUUID();
         // Allow sale at zero / negative stock — balance just goes further down
         const movement = await tx.inventoryMovement.create({
           data: {
@@ -171,14 +190,24 @@ async function recordInventorySale(tx: any, saleId: number, items: SaleItemInput
             reference,
             userId,
             shiftId: shift?.id,
+            cloudUuid: movementCloudUuid,
           },
         });
 
-        await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', movement.id, movement, 2);
+        syncEvents.push({
+          entityType: 'InventoryMovement',
+          localId: movement.id,
+          cloudUuid: movementCloudUuid,
+          operation: 'CREATE',
+          payload: movement,
+          layer: 2,
+        });
       }
     }
-    // Lassi sales only move LASSI inventory (may go negative).
-    // Milk was already taken when adding milk in F2 — do not deduct milk again on sale.
+  }
+
+  if (syncEvents.length > 0) {
+    await SyncQueueService.enqueueBatch(tx, syncEvents);
   }
 }
 
@@ -425,7 +454,8 @@ async function getNextTokenNumber(tx: any): Promise<number> {
 
   const lastSale = await tx.sale.findFirst({
     where: { createdAt: { gte: startOfMonth } },
-    orderBy: { tokenNumber: 'desc' }
+    orderBy: { tokenNumber: 'desc' },
+    select: { tokenNumber: true },
   });
 
   return lastSale ? (lastSale.tokenNumber || 0) + 1 : 1;
@@ -582,11 +612,21 @@ export class SaleService {
       }
 
       const sale = await prisma.$transaction(async (tx) => {
+        const walkInCustomer = await getOrCreateWalkInCustomer(tx);
         const tokenNumber = await getNextTokenNumber(tx);
+        const saleCloudUuid = crypto.randomUUID();
+        
+        const itemsWithUuids = normalizedItems.map((item) => ({
+          ...item,
+          cloudUuid: crypto.randomUUID(),
+        }));
+
+        const paymentCloudUuid = crypto.randomUUID();
+
         const created = await tx.sale.create({
           data: {
             saleType,
-            customerId: null,
+            customerId: walkInCustomer.id,
             customerName: customerName?.trim() || null,
             customerPhone: customerPhone?.trim() || null,
             totalAmount: total,
@@ -594,24 +634,64 @@ export class SaleService {
             remainingBalance: 0,
             status: 'paid',
             tokenNumber,
-            items: { create: normalizedItems },
+            cloudUuid: saleCloudUuid,
+            items: { create: itemsWithUuids },
             payments: {
-              create: { method: paymentMethod as PaymentMethod, amount: paid, status: 'completed' }
+              create: {
+                method: paymentMethod as PaymentMethod,
+                amount: paid,
+                status: 'completed',
+                cloudUuid: paymentCloudUuid,
+              }
             }
           },
           include: { items: true, payments: true }
         });
         await deductF2Stock(tx, payload);
         await recordInventorySale(tx, created.id, normalizedItems, userId);
-        
-        await SyncQueueService.enqueueCreate(tx, 'Sale', created.id, created, 1);
+
+        const syncEvents: Array<{
+          entityType: string;
+          localId: number;
+          cloudUuid: string;
+          operation: 'CREATE';
+          payload: any;
+          layer: number;
+        }> = [
+          {
+            entityType: 'Sale',
+            localId: created.id,
+            cloudUuid: saleCloudUuid,
+            operation: 'CREATE',
+            payload: created,
+            layer: 1,
+          }
+        ];
+
         for (const item of created.items) {
-          await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+          syncEvents.push({
+            entityType: 'SaleItem',
+            localId: item.id,
+            cloudUuid: item.cloudUuid || crypto.randomUUID(),
+            operation: 'CREATE',
+            payload: item,
+            layer: 2,
+          });
         }
+
         for (const payment of created.payments) {
-          await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+          syncEvents.push({
+            entityType: 'Payment',
+            localId: payment.id,
+            cloudUuid: payment.cloudUuid || paymentCloudUuid,
+            operation: 'CREATE',
+            payload: payment,
+            layer: 2,
+          });
         }
-        
+
+        await SyncQueueService.enqueueBatch(tx, syncEvents);
+
         return created;
       });
 
@@ -620,7 +700,7 @@ export class SaleService {
         title: 'Walk-in Sale Completed',
         message: `Sale of Rs. ${total.toLocaleString()} completed — Bill #${sale.id} (Token #${sale.tokenNumber || sale.id}).`,
         metadata: { saleId: sale.id, saleType: 'walk_in', totalAmount: total },
-      }).catch(() => {});
+      }).catch(() => { });
 
       return { success: true, statusCode: 201, message: 'Walk-in sale created successfully.', data: sale };
     }
@@ -676,6 +756,15 @@ export class SaleService {
 
       const sale = await prisma.$transaction(async (tx) => {
         const tokenNumber = await getNextTokenNumber(tx);
+        const saleCloudUuid = crypto.randomUUID();
+
+        const itemsWithUuids = normalizedItems.map((item) => ({
+          ...item,
+          cloudUuid: crypto.randomUUID(),
+        }));
+
+        const paymentCloudUuid = crypto.randomUUID();
+
         const created = await tx.sale.create({
           data: {
             saleType,
@@ -687,24 +776,64 @@ export class SaleService {
             remainingBalance: remaining,
             status: 'partial',
             tokenNumber,
-            items: { create: normalizedItems },
+            cloudUuid: saleCloudUuid,
+            items: { create: itemsWithUuids },
             payments: {
-              create: { method: paymentMethod as PaymentMethod, amount: paid, status: 'partial' }
+              create: {
+                method: paymentMethod as PaymentMethod,
+                amount: paid,
+                status: 'partial',
+                cloudUuid: paymentCloudUuid,
+              }
             }
           },
           include: { items: true, payments: true }
         });
         await deductF2Stock(tx, payload);
         await recordInventorySale(tx, created.id, normalizedItems, userId);
-        
-        await SyncQueueService.enqueueCreate(tx, 'Sale', created.id, created, 1);
+
+        const syncEvents: Array<{
+          entityType: string;
+          localId: number;
+          cloudUuid: string;
+          operation: 'CREATE';
+          payload: any;
+          layer: number;
+        }> = [
+          {
+            entityType: 'Sale',
+            localId: created.id,
+            cloudUuid: saleCloudUuid,
+            operation: 'CREATE',
+            payload: created,
+            layer: 1,
+          }
+        ];
+
         for (const item of created.items) {
-          await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+          syncEvents.push({
+            entityType: 'SaleItem',
+            localId: item.id,
+            cloudUuid: item.cloudUuid || crypto.randomUUID(),
+            operation: 'CREATE',
+            payload: item,
+            layer: 2,
+          });
         }
+
         for (const payment of created.payments) {
-          await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+          syncEvents.push({
+            entityType: 'Payment',
+            localId: payment.id,
+            cloudUuid: payment.cloudUuid || paymentCloudUuid,
+            operation: 'CREATE',
+            payload: payment,
+            layer: 2,
+          });
         }
-        
+
+        await SyncQueueService.enqueueBatch(tx, syncEvents);
+
         return created;
       });
 
@@ -713,7 +842,7 @@ export class SaleService {
         title: 'Split Sale Created',
         message: `Split sale of Rs. ${total.toLocaleString()} created (Paid: Rs. ${paid.toLocaleString()}, Remaining: Rs. ${remaining.toLocaleString()}) — Bill #${sale.id}.`,
         metadata: { saleId: sale.id, saleType: 'split', totalAmount: total, paidAmount: paid, remainingBalance: remaining },
-      }).catch(() => {});
+      }).catch(() => { });
 
       return { success: true, statusCode: 201, message: 'Split sale created successfully.', data: sale };
     }
@@ -762,6 +891,15 @@ export class SaleService {
       // Ledger: paidAmount forced to 0; no payment method needed yet
       const sale = await prisma.$transaction(async (tx) => {
         const tokenNumber = await getNextTokenNumber(tx);
+        const saleCloudUuid = crypto.randomUUID();
+
+        const itemsWithUuids = normalizedItems.map((item) => ({
+          ...item,
+          cloudUuid: crypto.randomUUID(),
+        }));
+
+        const paymentCloudUuid = crypto.randomUUID();
+
         const created = await tx.sale.create({
           data: {
             saleType: saleType as SaleType,
@@ -773,24 +911,64 @@ export class SaleService {
             remainingBalance: total,
             status: 'pending',
             tokenNumber,
-            items: { create: normalizedItems },
+            cloudUuid: saleCloudUuid,
+            items: { create: itemsWithUuids },
             payments: {
-              create: { method: 'cash', amount: 0, status: 'pending' }
+              create: {
+                method: 'cash',
+                amount: 0,
+                status: 'pending',
+                cloudUuid: paymentCloudUuid,
+              }
             }
           },
           include: { items: true, payments: true, customer: true }
         });
         await deductF2Stock(tx, payload);
         await recordInventorySale(tx, created.id, normalizedItems, userId);
-        
-        await SyncQueueService.enqueueCreate(tx, 'Sale', created.id, created, 1);
+
+        const syncEvents: Array<{
+          entityType: string;
+          localId: number;
+          cloudUuid: string;
+          operation: 'CREATE';
+          payload: any;
+          layer: number;
+        }> = [
+          {
+            entityType: 'Sale',
+            localId: created.id,
+            cloudUuid: saleCloudUuid,
+            operation: 'CREATE',
+            payload: created,
+            layer: 1,
+          }
+        ];
+
         for (const item of created.items) {
-          await SyncQueueService.enqueueCreate(tx, 'SaleItem', item.id, item, 2);
+          syncEvents.push({
+            entityType: 'SaleItem',
+            localId: item.id,
+            cloudUuid: item.cloudUuid || crypto.randomUUID(),
+            operation: 'CREATE',
+            payload: item,
+            layer: 2,
+          });
         }
+
         for (const payment of created.payments) {
-          await SyncQueueService.enqueueCreate(tx, 'Payment', payment.id, payment, 2);
+          syncEvents.push({
+            entityType: 'Payment',
+            localId: payment.id,
+            cloudUuid: payment.cloudUuid || paymentCloudUuid,
+            operation: 'CREATE',
+            payload: payment,
+            layer: 2,
+          });
         }
-        
+
+        await SyncQueueService.enqueueBatch(tx, syncEvents);
+
         return created;
       });
 
@@ -799,7 +977,7 @@ export class SaleService {
         title: 'Khata Sale Recorded',
         message: `Ledger sale of Rs. ${total.toLocaleString()} recorded for ${customer.name} — Bill #${sale.id}.`,
         metadata: { saleId: sale.id, customerId: customer.id, customerName: customer.name, totalAmount: total },
-      }).catch(() => {});
+      }).catch(() => { });
 
       return { success: true, statusCode: 201, message: 'Ledger sale created successfully.', data: sale };
     }
@@ -1097,7 +1275,7 @@ export class SaleService {
       title: 'Split Balance Settled',
       message: `Payment of Rs. ${settleAmount.toLocaleString()} received for Bill #${sale.id} via ${paymentMethod}.`,
       metadata: { saleId: sale.id, amount: settleAmount, paymentMethod },
-    }).catch(() => {});
+    }).catch(() => { });
 
     return {
       success: true,

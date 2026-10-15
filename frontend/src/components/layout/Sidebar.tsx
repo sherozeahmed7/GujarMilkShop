@@ -115,11 +115,13 @@ export const Sidebar: React.FC = () => {
 
   const assignedScreensStr = localStorage.getItem('assignedScreens');
   const allowedScreens = assignedScreensStr ? JSON.parse(assignedScreensStr) : [];
+  const userRole = localStorage.getItem('role')?.toLowerCase();
+  const isSuperAdmin = userRole === 'super_admin' || userRole === 'super admin';
 
-  const visibleMainItems = mainNavItems.filter(item => allowedScreens.includes(item.name));
-  const visibleReportItems = reportItems.filter(item => allowedScreens.includes(item.name));
-  const visibleSettingsItems = settingsItems.filter(item => allowedScreens.includes(item.name));
-  const visibleBottomItems = bottomNavItems.filter(item => allowedScreens.includes(item.name));
+  const visibleMainItems = mainNavItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
+  const visibleReportItems = reportItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
+  const visibleSettingsItems = settingsItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
+  const visibleBottomItems = bottomNavItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
 
   const handleConfirmLogout = async () => {
     setIsLoggingOut(true);

@@ -10,9 +10,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { POS } from './pages/POS';
-import { Products } from './pages/Products';
 import { Inventory } from './pages/Inventory';
-import { Sales } from './pages/Sales';
 import { DailyRates } from './pages/settings/DailyRates';
 import { ShopInfo } from './pages/settings/ShopInfo';
 import { POSConfig } from './pages/settings/POSConfig';
@@ -112,11 +110,11 @@ function App() {
 
     // Status messages shown progressively while waiting for the backend
     const statusStages = [
-      { after: 0,    text: 'Starting backend server…',   pct: 10 },
-      { after: 2000, text: 'Connecting to database…',    pct: 35 },
-      { after: 5000, text: 'Loading system data…',       pct: 55 },
-      { after: 9000, text: 'Almost ready…',              pct: 75 },
-      { after: 15000, text: 'Finalising startup…',       pct: 85 },
+      { after: 0, text: 'Starting backend server…', pct: 10 },
+      { after: 2000, text: 'Connecting to database…', pct: 35 },
+      { after: 5000, text: 'Loading system data…', pct: 55 },
+      { after: 9000, text: 'Almost ready…', pct: 75 },
+      { after: 15000, text: 'Finalising startup…', pct: 85 },
     ];
 
     const startTime = Date.now();
@@ -231,7 +229,6 @@ function App() {
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="pos" element={<POS />} />
-              <Route path="products" element={<Products />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="suppliers" element={<Suppliers />} />
               <Route path="customers" element={<Customers />} />
@@ -249,7 +246,6 @@ function App() {
                 <Route path="cashbook/ledger/:personId" element={<CashPersonLedger />} />
               </Route>
               <Route path="zreport" element={<ZReport />} />
-              <Route path="sales" element={<Sales />} />
 
               {/* Settings Routes */}
               <Route path="settings">

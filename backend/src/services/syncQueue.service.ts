@@ -9,9 +9,6 @@ type DbClient = Prisma.TransactionClient | typeof prisma;
 const NESTED_KEYS = new Set([
   'items',
   'payments',
-  // NOTE: 'customer' intentionally NOT listed here.
-  // Return.customer is a plain string ('Walk-in' / customer name), not a relation.
-  // The Customer relation object on Sale is an object and will be caught by the object guard.
   'supplier',
   'product',
   'openedBy',
@@ -23,10 +20,6 @@ const NESTED_KEYS = new Set([
   'movements',
   'collections',
   'users',
-  // NOTE: 'shift' intentionally NOT listed here.
-  // SupplierCollection.shift is a plain string ('morning'/'evening'), not a relation.
-  // The Shift relation object on other models is an object and will be caught by the
-  // object-type guard below (line ~136), so it never leaks into the payload.
 ]);
 
 /** Local FK field → { uuidKey, parent entity type } */
@@ -64,16 +57,32 @@ export class SyncQueueService {
     localId: number,
     db: DbClient = prisma
   ): Promise<string | null> {
-    const mapping = await db.localToCloudMapping.findUnique({
-      where: {
-        deviceId_entityType_localId: {
-          deviceId: this.getDeviceId(),
-          entityType,
-          localId,
+    try {
+      // 1. Direct business table embedded cloudUuid lookup (Phase 6 target)
+      const rows: any[] = await (db as any).$queryRawUnsafe(
+        `SELECT "cloudUuid" FROM "${entityType}" WHERE "id" = ?`,
+        localId
+      );
+      if (rows.length > 0 && rows[0]?.cloudUuid) {
+        return rows[0].cloudUuid;
+      }
+    } catch (_) {}
+
+    // 2. Fallback to LocalToCloudMapping if available
+    try {
+      const mapping = await (db as any).localToCloudMapping.findUnique({
+        where: {
+          deviceId_entityType_localId: {
+            deviceId: this.getDeviceId(),
+            entityType,
+            localId,
+          },
         },
-      },
-    });
-    return mapping?.cloudUuid || null;
+      });
+      return mapping?.cloudUuid || null;
+    } catch (_) {
+      return null;
+    }
   }
 
   static async createCloudMapping(
@@ -85,26 +94,38 @@ export class SyncQueueService {
     const uuid = cloudUuid || crypto.randomUUID();
     const deviceId = this.getDeviceId();
 
-    const result = await db.localToCloudMapping.upsert({
-      where: {
-        deviceId_entityType_localId: {
+    // 1. Update embedded cloudUuid on business table
+    try {
+      await (db as any).$executeRawUnsafe(
+        `UPDATE "${entityType}" SET "cloudUuid" = ? WHERE "id" = ? AND ("cloudUuid" IS NULL OR "cloudUuid" = '')`,
+        uuid,
+        localId
+      );
+    } catch (_) {}
+
+    // 2. Maintain dual-write compatibility with LocalToCloudMapping
+    try {
+      await (db as any).localToCloudMapping.upsert({
+        where: {
+          deviceId_entityType_localId: {
+            deviceId,
+            entityType,
+            localId,
+          },
+        },
+        update: {
+          ...(cloudUuid ? { cloudUuid } : {}),
+        },
+        create: {
           deviceId,
           entityType,
           localId,
+          cloudUuid: uuid,
         },
-      },
-      update: {
-        ...(cloudUuid ? { cloudUuid } : {}),
-      },
-      create: {
-        deviceId,
-        entityType,
-        localId,
-        cloudUuid: uuid,
-      },
-    });
+      });
+    } catch (_) {}
 
-    return result.cloudUuid;
+    return uuid;
   }
 
   /** Get existing mapping or create one (for seeded masters that never went through enqueue). */
@@ -157,11 +178,6 @@ export class SyncQueueService {
       }
 
       out[key] = value;
-    }
-
-    // Entity-specific cleanups
-    if (entityType === 'Sale') {
-      delete out.tokenNumber;
     }
 
     return out;
@@ -239,6 +255,49 @@ export class SyncQueueService {
     const cloudUuid = await this.createCloudMapping(entityType, localId, undefined, db);
     await this.enqueue(db, entityType, localId, cloudUuid, 'CREATE', payload, layer);
     return cloudUuid;
+  }
+
+  /**
+   * High-performance batch enqueue for multiple items with pre-assigned cloudUuids.
+   * Performs minimal enrichment and batch insert without redundant round-trips.
+   */
+  static async enqueueBatch(
+    db: DbClient,
+    events: Array<{
+      entityType: string;
+      localId: number;
+      cloudUuid: string;
+      operation: 'CREATE' | 'UPDATE' | 'DELETE' | 'UPSERT';
+      payload: any;
+      layer?: number;
+    }>
+  ) {
+    if (!events || events.length === 0) return;
+    const deviceId = this.getDeviceId();
+    const rows = [];
+
+    for (const ev of events) {
+      const eventUuid = crypto.randomUUID();
+      const enriched = await this.enrichPayload(ev.entityType, ev.payload, db);
+      rows.push({
+        eventUuid,
+        deviceId,
+        entityType: ev.entityType,
+        localId: ev.localId,
+        cloudUuid: ev.cloudUuid,
+        operation: ev.operation,
+        payload: JSON.stringify(enriched),
+        status: 'PENDING',
+        layer: ev.layer ?? 0,
+        nextRetryAt: null,
+      });
+    }
+
+    if (rows.length > 0) {
+      await (db as any).syncQueue.createMany({
+        data: rows,
+      });
+    }
   }
 
   static async enqueueUpdate(

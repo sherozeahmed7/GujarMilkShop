@@ -3,7 +3,7 @@
  * Connects to the Express backend running on localhost:5000.
  */
 
-export const API_BASE_URL = 'http://localhost:5000/api';
+export const API_BASE_URL = 'http://127.0.0.1:5000/api';
 
 /**
  * Called whenever any API response returns 401 Unauthorized (except login).
@@ -41,6 +41,22 @@ const getHeaders = (customHeaders: Record<string, string> = {}) => {
   };
 };
 
+const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 60000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (err: any) {
+    clearTimeout(id);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection or retry.');
+    }
+    throw err;
+  }
+};
+
 export const apiClient = {
   get: async (endpoint: string, params?: Record<string, any>) => {
     try {
@@ -48,7 +64,7 @@ export const apiClient = {
       if (params) {
         Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
       }
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         headers: getHeaders(),
         cache: 'no-store',
       });
@@ -66,7 +82,7 @@ export const apiClient = {
 
   post: async (endpoint: string, payload?: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(payload),
@@ -85,7 +101,7 @@ export const apiClient = {
 
   put: async (endpoint: string, payload?: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(payload),
@@ -104,7 +120,7 @@ export const apiClient = {
 
   patch: async (endpoint: string, payload?: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'PATCH',
         headers: getHeaders(),
         body: JSON.stringify(payload),
@@ -123,7 +139,7 @@ export const apiClient = {
 
   delete: async (endpoint: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'DELETE',
         headers: getHeaders(),
       });

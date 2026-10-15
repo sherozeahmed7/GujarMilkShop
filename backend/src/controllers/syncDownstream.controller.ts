@@ -28,10 +28,55 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
     DOWNSTREAM_BATCH_SIZE
   );
 
+  const client = await getNeonPool().connect().catch((err: any) => {
+    console.error('[Downstream API] Error opening snapshot:', err.message);
+    return null;
+  });
+  if (!client) {
+    res.status(500).json({ error: 'Failed to fetch downstream changes' });
+    return;
+  }
+
   try {
+    // The watermark check and event read must share one MVCC snapshot. If a
+    // cleanup commits concurrently, this request sees either all pre-cleanup
+    // history or the committed watermark and never a partial prefix.
+    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+
+    // Only a persisted cleanup watermark proves that history was deleted.
+    // MIN(change_sequence) is deliberately not used: PostgreSQL sequences may
+    // contain normal gaps and a new installation may start above sequence 1.
+    const stateTable = await client.query(
+      `SELECT to_regclass('public.sync_retention_state') AS table_name`
+    );
+    let maxDeletedSequence = 0n;
+    if (stateTable.rows[0]?.table_name) {
+      const watermarkResult = await client.query(
+        `SELECT COALESCE(max_deleted_sequence, 0) AS max_deleted_sequence
+         FROM sync_retention_state
+         WHERE singleton_id = 1`
+      );
+      maxDeletedSequence = BigInt(watermarkResult.rows[0]?.max_deleted_sequence || 0);
+    }
+
+    // A cursor equal to the watermark has consumed the entire deleted prefix.
+    // Anything older is missing known-deleted history and must restore before
+    // any downstream event is returned.
+    if (parsedCursor < maxDeletedSequence) {
+      await client.query('ROLLBACK');
+      res.status(410).json({
+        restoreRequired: true,
+        reason: 'SYNC_HISTORY_EXPIRED',
+        minimumSafeCursor: maxDeletedSequence.toString(),
+        requestedCursor: parsedCursor.toString(),
+        error: 'The requested sync cursor is too old. The missing history has been archived/deleted. A full restore is required.'
+      });
+      return;
+    }
+
     // Fetch changes authored by OTHER devices, after the given cursor.
     // Uses queryWithRetry to handle Neon cold-start connection drops transparently.
-    const result = await queryWithRetry(
+    const result = await client.query(
       `SELECT
          change_sequence,
          event_uuid,
@@ -57,6 +102,7 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
       ? changes[changes.length - 1].change_sequence.toString()
       : parsedCursor.toString();
 
+    await client.query('COMMIT');
     res.status(200).json({
       changes: changes.map((r: any) => ({
         changeSequence: r.change_sequence.toString(),
@@ -72,8 +118,20 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
       hasMore
     });
   } catch (err: any) {
+    await client.query('ROLLBACK').catch(() => { });
+    if (err?.code === '42P01' || err?.message?.includes('cloud_sync_events')) {
+      // Table does not exist (single POS setup) - return empty changes gracefully
+      res.status(200).json({
+        changes: [],
+        nextCursor: parsedCursor.toString(),
+        hasMore: false
+      });
+      return;
+    }
     console.error('[Downstream API] Error fetching changes:', err.message);
     res.status(500).json({ error: 'Failed to fetch downstream changes', details: err.message });
+  } finally {
+    client.release();
   }
 };
 
@@ -92,6 +150,11 @@ export const getDownstreamCursor = async (req: Request, res: Response): Promise<
       cursor: result.rows[0].max_seq.toString()
     });
   } catch (err: any) {
+    if (err?.code === '42P01' || err?.message?.includes('cloud_sync_events')) {
+      // Table does not exist (single POS setup) - return cursor 0 gracefully
+      res.status(200).json({ cursor: '0' });
+      return;
+    }
     console.error('[Downstream API] Error fetching cursor:', err.message);
     res.status(500).json({ error: 'Failed to fetch cursor' });
   }

@@ -287,8 +287,71 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   return bytes;
 }
 
+import { canvasToEscposRaster, renderReceiptToCanvas } from './escposRasterizer';
+
 /**
- * Build a test receipt for verifying printer connection & config.
+ * Build a 100% pixel-perfect monochrome raster ESC/POS receipt matching the UI Preview.
+ * Renders TrueType font (Inter/Helvetica), exact weights, solid lines, and spacing.
+ */
+export async function buildPixelPerfectReceipt(sale: ReceiptSale): Promise<number[]> {
+  const canvas = await renderReceiptToCanvas(
+    {
+      id: sale.id,
+      tokenNumber: sale.tokenNumber,
+      shopName: sale.shopName,
+      createdAt: sale.createdAt,
+      customerName: sale.customerName,
+      items: sale.items,
+      totalAmount: sale.totalAmount,
+      discountAmount: sale.discountAmount,
+      paymentMethod: sale.paymentMethod,
+      currencySymbol: sale.currencySymbol,
+      footerText: sale.footerText,
+    },
+    sale.receiptWidth || '80mm'
+  );
+
+  return canvasToEscposRaster(canvas, {
+    widthMm: sale.receiptWidth || '80mm',
+    autoCutter: sale.autoCutter !== false,
+  });
+}
+
+/**
+ * Build a pixel-perfect test page.
+ */
+export async function buildPixelPerfectTestPage(
+  printerName: string,
+  autoCutter: boolean,
+  shopName: string = 'GUJAR MILK SHOP',
+  footerText: string = 'Thank you for your visit!',
+  currencySymbol: string = 'Rs.',
+  receiptWidth: '58mm' | '80mm' = '80mm'
+): Promise<number[]> {
+  return buildPixelPerfectReceipt({
+    id: 28432,
+    tokenNumber: 1,
+    shopName,
+    createdAt: new Date(),
+    customerName: null,
+    cashierName: 'Admin',
+    items: [
+      { itemName: 'FRESH MILK', quantity: 3.5, unitPrice: 240, totalPrice: 840 },
+      { itemName: 'FRESH YOGURT', quantity: 1, unitPrice: 270, totalPrice: 270 }
+    ],
+    totalAmount: 1110,
+    paidAmount: 1110,
+    remainingBalance: 0,
+    paymentMethod: 'CASH',
+    currencySymbol,
+    receiptWidth,
+    footerText,
+    autoCutter
+  });
+}
+
+/**
+ * Build a test receipt for verifying printer connection & config (text mode).
  */
 export function buildTestPage(
   printerName: string,

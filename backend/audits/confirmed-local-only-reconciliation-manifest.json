@@ -1,0 +1,913 @@
+{
+  "createdAt": "2026-09-29T10:50:10.699Z",
+  "backupPath": "C:\\Users\\shero\\AppData\\Roaming\\com.shero.tauri-app\\pos-pre-local-only-create-2026-09-29T10-50-08-532Z.db",
+  "sales": [
+    {
+      "localId": 6257,
+      "cloudUuid": "906ba278-2e6f-4f94-8664-bd4470556ef5",
+      "eventUuid": "932aabf3-2b3c-4440-a9fe-2848a16b3754",
+      "itemEvents": [
+        {
+          "localId": 7480,
+          "cloudUuid": "4fc497e0-158a-453f-95a3-f2efb804dbc0",
+          "eventUuid": "70e155f7-d1c2-4aa1-93e0-278eedafe11a"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6261,
+          "cloudUuid": "e191df4e-cd74-465c-9170-626f6e3037ac",
+          "eventUuid": "0fb3f029-7b18-4179-b9ab-b087542dd464"
+        }
+      ],
+      "createdAt": "2026-09-19T22:28:47.373Z",
+      "totalAmount": 35,
+      "paidAmount": 35
+    },
+    {
+      "localId": 6259,
+      "cloudUuid": "75ff8829-346a-474b-b4b0-2b02883bc327",
+      "eventUuid": "595216c2-3fb4-43d2-b93e-883040c9c009",
+      "itemEvents": [
+        {
+          "localId": 7482,
+          "cloudUuid": "218de920-7981-4256-926b-307e65d40135",
+          "eventUuid": "39d89a9c-8153-4972-9920-615babe56f0c"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6263,
+          "cloudUuid": "ea3c6c02-e631-4ac7-875b-56fc635ee1b3",
+          "eventUuid": "87c03526-d006-473e-a154-c1e40d6060a6"
+        }
+      ],
+      "createdAt": "2026-09-19T22:28:54.934Z",
+      "totalAmount": 3500,
+      "paidAmount": 3500
+    },
+    {
+      "localId": 6260,
+      "cloudUuid": "8499c3f3-fe2f-4184-92f3-667df5274033",
+      "eventUuid": "becfcb31-8ccf-4c3e-bf02-5f09ce1da2e3",
+      "itemEvents": [
+        {
+          "localId": 7483,
+          "cloudUuid": "634ef733-7788-47b7-b30e-f8976bb09d02",
+          "eventUuid": "8c1997e1-560e-4263-93a9-0c2ba75fcf35"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6264,
+          "cloudUuid": "5bd6bca5-a34a-41ba-9f29-07da806549f6",
+          "eventUuid": "52a0b526-2175-4526-af61-5d9d5182658b"
+        }
+      ],
+      "createdAt": "2026-09-19T22:28:57.863Z",
+      "totalAmount": 875,
+      "paidAmount": 875
+    },
+    {
+      "localId": 6261,
+      "cloudUuid": "89e2036a-8f41-4b6f-ad0b-dda9abc811f4",
+      "eventUuid": "da06c605-560f-419a-acad-d2cc9eff604b",
+      "itemEvents": [
+        {
+          "localId": 7484,
+          "cloudUuid": "ef67e8fb-9e4f-4699-aac2-8293a587fb92",
+          "eventUuid": "3391ea8d-8731-4528-8874-ae74fdf1f0eb"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6265,
+          "cloudUuid": "f80976c6-6bae-449e-8fed-2843f4f2d59b",
+          "eventUuid": "82a1c4e3-e9d5-4612-8e3b-e3d28726b955"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:00.725Z",
+      "totalAmount": 875,
+      "paidAmount": 875
+    },
+    {
+      "localId": 6262,
+      "cloudUuid": "226f429f-3f41-41a4-abcd-be218c6f5d37",
+      "eventUuid": "5b94f4c4-d1bc-4bf8-8db6-b77d735f72ba",
+      "itemEvents": [
+        {
+          "localId": 7485,
+          "cloudUuid": "82e9434f-708f-4408-b195-ed0ee6e0ba7b",
+          "eventUuid": "f8c68121-6731-4cec-8d7c-0bcd05b28285"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6266,
+          "cloudUuid": "c1736963-7f05-4105-bbce-439152261a52",
+          "eventUuid": "f7eba8b7-3090-4b87-af66-78788534235e"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:03.443Z",
+      "totalAmount": 875,
+      "paidAmount": 875
+    },
+    {
+      "localId": 6263,
+      "cloudUuid": "e8aaaf4b-a932-4ad1-a8be-a47485a49025",
+      "eventUuid": "de6a8370-622c-4ed6-a67c-871e9e454539",
+      "itemEvents": [
+        {
+          "localId": 7486,
+          "cloudUuid": "8be07da9-8f92-42ff-898f-d52f82e4408b",
+          "eventUuid": "53ac8dba-7cb4-4936-9f12-3168b593c762"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6267,
+          "cloudUuid": "094a3256-57c4-40dd-9982-8eb99b6e8b71",
+          "eventUuid": "e246c505-a10b-4e99-8fab-19b96799ad7a"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:06.024Z",
+      "totalAmount": 875,
+      "paidAmount": 875
+    },
+    {
+      "localId": 6264,
+      "cloudUuid": "71bf5d0c-cdb7-482d-bf9f-5cd26f825c1f",
+      "eventUuid": "0b8770f4-80cb-4326-9fe0-216906e4b5dd",
+      "itemEvents": [
+        {
+          "localId": 7487,
+          "cloudUuid": "1154f5ac-d182-44c6-967c-7e560fba7452",
+          "eventUuid": "50a9f1ce-bb12-4404-9479-1467e302d898"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6268,
+          "cloudUuid": "51b8c931-eb69-4e55-9d69-4dd7794bd5b1",
+          "eventUuid": "6b01cfc9-6e07-46e3-bde5-40fa23260d43"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:08.578Z",
+      "totalAmount": 875,
+      "paidAmount": 875
+    },
+    {
+      "localId": 6265,
+      "cloudUuid": "fd455b24-0d34-40c7-8fb3-d99a27ed8567",
+      "eventUuid": "dc955b23-48dc-408a-9083-1280e7fe588e",
+      "itemEvents": [
+        {
+          "localId": 7488,
+          "cloudUuid": "6ef04849-7e23-4ab7-ae5d-ade976f40d59",
+          "eventUuid": "44a0451b-5908-47e9-b043-a77a4000c78e"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6269,
+          "cloudUuid": "e40c6aa1-325e-4b87-952b-8b5aa447f200",
+          "eventUuid": "b98b56c3-49d8-4078-937a-b2c177586777"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:14.885Z",
+      "totalAmount": 1500,
+      "paidAmount": 1500
+    },
+    {
+      "localId": 6266,
+      "cloudUuid": "20de15b5-d444-4122-902d-dfd9834da189",
+      "eventUuid": "a097a148-ef0e-4c71-babe-b9de2f0d0986",
+      "itemEvents": [
+        {
+          "localId": 7489,
+          "cloudUuid": "22ecb725-79d3-4ce1-b7ec-4cc30aea7986",
+          "eventUuid": "287259ca-5a13-4422-b94f-8f96a4a1eca7"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6270,
+          "cloudUuid": "be3e282c-da83-472b-997d-f6010ee93c6c",
+          "eventUuid": "1129fc91-4530-43f1-9646-11e744670977"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:17.364Z",
+      "totalAmount": 1500,
+      "paidAmount": 1500
+    },
+    {
+      "localId": 6267,
+      "cloudUuid": "e5357754-ebec-4085-a955-f6a67321a8c5",
+      "eventUuid": "ce9fe90e-edfd-45eb-9a00-846824c56212",
+      "itemEvents": [
+        {
+          "localId": 7490,
+          "cloudUuid": "63063418-4ea6-49b8-a171-a10e057abf76",
+          "eventUuid": "4134cccb-ffe9-4aa1-9ec3-c7fb40f1471a"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6271,
+          "cloudUuid": "b38f5a00-3459-4f00-a53d-25d796418291",
+          "eventUuid": "1e911097-9526-4b9e-9dad-3ebf247fcc53"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:20.427Z",
+      "totalAmount": 1500,
+      "paidAmount": 1500
+    },
+    {
+      "localId": 6268,
+      "cloudUuid": "dfb949e1-7f9d-4aaa-8310-c331cb715093",
+      "eventUuid": "371a5305-49f9-48af-96c5-17b0f40f38a6",
+      "itemEvents": [
+        {
+          "localId": 7491,
+          "cloudUuid": "018fb770-6039-439f-82a1-deae4d32ba78",
+          "eventUuid": "2db73a43-c260-466f-af21-841b63cb3b86"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6272,
+          "cloudUuid": "b1ec9e5e-8aa9-4d82-aca5-b5012652fd80",
+          "eventUuid": "afed5bbd-fdc8-4611-8a15-1a9296e6fce6"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:23.962Z",
+      "totalAmount": 1500,
+      "paidAmount": 1500
+    },
+    {
+      "localId": 6269,
+      "cloudUuid": "2031a376-4aed-4eb4-b2e4-2b7e9b229228",
+      "eventUuid": "66a8d39e-abe1-4616-83d4-bd3e791cdbdd",
+      "itemEvents": [
+        {
+          "localId": 7492,
+          "cloudUuid": "e5c35d00-0b61-4136-968e-388bc65d96d8",
+          "eventUuid": "62865fd9-5977-46f4-abd9-bbad32022d25"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6273,
+          "cloudUuid": "7b53a6af-79e5-4f01-9178-88e352dcded5",
+          "eventUuid": "e24191b1-f457-4793-b088-2340f0494f7a"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:29.345Z",
+      "totalAmount": 1500,
+      "paidAmount": 1500
+    },
+    {
+      "localId": 6270,
+      "cloudUuid": "8b7449bb-c594-4959-843a-a5bd0bc4710f",
+      "eventUuid": "0c7190bc-d74e-4912-88a6-adb7bb4e6f11",
+      "itemEvents": [
+        {
+          "localId": 7493,
+          "cloudUuid": "d86386b7-12ef-44ed-bef9-a88bdd594c97",
+          "eventUuid": "67514491-e179-4b1d-b93e-8a880adf927b"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6274,
+          "cloudUuid": "5236ae79-15bb-48d5-98cd-cd5a6e3fbafa",
+          "eventUuid": "1b368efb-611f-4bf6-b3fe-47d9c9ea5aec"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:32.248Z",
+      "totalAmount": 1500,
+      "paidAmount": 1500
+    },
+    {
+      "localId": 6271,
+      "cloudUuid": "3f0d2c16-dcf6-4ca5-b951-f8d012c0978f",
+      "eventUuid": "f5a4b40b-c993-4043-9ece-384a2c0abaee",
+      "itemEvents": [
+        {
+          "localId": 7494,
+          "cloudUuid": "d17c5b82-bb82-4aa2-b6bf-4b5c05850a7f",
+          "eventUuid": "b74432c0-0982-4616-beb2-e5c13d730021"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6275,
+          "cloudUuid": "2dc5089e-0d09-480f-9f3c-d906143f7ac4",
+          "eventUuid": "b3e1e694-6e6e-458d-9d1e-02a7de19d6ee"
+        }
+      ],
+      "createdAt": "2026-09-19T22:29:39.999Z",
+      "totalAmount": 1500,
+      "paidAmount": 1500
+    },
+    {
+      "localId": 6272,
+      "cloudUuid": "87bc9855-8c03-4d15-bf86-d3649f6bded7",
+      "eventUuid": "a7c5f847-fdec-4d04-8ae7-dae22072e48a",
+      "itemEvents": [
+        {
+          "localId": 7495,
+          "cloudUuid": "2a7e2201-df62-434b-846d-b0d307f22de8",
+          "eventUuid": "b0572139-2057-4e7f-9227-4259c32bbd6d"
+        },
+        {
+          "localId": 7496,
+          "cloudUuid": "e96ce6c4-c8b3-4f25-8285-34289fc08f2d",
+          "eventUuid": "167e1a78-bdf6-46af-b9a7-68c6e6462338"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6276,
+          "cloudUuid": "d0d2fdec-ccea-475c-ae21-41090219b3c7",
+          "eventUuid": "db954060-e974-452d-978c-fd020d731cd2"
+        }
+      ],
+      "createdAt": "2026-09-19T22:30:24.468Z",
+      "totalAmount": 1517.5,
+      "paidAmount": 1517.5
+    },
+    {
+      "localId": 6273,
+      "cloudUuid": "05edac9a-ba5b-48bc-a533-0626f5ff8087",
+      "eventUuid": "d4d4e162-9167-4704-8e07-1c9d302eed04",
+      "itemEvents": [
+        {
+          "localId": 7497,
+          "cloudUuid": "b721f577-2a2b-4d6d-8d11-6d56bade34a3",
+          "eventUuid": "8d3ee02e-688c-4e14-ab1d-327cc5864f7f"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6277,
+          "cloudUuid": "bafe528f-2ff1-41e0-9455-12842899a8e1",
+          "eventUuid": "b58ada4f-c118-44c7-9ae8-13f7e383be7d"
+        }
+      ],
+      "createdAt": "2026-09-19T22:30:28.176Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6274,
+      "cloudUuid": "eb89045a-5dea-4fe9-99cf-a001611a71ea",
+      "eventUuid": "1c8fd62e-fa6d-4dc2-b22a-c0d9f7dae6e3",
+      "itemEvents": [
+        {
+          "localId": 7498,
+          "cloudUuid": "713a2fe1-ee3c-4165-84db-a6f48366df3a",
+          "eventUuid": "f76200d6-b2ce-42d8-91bb-8af31a744df0"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6278,
+          "cloudUuid": "e171035d-5c70-4052-bb9d-1e4bde6302c4",
+          "eventUuid": "a1e450ae-d0f1-4aa7-98f0-6182b459fae7"
+        }
+      ],
+      "createdAt": "2026-09-19T22:30:33.050Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6282,
+      "cloudUuid": "5ef9d03c-9f22-47da-86d1-f00a066a79ed",
+      "eventUuid": "c60927ba-8e8c-4cd6-aa86-331003081c4d",
+      "itemEvents": [
+        {
+          "localId": 7506,
+          "cloudUuid": "4d9e6e20-6791-4120-805c-1f2e7f389ca6",
+          "eventUuid": "836ed965-f546-47e4-9622-862527a42645"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6286,
+          "cloudUuid": "a8ff75b2-b2e1-4dae-b70f-9087e574f7b7",
+          "eventUuid": "410b3e16-07cf-4f90-b6b1-09dac2076bd4"
+        }
+      ],
+      "createdAt": "2026-09-21T23:03:17.456Z",
+      "totalAmount": 337.5,
+      "paidAmount": 337.5
+    },
+    {
+      "localId": 6285,
+      "cloudUuid": "2e8fd740-b66c-4f61-afaa-988f4e67467d",
+      "eventUuid": "7996c2fb-fba5-4bc6-9780-9b78b0651a85",
+      "itemEvents": [
+        {
+          "localId": 7509,
+          "cloudUuid": "9a1526d7-6300-41e6-b239-66b695c2abce",
+          "eventUuid": "4f1a1f3c-3cd3-4b48-afda-d3f50ec5c672"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6289,
+          "cloudUuid": "9c55fc09-bc68-431c-a4ed-ec0eb205b8df",
+          "eventUuid": "2845ecac-4a66-4428-86bb-0d2b31ac426d"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:47.219Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6286,
+      "cloudUuid": "43d57edd-12bb-4a7d-abb5-060138b8043f",
+      "eventUuid": "e8c799e9-7f6e-4987-b017-8b4128489868",
+      "itemEvents": [
+        {
+          "localId": 7510,
+          "cloudUuid": "5497586d-6a0f-4349-81eb-a5cf3246be9a",
+          "eventUuid": "26685af7-36aa-4d4c-b865-c80ee8653c7f"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6290,
+          "cloudUuid": "6d48f788-6f42-46d3-b165-c1d4abe22652",
+          "eventUuid": "e049380c-c20f-4f55-90ca-377c434960b9"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:48.900Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6287,
+      "cloudUuid": "feb7f6fe-2f8c-4384-accb-b34ccd06e764",
+      "eventUuid": "17999406-fb24-41b9-9e38-491627fe03ea",
+      "itemEvents": [
+        {
+          "localId": 7511,
+          "cloudUuid": "e237318b-a78b-43d0-86a7-1da2fd046e68",
+          "eventUuid": "d27e982b-8cdb-4537-8a85-0ece359d2863"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6291,
+          "cloudUuid": "111c80dd-3b34-495f-8501-b1f7be0b409d",
+          "eventUuid": "1c3db323-7e71-46a0-be9b-bef84108931f"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:50.474Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6288,
+      "cloudUuid": "dca9f6bc-72f6-48e0-a116-de2e06855580",
+      "eventUuid": "2649f4dc-9a8a-499e-b489-4b8674ab8b28",
+      "itemEvents": [
+        {
+          "localId": 7512,
+          "cloudUuid": "48bc2cdd-b35e-4277-8daa-604f261b9b1d",
+          "eventUuid": "fdb427b2-bb3e-4fc2-92df-a49665e2ad2a"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6292,
+          "cloudUuid": "a013b33c-e5e8-4419-bc48-500bc3c8324d",
+          "eventUuid": "509e10d7-1005-4c36-80fe-1d9c83c56886"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:52.382Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6289,
+      "cloudUuid": "36913c38-44a8-4ff7-b25a-50fc1f4890f7",
+      "eventUuid": "4d05e42b-521d-463d-808e-4f2076923fa1",
+      "itemEvents": [
+        {
+          "localId": 7513,
+          "cloudUuid": "acb61a54-1123-442f-a743-c3a9bf61c4b8",
+          "eventUuid": "636bed74-228d-48b8-9d14-e0744cbcf4db"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6293,
+          "cloudUuid": "1e6dcb28-1fbb-4175-860b-98a454735e03",
+          "eventUuid": "b3fa9341-8441-4b72-a49f-2c6066ad588e"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:53.845Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6290,
+      "cloudUuid": "2c8370b3-3ea9-4226-aecf-f8e7d67056a7",
+      "eventUuid": "cc9241e4-c369-4a21-98c3-ca32a5ef7dc1",
+      "itemEvents": [
+        {
+          "localId": 7514,
+          "cloudUuid": "ed5d96f8-6449-4677-929e-e111b1830c8b",
+          "eventUuid": "e7feb6b8-ec5f-4f0b-b7a1-92d7a27e4b86"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6294,
+          "cloudUuid": "412869af-62ef-472e-9a5e-24801ac67d7a",
+          "eventUuid": "748c777d-0d8a-4c03-9b28-41ed656ff7c5"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:55.494Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6291,
+      "cloudUuid": "f6d08a99-8555-4df5-9c4b-329b448a811e",
+      "eventUuid": "b6facc4b-63e5-4671-97ed-a5662bd0e341",
+      "itemEvents": [
+        {
+          "localId": 7515,
+          "cloudUuid": "1562058e-7249-448c-af18-32e617bc1588",
+          "eventUuid": "ae1ccd83-d8ca-4d6b-9835-8d10a3e8e77a"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6295,
+          "cloudUuid": "4ed8a6be-7a37-4324-8380-ad49e9f8c53b",
+          "eventUuid": "be0145b5-4849-4032-b2f7-99fb165bb976"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:57.808Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6292,
+      "cloudUuid": "63c2c363-2fc0-4864-9e76-c2015d1298b8",
+      "eventUuid": "33d8c78a-c1bc-4eed-9419-3a1fb643ac8a",
+      "itemEvents": [
+        {
+          "localId": 7516,
+          "cloudUuid": "dad38b30-9bf2-4c30-aece-9338d8da065e",
+          "eventUuid": "293ac35c-2274-4e9b-a3aa-ee45efceab71"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6296,
+          "cloudUuid": "d5fa7a7d-69f1-4f3c-b6c5-954a784eb323",
+          "eventUuid": "9c7c35c6-8a86-47b3-8055-7f735ddb8037"
+        }
+      ],
+      "createdAt": "2026-09-21T23:04:59.757Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6293,
+      "cloudUuid": "e768a261-4618-4135-a36f-dfc4e47a4404",
+      "eventUuid": "9cf36351-40c1-4607-9948-608ccd9b9cf6",
+      "itemEvents": [
+        {
+          "localId": 7517,
+          "cloudUuid": "b267e141-af95-4c94-baa6-68bc1fff9607",
+          "eventUuid": "e929e5a6-0dba-422a-ae66-12dd7793a896"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6297,
+          "cloudUuid": "8dae82b0-4643-4993-bd4b-9996d78fc57a",
+          "eventUuid": "5d0415da-8009-468f-9b54-cc3bfa9c7331"
+        }
+      ],
+      "createdAt": "2026-09-21T23:05:03.758Z",
+      "totalAmount": 52.5,
+      "paidAmount": 52.5
+    },
+    {
+      "localId": 6294,
+      "cloudUuid": "e25235f2-7a2c-4593-bead-762a9f770bcd",
+      "eventUuid": "8bdda8fd-0867-4b5c-9f14-059eea6a693e",
+      "itemEvents": [
+        {
+          "localId": 7518,
+          "cloudUuid": "edb48310-89bb-43df-a786-acb59fe19e0c",
+          "eventUuid": "21d5ad72-359e-4a55-9874-45edc1cf225b"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6298,
+          "cloudUuid": "132bdd04-04c8-4183-b512-031b54228515",
+          "eventUuid": "9312aede-4916-4910-96c2-c5d5066c03c8"
+        }
+      ],
+      "createdAt": "2026-09-21T23:05:05.604Z",
+      "totalAmount": 35,
+      "paidAmount": 35
+    },
+    {
+      "localId": 6295,
+      "cloudUuid": "c4f8074a-8eba-4db7-a643-8ce005ab9cc3",
+      "eventUuid": "4bf2e5d2-31f8-4fba-91b4-6c23a2137800",
+      "itemEvents": [
+        {
+          "localId": 7519,
+          "cloudUuid": "a41ea4bc-2986-41e8-be00-4be110805a03",
+          "eventUuid": "568016d3-447d-4adc-a8b1-2976f0cadabf"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6299,
+          "cloudUuid": "1eb83ae8-1064-4773-8cd2-db26c48910a3",
+          "eventUuid": "040cbe31-21b9-47b8-b332-20fbf0141392"
+        }
+      ],
+      "createdAt": "2026-09-21T23:05:08.684Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6296,
+      "cloudUuid": "e847c2db-57d3-43d6-9890-dd72bd6efe70",
+      "eventUuid": "89171cb0-b168-41c3-861a-4076f4a90432",
+      "itemEvents": [
+        {
+          "localId": 7520,
+          "cloudUuid": "4f4ec70d-d7b9-451b-b60e-75a8bda430bb",
+          "eventUuid": "745152ec-1bd8-4df9-87d4-82485b1be82a"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6300,
+          "cloudUuid": "d0a7e135-12b6-4809-9a95-afd870f8387a",
+          "eventUuid": "802c555a-41fa-4c1b-8718-84f2ff34977e"
+        }
+      ],
+      "createdAt": "2026-09-21T23:05:10.324Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6297,
+      "cloudUuid": "21ddbcf5-5a46-46f8-8dcf-88ff235a9333",
+      "eventUuid": "7d82c3bc-2616-409b-9235-42bc9b603308",
+      "itemEvents": [
+        {
+          "localId": 7521,
+          "cloudUuid": "6594ee6d-cf37-47f7-86b0-1b91a319073d",
+          "eventUuid": "99291210-1d77-467d-a4dd-04746f5299fa"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6301,
+          "cloudUuid": "ce1da937-35b1-4a34-bd6f-d56a909580cd",
+          "eventUuid": "d7de3f53-fa4f-4cc8-8239-f4873be4609a"
+        }
+      ],
+      "createdAt": "2026-09-21T23:05:12.116Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6298,
+      "cloudUuid": "37837129-8674-497c-82da-66cbce8f55f6",
+      "eventUuid": "f7509085-2e81-4fc1-ad6e-40f3a63eff79",
+      "itemEvents": [
+        {
+          "localId": 7522,
+          "cloudUuid": "9f9676cd-efd4-4423-bf64-42365f9a627b",
+          "eventUuid": "9bce4e2d-aa5a-4f42-a724-6eedbc421384"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6302,
+          "cloudUuid": "e920e71f-8bbb-4e8b-b43b-12f827ff30f4",
+          "eventUuid": "a8007605-19fc-4a10-a712-4ef7d1f816f8"
+        }
+      ],
+      "createdAt": "2026-09-21T23:05:13.659Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6299,
+      "cloudUuid": "dd77bc38-5580-4c1e-a23b-43bf03efcddc",
+      "eventUuid": "111cf3c7-974a-4488-abcc-12611e85842d",
+      "itemEvents": [
+        {
+          "localId": 7523,
+          "cloudUuid": "35e3c247-9d19-41c9-8fcf-8b69724d1290",
+          "eventUuid": "242a0929-cef1-4edf-b6cd-8ca6448ccfdd"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6303,
+          "cloudUuid": "3d399cf2-c783-436e-a5da-531dfcec8947",
+          "eventUuid": "06e640c7-dd58-43eb-ba5a-880104856ae3"
+        }
+      ],
+      "createdAt": "2026-09-21T23:05:15.405Z",
+      "totalAmount": 17.5,
+      "paidAmount": 17.5
+    },
+    {
+      "localId": 6302,
+      "cloudUuid": "1775b5b5-3159-4c94-9aa7-230e77513f9e",
+      "eventUuid": "3160dd34-f32f-4c1b-8e8e-16f6ca5728cb",
+      "itemEvents": [
+        {
+          "localId": 7526,
+          "cloudUuid": "ac58c82f-3599-49e5-87e6-5fbad9e88171",
+          "eventUuid": "9debf602-a89c-4813-8ffe-4cedacabc36e"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6306,
+          "cloudUuid": "7a42a69f-e0bf-4de6-a7f5-f9d9f420d835",
+          "eventUuid": "c84ad350-3027-40a6-937d-0057bb54195f"
+        }
+      ],
+      "createdAt": "2026-09-21T23:49:26.601Z",
+      "totalAmount": 202.5,
+      "paidAmount": 202.5
+    },
+    {
+      "localId": 6308,
+      "cloudUuid": "c4a92ddc-ab2f-497b-8687-3e5e31d9afdc",
+      "eventUuid": "4f5694ae-9d1f-4757-98b2-5e75d5b726d3",
+      "itemEvents": [
+        {
+          "localId": 7532,
+          "cloudUuid": "9c60bc48-6ebe-4ca5-8c78-c65d7342a1ed",
+          "eventUuid": "6d56c5dc-d3b1-44e0-8b0b-f91d23200797"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6312,
+          "cloudUuid": "c36d0fc2-06d1-4bec-9430-50cef97390b0",
+          "eventUuid": "d6bfd729-e28a-4877-a193-2ece24581de5"
+        }
+      ],
+      "createdAt": "2026-09-21T23:49:35.592Z",
+      "totalAmount": 180,
+      "paidAmount": 180
+    },
+    {
+      "localId": 6319,
+      "cloudUuid": "d8b908d0-1b0f-47a3-94ff-006d41fbd31e",
+      "eventUuid": "cc0f99aa-4274-44fa-8241-6c483a305a6f",
+      "itemEvents": [
+        {
+          "localId": 7543,
+          "cloudUuid": "9a226cdf-af06-42dc-9f43-b29c0e902033",
+          "eventUuid": "ac37ef53-5119-4c76-a594-f55604181398"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6324,
+          "cloudUuid": "eedcd323-af81-4e66-9e72-5030f6bd01cd",
+          "eventUuid": "1f3c9d99-5c9c-4de0-84bd-819b75802124"
+        }
+      ],
+      "createdAt": "2026-09-29T08:53:10.037Z",
+      "totalAmount": 405,
+      "paidAmount": 405
+    },
+    {
+      "localId": 6321,
+      "cloudUuid": "c15fd274-8494-413c-8279-0bbb42579e1b",
+      "eventUuid": "0647a104-eebd-41c7-ac4e-a27e6f06fff2",
+      "itemEvents": [
+        {
+          "localId": 7545,
+          "cloudUuid": "689345fa-1a9c-48f4-b31a-1112aba1d951",
+          "eventUuid": "06d3def1-189a-4156-af6a-9659f1c1a1de"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6326,
+          "cloudUuid": "41b1456c-bdd6-4013-90c5-f1d325e249cc",
+          "eventUuid": "3ea9ac6f-f575-46d2-bd68-6f8509e583c5"
+        }
+      ],
+      "createdAt": "2026-09-29T08:55:08.388Z",
+      "totalAmount": 31.2,
+      "paidAmount": 31.2
+    },
+    {
+      "localId": 6323,
+      "cloudUuid": "97cdeac8-dc65-4067-a546-7cd3f0cfa449",
+      "eventUuid": "b9560a57-ae55-4da4-a1b2-83fd5cc8df2a",
+      "itemEvents": [
+        {
+          "localId": 7547,
+          "cloudUuid": "d356af90-a94b-4741-b0a8-1fc9d29e461e",
+          "eventUuid": "8fb3492b-8e9b-44ef-bd0d-c3dcf42f89b5"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6328,
+          "cloudUuid": "a3ea9ac3-995c-4fc5-8b9c-02ffa7780821",
+          "eventUuid": "fad3f4e5-a9f7-4e0f-a143-ed0b281424ff"
+        }
+      ],
+      "createdAt": "2026-09-29T08:56:11.264Z",
+      "totalAmount": 35.1,
+      "paidAmount": 35.1
+    },
+    {
+      "localId": 6324,
+      "cloudUuid": "31ea297c-6183-49c2-9a9d-64cf675c302d",
+      "eventUuid": "570de82f-65f1-418a-bd3c-464864ed5d76",
+      "itemEvents": [
+        {
+          "localId": 7548,
+          "cloudUuid": "f150de9b-604f-4620-a60e-447f8fedfcff",
+          "eventUuid": "55cd6d45-b026-4d08-93c4-c24d18658a6c"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6329,
+          "cloudUuid": "7d08e5bd-b2cd-43d5-8c19-fa137b893b59",
+          "eventUuid": "1808b922-2b6e-40b4-a1b1-29652172d903"
+        }
+      ],
+      "createdAt": "2026-09-29T08:56:34.687Z",
+      "totalAmount": 1039.2,
+      "paidAmount": 1039.2
+    },
+    {
+      "localId": 6325,
+      "cloudUuid": "ee542b3c-e31d-41b2-8dd5-e67448c4b8e9",
+      "eventUuid": "c82401d4-4f07-405c-8ade-c1039200abad",
+      "itemEvents": [
+        {
+          "localId": 7549,
+          "cloudUuid": "342d9057-084d-4de8-9035-aedca4e438d2",
+          "eventUuid": "ab6f9a13-750e-432f-9753-1a655aa4e844"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6330,
+          "cloudUuid": "e5fd0ff5-59f6-40ee-be14-194b6db3f9c5",
+          "eventUuid": "247adc26-d67d-455d-843c-755a243fe8a5"
+        }
+      ],
+      "createdAt": "2026-09-29T08:57:05.832Z",
+      "totalAmount": 0.13,
+      "paidAmount": 0.13
+    },
+    {
+      "localId": 6326,
+      "cloudUuid": "dac68fd2-b184-41a2-918f-5e6f6b04bd78",
+      "eventUuid": "3013ea37-8a67-4e0a-8393-eb585af93b5e",
+      "itemEvents": [
+        {
+          "localId": 7550,
+          "cloudUuid": "fc1155cb-8480-420b-b64c-17eedc140231",
+          "eventUuid": "815145c5-763d-4a00-855e-13f2c1556d9c"
+        }
+      ],
+      "paymentEvents": [
+        {
+          "localId": 6331,
+          "cloudUuid": "e058e15e-c483-4117-a54a-943a070d9b87",
+          "eventUuid": "71f772dd-5dd0-4a0d-88ab-ef0253b8f849"
+        }
+      ],
+      "createdAt": "2026-09-29T08:58:10.814Z",
+      "totalAmount": 29.28,
+      "paidAmount": 29.28
+    }
+  ]
+}

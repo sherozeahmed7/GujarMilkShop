@@ -15,10 +15,11 @@ model User {
   password        String   // Hashed password string using bcrypt
   role            String   @default("user") // User role (e.g. "admin", "cashier", "manager")
   status          String   @default("active") // Account status: "active" or "inactive"
-  
+
   // We store assigned screen names as a JSON array string (e.g. '["POS", "Dashboard"]').
-  assignedScreens String   @default("[]") 
-  
+  assignedScreens String   @default("[]")
+
+  cloudUuid       String?  @unique // Embedded cloud identity (Phase 6)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   openedShifts     Shift[]  @relation("ShiftOpenedBy")
@@ -38,6 +39,7 @@ model Supplier {
   cycleType         String   @default("Monthly Cycle")
   isActive          Boolean  @default(true)
   guaranteedAdvance Float    @default(0)
+  cloudUuid         String?  @unique // Embedded cloud identity (Phase 6)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   collections       SupplierCollection[]
@@ -53,9 +55,11 @@ model InventoryProduct {
   category        String   @default("Dairy")
   unit            String   @default("kg")
   tax             String   @default("Exempt")
+  sellPrice       Float    @default(0)
   lowStockThreshold Float  @default(0)
   isActive        Boolean  @default(true)
   isLocked        Boolean  @default(false)
+  cloudUuid       String?  @unique // Embedded cloud identity (Phase 6)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   movements      InventoryMovement[]
@@ -75,6 +79,7 @@ model InventoryMovement {
   shiftId       Int?
   date          DateTime @default(now())
   userId        Int?
+  cloudUuid     String?  @unique // Embedded cloud identity (Phase 6)
   createdAt     DateTime @default(now())
 
   @@index([productId, date])
@@ -94,6 +99,7 @@ model SupplierCollection {
   notes       String?
   createdById Int?
   createdBy   User?    @relation("CollectionCreatedBy", fields: [createdById], references: [id])
+  cloudUuid   String?  @unique // Embedded cloud identity (Phase 6)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -113,6 +119,7 @@ model SupplierPayment {
   notes       String?
   createdById Int?
   createdBy   User?    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  cloudUuid   String?  @unique // Embedded cloud identity (Phase 6)
   createdAt   DateTime @default(now())
 
   @@index([supplierId])
@@ -138,6 +145,7 @@ model Shift {
   differenceStatus String?
   closingNotes   String?
   status         String   @default("Open")
+  cloudUuid      String?  @unique // Embedded cloud identity (Phase 6)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   supplierPayments SupplierPayment[]
@@ -165,17 +173,19 @@ model DailyRate {
   gheeRate      Float    @default(0)
   updatedByRole String   // Role of the user who made the update (e.g., "super_admin")
   date          DateTime // The effective date of the rate
+  cloudUuid     String?  @unique // Embedded cloud identity (Phase 6)
   createdAt     DateTime @default(now())
 }
 
-// Registered ledger customers only (walk-in/split do NOT create a Customer row)
+// Registered ledger customers plus the single system walk-in customer.
 model Customer {
   id           Int      @id @default(autoincrement())
   name         String
   phone        String?
   address      String?
-  customerType String   // "daily_ledger" | "monthly_ledger"
+  customerType String   // "daily_ledger" | "monthly_ledger" | "walk_in"
   status       String   @default("active") // "active" | "inactive"
+  cloudUuid    String?  @unique // Embedded cloud identity (Phase 6); walk-in uses canonical 00000000-0000-4000-8000-000000000001
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   sales        Sale[]
@@ -189,7 +199,7 @@ model Customer {
 model Sale {
   id               Int        @id @default(autoincrement())
   saleType         String     // "walk_in" | "split" | "ledger_daily" | "ledger_monthly"
-  customerId       Int?       // NULL for walk-in/split; REQUIRED for ledger
+  customerId       Int?       // canonical walk-in/ledger customer; NULL for split
   customer         Customer?  @relation(fields: [customerId], references: [id])
   customerName     String?    // optional — walk-in/split only
   customerPhone    String?    // optional — walk-in/split only
@@ -198,6 +208,7 @@ model Sale {
   remainingBalance Float      // totalAmount - paidAmount
   status           String     // "paid" | "partial" | "pending"
   tokenNumber      Int        @default(0)
+  cloudUuid        String?    @unique // Embedded cloud identity (Phase 6)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   items            SaleItem[]
@@ -207,6 +218,7 @@ model Sale {
   @@index([saleType, createdAt])
   @@index([status, createdAt])
   @@index([customerId, createdAt])
+  @@index([customerId, remainingBalance])
   @@index([status])
 }
 
@@ -219,6 +231,7 @@ model SaleItem {
   quantity   Float    // weight in kg
   unitPrice  Float    // price per kg at time of sale
   totalPrice Float    // quantity × unitPrice
+  cloudUuid  String?  @unique // Embedded cloud identity (Phase 6)
   createdAt  DateTime @default(now())
 
   @@index([saleId])
@@ -233,6 +246,7 @@ model Payment {
   method    String   // "cash" | "online"
   amount    Float
   status    String   // "completed" | "partial" | "pending"
+  cloudUuid String?  @unique // Embedded cloud identity (Phase 6)
   createdAt DateTime @default(now())
 
   @@index([saleId])
@@ -257,16 +271,19 @@ model MilkProductDailyStock {
   gheeProduced    Float    @default(0)
   gheeSold        Float    @default(0)
   gheeClosing     Float    @default(0)
+  cloudUuid       String?  @unique // Embedded cloud identity (Phase 6)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
 // Transaction log for all F2 stock movements
+// NOTE: This table is dropped by migration 005 on existing databases.
+// The model is retained here only for Prisma schema completeness on fresh installs.
 model MilkProductTransaction {
   id        Int      @id @default(autoincrement())
   date      DateTime
   product   String   // "Milk" | "Lassi" | "Butter" | "Ghee"
-  type      String   // "milk_added" | "lassi_produced" | "lassi_sold" | "butter_produced" | "butter_sold" | "butter_converted" | "ghee_produced" | "ghee_sold" | "opening" | "adjustment"
+  type      String   // "milk_added" | "lassi_produced" | ...
   quantity  Float
   reference String?
   notes     String?
@@ -280,6 +297,7 @@ model ButterGheeConversion {
   butterUsed   Float
   gheeProduced Float
   notes        String?
+  cloudUuid    String?  @unique // Embedded cloud identity (Phase 6)
   createdAt    DateTime @default(now())
 }
 
@@ -302,9 +320,13 @@ model Expense {
   remaining    Float    @default(0)
   reason       String?
   addedBy      String
+  cloudUuid    String?  @unique // Embedded cloud identity (Phase 6)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   payments     ExpensePayment[]
+
+  @@index([date])
+  @@index([category])
 }
 
 /** Cash paid toward an expense (links to open shift for expected-cash deduction) */
@@ -316,6 +338,7 @@ model ExpensePayment {
   shiftId   Int?
   date      String   // YYYY-MM-DD
   addedBy   String
+  cloudUuid String?  @unique // Embedded cloud identity (Phase 6)
   createdAt DateTime @default(now())
 
   @@index([shiftId])
@@ -335,6 +358,7 @@ model Return {
   reason        String
   status        String       @default("Completed") // 'Completed' | 'Pending' | 'Cancelled'
   processedBy   String
+  cloudUuid     String?      @unique // Embedded cloud identity (Phase 6)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   items         ReturnItem[]
@@ -349,6 +373,7 @@ model ReturnItem {
   returnQty    Float
   unitPrice    Float
   refundAmount Float
+  cloudUuid    String? @unique // Embedded cloud identity (Phase 6)
 }
 
 // Receipt audit records — one per audit run
@@ -365,11 +390,15 @@ model AuditRecord {
   status            String   // 'Matched' | 'Warning' | 'Mismatch'
   notes             String   @default("")
   auditedBy         String
+  cloudUuid         String?  @unique // Embedded cloud identity (Phase 6)
   createdAt         DateTime @default(now())
 }
 
 // ─── SYNCHRONIZATION INFRASTRUCTURE ─────────────────────────────────────────
 
+// NOTE: LocalToCloudMapping is dropped by migration 009 on existing databases.
+// The model is kept here so the Prisma client can query it during the
+// dual-read transition period on databases that haven't run migration 009 yet.
 model LocalToCloudMapping {
   id         Int      @id @default(autoincrement())
   deviceId   String
@@ -426,10 +455,12 @@ model SyncQueue {
 
 // Tracking local cloud sync configuration state (Disconnected / Connected)
 model CloudSyncSettings {
-  id                Int      @id @default(1)
-  syncEnabled       Boolean  @default(true)
-  downstreamEnabled Boolean  @default(true)
-  updatedAt         DateTime @updatedAt
+  id                           Int       @id @default(1)
+  syncEnabled                  Boolean   @default(true)
+  downstreamEnabled            Boolean   @default(true)
+  lastSuccessfulUpstreamSyncAt DateTime?
+  lastLocalSyncCleanupAt       DateTime?
+  updatedAt                    DateTime  @updatedAt
 }
 
 // ─── POS PRINTER & DISPLAY SETTINGS ─────────────────────────────────────────
@@ -448,6 +479,7 @@ model POSConfig {
   printerName               String   @default("Black Copper BC-105")
   autoCutter                Boolean  @default(true)
   cashDrawer                Boolean  @default(false)
+  printMode                 String   @default("raster")
   requireCustomerName       Boolean  @default(false)
   allowDiscount             Boolean  @default(true)
   maxDiscountPercent        Float    @default(10)
@@ -471,6 +503,7 @@ model CashPerson {
   openingBalance Float                 @default(0)
   customerType   String                // "Debtor" | "Creditor"
   status         String                @default("Active") // "Active" | "Disabled"
+  cloudUuid      String?               @unique // Embedded cloud identity (Phase 6)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   transactions   CashbookTransaction[]
@@ -485,6 +518,7 @@ model CashbookTransaction {
   description     String?
   date            String     // YYYY-MM-DD
   createdBy       String     @default("Admin")
+  cloudUuid       String?    @unique // Embedded cloud identity (Phase 6)
   createdAt       DateTime   @default(now())
 
   cashPerson      CashPerson @relation(fields: [cashPersonId], references: [id], onDelete: Cascade)
@@ -522,6 +556,7 @@ model ActivityLog {
   entityId    String?
   ip          String?
   status      String
+  cloudUuid   String?  @unique // Embedded cloud identity (Phase 6)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

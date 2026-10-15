@@ -10,6 +10,7 @@ export interface PurchaseEntry {
   rate: number;
   amount: number;
   time: string;
+  shift: 'Morning' | 'Evening';
 }
 
 export interface SupplierPaymentEntry {
@@ -67,6 +68,7 @@ export const supplierLedgerService = {
   async getMonthlyPurchaseEntries(supplierId: string, month: number, year: number): Promise<PurchaseEntry[]> {
     const { collections } = await getEntries(supplierId);
     return collections.filter((entry) => inMonth(entry.date, month, year)).map((entry) => ({
+      shift: entry.shift,
       id: String(entry.id), supplierId: String(entry.supplierId), date: entry.date, product: `${entry.milkType || 'Milk'} Milk`, quantity: Number(entry.quantity), unit: 'kg', rate: Number(entry.rate), amount: Number(entry.amount), time: entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
     }));
   },

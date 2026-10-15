@@ -18,6 +18,9 @@ export interface POSConfigData {
   printerName: string;
   autoCutter: boolean;
   cashDrawer: boolean;
+  // 'raster' = pixel-perfect canvas-to-bitmap (matches preview exactly)
+  // 'text'   = legacy fast ESC/POS text commands (no font/weight accuracy)
+  printMode: 'raster' | 'text';
 
   // Sale Behaviour
   requireCustomerName: boolean;
@@ -46,6 +49,7 @@ let mockConfig: POSConfigData = {
   printerName: 'Black Copper BC-105',
   autoCutter: true,
   cashDrawer: false,
+  printMode: 'raster',
   requireCustomerName: false,
   allowDiscount: true,
   maxDiscountPercent: 10,

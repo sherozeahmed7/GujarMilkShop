@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { ReturnService } from '../services/return.service';
+import { DashboardController } from './dashboard.controller';
 
 export class ReturnController {
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -38,6 +39,7 @@ export class ReturnController {
       if (!result.success) {
         return ApiResponse.error(res, result.message || 'Failed to create return.', result.statusCode);
       }
+      DashboardController.clearCache();
       return ApiResponse.success(res, result.message || 'Return created.', result.data, result.statusCode);
     } catch (e) {
       next(e);

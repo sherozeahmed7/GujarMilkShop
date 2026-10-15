@@ -9,7 +9,9 @@
     "start": "node dist/bootstrap.js",
     "dev": "ts-node-dev --respawn --transpile-only src/bootstrap.ts",
     "build": "tsc",
-    "build:sidecar": "node scripts/build-sidecar.js"
+    "build:sidecar": "node scripts/build-sidecar.js",
+    "sync:audit": "node scripts/neon-retention-manager.js --dry-run",
+    "test:walk-in-migration": "ts-node scripts/test-walk-in-startup-migration.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

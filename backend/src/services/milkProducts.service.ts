@@ -217,16 +217,6 @@ export class MilkProductsService {
         const updated = await this.upsertStock(tx, dateStr, (cur) => ({
           milkTotal: money(cur.milkTotal + qty),
         }));
-        await tx.milkProductTransaction.create({
-          data: {
-            date: parseDateKey(dateStr),
-            product: 'Milk',
-            type: 'milk_added',
-            quantity: qty,
-            reference: ref,
-            notes: 'Deducted from inventory milk',
-          },
-        });
         await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
         return updated;
       });
@@ -251,9 +241,6 @@ export class MilkProductsService {
         const remaining = money(produced - cur.lassiSold);
         return { lassiProduced: produced, lassiRemaining: Math.max(0, remaining) };
       });
-      await tx.milkProductTransaction.create({
-        data: { date: parseDateKey(dateStr), product: 'Lassi', type: 'lassi_produced', quantity },
-      });
       await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
       return updated;
     });
@@ -271,9 +258,6 @@ export class MilkProductsService {
         const closing = money(cur.butterOpening + produced - cur.butterSold - cur.butterConverted);
         return { butterProduced: produced, butterClosing: Math.max(0, closing) };
       });
-      await tx.milkProductTransaction.create({
-        data: { date: parseDateKey(dateStr), product: 'Butter', type: 'butter_produced', quantity },
-      });
       await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
       return updated;
     });
@@ -290,9 +274,6 @@ export class MilkProductsService {
         const produced = money(cur.gheeProduced + quantity);
         const closing = money(cur.gheeOpening + produced - cur.gheeSold);
         return { gheeProduced: produced, gheeClosing: Math.max(0, closing) };
-      });
-      await tx.milkProductTransaction.create({
-        data: { date: parseDateKey(dateStr), product: 'Ghee', type: 'ghee_produced', quantity },
       });
       await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
       return updated;
@@ -364,9 +345,10 @@ export class MilkProductsService {
               } as any,
             });
 
-        await tx.butterGheeConversion.create({
+        const conversion = await tx.butterGheeConversion.create({
           data: { date: dateKey, butterUsed: butterKg, gheeProduced: gheeKg, notes: notes ?? null },
         });
+        await SyncQueueService.enqueueCreate(tx, 'ButterGheeConversion', conversion.id, conversion, 3);
 
         const ts = Date.now();
         const butterMove = await tx.inventoryMovement.create({
@@ -392,25 +374,7 @@ export class MilkProductsService {
         await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', butterMove.id, butterMove, 2);
         await SyncQueueService.enqueueCreate(tx, 'InventoryMovement', gheeMove.id, gheeMove, 2);
 
-        await tx.milkProductTransaction.create({
-          data: {
-            date: dateKey,
-            product: 'Butter',
-            type: 'butter_converted',
-            quantity: butterKg,
-            notes: `Converted to ${gheeKg} kg Ghee`,
-          },
-        });
 
-        await tx.milkProductTransaction.create({
-          data: {
-            date: dateKey,
-            product: 'Ghee',
-            type: 'ghee_produced',
-            quantity: gheeKg,
-            notes: `Produced from ${butterKg} kg Butter`,
-          },
-        });
 
         await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
         return updated;
@@ -439,23 +403,45 @@ export class MilkProductsService {
         const remaining = money(cur.lassiProduced - sold);
         return { lassiSold: sold, lassiRemaining: Math.max(0, remaining) };
       });
-      await tx.milkProductTransaction.create({
-        data: { date: parseDateKey(dateStr), product: 'Lassi', type: 'lassi_sold', quantity },
-      });
       await SyncQueueService.enqueueUpdate(tx, 'MilkProductDailyStock', updated.id, updated, 2, 'UPSERT');
       return updated;
     });
     return { success: true, statusCode: 200, data: record };
   }
 
-  /** GET transactions for a date */
+    /**
+   * GET F2 movement history for a date.
+   * Reads from InventoryMovement (source of truth) for LASSI, BUTTER, GHEE.
+   * MilkProductTransaction was removed in migration 005.
+   */
   static async getTransactions(dateStr: string) {
-    parseDateRange(dateStr);
     const { start, end } = parseDateRange(dateStr);
-    const records = await prisma.milkProductTransaction.findMany({
-      where: { date: { gte: start, lte: end } },
-      orderBy: { createdAt: 'asc' },
+    const products = await prisma.inventoryProduct.findMany({
+      where: { code: { in: ['LASSI', 'BUTTER', 'GHEE', 'MILK'] } },
+      select: { id: true, code: true, name: true },
     });
+    const productIds = products.map((p) => p.id);
+    const productMap: Record<number, string> = {};
+    for (const p of products) productMap[p.id] = p.code ?? p.name;
+
+    const movements = await prisma.inventoryMovement.findMany({
+      where: { productId: { in: productIds }, date: { gte: start, lte: end } },
+      orderBy: { date: 'asc' },
+      select: { id: true, productId: true, quantity: true, movementType: true, source: true, reference: true, date: true, createdAt: true },
+    });
+
+    const records = movements.map((m) => ({
+      id: m.id,
+      date: m.date,
+      product: productMap[m.productId] ?? 'UNKNOWN',
+      type: m.movementType,
+      quantity: Math.abs(Number(m.quantity)),
+      direction: Number(m.quantity) >= 0 ? 'IN' : 'OUT',
+      reference: m.reference,
+      source: m.source,
+      createdAt: m.createdAt,
+    }));
+
     return { success: true, statusCode: 200, data: records };
   }
 

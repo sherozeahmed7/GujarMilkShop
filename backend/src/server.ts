@@ -5,6 +5,7 @@ import { startSyncWorker } from './workers/syncWorker';
 import { startDownstreamSyncWorker } from './workers/downstreamSyncWorker';
 import { startLassiMidnightReset } from './services/lassiMidnightReset.service';
 import { startAutoBackupWorker } from './workers/autoBackupWorker';
+import { ensureNeonSchema } from './services/neonSchemaInit.service';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -14,6 +15,7 @@ const PORT = process.env.PORT || 5000;
 // Connect to database and start Express server
 async function startServer() {
   await connectDB();
+  await ensureNeonSchema();
   
   const server = app.listen(PORT, () => {
     console.log(`🚀 Express server is running on port ${PORT}`);
@@ -23,6 +25,27 @@ async function startServer() {
     startDownstreamSyncWorker();
     startAutoBackupWorker();
     const lassiResetTimer = startLassiMidnightReset();
+
+    // Trigger daily startup sync queue retention check asynchronously
+    import('./services/syncRetention.service').then(({ SyncRetentionService }) => {
+      SyncRetentionService.runStartupRetentionCheck().catch(err => {
+        console.error('[STARTUP] Error running sync retention check:', err.message);
+      });
+    });
+
+    // Trigger daily startup technical tables maintenance check asynchronously
+    import('./services/databaseMaintenance.service').then(({ DatabaseMaintenanceService }) => {
+      DatabaseMaintenanceService.runStartupMaintenanceCheck().catch(err => {
+        console.error('[STARTUP] Error running database maintenance check:', err.message);
+      });
+    });
+
+    // Run Neon storage pruning (rolls up Walk-In sales and prunes old raw rows to keep cloud footprint minimal)
+    import('./services/neonPruning.service').then(({ pruneEligibleWalkInDetail }) => {
+      pruneEligibleWalkInDetail({ retentionDays: 30 }).catch(err => {
+        // Silently catch if Neon is unreachable or tables do not exist
+      });
+    });
 
     (server as any).lassiResetTimer = lassiResetTimer;
   }).on('error', (err: any) => {

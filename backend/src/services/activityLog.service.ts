@@ -33,30 +33,26 @@ const HARD_MAX_PAGE_SIZE = 25;
 
 export class ActivityLogService {
   static async createLog(data: CreateActivityLogDto) {
-    // 1. Create the log in SQLite
-    const log = await prisma.activityLog.create({
-      data: {
-        timestamp: new Date(),
-        user: data.user,
-        userRole: data.userRole,
-        action: data.action,
-        module: data.module,
-        description: data.description,
-        entityId: data.entityId,
-        ip: data.ip,
-        status: data.status,
-      }
+    return prisma.$transaction(async (tx) => {
+      const log = await tx.activityLog.create({
+        data: {
+          timestamp: new Date(),
+          user: data.user,
+          userRole: data.userRole,
+          action: data.action,
+          module: data.module,
+          description: data.description,
+          entityId: data.entityId,
+          ip: data.ip,
+          status: data.status,
+        }
+      });
+
+      // Mapping and queue creation use this same transaction client. Any failure
+      // rolls the ActivityLog, LocalToCloudMapping, and SyncQueue writes back.
+      await SyncQueueService.enqueueCreate(tx, 'ActivityLog', log.id, log, 4);
+      return log;
     });
-
-    // 2. Queue for syncing to Neon cloud
-    try {
-      await SyncQueueService.enqueueCreate(prisma, 'ActivityLog', log.id, log, 4);
-    } catch (err) {
-      console.error('[ActivityLogService] Failed to enqueue log for sync:', err);
-      // We don't fail the log creation if sync queue fails
-    }
-
-    return log;
   }
 
   static async getLogs(params: GetLogsParams = {}): Promise<PaginatedLogs> {

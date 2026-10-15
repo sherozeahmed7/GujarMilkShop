@@ -56,27 +56,24 @@ export const ALL_SCREENS = [
 async function seedSuperAdmin() {
   try {
     const adminEmail = 'admin@gujarmilkshop.com';
-    const hashedPassword = await hashPassword('admin123');
-
-    // Upsert super_admin user to guarantee account exists with valid bcrypt password
-    await prisma.user.upsert({
+    const existingAdmin = await prisma.user.findUnique({
       where: { email: adminEmail },
-      update: {
-        name: 'Shehroz',
-        password: hashedPassword,
-        role: SUPER_ADMIN_ROLE,
-        status: 'active',
-        assignedScreens: JSON.stringify(ALL_SCREENS)
-      },
-      create: {
-        name: 'Shehroz',
-        email: adminEmail,
-        password: hashedPassword,
-        role: SUPER_ADMIN_ROLE,
-        status: 'active',
-        assignedScreens: JSON.stringify(ALL_SCREENS)
-      }
+      select: { id: true },
     });
+
+    if (!existingAdmin) {
+      const hashedPassword = await hashPassword('admin123');
+      await prisma.user.create({
+        data: {
+          name: 'Shehroz',
+          email: adminEmail,
+          password: hashedPassword,
+          role: SUPER_ADMIN_ROLE,
+          status: 'active',
+          assignedScreens: JSON.stringify(ALL_SCREENS)
+        }
+      });
+    }
 
     console.log(`👤 Super Admin ready: Shehroz (admin@gujarmilkshop.com / admin123) Role: ${SUPER_ADMIN_ROLE}`);
   } catch (error) {
@@ -97,30 +94,25 @@ async function seedCoreInventoryProducts() {
   try {
     const { SyncQueueService } = await import('../services/syncQueue.service');
     for (const item of CORE_INVENTORY_PRODUCTS) {
-      const product = await prisma.inventoryProduct.upsert({
+      let product = await prisma.inventoryProduct.findUnique({
         where: { code: item.code },
-        update: {
-          name: item.name,
-          description: item.description,
-          category: 'Dairy',
-          unit: item.unit,
-          tax: 'Exempt',
-          lowStockThreshold: item.lowStockThreshold,
-          isActive: true,
-          isLocked: true,
-        },
-        create: {
-          code: item.code,
-          name: item.name,
-          description: item.description,
-          category: 'Dairy',
-          unit: item.unit,
-          tax: 'Exempt',
-          lowStockThreshold: item.lowStockThreshold,
-          isActive: true,
-          isLocked: true,
-        },
       });
+
+      if (!product) {
+        product = await prisma.inventoryProduct.create({
+          data: {
+            code: item.code,
+            name: item.name,
+            description: item.description,
+            category: 'Dairy',
+            unit: item.unit,
+            tax: 'Exempt',
+            lowStockThreshold: item.lowStockThreshold,
+            isActive: true,
+            isLocked: true,
+          },
+        });
+      }
 
       // Ensure cloud mapping exists so inventory movements can resolve product_uuid
       const mapped = await SyncQueueService.getCloudMapping('InventoryProduct', product.id);
@@ -169,98 +161,6 @@ async function seedDefaultDailyRates() {
 }
 
 /**
- * Automatically migrate SQLite schema differences on startup
- * so existing client installations don't crash when new columns are added.
- */
-async function runAutoMigrations() {
-  try {
-    const tables: any[] = await prisma.$queryRawUnsafe(
-      `SELECT name FROM sqlite_master WHERE type='table'`
-    );
-    const tableNames = new Set(tables.map((t: any) => t.name));
-
-    if (!tableNames.has('User')) {
-      console.warn('⚠️ Warning: Database tables (User) not detected in SQLite database.');
-      return;
-    }
-
-    // Check Sale table for tokenNumber
-    if (tableNames.has('Sale')) {
-      const saleColumns: any[] = await prisma.$queryRawUnsafe(`PRAGMA table_info("Sale")`);
-      const hasTokenNumber = saleColumns.some((col: any) => col.name === 'tokenNumber');
-      if (!hasTokenNumber) {
-        console.log('🔄 Auto-migrating: Adding tokenNumber column to Sale table...');
-        await prisma.$executeRawUnsafe(`ALTER TABLE "Sale" ADD COLUMN "tokenNumber" INTEGER NOT NULL DEFAULT 0`);
-        console.log('✅ tokenNumber column added to Sale table successfully.');
-      }
-    }
-
-    // SupplierPayment.shiftId — cash payments linked to open shift drawer
-    if (tableNames.has('SupplierPayment')) {
-      const supplierPaymentColumns: any[] = await prisma.$queryRawUnsafe(
-        `PRAGMA table_info("SupplierPayment")`
-      );
-      const hasShiftId = supplierPaymentColumns.some((col: any) => col.name === 'shiftId');
-      if (!hasShiftId) {
-        console.log('🔄 Auto-migrating: Adding shiftId column to SupplierPayment table...');
-        await prisma.$executeRawUnsafe(
-          `ALTER TABLE "SupplierPayment" ADD COLUMN "shiftId" INTEGER`
-        );
-        try {
-          await prisma.$executeRawUnsafe(
-            `CREATE INDEX IF NOT EXISTS "SupplierPayment_shiftId_idx" ON "SupplierPayment"("shiftId")`
-          );
-        } catch {
-          /* index may already exist */
-        }
-        console.log('✅ shiftId column added to SupplierPayment table successfully.');
-      }
-    }
-
-    // Shift.shiftDate — Drop the unique index to allow multiple shifts per day
-    if (tableNames.has('Shift')) {
-      try {
-        await prisma.$executeRawUnsafe(`DROP INDEX IF EXISTS "Shift_shiftDate_key"`);
-      } catch (error) {
-        console.error('⚠️ Auto-migration (Shift.shiftDate drop index):', error);
-      }
-    }
-
-    // Auto-create ActivityLog table if missing (for legacy databases during updates)
-    if (!tableNames.has('ActivityLog')) {
-      console.log('🔄 Auto-migrating: Creating ActivityLog table...');
-      await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "ActivityLog" (
-          "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-          "timestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "user" TEXT NOT NULL,
-          "userRole" TEXT NOT NULL,
-          "action" TEXT NOT NULL,
-          "module" TEXT NOT NULL,
-          "description" TEXT NOT NULL,
-          "entityId" TEXT,
-          "ip" TEXT,
-          "status" TEXT NOT NULL,
-          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      try {
-        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ActivityLog_timestamp_idx" ON "ActivityLog"("timestamp")`);
-        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ActivityLog_module_idx" ON "ActivityLog"("module")`);
-        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ActivityLog_action_idx" ON "ActivityLog"("action")`);
-      } catch (error) {
-        console.error('⚠️ Failed to create indexes for ActivityLog:', error);
-      }
-      console.log('✅ ActivityLog table created successfully.');
-    }
-
-  } catch (error) {
-    console.error('⚠️ Auto-migration notice:', error);
-  }
-}
-
-/**
  * Connects to the database and logs status details
  */
 export async function connectDB() {
@@ -269,16 +169,35 @@ export async function connectDB() {
     await prisma.$connect();
     console.log('Database connected successfully');
 
-    // Run auto-migrations for SQLite schema updates
-    await runAutoMigrations();
+    // Configure production SQLite PRAGMA settings for maximum reliability, concurrency, and performance
+    // Note: In Prisma + SQLite, any PRAGMA that returns rows/values must be invoked with $queryRawUnsafe
+    await prisma.$queryRawUnsafe(`PRAGMA journal_mode = WAL;`);
+    await prisma.$queryRawUnsafe(`PRAGMA busy_timeout = 5000;`);
+    await prisma.$queryRawUnsafe(`PRAGMA cache_size = -64000;`);
+    await prisma.$queryRawUnsafe(`PRAGMA temp_store = MEMORY;`);
+    await prisma.$queryRawUnsafe(`PRAGMA mmap_size = 268435456;`);
+    await prisma.$queryRawUnsafe(`PRAGMA synchronous = NORMAL;`);
+    await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON;`);
+
+    // Run versioned schema and data migrations with backup, locks, transactions, and verification
+    const { preparePendingDataMigrations, runPendingDataMigrations } = await import('../migrations/migrationRunner');
+    const preparedMigrations = await preparePendingDataMigrations(prisma);
+    await runPendingDataMigrations(prisma, preparedMigrations);
+
+    // Run query planner optimization on restored or active databases
+    try {
+      await prisma.$queryRawUnsafe(`PRAGMA optimize;`);
+    } catch {
+      // Non-fatal if optimize fails
+    }
 
     // Auto-seed default super_admin user
     await seedSuperAdmin();
     await seedCoreInventoryProducts();
     await seedDefaultDailyRates();
   } catch (error) {
-    console.error('❌ Failed to connect to the database:', error);
+    console.error('❌ Database upgrade could not be completed safely. Your data was not changed. A backup has been preserved. Please contact support.');
+    console.error('[Database] Technical startup error:', error);
     process.exit(1);
   }
 }
-

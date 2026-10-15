@@ -4,8 +4,8 @@ import crypto from 'crypto';
 
 let isSyncing = false;
 
-// Convert environment variables or defaults
-const SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MS || '10000', 10);
+// Convert environment variables or defaults (30s interval balances cloud freshness with local SQLite writer concurrency)
+const SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MS || '30000', 10);
 const SYNC_BATCH_SIZE = parseInt(process.env.SYNC_BATCH_SIZE || '50', 10);
 const SYNC_WORKER_ENABLED = process.env.SYNC_WORKER_ENABLED === 'true';
 const SYNC_INTERNAL_SECRET = process.env.SYNC_INTERNAL_SECRET || 'secret';
@@ -66,14 +66,16 @@ export async function processSyncQueue() {
       ...futureEvents.map(e => e.cloudUuid)
     ]);
 
-    // 3. Fetch ready PENDING events
+    // 3. Fetch ready PENDING events (bounded fetch to avoid scanning tens of thousands of rows into memory)
+    const fetchLimit = Math.max(SYNC_BATCH_SIZE * 3, 150);
     const readyCreates = await prisma.syncQueue.findMany({
       where: {
         status: 'PENDING',
         operation: { not: 'DELETE' },
         OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date() } }]
       },
-      orderBy: [{ layer: 'asc' }, { createdAt: 'asc' }]
+      orderBy: [{ layer: 'asc' }, { createdAt: 'asc' }],
+      take: fetchLimit
     });
 
     const readyDeletes = await prisma.syncQueue.findMany({
@@ -82,7 +84,8 @@ export async function processSyncQueue() {
         operation: 'DELETE',
         OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date() } }]
       },
-      orderBy: [{ layer: 'desc' }, { createdAt: 'asc' }]
+      orderBy: [{ layer: 'desc' }, { createdAt: 'asc' }],
+      take: fetchLimit
     });
 
     // Combine and apply batch limit
@@ -221,16 +224,32 @@ export async function processSyncQueue() {
         if (result.status === 'SYNCED') {
           if (result.resolvedUuid && result.resolvedUuid !== event.cloudUuid) {
             // The upstream resolved this to an existing record's true UUID. Atomically heal mappings.
-            await prisma.$transaction([
-              prisma.localToCloudMapping.updateMany({
+            try {
+              await prisma.localToCloudMapping.updateMany({
                 where: { deviceId: event.deviceId, entityType: event.entityType, localId: event.localId },
                 data: { cloudUuid: result.resolvedUuid }
-              }),
-              prisma.syncQueue.update({
-                where: { eventUuid: event.eventUuid },
-                data: { status: 'SYNCED', error: null, cloudUuid: result.resolvedUuid }
-              })
-            ]);
+              });
+            } catch {
+              // LocalToCloudMapping dropped in Migration 009; cloudUuid is on the business entity
+            }
+
+            // Also update the business record's embedded cloudUuid if possible
+            try {
+              const delegate = (prisma as any)[event.entityType.charAt(0).toLowerCase() + event.entityType.slice(1)];
+              if (delegate && typeof delegate.update === 'function') {
+                await delegate.update({
+                  where: { id: event.localId },
+                  data: { cloudUuid: result.resolvedUuid }
+                });
+              }
+            } catch {
+              // Ignore if entity does not support cloudUuid
+            }
+
+            await prisma.syncQueue.update({
+              where: { eventUuid: event.eventUuid },
+              data: { status: 'SYNCED', error: null, cloudUuid: result.resolvedUuid }
+            });
           } else {
             await prisma.syncQueue.update({
               where: { eventUuid: event.eventUuid },
@@ -265,6 +284,18 @@ export async function processSyncQueue() {
             });
           }
         }
+      }
+
+      // If at least one event in this batch was marked SYNCED, update durable setting
+      const anySynced = results.some((r: any) => r.status === 'SYNCED');
+      if (anySynced) {
+        await prisma.cloudSyncSettings.upsert({
+          where: { id: 1 },
+          update: { lastSuccessfulUpstreamSyncAt: new Date() },
+          create: { id: 1, syncEnabled: true, downstreamEnabled: true, lastSuccessfulUpstreamSyncAt: new Date() },
+        }).catch((err) => {
+          console.error('[SYNC WORKER] Failed to update lastSuccessfulUpstreamSyncAt:', err.message);
+        });
       }
     }
   } catch (error: any) {

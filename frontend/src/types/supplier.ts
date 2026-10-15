@@ -50,6 +50,7 @@ export interface SupplierPayment {
   date: string;
   amount: number;
   method?: string;
+  paymentSource?: 'shift' | 'hand';
   notes?: string;
   /** Optional write-off sent with addPayment — creates a separate discount payment row */
   discount?: number;

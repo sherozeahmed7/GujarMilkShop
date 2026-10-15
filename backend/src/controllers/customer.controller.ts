@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { CustomerService } from '../services/customer.service';
 import { ApiResponse } from '../utils/apiResponse';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { DashboardController } from './dashboard.controller';
 
 export class CustomerController {
   /**
@@ -196,6 +197,7 @@ export class CustomerController {
         return ApiResponse.error(res, result.message!, result.statusCode);
       }
 
+      DashboardController.clearCache();
       return ApiResponse.success(res, result.message!, result.data, result.statusCode);
     } catch (error) {
       next(error);

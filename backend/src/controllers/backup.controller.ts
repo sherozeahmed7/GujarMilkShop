@@ -332,13 +332,25 @@ export async function restoreBackup(req: Request, res: Response): Promise<void> 
 
     fs.copyFileSync(sourceBackupPath, currentDbPath);
 
-    // 4. Reconnect and health check
+    // 4. Reconnect and apply all migrations, schema updates, and performance optimizations
     await prisma.$connect();
     didDisconnect = false;
 
+    // Run versioned schema and data migrations against the restored database
+    const { preparePendingDataMigrations, runPendingDataMigrations } = await import('../migrations/migrationRunner');
+    const preparedMigrations = await preparePendingDataMigrations(prisma, currentDbPath);
+    await runPendingDataMigrations(prisma, preparedMigrations);
+
+    // Apply query optimization and indexes on restored data
+    try {
+      await prisma.$queryRawUnsafe(`PRAGMA optimize;`);
+    } catch {
+      // Non-fatal
+    }
+
     await prisma.user.count();
 
-    res.json({ message: 'Database restored successfully.', safetyBackup: safetyBackupPath });
+    res.json({ message: 'Database restored and upgraded successfully.', safetyBackup: safetyBackupPath });
   } catch (err: any) {
     console.error('[Restore Error]', err);
 

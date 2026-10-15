@@ -608,6 +608,7 @@ export class SupplierService {
     }
 
     const method = payload.method || 'cash';
+    const paymentSource = payload.paymentSource || (method === 'cash' ? 'shift' : 'hand');
     if (amount > 0 && !['cash', 'bank_transfer', 'jazzcash'].includes(method)) {
       return { success: false, statusCode: 400, message: 'Invalid supplier payment method.' };
     }
@@ -621,9 +622,11 @@ export class SupplierService {
         orderBy: { openedAt: 'asc' },
       });
 
-      if (amount > 0 && method === 'cash') {
+      const isShiftCash = amount > 0 && method === 'cash' && paymentSource === 'shift';
+
+      if (isShiftCash) {
         if (!openShift) {
-          throw new Error('Open a shift before making a cash supplier payment.');
+          throw new Error('No open shift found. Open a shift to pay from shift balance, or choose "Total Cash in Hand (Outside Shift)".');
         }
 
         const [cashPayments, expenseCashOut, supplierCashOut] = await Promise.all([
@@ -654,7 +657,7 @@ export class SupplierService {
 
         if (amount > availableCash + 1e-9) {
           throw new Error(
-            `Insufficient shift cash. Available Rs. ${availableCash.toLocaleString()}, but supplier payment is Rs. ${amount.toLocaleString()}.`
+            `Insufficient shift cash. Available in shift: Rs. ${availableCash.toLocaleString()}, but supplier payment is Rs. ${amount.toLocaleString()}. You can pay from "Total Cash in Hand (Outside Shift)" instead.`
           );
         }
       }
@@ -662,7 +665,15 @@ export class SupplierService {
       const rows = [];
       if (amount > 0) {
         const pay = await tx.supplierPayment.create({
-          data: { supplierId, date, amount, method, notes, createdById: userId, shiftId: method === 'cash' ? openShift?.id : null },
+          data: {
+            supplierId,
+            date,
+            amount,
+            method,
+            notes,
+            createdById: userId,
+            shiftId: isShiftCash ? openShift?.id : null
+          },
         });
         await SyncQueueService.enqueueCreate(tx, 'SupplierPayment', pay.id, pay, 1);
         rows.push(pay);

@@ -8,6 +8,7 @@ import { StockMovementsTab } from '../components/inventory/StockMovementsTab';
 import { AddProductModal } from '../components/inventory/AddProductModal';
 import { EditProductModal } from '../components/inventory/EditProductModal';
 import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
+import { DeleteConfirmModal } from '../components/inventory/DeleteConfirmModal';
 import { ExportButtons } from '../components/reports/ExportButtons';
 import { Product } from '../types/inventory';
 
@@ -19,6 +20,7 @@ export const Inventory: React.FC = () => {
     summary,
     addProduct,
     updateProduct,
+    deleteProduct,
     adjustStock,
     isLoading,
     error,
@@ -45,6 +47,7 @@ export const Inventory: React.FC = () => {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [adjustingStockProduct, setAdjustingStockProduct] = useState<Product | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
   const handleAction = (message: string) => {
     setShowToast(message);
@@ -104,7 +107,7 @@ export const Inventory: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden min-h-[500px]">
-        
+
         {/* Tabs */}
         <div className="flex items-center gap-6 border-b border-slate-200 dark:border-[#2d4a35] px-2 pt-2 bg-slate-50/50 dark:bg-[#142119]/50">
           {['Products', 'Stock In', 'Stock Movements'].map(tab => (
@@ -112,8 +115,8 @@ export const Inventory: React.FC = () => {
               key={tab}
               onClick={() => handleTabChange(tab)}
               className={`py-3 px-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === tab 
-                  ? 'border-blue-600 text-blue-700 dark:border-[#22c55e] dark:text-[#22c55e]' 
+                activeTab === tab
+                  ? 'border-blue-600 text-blue-700 dark:border-[#22c55e] dark:text-[#22c55e]'
                   : 'border-transparent text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae] hover:border-slate-300 dark:hover:border-[#2d4a35]'
               }`}
             >
@@ -127,25 +130,26 @@ export const Inventory: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'Products' && (
-          <ProductsTab 
+          <ProductsTab
             products={products}
             onAddStockClick={(id) => {
               const product = products.find(p => p.id === id);
               if (product) setAdjustingStockProduct(product);
             }}
             onEditClick={(product) => setEditingProduct(product)}
+            onDeleteClick={(product) => setDeletingProduct(product)}
           />
         )}
-        
+
         {activeTab === 'Stock In' && (
-          <StockInTab 
+          <StockInTab
             stockInRecords={stockInRecords}
             products={products}
           />
         )}
-        
+
         {activeTab === 'Stock Movements' && (
-          <StockMovementsTab 
+          <StockMovementsTab
             movements={movements}
             products={products}
           />
@@ -155,16 +159,16 @@ export const Inventory: React.FC = () => {
 
       {/* Modals */}
       {showAddProduct && (
-        <AddProductModal 
-          onClose={() => setShowAddProduct(false)} 
+        <AddProductModal
+          onClose={() => setShowAddProduct(false)}
           onSave={(data) => {
             return addProduct(data).then(() => handleAction('Product added successfully'));
-          }} 
+          }}
         />
       )}
 
       {editingProduct && (
-        <EditProductModal 
+        <EditProductModal
           product={editingProduct}
           onClose={() => setEditingProduct(null)}
           onSave={(id, updates) => {
@@ -174,11 +178,25 @@ export const Inventory: React.FC = () => {
       )}
 
       {adjustingStockProduct && (
-        <StockAdjustmentModal 
+        <StockAdjustmentModal
           product={adjustingStockProduct}
           onClose={() => setAdjustingStockProduct(null)}
           onSave={(id, type, qty, reason, user) => {
             adjustStock(id, type, qty, reason, user).then(() => handleAction('Stock adjusted successfully')).catch(() => undefined);
+          }}
+        />
+      )}
+
+      {deletingProduct && (
+        <DeleteConfirmModal
+          title="Delete Product"
+          message={`Are you sure you want to delete "${deletingProduct.name}" (${deletingProduct.code})? This product will be removed from the active inventory list. Historical stock movements will remain intact.`}
+          onClose={() => setDeletingProduct(null)}
+          onConfirm={() => {
+            deleteProduct(deletingProduct.id)
+              .then(() => handleAction(`"${deletingProduct.name}" deleted successfully`))
+              .catch((err: any) => handleAction(err?.message || 'Delete failed'));
+            setDeletingProduct(null);
           }}
         />
       )}
