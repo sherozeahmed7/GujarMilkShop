@@ -194,7 +194,8 @@ if (IS_PKG) {
   }
 
   // In packaged binary mode, always point DATABASE_URL to the absolute pos.db path in AppData
-  process.env.DATABASE_URL = 'file:' + dbPath;
+  process.env.DATABASE_URL = 'file:' + dbPath + '?connection_limit=1&socket_timeout=3';
+  log('[Bootstrap] LOCAL_DB_PATH=' + dbPath);
   log('[Bootstrap] IS_PKG active: DATABASE_URL set to ' + process.env.DATABASE_URL);
 }
 

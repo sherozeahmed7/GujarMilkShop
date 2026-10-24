@@ -1,8 +1,10 @@
 import crypto from 'crypto';
+import { performance } from 'perf_hooks';
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
 import { getOrCreateWalkInCustomer } from './walkInCustomer.service';
 import { NotificationService } from './notification.service';
+import { writeGate } from '../utils/writeGate';
 
 const SALE_TYPES = ['walk_in', 'split', 'ledger_daily', 'ledger_monthly'] as const;
 const LEDGER_TYPES = ['ledger_daily', 'ledger_monthly'] as const;
@@ -24,10 +26,12 @@ export interface CreateSalePayload {
   items: SaleItemInput[];
   totalAmount: number;
   paidAmount?: number;
+  discountAmount?: number;
   paymentMethod?: string;
   customerId?: number;
   customerName?: string;
   customerPhone?: string;
+  checkoutUuid?: string;
 }
 
 function money(n: number): number {
@@ -472,11 +476,34 @@ export class SaleService {
       items,
       totalAmount,
       paidAmount,
+      discountAmount,
       paymentMethod,
       customerId,
       customerName,
-      customerPhone
+      customerPhone,
+      checkoutUuid
     } = payload;
+
+    const discountVal = discountAmount !== undefined && !Number.isNaN(Number(discountAmount))
+      ? Math.max(0, money(Number(discountAmount)))
+      : 0;
+
+    // Idempotency guard: If checkoutUuid is provided and already committed, return existing sale
+    if (checkoutUuid && typeof checkoutUuid === 'string') {
+      const existingSale = await prisma.sale.findUnique({
+        where: { cloudUuid: checkoutUuid },
+        include: { items: true, payments: true, customer: true }
+      });
+      if (existingSale) {
+        return {
+          success: true,
+          statusCode: 200,
+          message: 'Sale already recorded (idempotent submission).',
+          data: existingSale,
+          _perf: { txWaitMs: 0, txExecMs: 0, totalTimeMs: 0 }
+        };
+      }
+    }
 
     // --- Basic validation ---
     if (!saleType || !(SALE_TYPES as readonly string[]).includes(saleType)) {
@@ -611,89 +638,105 @@ export class SaleService {
         };
       }
 
-      const sale = await prisma.$transaction(async (tx) => {
-        const walkInCustomer = await getOrCreateWalkInCustomer(tx);
-        const tokenNumber = await getNextTokenNumber(tx);
-        const saleCloudUuid = crypto.randomUUID();
-        
-        const itemsWithUuids = normalizedItems.map((item) => ({
-          ...item,
-          cloudUuid: crypto.randomUUID(),
-        }));
+      const t0 = performance.now();
+      let txWaitMs = 0;
+      let txExecMs = 0;
 
-        const paymentCloudUuid = crypto.randomUUID();
+      const sale = await writeGate.execute('checkout', async () => {
+        return await prisma.$transaction(async (tx) => {
+          const tTxStart = performance.now();
+          txWaitMs = money(tTxStart - t0);
 
-        const created = await tx.sale.create({
-          data: {
-            saleType,
-            customerId: walkInCustomer.id,
-            customerName: customerName?.trim() || null,
-            customerPhone: customerPhone?.trim() || null,
-            totalAmount: total,
-            paidAmount: paid,
-            remainingBalance: 0,
-            status: 'paid',
-            tokenNumber,
-            cloudUuid: saleCloudUuid,
-            items: { create: itemsWithUuids },
-            payments: {
-              create: {
-                method: paymentMethod as PaymentMethod,
-                amount: paid,
-                status: 'completed',
-                cloudUuid: paymentCloudUuid,
+          const walkInCustomer = await getOrCreateWalkInCustomer(tx);
+          const tokenNumber = await getNextTokenNumber(tx);
+          const saleCloudUuid = checkoutUuid || crypto.randomUUID();
+          
+          const itemsWithUuids = normalizedItems.map((item) => ({
+            ...item,
+            cloudUuid: crypto.randomUUID(),
+          }));
+
+          const paymentCloudUuid = crypto.randomUUID();
+
+          const created = await tx.sale.create({
+            data: {
+              saleType,
+              customerId: walkInCustomer.id,
+              customerName: customerName?.trim() || null,
+              customerPhone: customerPhone?.trim() || null,
+              totalAmount: total,
+              paidAmount: paid,
+              discountAmount: discountVal,
+              remainingBalance: 0,
+              status: 'paid',
+              tokenNumber,
+              cloudUuid: saleCloudUuid,
+              items: { create: itemsWithUuids },
+              payments: {
+                create: {
+                  method: paymentMethod as PaymentMethod,
+                  amount: paid,
+                  status: 'completed',
+                  cloudUuid: paymentCloudUuid,
+                }
               }
+            },
+            include: { items: true, payments: true }
+          });
+          await deductF2Stock(tx, payload);
+          await recordInventorySale(tx, created.id, normalizedItems, userId);
+
+          const syncEvents: Array<{
+            entityType: string;
+            localId: number;
+            cloudUuid: string;
+            operation: 'CREATE';
+            payload: any;
+            layer: number;
+          }> = [
+            {
+              entityType: 'Sale',
+              localId: created.id,
+              cloudUuid: saleCloudUuid,
+              operation: 'CREATE',
+              payload: created,
+              layer: 1,
             }
-          },
-          include: { items: true, payments: true }
-        });
-        await deductF2Stock(tx, payload);
-        await recordInventorySale(tx, created.id, normalizedItems, userId);
+          ];
 
-        const syncEvents: Array<{
-          entityType: string;
-          localId: number;
-          cloudUuid: string;
-          operation: 'CREATE';
-          payload: any;
-          layer: number;
-        }> = [
-          {
-            entityType: 'Sale',
-            localId: created.id,
-            cloudUuid: saleCloudUuid,
-            operation: 'CREATE',
-            payload: created,
-            layer: 1,
+          for (const item of created.items) {
+            syncEvents.push({
+              entityType: 'SaleItem',
+              localId: item.id,
+              cloudUuid: item.cloudUuid || crypto.randomUUID(),
+              operation: 'CREATE',
+              payload: item,
+              layer: 2,
+            });
           }
-        ];
 
-        for (const item of created.items) {
-          syncEvents.push({
-            entityType: 'SaleItem',
-            localId: item.id,
-            cloudUuid: item.cloudUuid || crypto.randomUUID(),
-            operation: 'CREATE',
-            payload: item,
-            layer: 2,
-          });
-        }
+          for (const payment of created.payments) {
+            syncEvents.push({
+              entityType: 'Payment',
+              localId: payment.id,
+              cloudUuid: payment.cloudUuid || paymentCloudUuid,
+              operation: 'CREATE',
+              payload: payment,
+              layer: 2,
+            });
+          }
 
-        for (const payment of created.payments) {
-          syncEvents.push({
-            entityType: 'Payment',
-            localId: payment.id,
-            cloudUuid: payment.cloudUuid || paymentCloudUuid,
-            operation: 'CREATE',
-            payload: payment,
-            layer: 2,
-          });
-        }
+          await SyncQueueService.enqueueBatch(tx, syncEvents);
 
-        await SyncQueueService.enqueueBatch(tx, syncEvents);
-
-        return created;
+          txExecMs = money(performance.now() - tTxStart);
+          return created;
+        });
       });
+
+      const totalTimeMs = money(performance.now() - t0);
+      if (process.env.PERFORMANCE_DIAGNOSTICS === 'true' || totalTimeMs > 500) {
+        console.log(`[CHECKOUT PERF] Bill #${sale.id}: lockWait=${txWaitMs}ms, txExec=${txExecMs}ms, total=${totalTimeMs}ms`);
+      }
 
       NotificationService.create({
         category: 'sale',
@@ -702,7 +745,13 @@ export class SaleService {
         metadata: { saleId: sale.id, saleType: 'walk_in', totalAmount: total },
       }).catch(() => { });
 
-      return { success: true, statusCode: 201, message: 'Walk-in sale created successfully.', data: sale };
+      return {
+        success: true,
+        statusCode: 201,
+        message: 'Walk-in sale created successfully.',
+        data: sale,
+        _perf: { txWaitMs, txExecMs, totalTimeMs }
+      };
     }
 
     // ========== SPLIT ==========
@@ -754,16 +803,17 @@ export class SaleService {
 
       const remaining = money(total - paid);
 
-      const sale = await prisma.$transaction(async (tx) => {
-        const tokenNumber = await getNextTokenNumber(tx);
-        const saleCloudUuid = crypto.randomUUID();
+      const sale = await writeGate.execute('checkout', async () => {
+        return await prisma.$transaction(async (tx) => {
+          const tokenNumber = await getNextTokenNumber(tx);
+          const saleCloudUuid = checkoutUuid || crypto.randomUUID();
 
-        const itemsWithUuids = normalizedItems.map((item) => ({
-          ...item,
-          cloudUuid: crypto.randomUUID(),
-        }));
+          const itemsWithUuids = normalizedItems.map((item) => ({
+            ...item,
+            cloudUuid: crypto.randomUUID(),
+          }));
 
-        const paymentCloudUuid = crypto.randomUUID();
+          const paymentCloudUuid = crypto.randomUUID();
 
         const created = await tx.sale.create({
           data: {
@@ -773,6 +823,7 @@ export class SaleService {
             customerPhone: customerPhone?.trim() || null,
             totalAmount: total,
             paidAmount: paid,
+            discountAmount: discountVal,
             remainingBalance: remaining,
             status: 'partial',
             tokenNumber,
@@ -835,6 +886,7 @@ export class SaleService {
         await SyncQueueService.enqueueBatch(tx, syncEvents);
 
         return created;
+        });
       });
 
       NotificationService.create({
@@ -889,88 +941,101 @@ export class SaleService {
       }
 
       // Ledger: paidAmount forced to 0; no payment method needed yet
-      const sale = await prisma.$transaction(async (tx) => {
-        const tokenNumber = await getNextTokenNumber(tx);
-        const saleCloudUuid = crypto.randomUUID();
+      const t0 = performance.now();
+      let txWaitMs = 0;
+      let txExecMs = 0;
+      const tGateStart = Date.now();
+      const sale = await writeGate.execute('checkout', async () => {
+        txWaitMs = Date.now() - tGateStart;
+        const tTxStart = Date.now();
+        const txResult = await prisma.$transaction(async (tx) => {
+          const tokenNumber = await getNextTokenNumber(tx);
+          const saleCloudUuid = checkoutUuid || crypto.randomUUID();
 
-        const itemsWithUuids = normalizedItems.map((item) => ({
-          ...item,
-          cloudUuid: crypto.randomUUID(),
-        }));
+          const itemsWithUuids = normalizedItems.map((item) => ({
+            ...item,
+            cloudUuid: crypto.randomUUID(),
+          }));
 
-        const paymentCloudUuid = crypto.randomUUID();
+          const paymentCloudUuid = crypto.randomUUID();
 
-        const created = await tx.sale.create({
-          data: {
-            saleType: saleType as SaleType,
-            customerId: customer.id,
-            customerName: customer.name,
-            customerPhone: customer.phone || null,
-            totalAmount: total,
-            paidAmount: 0,
-            remainingBalance: total,
-            status: 'pending',
-            tokenNumber,
-            cloudUuid: saleCloudUuid,
-            items: { create: itemsWithUuids },
-            payments: {
-              create: {
-                method: 'cash',
-                amount: 0,
-                status: 'pending',
-                cloudUuid: paymentCloudUuid,
+          const created = await tx.sale.create({
+            data: {
+              saleType: saleType as SaleType,
+              customerId: customer.id,
+              customerName: customer.name,
+              customerPhone: customer.phone || null,
+              totalAmount: total,
+              paidAmount: 0,
+              discountAmount: discountVal,
+              remainingBalance: total,
+              status: 'pending',
+              tokenNumber,
+              cloudUuid: saleCloudUuid,
+              items: { create: itemsWithUuids },
+              payments: {
+                create: {
+                  method: 'cash',
+                  amount: 0,
+                  status: 'pending',
+                  cloudUuid: paymentCloudUuid,
+                }
               }
+            },
+            include: { items: true, payments: true, customer: true }
+          });
+          await deductF2Stock(tx, payload);
+          await recordInventorySale(tx, created.id, normalizedItems, userId);
+
+          const syncEvents: Array<{
+            entityType: string;
+            localId: number;
+            cloudUuid: string;
+            operation: 'CREATE';
+            payload: any;
+            layer: number;
+          }> = [
+            {
+              entityType: 'Sale',
+              localId: created.id,
+              cloudUuid: saleCloudUuid,
+              operation: 'CREATE',
+              payload: created,
+              layer: 1,
             }
-          },
-          include: { items: true, payments: true, customer: true }
-        });
-        await deductF2Stock(tx, payload);
-        await recordInventorySale(tx, created.id, normalizedItems, userId);
+          ];
 
-        const syncEvents: Array<{
-          entityType: string;
-          localId: number;
-          cloudUuid: string;
-          operation: 'CREATE';
-          payload: any;
-          layer: number;
-        }> = [
-          {
-            entityType: 'Sale',
-            localId: created.id,
-            cloudUuid: saleCloudUuid,
-            operation: 'CREATE',
-            payload: created,
-            layer: 1,
+          for (const item of created.items) {
+            syncEvents.push({
+              entityType: 'SaleItem',
+              localId: item.id,
+              cloudUuid: item.cloudUuid || crypto.randomUUID(),
+              operation: 'CREATE',
+              payload: item,
+              layer: 2,
+            });
           }
-        ];
 
-        for (const item of created.items) {
-          syncEvents.push({
-            entityType: 'SaleItem',
-            localId: item.id,
-            cloudUuid: item.cloudUuid || crypto.randomUUID(),
-            operation: 'CREATE',
-            payload: item,
-            layer: 2,
-          });
-        }
+          for (const payment of created.payments) {
+            syncEvents.push({
+              entityType: 'Payment',
+              localId: payment.id,
+              cloudUuid: payment.cloudUuid || paymentCloudUuid,
+              operation: 'CREATE',
+              payload: payment,
+              layer: 2,
+            });
+          }
 
-        for (const payment of created.payments) {
-          syncEvents.push({
-            entityType: 'Payment',
-            localId: payment.id,
-            cloudUuid: payment.cloudUuid || paymentCloudUuid,
-            operation: 'CREATE',
-            payload: payment,
-            layer: 2,
-          });
-        }
+          await SyncQueueService.enqueueBatch(tx, syncEvents);
 
-        await SyncQueueService.enqueueBatch(tx, syncEvents);
-
-        return created;
+          return created;
+        });
+        txExecMs = Date.now() - tTxStart;
+        return txResult;
       });
+
+      const totalTimeMs = Math.round((performance.now() - t0) * 100) / 100;
 
       NotificationService.create({
         category: 'sale',
@@ -979,7 +1044,13 @@ export class SaleService {
         metadata: { saleId: sale.id, customerId: customer.id, customerName: customer.name, totalAmount: total },
       }).catch(() => { });
 
-      return { success: true, statusCode: 201, message: 'Ledger sale created successfully.', data: sale };
+      return {
+        success: true,
+        statusCode: 201,
+        message: 'Ledger sale created successfully.',
+        data: sale,
+        _perf: { txWaitMs, txExecMs, totalTimeMs }
+      };
     }
 
     return {

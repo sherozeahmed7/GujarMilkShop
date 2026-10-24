@@ -11,10 +11,12 @@ export interface CreateSalePayload {
   items: SaleItemPayload[];
   totalAmount: number;
   paidAmount?: number;
+  discountAmount?: number;
   paymentMethod?: 'cash' | 'online';
   customerId?: number;
   customerName?: string;
   customerPhone?: string;
+  checkoutUuid?: string;
 }
 
 export interface SaleItem {
@@ -46,6 +48,7 @@ export interface SaleRecord {
   customer?: { id: number; name: string; phone?: string | null } | null;
   totalAmount: number;
   paidAmount: number;
+  discountAmount?: number;
   remainingBalance: number;
   status: string;
   tokenNumber?: number;
@@ -128,8 +131,8 @@ export const saleService = {
     if (filters?.toDate) params.toDate = filters.toDate;
     if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
     if (filters?.dateTo) params.dateTo = filters.dateTo;
-    if (filters?.page) params.page = filters.page;
-    if (filters?.limit) params.limit = filters.limit;
+    if (filters?.page !== undefined) params.page = filters.page;
+    if (filters?.limit !== undefined) params.limit = filters.limit;
 
     const response = await apiClient.get(
       '/sales',

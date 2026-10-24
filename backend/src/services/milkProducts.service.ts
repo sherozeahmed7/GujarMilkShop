@@ -132,17 +132,17 @@ export class MilkProductsService {
 
     const base = record ?? ZERO_STOCK(dateStr);
 
-    // Butter & Ghee: use inventory snapshot so opening carries over from prior days
-    const [butterInv, gheeInv] = await Promise.all([
+    // Lassi, Butter & Ghee: use inventory snapshot so dynamic inventory adjustments and sales are reflected
+    const [lassiInv, butterInv, gheeInv] = await Promise.all([
+      inventoryDaySnapshot('LASSI', dateStr),
       inventoryDaySnapshot('BUTTER', dateStr),
       inventoryDaySnapshot('GHEE', dateStr),
     ]);
 
-    // Lassi: daily reset — use the per-day record values, NOT the inventory snapshot.
-    // Opening is always 0 for Lassi. Remaining = max(0, produced - sold).
-    const lassiProduced = money(Number(base.lassiProduced ?? 0));
-    const lassiSold    = money(Number(base.lassiSold    ?? 0));
-    const lassiRemaining = Math.max(0, money(lassiProduced - lassiSold));
+    // Dynamically derive Lassi produced, sold, and remaining from inventory movements
+    const lassiProduced = money(lassiInv.added || Number(base.lassiProduced ?? 0));
+    const lassiSold = money(lassiInv.sold || Number(base.lassiSold ?? 0));
+    const lassiRemaining = money(lassiInv.closing);
 
     return {
       success: true,

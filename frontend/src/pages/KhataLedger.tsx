@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { KhataSummaryCards } from '../components/khata/KhataSummaryCards';
 import { KhataCashCollectModal } from '../components/khata/KhataCashCollectModal';
 import { KhataLedgerModal } from '../components/khata/KhataLedgerModal';
@@ -58,9 +58,25 @@ function typeBadge(t: ApiCustomer['customerType']) {
 
 export const KhataLedger: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [customers, setCustomers] = useState<ApiCustomer[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [partyMode, setPartyMode] = useState<'customers' | 'suppliers'>('customers');
+  const [partyMode, setPartyMode] = useState<'customers' | 'suppliers'>(
+    searchParams.get('tab') === 'suppliers' ? 'suppliers' : 'customers'
+  );
+
+  const handleSelectParty = useCallback((mode: 'customers' | 'suppliers') => {
+    setPartyMode(mode);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (mode === 'suppliers') {
+        next.set('tab', 'suppliers');
+      } else {
+        next.delete('tab');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [partyPickerOpen, setPartyPickerOpen] = useState(false);
   const [partySearch, setPartySearch] = useState('');
   const [ledgerSupplier, setLedgerSupplier] = useState<Supplier | null>(null);
@@ -101,15 +117,35 @@ export const KhataLedger: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [openActionMenu]);
 
-  const [customerPage, setCustomerPage] = useState(1);
+  const [customerPage, setCustomerPage] = useState(() => {
+    const saved = sessionStorage.getItem('khata_customer_page');
+    return saved ? Number(saved) : 1;
+  });
   const [customerItemsPerPage, setCustomerItemsPerPage] = useState(25);
-  const [supplierPage, setSupplierPage] = useState(1);
+  const [supplierPage, setSupplierPage] = useState(() => {
+    const saved = sessionStorage.getItem('khata_supplier_page');
+    return saved ? Number(saved) : 1;
+  });
   const [supplierItemsPerPage, setSupplierItemsPerPage] = useState(25);
 
   const debouncedSearch = useDebounce(searchQuery, 400);
 
-  // Reset page when filters change
+  // Keep saved pages in sync
   useEffect(() => {
+    sessionStorage.setItem('khata_customer_page', String(customerPage));
+  }, [customerPage]);
+
+  useEffect(() => {
+    sessionStorage.setItem('khata_supplier_page', String(supplierPage));
+  }, [supplierPage]);
+
+  // Reset page when filters change (ignore initial partyMode)
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     setCustomerPage(1);
     setSupplierPage(1);
   }, [debouncedSearch, filterMode, customerTypeFilter, supplierCycleFilter, nameSort, dateFilter, partyMode]);
@@ -135,6 +171,27 @@ export const KhataLedger: React.FC = () => {
     const start = (supplierPage - 1) * supplierItemsPerPage;
     return visibleSuppliers.slice(start, start + supplierItemsPerPage);
   }, [visibleSuppliers, supplierPage, supplierItemsPerPage]);
+
+  // Restore scroll position or scroll to active supplier/customer row
+  useEffect(() => {
+    const scrollToId = sessionStorage.getItem('khata_scroll_to_id');
+    if (scrollToId) {
+      const el = document.getElementById(scrollToId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        sessionStorage.removeItem('khata_scroll_to_id');
+      } else {
+        const timer = setTimeout(() => {
+          const retryEl = document.getElementById(scrollToId);
+          if (retryEl) {
+            retryEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            sessionStorage.removeItem('khata_scroll_to_id');
+          }
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [paginatedSuppliers, paginatedCustomers, partyMode]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -178,15 +235,22 @@ export const KhataLedger: React.FC = () => {
 
   const loadSuppliers = useCallback(async () => {
     try {
+      const toYMD = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
       const list = await supplierService.list({
         ...(supplierCycleFilter !== 'All'
           ? { cycleType: supplierCycleFilter }
           : {}),
         ...(dateFilter.startDate
-          ? { fromDate: dateFilter.startDate.toISOString() }
+          ? { fromDate: toYMD(dateFilter.startDate) }
           : {}),
         ...(dateFilter.endDate
-          ? { toDate: dateFilter.endDate.toISOString() }
+          ? { toDate: toYMD(dateFilter.endDate) }
           : {}),
       });
       setSuppliers(list);
@@ -578,7 +642,7 @@ export const KhataLedger: React.FC = () => {
               {partyMode === 'customers' ? 'Customers' : 'Suppliers'}
               <ChevronDown className="w-4 h-4 text-slate-400 dark:text-[#64916e]" />
             </button>
-            {partyPickerOpen && <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] p-2 shadow-xl"><div className="relative mb-2"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-[#64916e]" /><input autoFocus type="search" value={partySearch} onChange={(e) => setPartySearch(e.target.value)} placeholder="Search party type..." className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] py-2 pl-8 pr-2 text-xs text-slate-700 dark:text-[#e2f5e8] outline-none focus:border-blue-500" /></div>{(['customers', 'suppliers'] as const).filter((mode) => mode.includes(partySearch.toLowerCase().trim())).map((mode) => <button key={mode} type="button" onClick={() => { setPartyMode(mode); setPartySearch(''); setPartyPickerOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${partyMode === mode ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'}`}>{mode === 'customers' ? 'Customers' : 'Suppliers'}</button>)}</div>}
+            {partyPickerOpen && <div className="absolute left-0 top-full mt-2 z-30 w-56 rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] p-2 shadow-xl"><div className="relative mb-2"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-[#64916e]" /><input autoFocus type="search" value={partySearch} onChange={(e) => setPartySearch(e.target.value)} placeholder="Search party type..." className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-slate-50 dark:bg-[#142119] py-2 pl-8 pr-2 text-xs text-slate-700 dark:text-[#e2f5e8] outline-none focus:border-blue-500" /></div>{(['customers', 'suppliers'] as const).filter((mode) => mode.includes(partySearch.toLowerCase().trim())).map((mode) => <button key={mode} type="button" onClick={() => { handleSelectParty(mode); setPartySearch(''); setPartyPickerOpen(false); }} className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold ${partyMode === mode ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'}`}>{mode === 'customers' ? 'Customers' : 'Suppliers'}</button>)}</div>}
           </div>
           <div className="relative max-w-lg flex-1">
             <Search className="w-4 h-4 text-slate-400 dark:text-[#64916e] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -698,7 +762,7 @@ export const KhataLedger: React.FC = () => {
                     );
 
                   return (
-                    <tr key={c.id} className="hover:bg-slate-50/70 dark:hover:bg-[#1e3124] transition-colors group">
+                    <tr id={`customer-row-${c.id}`} key={c.id} className="hover:bg-slate-50/70 dark:hover:bg-[#1e3124] transition-colors group">
                       <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 dark:text-[#64916e] tabular-nums">
                         {(customerPage - 1) * customerItemsPerPage + index + 1}
                       </td>
@@ -706,7 +770,10 @@ export const KhataLedger: React.FC = () => {
                         <div className="min-w-0">
                           <button 
                             type="button"
-                            onClick={() => navigate(`/ledger/customers/${c.id}`)}
+                            onClick={() => {
+                              sessionStorage.setItem('khata_scroll_to_id', `customer-row-${c.id}`);
+                              navigate(`/ledger/customers/${c.id}`);
+                            }}
                             className="font-semibold text-sm text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac] hover:underline truncate text-left block w-full"
                             title={c.name}
                           >
@@ -875,7 +942,7 @@ export const KhataLedger: React.FC = () => {
                         key={mode}
                         type="button"
                         onClick={() => {
-                          setPartyMode(mode);
+                          handleSelectParty(mode);
                           setPartySearch('');
                           setPartyPickerOpen(false);
                         }}
@@ -940,12 +1007,24 @@ export const KhataLedger: React.FC = () => {
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Supplier</th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Code</th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Cycle</th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35] text-right" title="Morning milk collection in kg">
+                    Morning (kg)
+                  </th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35] text-right" title="Evening milk collection in kg">
+                    Evening (kg)
+                  </th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35] text-right" title="Milk purchase rate">
+                    Rate
+                  </th>
+                  <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35] text-right" title="Total milk purchase value for period">
+                    Total
+                  </th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Advance</th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]" title="Purchases in current month, week, or day">
-                    Current Month / Week / Day
+                    Current Cycle
                   </th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]" title="Purchases before current cycle">
-                    Previous Month / Week / Day
+                    Previous Cycle
                   </th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Total to Pay</th>
                   <th className="px-4 py-3 text-xs uppercase text-slate-500 dark:text-[#64916e] border-b border-slate-100 dark:border-[#2d4a35]">Paid</th>
@@ -960,6 +1039,11 @@ export const KhataLedger: React.FC = () => {
                     const totalToPay = supplier.totalAmount ?? current + previous;
                     const paid = supplier.paidAmount ?? 0;
                     const remaining = supplier.remainingBalance ?? supplier.payableBalance;
+                    const morningMilk = supplier.morningQty ?? 0;
+                    const eveningMilk = supplier.eveningQty ?? 0;
+                    const supplierRate = supplier.rate ?? supplier.defaultRate ?? 0;
+                    const periodTotal = supplier.periodPurchases ?? ((morningMilk + eveningMilk) * supplierRate);
+
                     const fmtAmt = (n: number) => {
                       if (n < 0) {
                         return (
@@ -978,14 +1062,17 @@ export const KhataLedger: React.FC = () => {
                       );
                     };
                     return (
-                      <tr key={supplier.id} className="hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors">
+                      <tr id={`supplier-row-${supplier.id}`} key={supplier.id} className="hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors">
                         <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 dark:text-slate-400 tabular-nums">
                           {(supplierPage - 1) * supplierItemsPerPage + index + 1}
                         </td>
                         <td className="px-4 py-3 font-semibold text-slate-800 dark:text-[#e2f5e8] max-w-[200px]">
                           <button
                             type="button"
-                            onClick={() => navigate(`/ledger/suppliers/${supplier.id}`)}
+                            onClick={() => {
+                              sessionStorage.setItem('khata_scroll_to_id', `supplier-row-${supplier.id}`);
+                              navigate(`/ledger/suppliers/${supplier.id}`);
+                            }}
                             className="text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac] hover:underline truncate block w-full text-left"
                             title={supplier.name}
                           >
@@ -994,6 +1081,18 @@ export const KhataLedger: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{supplier.code}</td>
                         <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{supplier.cycleType}</td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+                          {morningMilk > 0 ? `${morningMilk.toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-indigo-600 dark:text-indigo-400 tabular-nums">
+                          {eveningMilk > 0 ? `${eveningMilk.toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-slate-700 dark:text-[#e2f5e8] tabular-nums">
+                          {supplierRate > 0 ? `Rs. ${supplierRate}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-slate-800 dark:text-[#e2f5e8] tabular-nums">
+                          {periodTotal > 0 ? `Rs. ${Math.round(periodTotal).toLocaleString()}` : '—'}
+                        </td>
                         <td className="px-4 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                           {(supplier.guaranteedAdvance || 0) > 0
                             ? `−Rs. ${Math.round(supplier.guaranteedAdvance).toLocaleString()}`

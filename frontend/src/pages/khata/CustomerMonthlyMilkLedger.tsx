@@ -310,11 +310,11 @@ export const CustomerMonthlyMilkLedger: React.FC = () => {
       <div className="bg-white dark:bg-[#1a2e1f] border-b border-slate-200 dark:border-[#2d4a35] px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sticky top-0 z-10">
         <div>
           <button 
-            onClick={() => navigate('/ledger')}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-slate-500 dark:text-[#8ba895] hover:text-blue-600 transition-colors text-sm font-medium mb-1"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Khata / Ledger
+            Back
           </button>
           <h1 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8]">Customer Monthly Milk Ledger</h1>
         </div>

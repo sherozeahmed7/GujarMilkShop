@@ -202,8 +202,13 @@ export class SupplierService {
     // 2. Parallel aggregates
     // - total purchased all time
     // - total paid all time
-    // - current period purchased per cycle group
-    // - previous period purchased per cycle group (before pStart)
+    // - period morning/evening quantities and amounts for the selected filter
+    const filterCollectionsWhere: any = {
+      supplierId: { in: supplierIds },
+      ...(rangeStart ? { date: { gte: rangeStart } } : {}),
+      ...(rangeEnd ? { date: { lte: rangeEnd } } : {}),
+    };
+
     const aggPromises: Promise<any>[] = [
       prisma.supplierCollection.groupBy({
         by: ['supplierId'],
@@ -214,7 +219,12 @@ export class SupplierService {
         by: ['supplierId'],
         where: { supplierId: { in: supplierIds } },
         _sum: { amount: true }
-      })
+      }),
+      prisma.supplierCollection.groupBy({
+        by: ['supplierId', 'shift'],
+        where: filterCollectionsWhere,
+        _sum: { quantity: true, amount: true }
+      }),
     ];
 
     // Current and Previous period aggregations
@@ -253,14 +263,34 @@ export class SupplierService {
     const results = await Promise.all(aggPromises);
     const purchasedAgg = results[0];
     const paidAgg = results[1];
+    const shiftAgg = results[2];
     
     const purchasedMap = new Map<number, number>(purchasedAgg.map((r: any) => [r.supplierId, r._sum.amount || 0]));
     const paidMap = new Map<number, number>(paidAgg.map((r: any) => [r.supplierId, r._sum.amount || 0]));
     
+    // Process shift milk quantities and totals for the filtered range
+    const shiftStatsMap = new Map<number, { morningQty: number; eveningQty: number; totalQty: number; totalAmount: number }>();
+    for (const row of (shiftAgg || [])) {
+      const sId = row.supplierId;
+      if (!shiftStatsMap.has(sId)) {
+        shiftStatsMap.set(sId, { morningQty: 0, eveningQty: 0, totalQty: 0, totalAmount: 0 });
+      }
+      const stat = shiftStatsMap.get(sId)!;
+      const q = money(row._sum.quantity || 0);
+      const a = money(row._sum.amount || 0);
+      if (row.shift === 'Morning') {
+        stat.morningQty = money(stat.morningQty + q);
+      } else if (row.shift === 'Evening') {
+        stat.eveningQty = money(stat.eveningQty + q);
+      }
+      stat.totalQty = money(stat.totalQty + q);
+      stat.totalAmount = money(stat.totalAmount + a);
+    }
+
     const currentPurchasedMap = new Map<number, number>();
     const previousPurchasedMap = new Map<number, number>();
     
-    for (let i = 2; i < results.length; i++) {
+    for (let i = 3; i < results.length; i++) {
       const { type, data } = results[i] as { type: string, data: any[] };
       for (const r of data) {
         if (type === 'current') currentPurchasedMap.set(r.supplierId, r._sum.amount || 0);
@@ -285,6 +315,11 @@ export class SupplierService {
       const paidAmount = money(paid);
       const remainingBalance = money(totalAmount - paidAmount);
 
+      const shiftStats = shiftStatsMap.get(s.id) || { morningQty: 0, eveningQty: 0, totalQty: 0, totalAmount: 0 };
+      const effectiveRate = shiftStats.totalQty > 0
+        ? money(shiftStats.totalAmount / shiftStats.totalQty)
+        : (s.defaultRate || 0);
+
       return {
         id: String(s.id),
         name: s.name,
@@ -305,6 +340,11 @@ export class SupplierService {
         remainingBalance,
         payableBalance: remainingBalance, // deprecated alias
         nextCycleCredit: advance,
+        morningQty: shiftStats.morningQty,
+        eveningQty: shiftStats.eveningQty,
+        totalQty: shiftStats.totalQty,
+        rate: effectiveRate,
+        periodPurchases: shiftStats.totalAmount,
       };
     });
   }

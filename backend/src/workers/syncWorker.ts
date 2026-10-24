@@ -23,6 +23,7 @@ function calculateNextRetry(retryCount: number): Date {
 }
 
 import { isRestoreInProgress } from '../utils/restoreLock';
+import { writeGate } from '../utils/writeGate';
 
 export async function processSyncQueue() {
   if (isSyncing || isRestoreInProgress()) return;
@@ -123,11 +124,13 @@ export async function processSyncQueue() {
       return;
     }
 
-    // 5. Atomic Claim
+    // 5. Atomic Claim (background priority write)
     const eventUuids = eventsToProcess.map(e => e.eventUuid);
-    await prisma.syncQueue.updateMany({
-      where: { eventUuid: { in: eventUuids }, status: 'PENDING' },
-      data: { status: 'SYNCING' }
+    await writeGate.execute('background', async () => {
+      await prisma.syncQueue.updateMany({
+        where: { eventUuid: { in: eventUuids }, status: 'PENDING' },
+        data: { status: 'SYNCING' }
+      });
     });
 
     // 6. Send to API
@@ -196,94 +199,102 @@ export async function processSyncQueue() {
       const results = apiResponse?.data?.results || [];
       const resultMap = new Map(results.map((r: any) => [r.eventUuid, r]));
 
+      // 7. Handle Results (wrap writes in writeGate and yield if checkout is waiting)
       for (const event of eventsToProcess) {
-        const result: any = resultMap.get(event.eventUuid);
-        if (!result) {
-          // Event was sent but API didn't return a result for it. 
-          // Treat as network error/retryable.
-          const newRetryCount = event.retryCount + 1;
-          if (newRetryCount >= 5) {
-            await prisma.syncQueue.update({
-              where: { eventUuid: event.eventUuid },
-              data: { status: 'FAILED', error: 'Missing from API response', retryCount: newRetryCount }
-            });
-          } else {
-            await prisma.syncQueue.update({
-              where: { eventUuid: event.eventUuid },
-              data: { 
-                status: 'PENDING', 
-                retryCount: newRetryCount,
-                nextRetryAt: calculateNextRetry(newRetryCount),
-                error: 'Missing from API response'
-              }
-            });
-          }
-          continue;
+        // If cashier checkout is waiting for SQLite, yield immediately so checkout executes with zero delay
+        if (writeGate.isCheckoutWaiting) {
+          await new Promise(r => setImmediate(r));
         }
 
-        if (result.status === 'SYNCED') {
-          if (result.resolvedUuid && result.resolvedUuid !== event.cloudUuid) {
-            // The upstream resolved this to an existing record's true UUID. Atomically heal mappings.
-            try {
-              await prisma.localToCloudMapping.updateMany({
-                where: { deviceId: event.deviceId, entityType: event.entityType, localId: event.localId },
-                data: { cloudUuid: result.resolvedUuid }
-              });
-            } catch {
-              // LocalToCloudMapping dropped in Migration 009; cloudUuid is on the business entity
-            }
-
-            // Also update the business record's embedded cloudUuid if possible
-            try {
-              const delegate = (prisma as any)[event.entityType.charAt(0).toLowerCase() + event.entityType.slice(1)];
-              if (delegate && typeof delegate.update === 'function') {
-                await delegate.update({
-                  where: { id: event.localId },
-                  data: { cloudUuid: result.resolvedUuid }
-                });
-              }
-            } catch {
-              // Ignore if entity does not support cloudUuid
-            }
-
-            await prisma.syncQueue.update({
-              where: { eventUuid: event.eventUuid },
-              data: { status: 'SYNCED', error: null, cloudUuid: result.resolvedUuid }
-            });
-          } else {
-            await prisma.syncQueue.update({
-              where: { eventUuid: event.eventUuid },
-              data: { status: 'SYNCED', error: null }
-            });
-          }
-        } else {
-          // Event failed on server side
-          if (result.retryable) {
+        await writeGate.execute('background', async () => {
+          const result: any = resultMap.get(event.eventUuid);
+          if (!result) {
+            // Event was sent but API didn't return a result for it. 
+            // Treat as network error/retryable.
             const newRetryCount = event.retryCount + 1;
             if (newRetryCount >= 5) {
               await prisma.syncQueue.update({
                 where: { eventUuid: event.eventUuid },
-                data: { status: 'FAILED', error: result.error, retryCount: newRetryCount }
+                data: { status: 'FAILED', error: 'Missing from API response', retryCount: newRetryCount }
               });
             } else {
               await prisma.syncQueue.update({
                 where: { eventUuid: event.eventUuid },
                 data: { 
                   status: 'PENDING', 
-                  error: result.error, 
                   retryCount: newRetryCount,
-                  nextRetryAt: calculateNextRetry(newRetryCount)
+                  nextRetryAt: calculateNextRetry(newRetryCount),
+                  error: 'Missing from API response'
                 }
               });
             }
-          } else {
-            // Permanent server error
-            await prisma.syncQueue.update({
-              where: { eventUuid: event.eventUuid },
-              data: { status: 'FAILED', error: result.error, retryCount: event.retryCount + 1 }
-            });
+            return;
           }
-        }
+
+          if (result.status === 'SYNCED') {
+            if (result.resolvedUuid && result.resolvedUuid !== event.cloudUuid) {
+              // The upstream resolved this to an existing record's true UUID. Atomically heal mappings.
+              try {
+                await prisma.localToCloudMapping.updateMany({
+                  where: { deviceId: event.deviceId, entityType: event.entityType, localId: event.localId },
+                  data: { cloudUuid: result.resolvedUuid }
+                });
+              } catch {
+                // LocalToCloudMapping dropped in Migration 009; cloudUuid is on the business entity
+              }
+
+              // Also update the business record's embedded cloudUuid if possible
+              try {
+                const delegate = (prisma as any)[event.entityType.charAt(0).toLowerCase() + event.entityType.slice(1)];
+                if (delegate && typeof delegate.update === 'function') {
+                  await delegate.update({
+                    where: { id: event.localId },
+                    data: { cloudUuid: result.resolvedUuid }
+                  });
+                }
+              } catch {
+                // Ignore if entity does not support cloudUuid
+              }
+
+              await prisma.syncQueue.update({
+                where: { eventUuid: event.eventUuid },
+                data: { status: 'SYNCED', error: null, cloudUuid: result.resolvedUuid }
+              });
+            } else {
+              await prisma.syncQueue.update({
+                where: { eventUuid: event.eventUuid },
+                data: { status: 'SYNCED', error: null }
+              });
+            }
+          } else {
+            // Event failed on server side
+            if (result.retryable) {
+              const newRetryCount = event.retryCount + 1;
+              if (newRetryCount >= 5) {
+                await prisma.syncQueue.update({
+                  where: { eventUuid: event.eventUuid },
+                  data: { status: 'FAILED', error: result.error, retryCount: newRetryCount }
+                });
+              } else {
+                await prisma.syncQueue.update({
+                  where: { eventUuid: event.eventUuid },
+                  data: { 
+                    status: 'PENDING', 
+                    error: result.error, 
+                    retryCount: newRetryCount,
+                    nextRetryAt: calculateNextRetry(newRetryCount)
+                  }
+                });
+              }
+            } else {
+              // Permanent server error
+              await prisma.syncQueue.update({
+                where: { eventUuid: event.eventUuid },
+                data: { status: 'FAILED', error: result.error, retryCount: event.retryCount + 1 }
+              });
+            }
+          }
+        });
       }
 
       // If at least one event in this batch was marked SYNCED, update durable setting

@@ -28,6 +28,16 @@ export interface Supplier {
   /** totalAmount − paid − advance */
   remainingBalance?: number;
   /** Alias of remainingBalance (can be negative = advance credit left) */
+  /** Morning milk delivery in kg for selected date filter */
+  morningQty?: number;
+  /** Evening milk delivery in kg for selected date filter */
+  eveningQty?: number;
+  /** Total milk delivery in kg for selected date filter */
+  totalQty?: number;
+  /** Effective/average purchase rate for selected date filter */
+  rate?: number;
+  /** Total purchases amount (Rs.) in selected date filter */
+  periodPurchases?: number;
   payableBalance: number;
   nextCycleCredit?: number;
 }

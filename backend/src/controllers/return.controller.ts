@@ -41,7 +41,10 @@ export class ReturnController {
       }
       DashboardController.clearCache();
       return ApiResponse.success(res, result.message || 'Return created.', result.data, result.statusCode);
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.statusCode) {
+        return ApiResponse.error(res, e.message || 'Validation failed.', e.statusCode);
+      }
       next(e);
     }
   }

@@ -1,5 +1,6 @@
 import { prisma } from '../config/database';
 import axios from 'axios';
+import { writeGate } from '../utils/writeGate';
 
 const DOWNSTREAM_SYNC_ENABLED = process.env.DOWNSTREAM_SYNC_ENABLED === 'true';
 const DOWNSTREAM_SYNC_INTERVAL_MS = parseInt(process.env.DOWNSTREAM_SYNC_INTERVAL_MS || '15000', 10);
@@ -1137,33 +1138,40 @@ export async function processDownstreamSync(): Promise<void> {
         continue;
       }
 
+      // If cashier checkout is waiting for SQLite, yield immediately
+      if (writeGate.isCheckoutWaiting) {
+        await new Promise(r => setImmediate(r));
+      }
+
       // Apply change within a transaction — cursor advances only on success
       try {
-        await prisma.$transaction(async (tx) => {
-          // Apply the business change
-          const result = await applyChange(tx, change);
+        await writeGate.execute('background', async () => {
+          await prisma.$transaction(async (tx) => {
+            // Apply the business change
+            const result = await applyChange(tx, change);
 
-          // Record as applied (idempotency guard)
-          await tx.downstreamAppliedEvent.create({
-            data: {
-              changeSequence: seq,
-              eventUuid: change.eventUuid,
-              entityType: change.entityType,
-              operation: change.operation,
+            // Record as applied (idempotency guard)
+            await tx.downstreamAppliedEvent.create({
+              data: {
+                changeSequence: seq,
+                eventUuid: change.eventUuid,
+                entityType: change.entityType,
+                operation: change.operation,
+              }
+            });
+
+            // Advance cursor WITHIN the transaction — atomic with change application
+            await tx.downstreamSyncState.update({
+              where: { id: 1 },
+              data: { lastCursor: seq, lastSuccessfulSync: new Date(), lastError: null }
+            });
+
+            if (result.status === 'APPLIED') {
+              console.log(`[Downstream] ✅ APPLIED ${change.entityType} ${change.operation} (seq: ${seq})`);
+            } else {
+              console.log(`[Downstream] ⏭ SKIPPED ${change.entityType} ${change.operation} — ${result.reason}`);
             }
           });
-
-          // Advance cursor WITHIN the transaction — atomic with change application
-          await tx.downstreamSyncState.update({
-            where: { id: 1 },
-            data: { lastCursor: seq, lastSuccessfulSync: new Date(), lastError: null }
-          });
-
-          if (result.status === 'APPLIED') {
-            console.log(`[Downstream] ✅ APPLIED ${change.entityType} ${change.operation} (seq: ${seq})`);
-          } else {
-            console.log(`[Downstream] ⏭ SKIPPED ${change.entityType} ${change.operation} — ${result.reason}`);
-          }
         });
 
         lastAppliedCursor = seq;

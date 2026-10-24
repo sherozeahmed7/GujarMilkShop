@@ -192,3 +192,62 @@ export async function runManualPrune(req: Request, res: Response) {
     res.status(500).json({ error: err.message });
   }
 }
+
+// GET /api/sync/diagnostics/checkout — returns diagnostic metadata for client hardware / SQLite state
+export async function getCheckoutDiagnostics(req: Request, res: Response) {
+  try {
+    const os = require('os');
+    const fs = require('fs');
+
+    const journalModeResult: any = await (prisma as any).$queryRawUnsafe('PRAGMA journal_mode;');
+    const synchronousResult: any = await (prisma as any).$queryRawUnsafe('PRAGMA synchronous;');
+    const busyTimeoutResult: any = await (prisma as any).$queryRawUnsafe('PRAGMA busy_timeout;');
+    const walAutocheckpointResult: any = await (prisma as any).$queryRawUnsafe('PRAGMA wal_autocheckpoint;');
+
+    const dbUrl = process.env.DATABASE_URL || '';
+    let dbPath = dbUrl.replace(/^file:/, '').replace(/^['"]|['"]$/g, '');
+    let dbSizeBytes = 0;
+    let walSizeBytes = 0;
+
+    try {
+      if (fs.existsSync(dbPath)) {
+        dbSizeBytes = fs.statSync(dbPath).size;
+        const walPath = dbPath + '-wal';
+        if (fs.existsSync(walPath)) {
+          walSizeBytes = fs.statSync(walPath).size;
+        }
+      }
+    } catch {
+      // non-fatal
+    }
+
+    const cpus = os.cpus() || [];
+    const cpuModel = cpus.length > 0 ? cpus[0].model : 'Unknown';
+    const cpuCount = cpus.length;
+    const totalMemoryMb = Math.round(os.totalmem() / (1024 * 1024));
+    const freeMemoryMb = Math.round(os.freemem() / (1024 * 1024));
+
+    res.json({
+      success: true,
+      data: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        cpuModel,
+        cpuCount,
+        totalMemoryMb,
+        freeMemoryMb,
+        databaseFile: dbPath,
+        dbSizeBytes,
+        walSizeBytes,
+        journalMode: journalModeResult?.[0]?.journal_mode ? String(journalModeResult[0].journal_mode) : 'unknown',
+        synchronous: synchronousResult?.[0]?.synchronous !== undefined ? Number(synchronousResult[0].synchronous) : 'unknown',
+        busyTimeout: busyTimeoutResult?.[0]?.timeout !== undefined ? Number(busyTimeoutResult[0].timeout) : 5000,
+        walAutocheckpoint: walAutocheckpointResult?.[0]?.wal_autocheckpoint !== undefined ? Number(walAutocheckpointResult[0].wal_autocheckpoint) : 1000,
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+

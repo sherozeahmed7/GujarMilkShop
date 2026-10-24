@@ -3,6 +3,7 @@ export interface BillItem {
   name: string;
   category: string;
   quantity: number;
+  returnableQty?: number;
   unitPrice: number;
   lineTotal: number;
 }

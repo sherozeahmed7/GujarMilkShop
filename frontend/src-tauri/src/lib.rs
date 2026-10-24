@@ -250,6 +250,9 @@ fn kill_port_or_orphan_backend() {
     }
 }
 
+mod pos_sale;
+use pos_sale::{clear_pending_journal, recover_pending_journal, save_pos_sale, write_pending_journal};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Clean up any stale backend instances from previous runs before launching
@@ -365,7 +368,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_printers,
             print_raw_bytes,
-            open_onscreen_keyboard
+            open_onscreen_keyboard,
+            save_pos_sale,
+            write_pending_journal,
+            clear_pending_journal,
+            recover_pending_journal
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

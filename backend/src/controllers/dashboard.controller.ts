@@ -5,6 +5,13 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 const money = (n: number) => Math.round(n * 100) / 100;
 
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function dayBounds(dateStr: string): { start: Date; end: Date } {
   const [y, m, d] = dateStr.split('-').map(Number);
   return {
@@ -59,7 +66,7 @@ export class DashboardController {
     try {
       const { from, to } = req.query as { from?: string; to?: string };
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDateString(new Date());
       const fromDate = from || today;
       const toDate   = to   || today;
 
@@ -254,7 +261,7 @@ export class DashboardController {
   static async getRevenueTrend(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { from, to } = req.query as { from?: string; to?: string };
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDateString(new Date());
       const fromDate = from || today;
       const toDate   = to   || today;
 
@@ -272,10 +279,10 @@ export class DashboardController {
         orderBy: { createdAt: 'asc' },
       });
 
-      // Group by date
+      // Group by local calendar date
       const byDate: Record<string, number> = {};
       for (const sale of sales) {
-        const dateKey = new Date(sale.createdAt).toISOString().split('T')[0];
+        const dateKey = toLocalDateString(new Date(sale.createdAt));
         byDate[dateKey] = money((byDate[dateKey] || 0) + sale.totalAmount);
       }
 
@@ -284,7 +291,7 @@ export class DashboardController {
       const cursor = new Date(start);
       cursor.setHours(0, 0, 0, 0);
       while (cursor <= end) {
-        const dateKey = cursor.toISOString().split('T')[0];
+        const dateKey = toLocalDateString(cursor);
         const label = cursor.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
         points.push({ label, value: byDate[dateKey] || 0, date: dateKey });
         cursor.setDate(cursor.getDate() + 1);

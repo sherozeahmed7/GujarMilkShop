@@ -153,7 +153,8 @@ function buildBarcode(text: string): number[] {
 // ---------------------------------------------------------------------------
 
 export interface ReceiptSale {
-  id: number;
+  id?: number | string;
+  checkoutUuid?: string;
   tokenNumber?: number;
   shopName?: string;
   createdAt: string | Date;
@@ -212,8 +213,12 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   push(ALIGN_LEFT);
   const formattedDate = formatReceiptDate(sale.createdAt);
 
+  const billIdentifier = sale.id 
+    ? `BILL-${sale.id}` 
+    : (sale.checkoutUuid ? `REF-${sale.checkoutUuid.slice(-8).toUpperCase()}` : 'SALE');
+
   push(BOLD_ON);
-  push(twoCol(`Bill: BILL-${sale.id}`, formattedDate, cols));
+  push(twoCol(`Bill: ${billIdentifier}`, formattedDate, cols));
   
   if (sale.customerName) {
     push(twoCol(`Customer:`, sale.customerName.toUpperCase(), cols));
@@ -263,7 +268,7 @@ export function buildReceipt(sale: ReceiptSale): number[] {
 
   // ── 8. Barcode and return instruction ─────────────────────────────────────
   try {
-    const barcodeCode = `BILL-${sale.id}`;
+    const barcodeCode = sale.id ? `BILL-${sale.id}` : (sale.checkoutUuid ? sale.checkoutUuid.slice(0, 12).toUpperCase() : 'POS-RECEIPT');
     push(buildBarcode(barcodeCode));
     push(ALIGN_CENTER);
     push(SEMIBOLD_ON);

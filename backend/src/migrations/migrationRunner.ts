@@ -19,6 +19,8 @@ import { migration012POSConfigColumns } from './migrations/012_pos_config_column
 import { migration013InventoryProductSellPrice } from './migrations/013_inventory_product_sell_price';
 import { migration014PerformanceAndLedgerIndexes } from './migrations/014_performance_and_ledger_indexes';
 import { migration015ExpenseAndReportIndexes } from './migrations/015_expense_and_report_indexes';
+import { migration016PosTokenIndex } from './migrations/016_pos_token_index';
+import { migration017FixPosRfc3339Timestamps } from './migrations/017_fix_pos_rfc3339_timestamps';
 
 export const ALL_MIGRATIONS: Migration[] = [
   migration001BaselineTracking,
@@ -36,6 +38,8 @@ export const ALL_MIGRATIONS: Migration[] = [
   migration013InventoryProductSellPrice,
   migration014PerformanceAndLedgerIndexes,
   migration015ExpenseAndReportIndexes,
+  migration016PosTokenIndex,
+  migration017FixPosRfc3339Timestamps,
 ];
 
 export interface PreparedMigration {
@@ -50,7 +54,8 @@ export function resolveDatabasePath(): string {
   if (!url?.startsWith('file:')) {
     throw new Error('[MIGRATION] SQLite DATABASE_URL starting with "file:" is required');
   }
-  const raw = decodeURIComponent(url.slice(5).replace(/^['"]|['"]$/g, ''));
+  const cleanUrl = url.slice(5).split('?')[0];
+  const raw = decodeURIComponent(cleanUrl.replace(/^['"]|['"]$/g, ''));
   if (path.isAbsolute(raw)) return path.normalize(raw);
   return path.resolve(process.cwd(), raw);
 }

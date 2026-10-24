@@ -94,7 +94,8 @@ export function canvasToEscposRaster(
  */
 export async function renderReceiptToCanvas(
   sale: {
-    id: number;
+    id?: number | string;
+    checkoutUuid?: string;
     tokenNumber?: number;
     shopName?: string;
     createdAt: string | Date;

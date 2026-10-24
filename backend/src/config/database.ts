@@ -1,6 +1,51 @@
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../utils/auth';
 import { SUPER_ADMIN_ROLE } from './constants';
+
+/**
+ * Resolves the canonical SQLite database path.
+ * In packaged production or when the AppData pos.db exists, always use:
+ * %APPDATA%\com.shero.tauri-app\pos.db
+ * Rust and Prisma must use the exact same physical database file.
+ */
+function resolveCanonicalDbPath(): string {
+  const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+  const appDataDbDir = path.join(appData, 'com.shero.tauri-app');
+  const appDataDbPath = path.join(appDataDbDir, 'pos.db');
+
+  // If in pkg environment, or if pos.db already exists in AppData, or if not in explicit development
+  const isPkg = !!(process as any).pkg;
+  const isProd = process.env.NODE_ENV === 'production';
+  const appDataDbExists = fs.existsSync(appDataDbPath);
+
+  // If packaged binary or production or AppData pos.db exists, canonical path is AppData pos.db
+  if (isPkg || isProd || appDataDbExists) {
+    if (!fs.existsSync(appDataDbDir)) {
+      try {
+        fs.mkdirSync(appDataDbDir, { recursive: true });
+      } catch (_) {}
+    }
+    return appDataDbPath;
+  }
+
+  // Fallback for isolated dev environment if explicitly requested and AppData doesn't exist
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('file:')) {
+    const raw = decodeURIComponent(process.env.DATABASE_URL.slice(5).split('?')[0].replace(/^['"]|['"]$/g, ''));
+    return path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(process.cwd(), raw);
+  }
+
+  return appDataDbPath;
+}
+
+export const canonicalDbPath = resolveCanonicalDbPath();
+process.env.DATABASE_URL = `file:${canonicalDbPath}?connection_limit=1&socket_timeout=3`;
+
+// Log on startup, without secrets
+console.log(`LOCAL_DB_PATH=${canonicalDbPath}`);
+
 // Instantiate PrismaClient to interact with SQLite database
 export const prisma = new PrismaClient();
 
@@ -195,6 +240,18 @@ export async function connectDB() {
     await seedSuperAdmin();
     await seedCoreInventoryProducts();
     await seedDefaultDailyRates();
+
+    // Warm Prisma query engine, SQLite page cache and table metadata before accepting traffic
+    try {
+      await Promise.all([
+        prisma.customer.findFirst({ select: { id: true } }),
+        prisma.sale.findFirst({ select: { id: true } }),
+        prisma.inventoryProduct.findFirst({ select: { id: true } }),
+      ]);
+      console.log('⚡ Local database page cache and Prisma query engine warmed up.');
+    } catch {
+      // Non-fatal if warmup query fails
+    }
   } catch (error) {
     console.error('❌ Database upgrade could not be completed safely. Your data was not changed. A backup has been preserved. Please contact support.');
     console.error('[Database] Technical startup error:', error);

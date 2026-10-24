@@ -330,11 +330,11 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
           {/* Left: back + title */}
           <div>
             <button
-              onClick={() => navigate('/ledger')}
+              onClick={() => navigate(-1)}
               className="flex items-center gap-1.5 text-slate-500 dark:text-[#8ba895] hover:text-blue-600 transition-colors text-sm font-medium mb-1"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Khata / Ledger
+              Back
             </button>
             <h1 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8]">Supplier Monthly Ledger</h1>
           </div>

@@ -43,7 +43,12 @@ const EMPTY_METRICS: DashboardMetrics = {
   onlineSales: 0, khataDues: 0, khataCustomerCount: 0, billsServed: 0,
 };
 
-function toYMD(d: Date): string { return d.toISOString().split('T')[0]; }
+function toYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function fmtDate(d: Date): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 }

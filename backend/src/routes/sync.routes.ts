@@ -11,6 +11,7 @@ import {
   checkConnection,
   getFailedDiagnostics,
   runManualPrune,
+  getCheckoutDiagnostics,
 } from '../controllers/syncStatus.controller';
 import { restoreCloudData } from '../controllers/syncRestore.controller';
 import { authenticateJWT } from '../middleware/auth.middleware';
@@ -40,6 +41,7 @@ router.post('/check-connection', authenticateJWT, checkConnection);
 router.post('/restore',          authenticateJWT, restoreCloudData);
 router.get('/failed-diagnostics', authenticateJWT, getFailedDiagnostics);
 router.post('/prune',             authenticateJWT, runManualPrune);
+router.get('/diagnostics/checkout', authenticateJWT, getCheckoutDiagnostics);
 
 
 export default router;

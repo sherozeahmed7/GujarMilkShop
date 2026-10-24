@@ -206,6 +206,7 @@ model Sale {
   totalAmount      Float
   paidAmount       Float
   remainingBalance Float      // totalAmount - paidAmount
+  discountAmount   Float      @default(0)
   status           String     // "paid" | "partial" | "pending"
   tokenNumber      Int        @default(0)
   cloudUuid        String?    @unique // Embedded cloud identity (Phase 6)

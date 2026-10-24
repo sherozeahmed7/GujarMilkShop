@@ -106,33 +106,40 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
     if (e.key === 'Enter') handleFindBill();
   };
 
-  const toggleItem = (itemId: string, originalQty: number) => {
+  const toggleItem = (itemId: string, maxReturnable: number) => {
     if (returnType === 'Full Return') return; // Full Return always includes all items
+    if (maxReturnable <= 0) return; // Cannot toggle fully returned items
     setSelectedItems((prev) => {
       if (itemId in prev) {
         const next = { ...prev };
         delete next[itemId];
         return next;
       }
-      return { ...prev, [itemId]: originalQty };
+      return { ...prev, [itemId]: maxReturnable };
     });
   };
 
   const setItemQty = (itemId: string, qty: number, max: number) => {
     if (returnType === 'Full Return') return; // Full Return quantities are locked
+    if (max <= 0) return;
     // Allow decimal kg (e.g. 0.5, 1.25); clamp to (0, max]
     const clamped = Math.min(Math.max(qty, 0.01), max);
     const rounded = Math.round(clamped * 100) / 100;
     setSelectedItems((prev) => ({ ...prev, [itemId]: rounded }));
   };
 
-  // When return type is Full Return, auto-select all items at full qty
+  // When return type is Full Return, auto-select all items at their returnable qty
   const handleReturnTypeChange = (type: ReturnType) => {
     setReturnType(type);
     if (foundBill) {
       if (type === 'Full Return') {
         const all: Record<string, number> = {};
-        foundBill.items.forEach((i) => { all[i.id] = i.quantity; });
+        foundBill.items.forEach((i) => {
+          const maxRtn = i.returnableQty !== undefined ? i.returnableQty : i.quantity;
+          if (maxRtn > 0) {
+            all[i.id] = maxRtn;
+          }
+        });
         setSelectedItems(all);
       }
     }
@@ -469,27 +476,43 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                     {foundBill.items.map((item) => {
+                      const maxRtn = item.returnableQty !== undefined ? item.returnableQty : item.quantity;
+                      const isFullyReturned = maxRtn <= 0;
                       const isSelected = item.id in selectedItems;
-                      const rtnQty = selectedItems[item.id] ?? item.quantity;
+                      const rtnQty = selectedItems[item.id] ?? maxRtn;
                       const refund = isSelected ? rtnQty * item.unitPrice : 0;
                       const isFullReturn = returnType === 'Full Return';
 
                       return (
                         <tr
                           key={item.id}
-                          className={`transition-colors ${isSelected ? (isFullReturn ? 'bg-rose-50/40 dark:bg-rose-950/20' : 'bg-blue-50/60 dark:bg-[#223927]') : 'bg-white dark:bg-[#1a2e1f] hover:bg-slate-50 dark:hover:bg-[#223927]'}`}
+                          className={`transition-colors ${
+                            isFullyReturned
+                              ? 'bg-slate-50/50 dark:bg-[#142119]/50 opacity-60'
+                              : isSelected
+                              ? (isFullReturn ? 'bg-rose-50/40 dark:bg-rose-950/20' : 'bg-blue-50/60 dark:bg-[#223927]')
+                              : 'bg-white dark:bg-[#1a2e1f] hover:bg-slate-50 dark:hover:bg-[#223927]'
+                          }`}
                         >
                           <td className="px-3 py-2.5">
                             <button
                               id={`toggle-item-${item.id}`}
-                              onClick={() => toggleItem(item.id, item.quantity)}
-                              disabled={isFullReturn}
+                              onClick={() => toggleItem(item.id, maxRtn)}
+                              disabled={isFullReturn || isFullyReturned}
                               className={`transition-colors ${
-                                isFullReturn
+                                isFullyReturned
+                                  ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                                  : isFullReturn
                                   ? 'text-rose-500 cursor-not-allowed opacity-90'
                                   : 'text-blue-500 dark:text-[#22c55e] hover:text-blue-700 dark:hover:text-[#86efac]'
                               }`}
-                              title={isFullReturn ? 'All items are included in Full Return' : 'Toggle item for return'}
+                              title={
+                                isFullyReturned
+                                  ? 'Item has already been fully returned'
+                                  : isFullReturn
+                                  ? 'All items are included in Full Return'
+                                  : 'Toggle item for return'
+                              }
                             >
                               {isSelected
                                 ? <CheckSquare className="w-4 h-4" />
@@ -497,28 +520,44 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                             </button>
                           </td>
                           <td className="px-3 py-2.5">
-                            <div className="font-medium text-slate-800 dark:text-[#e2f5e8] text-sm">{item.name}</div>
-                            <div className="text-[11px] text-slate-400">{item.category}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-800 dark:text-[#e2f5e8] text-sm">{item.name}</span>
+                              {isFullyReturned && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                  Fully Returned
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              {item.category}
+                              {maxRtn < item.quantity && !isFullyReturned && (
+                                <span className="ml-1 text-amber-600 dark:text-amber-400 font-semibold">
+                                  ({maxRtn} kg remaining)
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300 font-medium">{item.quantity}</td>
                           <td className="px-3 py-2.5 text-right">
-                            {isFullReturn ? (
+                            {isFullyReturned ? (
+                              <span className="text-slate-400 text-xs italic">0 (returned)</span>
+                            ) : isFullReturn ? (
                               <span className="font-bold font-mono text-slate-800 dark:text-[#e2f5e8] text-xs px-2.5 py-1 bg-slate-100 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-lg inline-block">
-                                {item.quantity}
+                                {maxRtn}
                               </span>
                             ) : isSelected ? (
                               <input
                                 id={`qty-input-${item.id}`}
                                 type="number"
                                 min={0.01}
-                                max={item.quantity}
+                                max={maxRtn}
                                 step="0.01"
                                 value={selectedItems[item.id]}
                                 onChange={(e) =>
                                   setItemQty(
                                     item.id,
                                     parseFloat(e.target.value) || 0.01,
-                                    item.quantity
+                                    maxRtn
                                   )
                                 }
                                 className="w-16 text-right border border-blue-300 dark:border-[#2d4a35] rounded-lg px-2 py-1 text-sm font-semibold text-blue-700 dark:text-[#e2f5e8] bg-white dark:bg-[#142119] focus:outline-none focus:ring-2 focus:ring-blue-400"

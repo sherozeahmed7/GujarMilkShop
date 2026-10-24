@@ -31,7 +31,8 @@ function parseRange(req: AuthenticatedRequest) {
   const today = toYMD(new Date());
   const from = (req.query.from as string) || today;
   const to = (req.query.to as string) || today;
-  return { from, to, ...rangeBounds(from, to) };
+  const toISOEnd = `${to}T23:59:59.999Z`;
+  return { from, to, toISOEnd, ...rangeBounds(from, to) };
 }
 function fillDailyTrend(from: string, to: string, byDate: Record<string, number>) {
   const points: { label: string; value: number }[] = [];
@@ -488,18 +489,42 @@ export class ReportsController {
   // ── INVENTORY REPORT ────────────────────────────────────────────────────────
   static async inventory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const products = await prisma.inventoryProduct.findMany({
-        where: { isActive: true },
-        include: { movements: true },
-        orderBy: { name: 'asc' },
-      });
-      const rate = await prisma.dailyRate.findFirst({ orderBy: { id: 'desc' } });
+      const [products, rate, supplierCollections] = await Promise.all([
+        prisma.inventoryProduct.findMany({
+          where: { isActive: true },
+          include: { movements: true },
+          orderBy: { name: 'asc' },
+        }),
+        prisma.dailyRate.findFirst({ orderBy: { id: 'desc' } }),
+        prisma.supplierCollection.findMany({
+          where: {
+            quantity: { gt: 0 },
+            rate: { gt: 0 },
+          },
+          select: { quantity: true, rate: true },
+        }),
+      ]);
+
+      // Calculate dynamic weighted average milk purchase rate from supplier collections
+      let totalMilkQty = 0;
+      let totalMilkCost = 0;
+      for (const sc of supplierCollections) {
+        totalMilkQty += sc.quantity;
+        totalMilkCost += sc.quantity * sc.rate;
+      }
+      const supplierMilkAvgCost = totalMilkQty > 0 ? money(totalMilkCost / totalMilkQty) : 0;
 
       const rows = products.map(p => {
         const stock = p.movements.reduce((s, m) => s + m.quantity, 0);
         const costRows = p.movements.filter(m => m.unitCost && m.unitCost > 0);
-        const costPrice = costRows.length ? money(costRows.reduce((s, m) => s + (m.unitCost || 0), 0) / costRows.length) : 0;
+        const movementAvgCost = costRows.length ? money(costRows.reduce((s, m) => s + (m.unitCost || 0), 0) / costRows.length) : 0;
+        
         const name = p.name.toLowerCase();
+        const code = (p.code || '').toLowerCase();
+        const isMilk = name.includes('milk') || code.includes('milk');
+
+        // Dynamic inventory cost: for milk, use supplier weighted average if available, else fallback to movement average
+        const costPrice = isMilk && supplierMilkAvgCost > 0 ? supplierMilkAvgCost : movementAvgCost;
         const salePrice = name.includes('milk')
           ? rate?.milkRate || 0
           : name.includes('yogurt')
@@ -559,7 +584,7 @@ export class ReportsController {
   // ── PROFIT & LOSS REPORT ────────────────────────────────────────────────────
   static async profitLoss(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { from, to, start, end } = parseRange(req);
+      const { from, to, toISOEnd, start, end } = parseRange(req);
 
       // F2 cost engine needs historical data to compute carrying costs correctly.
       // Cap the lookback to 2 years before the report start date so SQLite never
@@ -586,6 +611,7 @@ export class ReportsController {
         f2HistoricalReturns,
         f2InventoryMovements,
         allTimeSupplierPaymentsResult,
+        supplierCollectionsUpToTo,
       ] = await Promise.all([
         prisma.sale.findMany({
           where: {
@@ -596,13 +622,13 @@ export class ReportsController {
         }),
         prisma.return.findMany({
           where: {
-            date: { gte: from, lte: to },
+            date: { gte: from, lte: toISOEnd },
             status: { not: 'Cancelled' },
           },
           include: { items: true },
         }),
         prisma.expense.findMany({
-          where: { date: { gte: from, lte: to } },
+          where: { date: { gte: from, lte: toISOEnd } },
           orderBy: [{ category: 'asc' }, { id: 'asc' }],
         }),
         prisma.payment.findMany({
@@ -613,7 +639,7 @@ export class ReportsController {
           include: { sale: true },
         }),
         prisma.supplierPayment.findMany({
-          where: { date: { gte: from, lte: to } },
+          where: { date: { gte: from, lte: toISOEnd } },
           select: { id: true, amount: true, method: true, date: true, supplierId: true },
         }),
         prisma.inventoryProduct.findMany({
@@ -645,24 +671,68 @@ export class ReportsController {
           where: { status: { not: 'voided' }, createdAt: { gte: f2LookbackStart, lte: end }, items: { some: { itemName: { in: ['lassi', 'butter', 'ghee'] } } } },
           include: { items: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         }),
-        prisma.return.findMany({ where: { date: { gte: f2LookbackYMD, lte: to }, status: { not: 'Cancelled' } }, include: { items: true } }),
+        prisma.return.findMany({ where: { date: { gte: f2LookbackYMD, lte: toISOEnd }, status: { not: 'Cancelled' } }, include: { items: true } }),
         prisma.inventoryMovement.findMany({
           where: { date: { gte: f2LookbackStart, lte: end }, product: { OR: [{ code: { in: ['LASSI', 'BUTTER', 'GHEE'] } }, { name: { in: ['Lassi', 'Butter', 'Ghee', 'lassi', 'butter', 'ghee'] } }] } },
           include: { product: { select: { code: true, name: true } } }, orderBy: [{ date: 'asc' }, { id: 'asc' }],
         }),
         prisma.supplierPayment.aggregate({ _sum: { amount: true } }),
+        prisma.supplierCollection.findMany({
+          where: {
+            date: { lte: toISOEnd },
+            quantity: { gt: 0 },
+            rate: { gt: 0 },
+          },
+          select: { date: true, quantity: true, rate: true },
+          orderBy: { date: 'asc' },
+        }),
       ]);
 
+      // Fetch all-time returns for the period's sales to correctly compute per-sale returned amounts.
+      // This is a lightweight query (saleId + refundAmount only) and needed because the return service
+      // reduces sale.totalAmount when a return is processed — even if the return date is outside this period.
+      const allReturnsBySaleInPeriod = sales.length > 0
+        ? await prisma.return.findMany({
+            where: {
+              saleId: { in: sales.map(s => s.id) },
+              status: { not: 'Cancelled' },
+            },
+            select: { saleId: true, refundAmount: true },
+          })
+        : [];
 
-      // Use the current Inventory Cost column, including for historical report ranges.
+
+      // Dynamic Milk Cost: Weighted average purchase rate paid to suppliers from SupplierCollection
+      // Formula: SUM(quantity * rate) / SUM(quantity)
       const milkProduct = allProducts.find(p => p.code?.toUpperCase() === 'MILK')
         ?? allProducts.find(p => p.name.trim().toLowerCase() === 'milk');
       const milkCostRows = inventoryCostMovements.filter(m => m.productId === milkProduct?.id);
-      const milkInventoryUnitCost = averageInventoryCost(milkCostRows);
+      const fallbackInventoryCost = averageInventoryCost(milkCostRows);
+
+      // Helper function to calculate weighted average milk cost from supplier collections
+      const calcWeightedAvgMilkRate = (collections: Array<{ quantity: number; rate: number }>): number => {
+        let totalQty = 0;
+        let totalCost = 0;
+        for (const c of collections) {
+          totalQty += c.quantity;
+          totalCost += c.quantity * c.rate;
+        }
+        return totalQty > 0 ? money(totalCost / totalQty) : 0;
+      };
+
+      const supplierMilkUnitCost = calcWeightedAvgMilkRate(supplierCollectionsUpToTo);
+      // Use dynamic supplier weighted average rate, or fallback to inventory movements if no supplier collections exist
+      const milkInventoryUnitCost = supplierMilkUnitCost > 0 ? supplierMilkUnitCost : fallbackInventoryCost;
+
       const f2Costs = calculateF2Costs({
         milkUnitCost: milkInventoryUnitCost,
         milkCostsByDate: Object.fromEntries(f2Batches.map(batch => {
           const date = toYMD(batch.date);
+          const collectionsUpToDate = supplierCollectionsUpToTo.filter(c => c.date <= date);
+          const waCost = calcWeightedAvgMilkRate(collectionsUpToDate);
+          if (waCost > 0) {
+            return [date, waCost];
+          }
           const cutoff = new Date(`${date}T23:59:59.999`);
           return [date, averageInventoryCost(milkCostRows.filter(movement => movement.date <= cutoff))];
         })),
@@ -709,6 +779,18 @@ export class ReportsController {
       let posDiscounts = 0;
       let regularSalesNet = 0;
 
+      // Build a map: saleId → total refund amount already booked against that sale.
+      // When a return is processed, return.service.ts reduces sale.totalAmount by refundAmount.
+      // Without this correction, (itemSubtotal - reducedTotalAmount) looks like a discount.
+      // We use allReturnsBySaleInPeriod (all-time, not date-filtered) so cross-period returns
+      // are also accounted for correctly.
+      const returnedBySaleId = new Map<number, number>();
+      for (const ret of allReturnsBySaleInPeriod) {
+        if (ret.saleId != null) {
+          returnedBySaleId.set(ret.saleId, money((returnedBySaleId.get(ret.saleId) || 0) + ret.refundAmount));
+        }
+      }
+
       type ProductCalculationLine = { kind: 'Sale' | 'Return'; quantity: number; revenue: number; unitCost: number; cost: number; basis?: string; missingQuantity?: number; provisional?: boolean };
       // Product aggregator map
       const productAgg = new Map<
@@ -754,15 +836,24 @@ export class ReportsController {
           sale.items.reduce((sum, item) => sum + (item.totalPrice || money(item.quantity * item.unitPrice)), 0)
         );
 
-        // Detect POS bill discount (when item subtotal > totalAmount)
-        const billDiscount = Math.max(0, money(saleItemSubtotal - saleFinalTotal));
-        const saleGross = billDiscount > 0 ? saleItemSubtotal : saleFinalTotal;
+        // POS bill discount: read directly from sale.discountAmount (authoritative — stored by Rust).
+        // For backward compatibility with sales whose totalAmount was mutated by prior return service
+        // versions, also detect the gap between item subtotal and adjusted total. In new data, 
+        // totalAmount is NOT mutated by returns, so adjustedTotal === saleFinalTotal.
+        const explicitDiscount = money(Number((sale as any).discountAmount) || 0);
+        const alreadyReturned = returnedBySaleId.get(sale.id) || 0;
+        const adjustedTotal = money(saleFinalTotal + alreadyReturned); // restore if totalAmount was mutated
+        const subtotalDiff = Math.max(0, money(saleItemSubtotal - adjustedTotal));
+        // Use explicit discount as authoritative; only fall back to subtotal gap detection if no explicit discount
+        const billDiscount = explicitDiscount > 0 ? explicitDiscount : subtotalDiff;
+        // Gross Sales = item subtotal (before any discount or return)
+        const saleGross = money(saleItemSubtotal);
 
         grossSales = money(grossSales + saleGross);
         posDiscounts = money(posDiscounts + billDiscount);
         regularSalesNet = money(regularSalesNet + saleFinalTotal);
 
-        // Sales method categorisation
+        // Sales method categorisation (use saleFinalTotal for reported amounts)
         if (sale.saleType === 'walk_in') {
           const method = sale.payments?.[0]?.method;
           if (method === 'online') {
@@ -805,8 +896,11 @@ export class ReportsController {
       const khataDiscounts = money(khataDiscountPayments.reduce((s, p) => s + p.amount, 0));
       const totalDiscounts = money(posDiscounts + khataDiscounts);
       const discountedSalesCount = sales.filter((s) => {
+        const explicitD = Number((s as any).discountAmount) || 0;
+        if (explicitD > 0) return true;
         const sub = money(s.items.reduce((sum, i) => sum + (i.totalPrice || money(i.quantity * i.unitPrice)), 0));
-        return sub > money(s.totalAmount);
+        const alreadyRet = returnedBySaleId.get(s.id) || 0;
+        return sub > money(money(s.totalAmount + alreadyRet));
       }).length + (khataDiscounts > 0 ? khataDiscountPayments.length : 0);
 
       // ── 4. RETURNS & COGS REVERSALS ──────────────────────────────────────────
@@ -902,27 +996,64 @@ export class ReportsController {
       // Sort products by revenue descending
       productProfitabilityList.sort((a, b) => b.revenue - a.revenue);
 
+      // ── INVENTORY VALUE: current stock × avg purchase cost ───────────────────
+      // Per requirement: product cost = total inventory qty × purchase price.
+      // We compute closing stock as net sum of all InventoryMovement records up to 'end'.
+      const inventoryValueLines: Array<{ name: string; code: string; closingQty: number; avgCost: number; value: number; unit: string }> = [];
+      let totalInventoryValue = 0;
+
+      const closingStockByProduct = await prisma.inventoryMovement.groupBy({
+        by: ['productId'],
+        where: { date: { lte: end } },
+        _sum: { quantity: true },
+      });
+
+      for (const product of allProducts) {
+        const stockEntry = closingStockByProduct.find(s => s.productId === product.id);
+        const closingQty = money(Math.max(0, Number(stockEntry?._sum?.quantity ?? 0)));
+        const isMilk = product.code?.toUpperCase() === 'MILK' || product.name.trim().toLowerCase() === 'milk';
+        // Average purchase cost: for milk, use supplier collections weighted average if available; otherwise from stock movements
+        const costMoves = stockMovementsUpToTo.filter(m => m.productId === product.id && (m.unitCost ?? 0) > 0);
+        let avgCost = 0;
+        if (isMilk && supplierMilkUnitCost > 0) {
+          avgCost = supplierMilkUnitCost;
+        } else if (costMoves.length > 0) {
+          avgCost = money(costMoves.reduce((s, m) => s + (m.unitCost ?? 0), 0) / costMoves.length);
+        }
+        if (closingQty > 0 && avgCost > 0) {
+          const value = money(closingQty * avgCost);
+          totalInventoryValue = money(totalInventoryValue + value);
+          inventoryValueLines.push({ name: product.name, code: product.code, closingQty, avgCost, value, unit: product.unit });
+        }
+      }
+      inventoryValueLines.sort((a, b) => b.value - a.value);
+
       // Gross Profit
       const grossProfit = money(netSales - totalCogs);
       const grossMargin = netSales > 0 ? parseFloat(((grossProfit / netSales) * 100).toFixed(2)) : 0;
 
       // ── 5. OPERATING EXPENSES WITH SUBCATEGORIES ─────────────────────────────
-      let totalExpenses = 0;
+      // totalExpenses (paidExpenses) = sum of netExpense — cash already paid out, affects P&L.
+      // grossExpenses = sum of expense.amount — the full bill cost including unpaid portions (display only).
+      let totalExpenses = 0;   // paid / P&L-affecting
+      let grossExpenses = 0;   // full bill total (visual reference)
       const expenseCategoryMap = new Map<string, { total: number; subcategories: Record<string, number> }>();
 
       for (const exp of periodExpenses) {
         const cat = (exp.category || 'Other').trim() || 'Other';
         const sub = (exp.description || exp.category || 'General').trim() || 'General';
-        const amt = money(exp.amount || exp.netExpense || 0);
+        const paidAmt = money(exp.paidAmount > 0 ? exp.paidAmount : (exp.netExpense || 0));
+        const billAmt = money(exp.amount || exp.netExpense || 0);
 
-        totalExpenses = money(totalExpenses + amt);
+        totalExpenses = money(totalExpenses + paidAmt);
+        grossExpenses = money(grossExpenses + billAmt);
 
         if (!expenseCategoryMap.has(cat)) {
           expenseCategoryMap.set(cat, { total: 0, subcategories: {} });
         }
         const catEntry = expenseCategoryMap.get(cat)!;
-        catEntry.total = money(catEntry.total + amt);
-        catEntry.subcategories[sub] = money((catEntry.subcategories[sub] || 0) + amt);
+        catEntry.total = money(catEntry.total + paidAmt);
+        catEntry.subcategories[sub] = money((catEntry.subcategories[sub] || 0) + paidAmt);
       }
 
       const expenseBreakdown: Array<{
@@ -953,23 +1084,28 @@ export class ReportsController {
       const supplierOnlinePaid = money(periodSupplierPayments.filter(p => (p.method || '').toLowerCase() === 'online').reduce((sum, p) => sum + (p.amount || 0), 0));
       const allTimeSupplierPaid = money(allTimeSupplierPaymentsResult._sum.amount || 0);
 
-      // Cash/Online received during the period across ALL payment transactions (walk-in, split collections, khata settlement)
+      // ── Amount Collected: ONLY walk-in cash/online + split cash portion (excluding khata sales) ──
+      // Per business requirement: khata sales are credit — not counted as "collected".
+      // Split customers: only the cash they paid upfront is counted (paidAmount).
       let cashCollected = 0;
       let onlineCollected = 0;
-      let khataReceived = 0;
+      let khataReceived = 0;   // Khata settlement receipts tracked separately (info only)
       let otherCollected = 0;
 
       for (const pmt of periodPayments) {
         if (pmt.method === 'discount') continue; // Write-offs are discounts, not cash inflows
         const amt = money(pmt.amount);
         const pMethod = (pmt.method || 'cash').toLowerCase();
-
-        // Categorise based on sale type and payment record
         const saleType = pmt.sale?.saleType;
-        if (saleType === 'ledger_daily' || saleType === 'ledger_monthly') {
+        const isKhata = saleType === 'ledger_daily' || saleType === 'ledger_monthly';
+
+        if (isKhata) {
+          // Khata settlement payments received — track separately, NOT in amountCollected
           khataReceived = money(khataReceived + amt);
+          continue; // Skip from collected totals
         }
 
+        // Walk-in and split sales only
         if (pMethod === 'cash') {
           cashCollected = money(cashCollected + amt);
         } else if (pMethod === 'online') {
@@ -979,6 +1115,7 @@ export class ReportsController {
         }
       }
 
+      // totalAmountCollected = walk-in cash/online + split upfront cash (no khata)
       const totalAmountCollected = money(cashCollected + onlineCollected + otherCollected);
       // Current unpaid balance on bills created in the selected period.
       const borrowedAmount = money(sales.reduce((sum, sale) => sum + Math.max(0, sale.remainingBalance), 0));
@@ -1034,7 +1171,8 @@ export class ReportsController {
           cogs: totalCogs,
           grossProfit,
           grossMargin,
-          totalExpenses,
+          totalExpenses,       // paid expenses — affects P&L
+          grossExpenses,        // full bill total — display only
           totalSupplierPaid,
           supplierCashPaid,
           supplierOnlinePaid,
@@ -1051,7 +1189,7 @@ export class ReportsController {
           totalCashInHand: totalDrawerCash.amount,
           totalCashInHandBasis: totalDrawerCash.basis,
           milkInventoryUnitCost,
-          milkCostAvailable: milkCostRows.length > 0,
+          milkCostAvailable: supplierMilkUnitCost > 0 || milkCostRows.length > 0,
           f2CostComplete: f2Costs.warnings.length === 0,
           f2DayEndPending: f2Costs.allocations.some(batch => batch.date >= from && batch.date <= to && batch.provisional),
           numberOfSales: sales.length,
@@ -1093,7 +1231,13 @@ export class ReportsController {
         },
         expensesSummary: {
           totalExpenses,
+          grossExpenses,
+          unpaidExpenses: money(grossExpenses - totalExpenses),
           categories: expenseBreakdown,
+        },
+        inventoryValue: {
+          totalInventoryValue,
+          lines: inventoryValueLines,
         },
         reconciliation: {
           grossSalesMinusDiscountsAndReturns: money(grossSales - totalDiscounts - totalReturnAmount),

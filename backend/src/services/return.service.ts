@@ -120,6 +120,46 @@ function saleStatus(totalAmount: number, paidAmount: number, remainingBalance: n
   return 'pending';
 }
 
+/** Validate that the requested return quantities do not exceed already-returnable amounts. */
+async function validateReturnableQuantities(
+  tx: any,
+  sale: any,
+  items: Array<{ name: string; returnQty: number }>
+): Promise<string | null> {
+  // Gather already returned qty per item name for this sale
+  const priorReturns = await tx.return.findMany({
+    where: { saleId: sale.id, status: { not: 'Cancelled' } },
+    include: { items: true },
+  });
+  const returnedByName = new Map<string, number>();
+  for (const r of priorReturns) {
+    for (const item of r.items) {
+      const key = String(item.name || '').toLowerCase().trim();
+      returnedByName.set(key, money((returnedByName.get(key) || 0) + item.returnQty));
+    }
+  }
+
+  // Build sold qty per item name from the sale
+  const soldByName = new Map<string, number>();
+  for (const si of (sale.items || [])) {
+    const key = String(si.itemName || '').toLowerCase().trim();
+    soldByName.set(key, money((soldByName.get(key) || 0) + si.quantity));
+  }
+
+  // Check each requested return item
+  for (const req of items) {
+    const key = String(req.name || '').toLowerCase().trim();
+    if (!key || req.returnQty <= 0) continue;
+    const soldQty = soldByName.get(key) || 0;
+    const alreadyReturned = returnedByName.get(key) || 0;
+    const maxReturnable = money(Math.max(0, soldQty - alreadyReturned));
+    if (req.returnQty > maxReturnable + 0.001) {
+      return `Cannot return ${req.returnQty} kg of "${req.name}". Only ${maxReturnable} kg remaining (sold: ${soldQty} kg, already returned: ${alreadyReturned} kg).`;
+    }
+  }
+  return null;
+}
+
 export class ReturnService {
   static async list(filters?: {
     fromDate?: string;
@@ -195,22 +235,34 @@ export class ReturnService {
       items,
     } = payload;
 
-    if (!billNumber || !date || !returnType || refundAmount === undefined) {
+    if (!billNumber || billNumber === 'undefined' || !date || !returnType || refundAmount === undefined) {
       return {
         success: false,
         statusCode: 400,
-        message: 'billNumber, date, returnType, and refundAmount are required.',
+        message: 'A valid billNumber, date, returnType, and refundAmount are required.',
       };
     }
 
     const saleId = parseInt(billNumber, 10);
-    const sale =
-      !isNaN(saleId)
-        ? await prisma.sale.findUnique({
-            where: { id: saleId },
-            include: { items: true },
-          })
-        : null;
+    if (isNaN(saleId) || saleId <= 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: `Invalid bill number "${billNumber}". A return must be linked to an existing sale.`,
+      };
+    }
+
+    const sale = await prisma.sale.findUnique({
+      where: { id: saleId },
+      include: { items: true },
+    });
+    if (!sale) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: `Sale with bill number #${billNumber} not found.`,
+      };
+    }
 
     const normalizedItems = (items || []).map((i) => ({
       itemId: String(i.itemId || ''),
@@ -222,12 +274,25 @@ export class ReturnService {
 
     const refund = money(Number(refundAmount));
 
+    // Normalize date to YYYY-MM-DD — frontend may send full ISO string
+    const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? date
+      : new Date(date).toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD
+
     const result = await prisma.$transaction(async (tx) => {
+      // Server-side double-return guard: validate returnable quantities within the transaction
+      if (sale) {
+        const validationError = await validateReturnableQuantities(tx, sale, normalizedItems);
+        if (validationError) {
+          throw Object.assign(new Error(validationError), { statusCode: 409 });
+        }
+      }
+
       const ret = await tx.return.create({
         data: {
           saleId: sale ? sale.id : null,
           billNumber,
-          date,
+          date: dateStr,
           customer: customer || 'Walk-in',
           returnType,
           refundAmount: refund,
@@ -248,30 +313,32 @@ export class ReturnService {
         include: { items: true },
       });
 
-      // Adjust original sale so khata remaining / totals stay correct
+      // IMPORTANT: Do NOT reduce sale.totalAmount — the original sale must remain at its original amount
+      // for correct Gross Sales accounting. Only adjust remainingBalance for credit/khata sales
+      // that have an unpaid balance (so the customer owes less after a return refund).
       if (sale) {
-        const newTotal = money(Math.max(0, sale.totalAmount - refund));
-        let newPaid = money(sale.paidAmount);
-        let newRemaining = money(newTotal - newPaid);
-        if (newRemaining < 0) {
-          newPaid = newTotal;
-          newRemaining = 0;
+        const isKhata = sale.saleType === 'ledger_daily' || sale.saleType === 'ledger_monthly';
+        if (isKhata && sale.remainingBalance > 0) {
+          // For credit sales: reduce the outstanding balance by the refund amount
+          const newRemaining = money(Math.max(0, sale.remainingBalance - refund));
+          const newPaid = money(sale.totalAmount - newRemaining);
+          const updatedSale = await tx.sale.update({
+            where: { id: sale.id },
+            data: {
+              paidAmount: newPaid,
+              remainingBalance: newRemaining,
+              status: saleStatus(sale.totalAmount, newPaid, newRemaining),
+            },
+          });
+          await SyncQueueService.enqueueUpdate(tx, 'Sale', updatedSale.id, updatedSale, 1);
         }
-        const updatedSale = await tx.sale.update({
-          where: { id: sale.id },
-          data: {
-            totalAmount: newTotal,
-            paidAmount: newPaid,
-            remainingBalance: newRemaining,
-            status: saleStatus(newTotal, newPaid, newRemaining),
-          },
-        });
-        await SyncQueueService.enqueueUpdate(tx, 'Sale', updatedSale.id, updatedSale, 1);
+        // For cash/online sales: the refund is a cash outflow, already tracked via Return record
+        // and reportCash.service.ts subtracts it from Cash in Hand. No mutation of sale.totalAmount needed.
       }
 
       // Put stock back (core inventory + F2)
       await restoreInventory(tx, ret.id, normalizedItems, userId);
-      await restoreF2Stock(tx, normalizedItems, date);
+      await restoreF2Stock(tx, normalizedItems, dateStr);
 
       // Enqueue Return CREATE after items are created
       await SyncQueueService.enqueueCreate(tx, 'Return', ret.id, ret, 3);
