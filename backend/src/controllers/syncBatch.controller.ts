@@ -60,7 +60,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
   ]),
   Sale: new Set([
     'sale_type', 'customer_uuid', 'customer_name', 'customer_phone', 'total_amount',
-    'paid_amount', 'remaining_balance', 'status', 'token_number', 'created_at', 'updated_at',
+    'paid_amount', 'discount_amount', 'remaining_balance', 'status', 'token_number', 'created_at', 'updated_at',
   ]),
   SaleItem: new Set([
     'sale_uuid', 'item_name', 'quantity', 'unit_price', 'total_price', 'created_at',
@@ -69,7 +69,7 @@ const ALLOWED_COLUMNS: Record<string, Set<string>> = {
   Expense: new Set([
     'date', 'category', 'description', 'quantity', 'unit_cost', 'gross_loss',
     'sold_recovery', 'net_expense', 'amount', 'paid_amount', 'remaining', 'reason',
-    'added_by', 'created_at', 'updated_at',
+    'added_by', 'expense_type', 'created_at', 'updated_at',
   ]),
   ExpensePayment: new Set([
     'expense_uuid', 'shift_uuid', 'amount', 'date', 'added_by', 'created_at',
@@ -586,6 +586,26 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                 if (custFinal.rowCount === 0) {
                   delete payloadObj.customer_uuid;
                 }
+              }
+            }
+          }
+
+          // Resolve sale_uuid FK if needed for Return
+          if (entityType === 'Return' && payloadObj.sale_uuid) {
+            const sCheck = await client.query('SELECT id FROM sales WHERE id=$1', [payloadObj.sale_uuid]);
+            if (sCheck.rowCount === 0) {
+              const saleLocalId = rawPayload.saleId || rawPayload.saleLocalId;
+              let sResolved = false;
+              if (saleLocalId) {
+                const sFallback = await client.query('SELECT id FROM sales WHERE (device_id=$1 AND local_id=$2) OR local_id=$2 LIMIT 1', [deviceId, saleLocalId]);
+                if (sFallback.rowCount && sFallback.rowCount > 0) {
+                  payloadObj.sale_uuid = sFallback.rows[0].id;
+                  sResolved = true;
+                }
+              }
+              if (!sResolved) {
+                // If sale does not exist in Neon yet, clear nullable sale_uuid so return can be recorded without FK error
+                delete payloadObj.sale_uuid;
               }
             }
           }

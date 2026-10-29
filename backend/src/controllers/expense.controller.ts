@@ -39,8 +39,11 @@ async function openShiftId(): Promise<number | null> {
 export class ExpenseController {
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { fromDate, toDate, category } = req.query as Record<string, string>;
+      const { fromDate, toDate, category, expenseType } = req.query as Record<string, string>;
       const where: any = {};
+      if (expenseType) {
+        where.expenseType = expenseType.toUpperCase();
+      }
       if (category) where.category = category;
       if (fromDate || toDate) {
         where.date = {};
@@ -91,6 +94,7 @@ export class ExpenseController {
       }
 
       const addedBy = req.user?.email || 'unknown';
+      const expenseType = (String(body.expenseType || 'SHOP')).toUpperCase() === 'PERSONAL' ? 'PERSONAL' : 'SHOP';
 
       // Prefer simple amount; fall back to netExpense / grossLoss for legacy/inventory
       let amount = money(Number(body.amount));
@@ -124,7 +128,8 @@ export class ExpenseController {
         (quantity > 0 ? `${productText} — ${quantity} kg` : productText);
       const reason = body.reason?.trim() || null;
 
-      const shiftId = paidAmount > 0 ? await openShiftId() : null;
+      // Link payment to open shift only for Shop expenses (cash drawer out). Personal expenses are not shop drawer deductions.
+      const shiftId = paidAmount > 0 && expenseType === 'SHOP' ? await openShiftId() : null;
 
       const expense = await prisma.$transaction(async (tx) => {
         const created = await tx.expense.create({
@@ -142,6 +147,7 @@ export class ExpenseController {
             remaining,
             reason,
             addedBy,
+            expenseType,
           },
         });
 
@@ -202,7 +208,8 @@ export class ExpenseController {
       const date =
         (typeof req.body?.date === 'string' && req.body.date) ||
         new Date().toISOString().slice(0, 10);
-      const shiftId = await openShiftId();
+      const isShop = (existing.expenseType || 'SHOP') === 'SHOP';
+      const shiftId = isShop ? await openShiftId() : null;
 
       const updated = await prisma.$transaction(async (tx) => {
         const payment = await tx.expensePayment.create({
@@ -222,6 +229,244 @@ export class ExpenseController {
 
       DashboardController.clearCache();
       return ApiResponse.success(res, 'Payment recorded.', mapExpense(updated));
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  /**
+   * POST /expenses/personal/receive — record cash received against personal expenses to reduce balance
+   */
+  static async personalReceive(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const amount = money(Number(req.body?.amount));
+      const date = (typeof req.body?.date === 'string' && req.body.date) || new Date().toISOString().slice(0, 10);
+      const notes = (req.body?.notes || req.body?.description || 'Cash Received').trim();
+      const addedBy = req.user?.email || 'unknown';
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return ApiResponse.error(res, 'Received amount must be greater than zero.', 400);
+      }
+
+      // Check current personal expense outstanding balance
+      const personalExpenses = await prisma.expense.findMany({
+        where: { expenseType: 'PERSONAL' },
+        orderBy: [{ date: 'asc' }, { id: 'asc' }],
+      });
+
+      const totalPersonalExpense = money(personalExpenses.reduce((s, e) => s + (e.amount || 0), 0));
+      const totalPersonalPaid = money(personalExpenses.reduce((s, e) => s + (e.paidAmount || 0), 0));
+      const outstanding = money(Math.max(0, totalPersonalExpense - totalPersonalPaid));
+
+      // Allocate received cash across outstanding personal expenses (FIFO)
+      let unallocated = amount;
+      await prisma.$transaction(async (tx) => {
+        for (const exp of personalExpenses) {
+          if (unallocated <= 0) break;
+          const expRemaining = money(Math.max(0, (exp.amount || 0) - (exp.paidAmount || 0)));
+          if (expRemaining <= 0) continue;
+
+          const toPay = Math.min(unallocated, expRemaining);
+          const payment = await tx.expensePayment.create({
+            data: {
+              expenseId: exp.id,
+              amount: toPay,
+              shiftId: null, // Personal cash received is recovery/settlement, not shop register cash
+              date,
+              addedBy,
+            },
+          });
+          await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
+
+          const updatedExp = await tx.expense.update({
+            where: { id: exp.id },
+            data: {
+              paidAmount: money((exp.paidAmount || 0) + toPay),
+              remaining: money(Math.max(0, expRemaining - toPay)),
+            },
+          });
+          await SyncQueueService.enqueueUpdate(tx, 'Expense', updatedExp.id, updatedExp, 1);
+          unallocated = money(unallocated - toPay);
+        }
+
+        // If amount exceeds outstanding balance or no personal expenses existed yet, create a credit entry
+        if (unallocated > 0) {
+          const creditExp = await tx.expense.create({
+            data: {
+              date,
+              category: 'Cash Received',
+              description: notes ? `Cash Received: ${notes}` : 'Personal Cash Received',
+              amount: 0,
+              paidAmount: unallocated,
+              remaining: -unallocated,
+              netExpense: 0,
+              addedBy,
+              expenseType: 'PERSONAL',
+              reason: notes || null,
+            },
+          });
+          const payment = await tx.expensePayment.create({
+            data: {
+              expenseId: creditExp.id,
+              amount: unallocated,
+              shiftId: null,
+              date,
+              addedBy,
+            },
+          });
+          await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
+          await SyncQueueService.enqueueCreate(tx, 'Expense', creditExp.id, creditExp, 1);
+        }
+      });
+
+      DashboardController.clearCache();
+      return ApiResponse.success(res, 'Cash received recorded successfully.', {
+        amount,
+        date,
+        previousOutstanding: outstanding,
+        newOutstanding: money(Math.max(0, outstanding - amount)),
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  /**
+   * POST /expenses/:id/personal-receive
+   * Record cash received directly against a specific personal expense (no FIFO).
+   */
+  static async personalReceiveForExpense(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const amount = money(Number(req.body?.amount));
+      const date = (typeof req.body?.date === 'string' && req.body.date) || new Date().toISOString().slice(0, 10);
+      const notes = (req.body?.notes || '').trim();
+      const addedBy = req.user?.email || 'unknown';
+
+      if (!id) return ApiResponse.error(res, 'Invalid expense ID.', 400);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return ApiResponse.error(res, 'Received amount must be greater than zero.', 400);
+      }
+
+      const expense = await prisma.expense.findUnique({ where: { id } });
+      if (!expense) return ApiResponse.error(res, 'Expense not found.', 404);
+      if ((expense.expenseType || 'SHOP') !== 'PERSONAL') {
+        return ApiResponse.error(res, 'This endpoint is only for Personal Expenses.', 400);
+      }
+
+      const expenseAmount = money(expense.amount || expense.netExpense || 0);
+      const alreadyPaid = money(expense.paidAmount || 0);
+      const remaining = money(Math.max(0, expenseAmount - alreadyPaid));
+
+      if (remaining <= 0) {
+        return ApiResponse.error(res, 'This expense is already fully paid.', 400);
+      }
+      if (amount > remaining) {
+        return ApiResponse.error(
+          res,
+          `Cash received cannot exceed remaining Rs. ${remaining}. Remaining: Rs. ${remaining}.`,
+          400
+        );
+      }
+
+      const newPaid = money(alreadyPaid + amount);
+      const newRemaining = money(Math.max(0, expenseAmount - newPaid));
+
+      const updated = await prisma.$transaction(async (tx) => {
+        const payment = await tx.expensePayment.create({
+          data: {
+            expenseId: id,
+            amount,
+            shiftId: null, // Personal cash received — not shop drawer
+            date,
+            addedBy,
+            
+          },
+        });
+        await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
+
+        const updatedExp = await tx.expense.update({
+          where: { id },
+          data: { paidAmount: newPaid, remaining: newRemaining },
+          include: { payments: { orderBy: { id: 'desc' } } },
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'Expense', updatedExp.id, updatedExp, 1);
+        return updatedExp;
+      });
+
+      DashboardController.clearCache();
+      return ApiResponse.success(res, 'Cash received recorded against expense.', mapExpense(updated));
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  /**
+   * POST /expenses/:id/personal-return
+   * Return cash previously received against a specific personal expense.
+   * Reduces paidAmount and increases remaining by the returned amount.
+   * Cannot exceed the existing paidAmount (can't return more than was received).
+   */
+  static async personalReturnForExpense(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const amount = money(Number(req.body?.amount));
+      const date = (typeof req.body?.date === 'string' && req.body.date) || new Date().toISOString().slice(0, 10);
+      const notes = (req.body?.notes || '').trim();
+      const addedBy = req.user?.email || 'unknown';
+
+      if (!id) return ApiResponse.error(res, 'Invalid expense ID.', 400);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return ApiResponse.error(res, 'Return amount must be greater than zero.', 400);
+      }
+
+      const expense = await prisma.expense.findUnique({ where: { id } });
+      if (!expense) return ApiResponse.error(res, 'Expense not found.', 404);
+      if ((expense.expenseType || 'SHOP') !== 'PERSONAL') {
+        return ApiResponse.error(res, 'This endpoint is only for Personal Expenses.', 400);
+      }
+
+      const expenseAmount = money(expense.amount || expense.netExpense || 0);
+      const alreadyPaid = money(expense.paidAmount || 0);
+
+      if (alreadyPaid <= 0) {
+        return ApiResponse.error(res, 'No cash has been received yet — nothing to return.', 400);
+      }
+      if (amount > alreadyPaid) {
+        return ApiResponse.error(
+          res,
+          `Return amount cannot exceed the cash already received (Rs. ${alreadyPaid}).`,
+          400
+        );
+      }
+
+      const newPaid = money(Math.max(0, alreadyPaid - amount));
+      const newRemaining = money(Math.max(0, expenseAmount - newPaid));
+
+      const updated = await prisma.$transaction(async (tx) => {
+        // Record a negative payment entry to track the return
+        const payment = await tx.expensePayment.create({
+          data: {
+            expenseId: id,
+            amount: -amount, // negative = cash returned
+            shiftId: null,
+            date,
+            addedBy: `${addedBy} [RETURN${notes ? ': ' + notes : ''}]`,
+          },
+        });
+        await SyncQueueService.enqueueCreate(tx, 'ExpensePayment', payment.id, payment, 2);
+
+        const updatedExp = await tx.expense.update({
+          where: { id },
+          data: { paidAmount: newPaid, remaining: newRemaining },
+          include: { payments: { orderBy: { id: 'desc' } } },
+        });
+        await SyncQueueService.enqueueUpdate(tx, 'Expense', updatedExp.id, updatedExp, 1);
+        return updatedExp;
+      });
+
+      DashboardController.clearCache();
+      return ApiResponse.success(res, 'Cash return recorded.', mapExpense(updated));
     } catch (e) {
       next(e);
     }
@@ -344,7 +589,9 @@ export class ExpenseController {
 
   static async summary(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const expenses = await prisma.expense.findMany();
+      const typeParam = req.query.expenseType ? String(req.query.expenseType).toUpperCase() : undefined;
+      const where: any = typeParam ? { expenseType: typeParam } : { expenseType: 'SHOP' };
+      const expenses = await prisma.expense.findMany({ where });
       const grossLoss = money(expenses.reduce((s, e) => s + (e.amount || e.grossLoss || 0), 0));
       const netExpense = money(expenses.reduce((s, e) => s + (e.amount || e.netExpense || 0), 0));
       const paid = money(expenses.reduce((s, e) => s + (e.paidAmount || 0), 0));
@@ -366,9 +613,12 @@ export class ExpenseController {
     try {
       const now = new Date();
       const yyyyMM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const expenses = await prisma.expense.findMany({
-        where: { date: { startsWith: yyyyMM } },
-      });
+      const typeParam = req.query.expenseType ? String(req.query.expenseType).toUpperCase() : undefined;
+      const where: any = {
+        date: { startsWith: yyyyMM },
+        ...(typeParam ? { expenseType: typeParam } : { expenseType: 'SHOP' }),
+      };
+      const expenses = await prisma.expense.findMany({ where });
       const totalAmount = money(expenses.reduce((s, e) => s + (e.amount || e.netExpense || 0), 0));
       const cats: Record<string, number> = {};
       expenses.forEach((e) => {

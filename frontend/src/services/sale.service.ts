@@ -17,6 +17,8 @@ export interface CreateSalePayload {
   customerName?: string;
   customerPhone?: string;
   checkoutUuid?: string;
+  tokenNumber?: number;
+  createdById?: number;
 }
 
 export interface SaleItem {
@@ -52,6 +54,8 @@ export interface SaleRecord {
   remainingBalance: number;
   status: string;
   tokenNumber?: number;
+  createdById?: number | null;
+  createdByName?: string | null;
   createdAt: string;
   updatedAt: string;
   items?: SaleItem[];
@@ -64,6 +68,7 @@ export interface SalesReportSummary {
   onlineSales: number;
   splitSales: number;
   totalBills: number;
+  totalDiscount: number;
 }
 
 export interface SalesChartPoint {
@@ -83,11 +88,22 @@ export interface SalesCategoryPoint {
   value: number;
 }
 
+export interface DiscountSaleItem {
+  id?: number;
+  customerName: string | null;
+  saleType: string;
+  createdAt: string | Date;
+  discountAmount: number;
+  originalAmount: number;
+  afterDiscountAmount: number;
+}
+
 export interface SalesReportAnalytics {
   summary: SalesReportSummary;
   trend: SalesChartPoint[];
   paymentMethods: SalesPaymentMixPoint[];
   categoryBreakdown: SalesCategoryPoint[];
+  discountSales: DiscountSaleItem[];
 }
 
 export interface SalesReportResponse {

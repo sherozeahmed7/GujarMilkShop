@@ -7,6 +7,7 @@ import {
 import { MockBill, ReturnType, ReturnItem } from '../../types';
 import { useReturnsStore } from '../../store/returnsStore';
 import { saleService, SaleRecord } from '../../services/sale.service';
+import { formatReceiptUnitPrice } from '../../utils/escposRasterizer';
 
 const RETURN_TYPES: ReturnType[] = ['Full Return', 'Partial Return', 'Correction'];
 
@@ -44,6 +45,8 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
   const { findBill, addReturn } = useReturnsStore();
 
   const [query, setQuery] = useState('');
+  const [invoicePage, setInvoicePage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [foundBill, setFoundBill] = useState<MockBill | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [isLoadingBill, setIsLoadingBill] = useState(false);
@@ -146,12 +149,18 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
   };
 
   const refundTotal = foundBill
-    ? foundBill.items.reduce((sum, item) => {
-        if (item.id in selectedItems) {
-          return sum + selectedItems[item.id] * item.unitPrice;
-        }
-        return sum;
-      }, 0)
+    ? (returnType === 'Full Return'
+        ? foundBill.total
+        : foundBill.items.reduce((sum, item) => {
+            if (item.id in selectedItems) {
+              const rtnQty = selectedItems[item.id];
+              const maxRtn = item.returnableQty !== undefined ? item.returnableQty : item.quantity;
+              const isAll = Math.abs(rtnQty - maxRtn) < 0.005;
+              const itemRef = isAll && item.lineTotal ? item.lineTotal : Math.round(rtnQty * item.unitPrice * 100) / 100;
+              return sum + itemRef;
+            }
+            return sum;
+          }, 0))
     : 0;
 
   const handleCancel = () => {
@@ -165,24 +174,32 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
 
   const handleConfirm = async () => {
     if (!foundBill) return;
+    const isFullReturn = returnType === 'Full Return';
     const returnItems: ReturnItem[] = foundBill.items
       .filter((i) => i.id in selectedItems)
-      .map((i) => ({
-        itemId: i.id,
-        name: i.name,
-        returnQty: selectedItems[i.id],
-        unitPrice: i.unitPrice,
-        refundAmount: selectedItems[i.id] * i.unitPrice,
-      }));
+      .map((i) => {
+        const qty = selectedItems[i.id];
+        const maxRtn = i.returnableQty !== undefined ? i.returnableQty : i.quantity;
+        const isAll = isFullReturn || Math.abs(qty - maxRtn) < 0.005;
+        const refundAmt = isAll && i.lineTotal ? i.lineTotal : Math.round(qty * i.unitPrice * 100) / 100;
+        return {
+          itemId: i.id,
+          name: i.name,
+          returnQty: qty,
+          unitPrice: i.unitPrice,
+          refundAmount: refundAmt,
+        };
+      });
 
     const now = new Date().toISOString();
+    const finalRefund = isFullReturn ? foundBill.total : Math.round(refundTotal * 100) / 100;
 
     await addReturn({
       billNumber: foundBill.billNumber,
       date: now,
       customer: foundBill.customer,
       returnType,
-      refundAmount: refundTotal,
+      refundAmount: finalRefund,
       paymentMethod: foundBill.paymentMethod,
       reason: reason.trim() || 'No reason provided.',
       status: 'Completed',
@@ -197,7 +214,11 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
 
   const canConfirm = foundBill && Object.keys(selectedItems).length > 0 && refundTotal > 0;
 
-  // Filter sales based on user query when browsing
+  // Reset to page 1 when search query changes
+  React.useEffect(() => {
+    setInvoicePage(1);
+  }, [query, sales]);
+
   const filteredSales = sales.filter((sale) => {
     if (!query.trim()) return true;
     const q = query.trim().toLowerCase();
@@ -216,6 +237,24 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
       saleType.includes(q) ||
       itemsStr.includes(q)
     );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredSales.length / ITEMS_PER_PAGE));
+  const paginatedSales = filteredSales.slice(
+    (invoicePage - 1) * ITEMS_PER_PAGE,
+    invoicePage * ITEMS_PER_PAGE
+  );
+
+  // Precompute pagination buttons with ellipsis
+  const pageButtons: (number | 'ellipsis')[] = [];
+  const pageNums = Array.from({ length: totalPages }, (_, i) => i + 1).filter(
+    (p) => p === 1 || p === totalPages || Math.abs(p - invoicePage) <= 1
+  );
+  pageNums.forEach((p, idx) => {
+    if (idx > 0 && p - pageNums[idx - 1] > 1) {
+      pageButtons.push('ellipsis');
+    }
+    pageButtons.push(p);
   });
 
   return (
@@ -330,8 +369,9 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                 </p>
               </div>
             ) : (
-              <div className="space-y-2 overflow-y-auto max-h-[480px] custom-scrollbar pr-1">
-                {filteredSales.map((sale) => {
+              <>
+                <div className="space-y-2 pr-1">
+                {paginatedSales.map((sale) => {
                   const inv = formatInvoiceNumber(sale.id);
                   const custName = sale.customerName || sale.customer?.name || 'Walk-in Customer';
                   const itemsSummary = (sale.items || [])
@@ -393,6 +433,57 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                   );
                 })}
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-[#2d4a35] flex-shrink-0">
+                  <button
+                    onClick={() => setInvoicePage((p) => Math.max(1, p - 1))}
+                    disabled={invoicePage === 1}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Prev
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {pageButtons.map((item, idx) =>
+                      item === 'ellipsis' ? (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs">…</span>
+                      ) : (
+                        <button
+                          key={item}
+                          onClick={() => setInvoicePage(item as number)}
+                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${
+                            invoicePage === item
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124]'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setInvoicePage((p) => Math.min(totalPages, p + 1))}
+                    disabled={invoicePage === totalPages}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] text-slate-600 dark:text-[#a7c4ae] hover:bg-slate-50 dark:hover:bg-[#1e3124] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+                {/* Page info */}
+                {filteredSales.length > 0 && (
+                  <p className="text-center text-[10px] text-slate-400 mt-1">
+                    Showing {(invoicePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(invoicePage * ITEMS_PER_PAGE, filteredSales.length)} of {filteredSales.length} invoice{filteredSales.length !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -480,8 +571,11 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                       const isFullyReturned = maxRtn <= 0;
                       const isSelected = item.id in selectedItems;
                       const rtnQty = selectedItems[item.id] ?? maxRtn;
-                      const refund = isSelected ? rtnQty * item.unitPrice : 0;
                       const isFullReturn = returnType === 'Full Return';
+                      const isAllOfItem = isFullReturn || Math.abs(rtnQty - maxRtn) < 0.005;
+                      const refund = isSelected
+                        ? (isAllOfItem && item.lineTotal ? item.lineTotal : Math.round(rtnQty * item.unitPrice * 100) / 100)
+                        : 0;
 
                       return (
                         <tr
@@ -566,7 +660,7 @@ export const CreateReturnPanel: React.FC<CreateReturnPanelProps> = ({ onReturnCr
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
-                          <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">Rs. {item.unitPrice}</td>
+                          <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">Rs. {formatReceiptUnitPrice(item.unitPrice)}</td>
                           <td className="px-3 py-2.5 text-right text-slate-600 dark:text-slate-300">Rs. {item.lineTotal.toLocaleString()}</td>
                           <td className="px-3 py-2.5 text-right font-bold text-emerald-700 dark:text-[#22c55e]">
                             {isSelected ? `Rs. ${refund.toLocaleString()}` : '—'}

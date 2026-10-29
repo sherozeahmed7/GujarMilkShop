@@ -62,10 +62,11 @@ function toInvoiceNo(id: number): string {
 }
 
 const EMPTY_ANALYTICS: SalesReportAnalytics = {
-  summary: { netSales: 0, cashSales: 0, onlineSales: 0, splitSales: 0, totalBills: 0 },
+  summary: { netSales: 0, cashSales: 0, onlineSales: 0, splitSales: 0, totalBills: 0, totalDiscount: 0 },
   trend: [],
   paymentMethods: [],
   categoryBreakdown: [],
+  discountSales: [],
 };
 
 function formatKg(value: number | undefined): string {

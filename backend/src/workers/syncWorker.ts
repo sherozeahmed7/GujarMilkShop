@@ -6,7 +6,7 @@ let isSyncing = false;
 
 // Convert environment variables or defaults (30s interval balances cloud freshness with local SQLite writer concurrency)
 const SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MS || '30000', 10);
-const SYNC_BATCH_SIZE = parseInt(process.env.SYNC_BATCH_SIZE || '50', 10);
+const SYNC_BATCH_SIZE = parseInt(process.env.SYNC_BATCH_SIZE || '15', 10);
 const SYNC_WORKER_ENABLED = process.env.SYNC_WORKER_ENABLED === 'true';
 const SYNC_INTERNAL_SECRET = process.env.SYNC_INTERNAL_SECRET || 'secret';
 const API_URL = process.env.SYNC_API_URL || 'http://localhost:5000/api/sync/batch';

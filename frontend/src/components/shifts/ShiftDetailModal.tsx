@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Calendar, Clock, Banknote } from 'lucide-react';
 import { ShiftRecord, ShiftDifferenceStatus, SupplierPaymentRecord } from '../../types';
 import { supplierService } from '../../services/supplier.service';
+import { formatUserName } from '../../utils/userFormat';
 
 interface ShiftDetailModalProps {
   record: ShiftRecord;
@@ -98,7 +99,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({ record, onCl
                 <p className="text-[11px] font-bold uppercase tracking-wider">Opened</p>
               </div>
               <p className="text-sm font-bold text-slate-800">{formatTimestamp(record.openedAt)}</p>
-              <p className="text-xs text-slate-500 mt-0.5">by {record.openedBy}</p>
+              <p className="text-xs text-slate-500 mt-0.5">by {formatUserName(record.openedBy)}</p>
             </div>
 
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
@@ -108,7 +109,7 @@ export const ShiftDetailModal: React.FC<ShiftDetailModalProps> = ({ record, onCl
               </div>
               <p className="text-sm font-bold text-slate-800">{formatTimestamp(record.closedAt)}</p>
               {record.closedBy && (
-                <p className="text-xs text-slate-500 mt-0.5">by {record.closedBy}</p>
+                <p className="text-xs text-slate-500 mt-0.5">by {formatUserName(record.closedBy)}</p>
               )}
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Download, Calendar } from 'lucide-react';
-import { Supplier, MilkCollection } from '../../types';
+import { Supplier, MilkCollection, SupplierPayment } from '../../types';
 import { supplierService } from '../../services/supplier.service';
 import { savePdfDocument } from '../../utils/exportUtils';
 
@@ -24,7 +24,11 @@ interface DayRow {
 }
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function fmtKg(n: number) {
@@ -46,13 +50,18 @@ function fmtRate(n: number) {
 function buildRows(
   suppliers: Supplier[],
   collections: MilkCollection[],
-  date: string
+  payments: SupplierPayment[],
+  startDate: string,
+  endDate: string
 ): DayRow[] {
-  const dayCols = collections.filter((c) => c.date === date);
+  const rangeCols = collections.filter((c) => c.date >= startDate && c.date <= endDate);
+  const rangePays = payments.filter((p) => p.date >= startDate && p.date <= endDate);
 
   return suppliers
     .map((supplier) => {
-      const mine = dayCols.filter((c) => c.supplierId === supplier.id);
+      const mine = rangeCols.filter((c) => c.supplierId === supplier.id);
+      const myPayments = rangePays.filter((p) => p.supplierId === supplier.id);
+
       const morning = mine.filter((c) => c.shift === 'Morning');
       const evening = mine.filter((c) => c.shift === 'Evening');
 
@@ -68,6 +77,9 @@ function buildRows(
           ? weightedRateSum / totalQty
           : supplier.defaultRate || 0;
 
+      // Filtered range paid amount: strictly payments within the filtered date range
+      const rangePaid = myPayments.reduce((s, p) => s + (p.amount || 0), 0);
+
       return {
         supplierId: supplier.id,
         supplierName: supplier.name,
@@ -77,23 +89,60 @@ function buildRows(
         ratePerKg,
         dayTotal,
         previousBalance: supplier.previousAmount ?? 0,
-        paidAmount: supplier.paidAmount ?? 0,
+        paidAmount: rangePaid,
         remainingBalance: supplier.remainingBalance ?? supplier.payableBalance ?? 0,
         weightedRateSum,
       };
     })
-    .filter((row) => row.totalQty > 0 || row.dayTotal > 0)
+    .filter((row) => row.totalQty > 0 || row.dayTotal > 0 || row.paidAmount > 0)
     .sort((a, b) => a.supplierName.localeCompare(b.supplierName));
 }
 
 export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> = ({
   onClose,
 }) => {
-  const [date, setDate] = useState(todayStr());
+  const [selectedPreset, setSelectedPreset] = useState<string>('Today');
+  const [startDate, setStartDate] = useState(todayStr());
+  const [endDate, setEndDate] = useState(todayStr());
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [collections, setCollections] = useState<MilkCollection[]>([]);
+  const [payments, setPayments] = useState<SupplierPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const applyPreset = (preset: string) => {
+    setSelectedPreset(preset);
+    const d = new Date();
+    const toYMD = (dt: Date) => {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    if (preset === 'Today') {
+      const s = toYMD(d);
+      setStartDate(s);
+      setEndDate(s);
+    } else if (preset === 'Yesterday') {
+      d.setDate(d.getDate() - 1);
+      const s = toYMD(d);
+      setStartDate(s);
+      setEndDate(s);
+    } else if (preset === '7 Days') {
+      const end = toYMD(d);
+      d.setDate(d.getDate() - 6);
+      const start = toYMD(d);
+      setStartDate(start);
+      setEndDate(end);
+    } else if (preset === '1 Month') {
+      const end = toYMD(d);
+      d.setDate(d.getDate() - 29);
+      const start = toYMD(d);
+      setStartDate(start);
+      setEndDate(end);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +155,7 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
         if (cancelled) return;
         setSuppliers(list);
         setCollections(entries.flatMap((e) => e.collections));
+        setPayments(entries.flatMap((e) => e.payments));
       } catch (err: any) {
         if (!cancelled) setError(err?.message || 'Failed to load supplier ledgers');
       } finally {
@@ -118,8 +168,8 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
   }, []);
 
   const rows = useMemo(
-    () => buildRows(suppliers, collections, date),
-    [suppliers, collections, date]
+    () => buildRows(suppliers, collections, payments, startDate, endDate),
+    [suppliers, collections, payments, startDate, endDate]
   );
 
   const totals = useMemo(() => {
@@ -149,12 +199,14 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
 
+    const rangeLabel = startDate === endDate ? startDate : `${startDate} to ${endDate}`;
+
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     doc.setFontSize(14);
-    doc.text('Supplier Daily Ledger', 14, 14);
+    doc.text('Supplier Ledger Report', 14, 14);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Date: ${date}`, 14, 21);
+    doc.text(`Period: ${rangeLabel} (${selectedPreset})`, 14, 21);
     doc.setTextColor(0);
 
     const body = rows.map((r) => [
@@ -192,7 +244,7 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
           'Rate',
           'Total Amount',
           'Previous',
-          'Paid',
+          `Paid (${selectedPreset})`,
           'Remaining',
         ],
       ],
@@ -211,37 +263,69 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
     const finalY = (doc as any).lastAutoTable?.finalY ?? 40;
     doc.setFontSize(9);
     doc.text(
-      `Avg rate (weighted): Rs. ${totals.avgRate.toFixed(2)}/kg  ·  Σ(qty×rate)/Σ(qty)`,
+      `Avg rate (weighted): Rs. ${totals.avgRate.toFixed(2)}/kg  ·  Σ(qty×rate)/Σ(qty)  ·  Paid represents payments strictly within ${rangeLabel}`,
       14,
       finalY + 8
     );
 
-    await savePdfDocument(doc, `supplier-daily-ledger-${date}.pdf`);
+    await savePdfDocument(doc, `supplier-ledger-${startDate}-to-${endDate}.pdf`);
   };
+
+  const rangeLabel = startDate === endDate ? startDate : `${startDate} to ${endDate}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-3 sm:p-6">
       <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-[#2d4a35]">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Download Supplier Ledgers</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Morning / evening milk, rates, and balances for the selected day
+            <h2 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">Download Supplier Ledgers</h2>
+            <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-0.5">
+              Milk purchases, rates, and period-filtered paid amounts for {rangeLabel}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            {/* Range Presets */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#142119] p-1 rounded-xl">
+              {['Today', 'Yesterday', '7 Days', '1 Month'].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                    selectedPreset === p
+                      ? 'bg-white dark:bg-[#223927] text-blue-700 dark:text-[#22c55e] shadow-sm'
+                      : 'text-slate-600 dark:text-[#8ba895] hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom Dates */}
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl px-3 py-1.5">
               <Calendar className="w-4 h-4 text-slate-400" />
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Date
-              </label>
               <input
                 type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="bg-transparent border-none text-sm font-semibold text-slate-800 focus:outline-none focus:ring-0"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setSelectedPreset('Custom');
+                }}
+                className="bg-transparent border-none text-xs font-semibold text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-0 p-0"
+              />
+              <span className="text-slate-400 text-xs">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setSelectedPreset('Custom');
+                }}
+                className="bg-transparent border-none text-xs font-semibold text-slate-800 dark:text-[#e2f5e8] focus:outline-none focus:ring-0 p-0"
               />
             </div>
+
             <button
               type="button"
               onClick={handleDownloadPdf}
@@ -254,7 +338,7 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-[#223927] rounded-lg"
               title="Close"
             >
               <X className="w-5 h-5" />
@@ -265,7 +349,7 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
         <div className="flex-1 overflow-auto custom-scrollbar p-4">
           {loading ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-400">
-              Loading supplier collections…
+              Loading supplier collections & payments…
             </div>
           ) : error ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm font-medium">
@@ -273,13 +357,13 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
             </div>
           ) : rows.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-400">
-              No milk collections for {date}.
+              No milk collections or payments for {rangeLabel}.
             </div>
           ) : (
             <div className="border border-slate-200 dark:border-[#2d4a35] rounded-xl overflow-hidden bg-white dark:bg-[#1a2e1f] shadow-sm">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-                  <tr className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                <thead className="bg-slate-50 dark:bg-[#142119] border-b border-slate-200 dark:border-[#2d4a35] sticky top-0 z-10">
+                  <tr className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-[#8ba895] font-bold">
                     <th className="px-3 py-3">Supplier</th>
                     <th className="px-3 py-3 text-right">Morning Qty</th>
                     <th className="px-3 py-3 text-right">Evening Qty</th>
@@ -287,36 +371,44 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
                     <th className="px-3 py-3 text-right">Rate</th>
                     <th className="px-3 py-3 text-right">Total Amount</th>
                     <th className="px-3 py-3 text-right">Previous Balance</th>
-                    <th className="px-3 py-3 text-right">Paid</th>
+                    <th className="px-3 py-3 text-right bg-emerald-50/60 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400">
+                      Paid ({selectedPreset})
+                    </th>
                     <th className="px-3 py-3 text-right">Remaining</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
                   {rows.map((row) => (
-                    <tr key={row.supplierId} className="hover:bg-slate-50/80">
-                      <td className="px-3 py-2.5 font-semibold text-slate-800">
+                    <tr key={row.supplierId} className="hover:bg-slate-50/80 dark:hover:bg-[#223927]/60">
+                      <td className="px-3 py-2.5 font-semibold text-slate-800 dark:text-[#e2f5e8]">
                         {row.supplierName}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
                         {fmtKg(row.morningQty)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
                         {fmtKg(row.eveningQty)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-800">
+                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-slate-800 dark:text-[#e2f5e8]">
                         {fmtKg(row.totalQty)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
                         {fmtRate(row.ratePerKg)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-bold text-slate-900">
+                      <td className="px-3 py-2.5 text-right tabular-nums font-bold text-slate-900 dark:text-white">
                         {fmtRs(row.dayTotal)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-400">
                         {fmtRs(row.previousBalance)}
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-emerald-700">
-                        {fmtRs(row.paidAmount)}
+                      <td className="px-3 py-2.5 text-right tabular-nums font-semibold bg-emerald-50/40 dark:bg-emerald-950/10">
+                        {row.paidAmount > 0 ? (
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                            {fmtRs(row.paidAmount)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-600">Rs. 0</span>
+                        )}
                       </td>
                       <td
                         className={`px-3 py-2.5 text-right tabular-nums font-bold ${
@@ -332,8 +424,8 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-slate-100 border-t-2 border-slate-300">
-                  <tr className="text-xs font-bold text-slate-800">
+                <tfoot className="bg-slate-100 dark:bg-[#142119] border-t-2 border-slate-300 dark:border-[#2d4a35]">
+                  <tr className="text-xs font-bold text-slate-800 dark:text-[#e2f5e8]">
                     <td className="px-3 py-3.5">Sum</td>
                     <td className="px-3 py-3.5 text-right tabular-nums">
                       {fmtKg(totals.morningQty)}
@@ -344,19 +436,19 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
                     <td className="px-3 py-3.5 text-right tabular-nums">
                       {fmtKg(totals.totalQty)}
                     </td>
-                    <td className="px-3 py-3.5 text-right tabular-nums text-slate-600">
+                    <td className="px-3 py-3.5 text-right tabular-nums text-slate-600 dark:text-slate-400">
                       {fmtRate(totals.avgRate)}
                     </td>
-                    <td className="px-3 py-3.5 text-right tabular-nums text-slate-900">
+                    <td className="px-3 py-3.5 text-right tabular-nums text-slate-900 dark:text-white">
                       {fmtRs(totals.dayTotal)}
                     </td>
                     <td className="px-3 py-3.5 text-right tabular-nums">
                       {fmtRs(totals.previousBalance)}
                     </td>
-                    <td className="px-3 py-3.5 text-right tabular-nums text-emerald-700">
+                    <td className="px-3 py-3.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-950/30 font-bold">
                       {fmtRs(totals.paidAmount)}
                     </td>
-                    <td className="px-3 py-3.5 text-right tabular-nums text-amber-700">
+                    <td className="px-3 py-3.5 text-right tabular-nums text-amber-700 dark:text-amber-400">
                       {fmtRs(totals.remainingBalance)}
                     </td>
                   </tr>
@@ -366,12 +458,12 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
           )}
         </div>
 
-        <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-[#2d4a35] bg-slate-50/80 dark:bg-[#142119] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8ba895]">
               Average milk rate (weighted by kg)
             </p>
-            <p className="text-xl font-black text-slate-900 tabular-nums mt-0.5">
+            <p className="text-xl font-black text-slate-900 dark:text-white tabular-nums mt-0.5">
               {totals.totalQty > 0
                 ? `Rs. ${totals.avgRate.toLocaleString(undefined, {
                     maximumFractionDigits: 2,
@@ -379,15 +471,14 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
                   })} / kg`
                 : '—'}
             </p>
-            <p className="text-[11px] text-slate-500 mt-1 max-w-xl">
-              Formula: Σ(quantity × rate) ÷ Σ(quantity) for this day. Per-row rate is that
-              supplier’s effective Rs/kg for the day.
+            <p className="text-[11px] text-slate-500 dark:text-[#8ba895] mt-1 max-w-xl">
+              Formula: Σ(quantity × rate) ÷ Σ(quantity) for {rangeLabel}. Paid column displays strictly payments recorded within this filtered date range.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-semibold hover:bg-slate-900 self-start sm:self-auto"
+            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 dark:bg-[#223927] dark:hover:bg-[#2d4a35] text-white rounded-xl text-sm font-semibold self-start sm:self-auto transition-colors"
           >
             Close
           </button>
@@ -396,3 +487,4 @@ export const SupplierDailyLedgerModal: React.FC<SupplierDailyLedgerModalProps> =
     </div>
   );
 };
+

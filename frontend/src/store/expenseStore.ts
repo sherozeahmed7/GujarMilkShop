@@ -6,11 +6,13 @@ interface ExpenseStore {
   expenses: ExpenseRecord[];
   summary: ExpenseSummaryData;
   breakdown: CostBreakdownItem[];
+  filterTab: 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'All Time';
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
   
   // Actions
+  setFilterTab: (tab: 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'All Time') => void;
   fetchExpenses: () => Promise<void>;
   createExpense: (data: Omit<ExpenseRecord, 'id' | 'createdAt'>) => Promise<void>;
   updateExpense: (id: string, data: Partial<ExpenseRecord>) => Promise<void>;
@@ -23,16 +25,19 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   expenses: [],
   summary: { stock: 0, avgCost: 0, grossLoss: 0, netExpense: 0 },
   breakdown: [],
+  filterTab: 'Today',
   isLoading: false,
   isSaving: false,
   error: null,
+
+  setFilterTab: (tab) => set({ filterTab: tab }),
 
   fetchExpenses: async () => {
     set({ isLoading: true, error: null });
     try {
       const [expenses, summary, breakdown] = await Promise.all([
-        expenseApi.getExpenses(),
-        expenseApi.getExpenseSummary(),
+        expenseApi.getExpenses({ expenseType: 'SHOP' }),
+        expenseApi.getExpenseSummary('SHOP'),
         expenseApi.getCostBreakdown()
       ]);
       set({ expenses, summary, breakdown, isLoading: false });

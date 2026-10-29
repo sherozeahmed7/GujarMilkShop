@@ -154,6 +154,7 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
   onCollect,
 }) => {
   const isLedger = row.kind === 'ledger';
+  const isInactive = row.status === 'inactive';
   const canKhata = row.kind === 'split' || row.kind === 'ledger';
   const canCollect =
     (row.kind === 'split' || row.kind === 'ledger') &&
@@ -177,7 +178,7 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-sm text-slate-800 dark:text-[#e2f5e8] truncate" title={row.name}>
+            <div className={`font-semibold text-sm truncate ${isInactive ? "line-through text-red-500 dark:text-red-400 font-bold" : "text-slate-800 dark:text-[#e2f5e8]"}`} title={isInactive ? `${row.name} (Inactive / Khata Ended)` : row.name}>
               {displayText(row.name)}
             </div>
             <div className="text-[10px] text-slate-400 dark:text-[#64916e] mt-0.5 truncate">

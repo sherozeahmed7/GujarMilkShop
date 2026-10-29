@@ -22,6 +22,7 @@ import {
   RotateCcw,
   BadgeDollarSign,
   Truck,
+  CreditCard,
 } from 'lucide-react';
 import {
   Area,
@@ -116,6 +117,7 @@ export const ProfitLossReport: React.FC = () => {
       { item: 'Net Profit / (Loss)', amount: data.summary.netProfit },
       { item: 'Net Profit Margin %', amount: `${data.summary.netProfitMargin}%` },
       { item: 'Total Amount Collected', amount: data.summary.amountCollected },
+      { item: 'Online Amount (EasyPaisa/Raast/Bank)', amount: data.summary.onlineAmount ?? data.collectionsBreakdown?.onlineCollected ?? data.salesBreakdown?.onlineSales ?? 0 },
       { item: 'Borrow / Unpaid Amount (selected sales, still owed)', amount: data.summary.borrowedAmount },
       { item: 'Cash in Hand (current drawer balance)', amount: data.summary.cashInHand ?? 'Unavailable' },
       { item: 'Drawer Balance Basis', amount: data.summary.cashInHandBasis },
@@ -160,6 +162,8 @@ export const ProfitLossReport: React.FC = () => {
                 NetSales: fmt(data.summary.netSales),
                 COGS: fmt(data.summary.cogs),
                 GrossProfit: fmt(data.summary.grossProfit),
+                ShopExpenses: fmt(data.summary.shopExpenses ?? data.summary.totalExpenses),
+                PersonalExpenses: fmt(data.summary.personalExpenses || 0),
                 Expenses: fmt(data.summary.totalExpenses),
                 SupplierPaid: fmt(data.summary.totalSupplierPaid),
                 AllTimeSupplierPaid: fmt(data.summary.allTimeSupplierPaid),
@@ -194,7 +198,7 @@ export const ProfitLossReport: React.FC = () => {
                 Executive Financial Summary
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3.5">
-                {/* Gross Sales */}
+                {/* 1. Gross Sales */}
                 <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Gross Sales</span>
@@ -210,7 +214,60 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Discounts */}
+                {/* 2. Borrow / Unpaid */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Borrow / Unpaid</span>
+                    <Wallet className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
+                      {fmt(data.summary.borrowedAmount)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Still owed on period sales · all items
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Amount Collected */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Amount Collected</span>
+                    <Wallet className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-blue-700 dark:text-blue-400">
+                      {fmt(data.summary.amountCollected)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Cash &amp; Online (excl. Khata)
+                    </div>
+                    {(data.collectionsBreakdown?.khataReceived ?? 0) > 0 && (
+                      <div className="text-[11px] text-indigo-500 dark:text-indigo-400 mt-0.5">
+                        + {fmt(data.collectionsBreakdown.khataReceived)} Khata recovered
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Online Amount */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-cyan-200 dark:border-cyan-900/40 p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-400">Online Amount</span>
+                    <CreditCard className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-cyan-700 dark:text-cyan-400">
+                      {fmt(data.summary.onlineAmount ?? data.collectionsBreakdown?.onlineCollected ?? data.salesBreakdown?.onlineSales ?? 0)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Online received (EasyPaisa/Raast/Bank)
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Discounts */}
                 <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Discounts</span>
@@ -226,7 +283,7 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Returns */}
+                {/* 6. Returns */}
                 <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Returns</span>
@@ -242,7 +299,7 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Net Sales */}
+                {/* 7. Net Sales */}
                 <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between ring-1 ring-slate-300 dark:ring-[#2d4a35]">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-xs font-bold text-slate-800 dark:text-[#e2f5e8]">Net Sales</span>
@@ -258,7 +315,135 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* COGS */}
+                {/* 8. Shop Expenses */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-rose-200 dark:border-[#4a2328] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">Shop Expenses</span>
+                    <Wallet className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-rose-700 dark:text-rose-400">
+                      {fmt(data.summary.shopExpenses ?? data.summary.totalExpenses)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Operating shop costs (deducted from profit)
+                    </div>
+                  </div>
+                </div>
+
+                {/* 9. Personal Expenses */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-indigo-200 dark:border-indigo-900/40 p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-400">Personal Expenses</span>
+                    <ReceiptText className="w-4 h-4 text-indigo-500" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-indigo-700 dark:text-indigo-400">
+                      {fmt(data.summary.personalCashReceived ?? data.summary.personalExpenses ?? 0)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Received amount (owner ledger)
+                    </div>
+                    {(data.summary.personalOutstanding ?? 0) > 0 && (
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5 font-semibold">
+                        Still owed: {fmt(data.summary.personalOutstanding)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 10. Paid to Suppliers */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Paid to Suppliers</span>
+                    <Truck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
+                      {fmt(data.summary.totalSupplierPaid)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Cleared in period {data.summary.supplierPaymentsCount ? `(${data.summary.supplierPaymentsCount} ${data.summary.supplierPaymentsCount === 1 ? 'payment' : 'payments'})` : ''}
+                    </div>
+                    <div className="text-[11px] font-semibold text-slate-500 dark:text-[#8ba895] mt-1 pt-1 border-t border-slate-100 dark:border-[#2d4a35]">
+                      All-Time Paid: {fmt(data.summary.allTimeSupplierPaid)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 11. Cash in Hand */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Cash in Hand</span>
+                    <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400">{data.summary.cashInHand == null ? 'Unavailable' : fmt(data.summary.cashInHand)}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-[#8ba895] mt-0.5">Cash for selected period (sales − expenses &amp; payments)</div>
+                    {data.summary.drawerCashBreakdown ? (
+                      <details className="mt-2 text-xs text-slate-600 dark:text-[#a7c4ae]">
+                        <summary className="cursor-pointer">View calculation</summary>
+                        <div className="mt-2 space-y-1">
+                          <p>{data.summary.cashInHandBasis}</p>
+                          {[
+                            ['+ Cash from sales', data.summary.drawerCashBreakdown.salesCash],
+                            ['+ Other cash received', data.summary.drawerCashBreakdown.otherReceived],
+                            ['− Expenses paid', data.summary.drawerCashBreakdown.expensePayments],
+                            ['− Suppliers paid', data.summary.drawerCashBreakdown.supplierPayments],
+                            ['− Cash refunds', data.summary.drawerCashBreakdown.refunds],
+                            ['− Other cash paid', data.summary.drawerCashBreakdown.otherPaid],
+                          ].map(([label, amount]) => <div key={label} className="flex justify-between gap-2"><span>{label}</span><span>{fmt(amount)}</span></div>)}
+                        </div>
+                      </details>
+                    ) : <p className="mt-1 text-xs text-amber-600">{data.summary.cashInHandBasis}</p>}
+                  </div>
+                </div>
+
+                {/* 12. Total Cash in Hand (All Time) */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Total Cash in Hand (All Time)</span>
+                    <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400">{data.summary.totalCashInHand == null ? 'Unavailable' : fmt(data.summary.totalCashInHand)}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-[#8ba895] mt-0.5">{data.summary.totalCashInHandBasis}</div>
+                  </div>
+                </div>
+
+                {/* 13. Number of Sales */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Number of Sales</span>
+                    <ReceiptText className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-slate-800 dark:text-[#e2f5e8]">
+                      {data.summary.numberOfSales}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Completed bill transactions
+                    </div>
+                  </div>
+                </div>
+
+                {/* 14. Number of Returns */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Number of Returns</span>
+                    <RotateCcw className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-slate-800 dark:text-[#e2f5e8]">
+                      {data.summary.numberOfReturns}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Sales returns processed
+                    </div>
+                  </div>
+                </div>
+
+                {/* 15. Product Cost (COGS) */}
                 <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Product Cost (COGS)</span>
@@ -274,7 +459,7 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Gross Profit */}
+                {/* 16. Gross Profit */}
                 <div
                   className={`rounded-xl shadow-xs border p-4 flex flex-col justify-between ${isGrossProfit
                     ? 'bg-emerald-50/70 dark:bg-[#14291a] border-emerald-300 dark:border-[#22c55e]/40'
@@ -302,39 +487,7 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Paid (cash out) Expenses */}
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-rose-200 dark:border-[#4a2328] p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">Expense Paid</span>
-                    <Wallet className="w-4 h-4 text-rose-500" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-extrabold text-rose-700 dark:text-rose-400">
-                      {fmt(data.summary.totalExpenses)}
-                    </div>
-                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
-                      Deducted from profit
-                    </div>
-                  </div>
-                </div>
-
-                {/* Total Expenses (visual only) */}
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-amber-200 dark:border-[#4a3d1a] p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Total Expenses</span>
-                    <ReceiptText className="w-4 h-4 text-amber-500" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
-                      {fmt(data.summary.grossExpenses ?? data.summary.totalExpenses)}
-                    </div>
-                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
-                      Total bills (paid + unpaid)
-                    </div>
-                  </div>
-                </div>
-
-                {/* Net Profit / Loss */}
+                {/* 17. Net Profit / Loss */}
                 <div
                   className={`rounded-xl shadow-sm border p-4 flex flex-col justify-between col-span-1 sm:col-span-2 md:col-span-1 lg:col-span-1 xl:col-span-2 ${isNetProfit
                     ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white border-emerald-600 shadow-emerald-500/20'
@@ -355,111 +508,6 @@ export const ProfitLossReport: React.FC = () => {
                     <div className="text-2xl font-black tracking-tight">{fmt(data.summary.netProfit)}</div>
                     <div className="text-xs font-medium text-white/90 mt-0.5">
                       Net Profit Margin: {Number(data.summary.netProfitMargin || 0).toFixed(2)}%
-                    </div>
-                  </div>
-                </div>
-
-                {/* Amount Collected */}
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Amount Collected</span>
-                    <Wallet className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-extrabold text-blue-700 dark:text-blue-400">
-                      {fmt(data.summary.amountCollected)}
-                    </div>
-                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
-                      Cash &amp; Online (excl. Khata)
-                    </div>
-                    {(data.collectionsBreakdown?.khataReceived ?? 0) > 0 && (
-                      <div className="text-[11px] text-indigo-500 dark:text-indigo-400 mt-0.5">
-                        + {fmt(data.collectionsBreakdown.khataReceived)} Khata recovered
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Total Paid to Suppliers */}
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Paid to Suppliers</span>
-                    <Truck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
-                      {fmt(data.summary.totalSupplierPaid)}
-                    </div>
-                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
-                      Cleared in period {data.summary.supplierPaymentsCount ? `(${data.summary.supplierPaymentsCount} ${data.summary.supplierPaymentsCount === 1 ? 'payment' : 'payments'})` : ''}
-                    </div>
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-[#8ba895] mt-1 pt-1 border-t border-slate-100 dark:border-[#2d4a35]">
-                      All-Time Paid: {fmt(data.summary.allTimeSupplierPaid)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Number of Sales */}
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Borrow / Unpaid Amount</div>
-                  <div className="mt-2 text-lg font-extrabold text-amber-700 dark:text-amber-400">{fmt(data.summary.borrowedAmount)}</div>
-                  <div className="mt-1 text-[11px] text-slate-500 dark:text-[#8ba895]">Still owed on selected-period sales · all items</div>
-                </div>
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Cash in Hand</div>
-                  <div className="mt-2 text-lg font-extrabold text-emerald-700 dark:text-emerald-400">{data.summary.cashInHand == null ? 'Unavailable' : fmt(data.summary.cashInHand)}</div>
-                  <div className="mt-1 text-[11px] text-slate-500 dark:text-[#8ba895]">Cash for selected period (sales − expenses &amp; payments)</div>
-                  {data.summary.drawerCashBreakdown ? (
-                    <details className="mt-2 text-xs text-slate-600 dark:text-[#a7c4ae]">
-                      <summary className="cursor-pointer">View calculation</summary>
-                      <div className="mt-2 space-y-1">
-                        <p>{data.summary.cashInHandBasis}</p>
-                        {[
-                          ['+ Cash from sales', data.summary.drawerCashBreakdown.salesCash],
-                          ['+ Other cash received', data.summary.drawerCashBreakdown.otherReceived],
-                          ['− Expenses paid', data.summary.drawerCashBreakdown.expensePayments],
-                          ['− Suppliers paid', data.summary.drawerCashBreakdown.supplierPayments],
-                          ['− Cash refunds', data.summary.drawerCashBreakdown.refunds],
-                          ['− Other cash paid', data.summary.drawerCashBreakdown.otherPaid],
-                        ].map(([label, amount]) => <div key={label} className="flex justify-between gap-2"><span>{label}</span><span>{fmt(amount)}</span></div>)}
-                      </div>
-                    </details>
-                  ) : <p className="mt-1 text-xs text-amber-600">{data.summary.cashInHandBasis}</p>}
-                </div>
-
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Total Cash in Hand (All Time)</div>
-                  <div className="mt-2 text-lg font-extrabold text-emerald-700 dark:text-emerald-400">{data.summary.totalCashInHand == null ? 'Unavailable' : fmt(data.summary.totalCashInHand)}</div>
-                  <div className="mt-1 text-[11px] text-slate-500 dark:text-[#8ba895]">{data.summary.totalCashInHandBasis}</div>
-                </div>
-
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Number of Sales</span>
-                    <ReceiptText className="w-4 h-4 text-slate-400" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-extrabold text-slate-800 dark:text-[#e2f5e8]">
-                      {data.summary.numberOfSales}
-                    </div>
-                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
-                      Completed bill transactions
-                    </div>
-                  </div>
-                </div>
-
-                {/* Number of Returns */}
-                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Number of Returns</span>
-                    <RotateCcw className="w-4 h-4 text-slate-400" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-extrabold text-slate-800 dark:text-[#e2f5e8]">
-                      {data.summary.numberOfReturns}
-                    </div>
-                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
-                      Sales returns processed
                     </div>
                   </div>
                 </div>

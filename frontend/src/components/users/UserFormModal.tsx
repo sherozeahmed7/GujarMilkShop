@@ -56,6 +56,9 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
       if (!password) return setError('Password is required');
       if (password !== confirmPassword) return setError('Passwords do not match');
       if (password.length < 6) return setError('Password must be at least 6 characters');
+    } else if (password) {
+      if (password !== confirmPassword) return setError('Passwords do not match');
+      if (password.length < 6) return setError('Password must be at least 6 characters');
     }
 
     if (assignedScreens.length === 0) return setError('At least one screen must be assigned');
@@ -70,7 +73,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
           email,
           role,
           assignedRole: role,
-          assignedScreens
+          assignedScreens,
+          ...(password ? { password } : {})
         });
         toast.success('User updated successfully.');
       } else {
@@ -161,54 +165,59 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
                 />
               </div>
 
-              {/* Passwords (Only for Create) */}
-              {!isEditing && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Password</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        name="new_user_account_password"
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-4 pr-10 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                        placeholder="••••••••"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
+              {/* Passwords */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">
+                  {isEditing ? 'New Password' : 'Password'}
+                  {isEditing && (
+                    <span className="text-xs font-normal text-slate-400 dark:text-[#64916e] ml-2">
+                      (Leave blank to keep current)
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="new_user_account_password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">Confirm Password</label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        name="new_user_account_confirm_password"
-                        autoComplete="new-password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full pl-4 pr-10 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                        placeholder="••••••••"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#a7c4ae] mb-1">
+                  {isEditing ? 'Confirm New Password' : 'Confirm Password'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="new_user_account_confirm_password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#64916e] hover:text-slate-600 dark:hover:text-[#a7c4ae]"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Permissions */}

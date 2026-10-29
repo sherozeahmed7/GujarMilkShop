@@ -1,5 +1,6 @@
 import React from 'react';
 import { POSConfigData } from '../../services/posConfig.service';
+import { formatReceiptUnitPrice } from '../../utils/escposRasterizer';
 
 export interface ReceiptItem {
   name?: string;
@@ -208,7 +209,7 @@ export const ReceiptContent: React.FC<{
               <span className="whitespace-nowrap font-black">{currency}{item.total}</span>
             </div>
             <div className="font-bold text-[11px] text-slate-800 mt-1">
-              {item.qty} x {currency}{item.price}
+              {item.qty} x {currency}{formatReceiptUnitPrice(item.price)}
             </div>
           </div>
         ))}

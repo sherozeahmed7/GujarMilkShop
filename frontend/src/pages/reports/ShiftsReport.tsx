@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { Pagination } from '../../components/common/Pagination';
 import { useChartTheme } from '../../hooks/useChartTheme';
+import { formatUserName } from '../../utils/userFormat';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
 
@@ -32,7 +33,7 @@ export const ShiftsReport: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter.label, filter.startDate?.toISOString(), searchTerm]);
+  }, [filter.label, filter.startDate?.toISOString(), filter.endDate?.toISOString(), searchTerm]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -41,7 +42,7 @@ export const ShiftsReport: React.FC = () => {
     finally { setIsLoading(false); }
   };
 
-  useEffect(() => { loadReport(); }, [filter.label, filter.startDate?.toISOString()]);
+  useEffect(() => { loadReport(); }, [filter.label, filter.startDate?.toISOString(), filter.endDate?.toISOString()]);
 
   const fmt = (n: number) => {
     if (isNaN(n) || !isFinite(n)) return 'Rs. 0';
@@ -156,9 +157,9 @@ export const ShiftsReport: React.FC = () => {
                     <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
                       <td className="px-3 py-3 text-sm font-medium text-blue-600 dark:text-blue-400">{s.id}</td>
                       <td className="px-3 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{s.date}</td>
-                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{s.openedBy}</td>
+                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{formatUserName(s.openedBy)}</td>
                       <td className="px-3 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{new Date(s.openTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{s.closedBy}</td>
+                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{formatUserName(s.closedBy)}</td>
                       <td className="px-3 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{new Date(s.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                       <td className="px-3 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{fmt(s.openingCash)}</td>
                       <td className="px-3 py-3 text-sm text-emerald-600 dark:text-emerald-400 font-medium">{fmt(s.cashSales)}</td>

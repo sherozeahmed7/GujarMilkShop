@@ -324,6 +324,7 @@ async function migrateExpenses() {
         sold_recovery: r.soldRecovery, net_expense: r.netExpense,
         amount: r.amount, paid_amount: r.paidAmount, remaining: r.remaining,
         reason: r.reason, added_by: r.addedBy,
+        expense_type: (r as any).expenseType || 'SHOP',
         created_at: r.createdAt, updated_at: r.updatedAt,
       },
     });

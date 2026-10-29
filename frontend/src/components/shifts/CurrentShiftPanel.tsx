@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, AlertTriangle, Calculator, PlayCircle, LogOut } from 'lucide-react';
 import { useShiftStore } from '../../store/shiftStore';
+import { formatUserName } from '../../utils/userFormat';
 
 function formatTimestamp(iso: string) {
   const d = new Date(iso);
@@ -153,7 +154,7 @@ export const CurrentShiftPanel: React.FC = () => {
           </div>
           <div className="bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl p-3">
             <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Opened By</p>
-            <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">{currentShift.openedBy}</p>
+            <p className="text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">{formatUserName(currentShift.openedBy)}</p>
           </div>
           <div className="bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] rounded-xl p-3">
             <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Opened At</p>

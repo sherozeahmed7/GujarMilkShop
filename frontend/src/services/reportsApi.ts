@@ -84,9 +84,11 @@ export const getSalesReport = async (filter: DateFilterType) => {
 };
 
 // ── Expenses Report ───────────────────────────────────────────────────────────
-export const getExpensesReport = async (filter: DateFilterType) => {
+export const getExpensesReport = async (filter: DateFilterType, type?: 'SHOP' | 'PERSONAL' | 'COMBINED') => {
   const { from, to } = dateParams(filter);
-  const res = await apiClient.get('/reports/expenses', { from, to });
+  const params: Record<string, string> = { from, to };
+  if (type) params.type = type;
+  const res = await apiClient.get('/reports/expenses', params);
   return res.data;
 };
 
@@ -126,8 +128,17 @@ export const getSupplierReport = async (filter: DateFilterType) => {
 };
 
 // ── Inventory Report ──────────────────────────────────────────────────────────
-export const getInventoryReport = async () => {
-  const res = await apiClient.get('/reports/inventory');
+export const getInventoryReport = async (filter?: DateFilterType, supplier?: string) => {
+  let params: Record<string, string> = {};
+  if (filter && filter.label !== 'All Time') {
+    const { from, to } = dateParams(filter);
+    params.from = from;
+    params.to = to;
+  }
+  if (supplier && supplier !== 'All') {
+    params.supplier = supplier;
+  }
+  const res = await apiClient.get('/reports/inventory', params);
   return res.data;
 };
 

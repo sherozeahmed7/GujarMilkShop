@@ -19,6 +19,7 @@ const CATEGORIES = ['All', 'Utilities', 'Salaries', 'Rent', 'Maintenance', 'Mark
 
 export const ExpensesReport: React.FC = () => {
   const { grid, axis, tooltipStyle, tooltipLabelStyle } = useChartTheme();
+  const [expenseTypeTab, setExpenseTypeTab] = useState<'SHOP' | 'PERSONAL' | 'COMBINED'>('SHOP');
   const [filter, setFilter] = useState<DateFilterType>({
     label: 'This Month',
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -37,16 +38,16 @@ export const ExpensesReport: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter.label, filter.startDate?.toISOString(), searchTerm, categoryFilter, minAmount, maxAmount]);
+  }, [filter.label, filter.startDate?.toISOString(), expenseTypeTab, searchTerm, categoryFilter, minAmount, maxAmount]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
-    try { setData(await getExpensesReport(filter)); }
+    try { setData(await getExpensesReport(filter, expenseTypeTab)); }
     catch (e) { setError('Failed to load Expenses report.'); console.error(e); }
     finally { setIsLoading(false); }
   };
 
-  useEffect(() => { loadReport(); }, [filter.label, filter.startDate?.toISOString()]);
+  useEffect(() => { loadReport(); }, [filter.label, filter.startDate?.toISOString(), expenseTypeTab]);
 
   const fmt = (n: number) => {
     if (isNaN(n) || !isFinite(n)) return 'Rs. 0';
@@ -85,6 +86,43 @@ export const ExpensesReport: React.FC = () => {
         } : undefined}
       />
 
+      {/* Section Tabs: Shop Expenses | Personal Expenses | Combined Summary */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-200/70 dark:bg-[#142119] rounded-2xl w-fit border border-slate-300/60 dark:border-[#2d4a35]">
+        <button
+          type="button"
+          onClick={() => setExpenseTypeTab('SHOP')}
+          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
+            expenseTypeTab === 'SHOP'
+              ? 'bg-white dark:bg-[#1a2e1f] text-slate-900 dark:text-[#e2f5e8] shadow-sm'
+              : 'text-slate-600 dark:text-[#8ba895] hover:text-slate-900 dark:hover:text-[#e2f5e8]'
+          }`}
+        >
+          Shop Expenses
+        </button>
+        <button
+          type="button"
+          onClick={() => setExpenseTypeTab('PERSONAL')}
+          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
+            expenseTypeTab === 'PERSONAL'
+              ? 'bg-white dark:bg-[#1a2e1f] text-slate-900 dark:text-[#e2f5e8] shadow-sm'
+              : 'text-slate-600 dark:text-[#8ba895] hover:text-slate-900 dark:hover:text-[#e2f5e8]'
+          }`}
+        >
+          Personal Expenses
+        </button>
+        <button
+          type="button"
+          onClick={() => setExpenseTypeTab('COMBINED')}
+          className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${
+            expenseTypeTab === 'COMBINED'
+              ? 'bg-white dark:bg-[#1a2e1f] text-slate-900 dark:text-[#e2f5e8] shadow-sm'
+              : 'text-slate-600 dark:text-[#8ba895] hover:text-slate-900 dark:hover:text-[#e2f5e8]'
+          }`}
+        >
+          Combined Summary
+        </button>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-[#1a2e1f] p-4 rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35]">
         <div className="relative flex-1 min-w-[180px]">
@@ -112,14 +150,30 @@ export const ExpensesReport: React.FC = () => {
 
       {!isLoading && !error && data && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            <SummaryCard title="Total Entries" value={data.summary.totalExpenses} icon={Wallet} />
-            <SummaryCard title="Period Total" value={fmt(data.summary.totalAmount)} icon={TrendingDown} valueColor="text-rose-600 dark:text-rose-400" />
-            <SummaryCard title="Today" value={fmt(data.summary.todayAmount)} icon={Calendar} valueColor="text-amber-600 dark:text-amber-400" />
-            <SummaryCard title="This Week" value={fmt(data.summary.thisWeekAmount)} icon={Calendar} valueColor="text-blue-600 dark:text-blue-400" />
-            <SummaryCard title="This Month" value={fmt(data.summary.thisMonthAmount)} icon={Calendar} valueColor="text-purple-600 dark:text-purple-400" />
-            <SummaryCard title="Top Category" value={data.summary.topCategory} icon={Tag} valueColor="text-emerald-600 dark:text-emerald-400" />
-          </div>
+          {expenseTypeTab === 'COMBINED' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <SummaryCard title="Shop Expenses" value={fmt(data.summary.shopExpenses)} icon={Wallet} valueColor="text-blue-600 dark:text-blue-400" />
+              <SummaryCard title="Personal Expenses" value={fmt(data.summary.personalExpenses)} icon={TrendingDown} valueColor="text-rose-600 dark:text-rose-400" />
+              <SummaryCard title="Personal Cash Received" value={fmt(data.summary.personalReceived)} icon={Calendar} valueColor="text-emerald-600 dark:text-emerald-400" />
+              <SummaryCard title="Personal Remaining Balance" value={fmt(data.summary.personalRemaining)} icon={Tag} valueColor="text-amber-600 dark:text-amber-400" />
+            </div>
+          ) : expenseTypeTab === 'PERSONAL' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <SummaryCard title="Personal Entries" value={data.summary.totalExpenses} icon={Wallet} />
+              <SummaryCard title="Total Personal Expense" value={fmt(data.summary.totalAmount)} icon={TrendingDown} valueColor="text-rose-600 dark:text-rose-400" />
+              <SummaryCard title="Cash Received" value={fmt(data.summary.totalPaid)} icon={Calendar} valueColor="text-emerald-600 dark:text-emerald-400" />
+              <SummaryCard title="Remaining Balance" value={fmt(data.summary.totalRemaining)} icon={Tag} valueColor="text-amber-600 dark:text-amber-400" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              <SummaryCard title="Total Entries" value={data.summary.totalExpenses} icon={Wallet} />
+              <SummaryCard title="Period Total" value={fmt(data.summary.totalAmount)} icon={TrendingDown} valueColor="text-rose-600 dark:text-rose-400" />
+              <SummaryCard title="Today" value={fmt(data.summary.todayAmount)} icon={Calendar} valueColor="text-amber-600 dark:text-amber-400" />
+              <SummaryCard title="This Week" value={fmt(data.summary.thisWeekAmount)} icon={Calendar} valueColor="text-blue-600 dark:text-blue-400" />
+              <SummaryCard title="This Month" value={fmt(data.summary.thisMonthAmount)} icon={Calendar} valueColor="text-purple-600 dark:text-purple-400" />
+              <SummaryCard title="Top Category" value={data.summary.topCategory} icon={Tag} valueColor="text-emerald-600 dark:text-emerald-400" />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="xl:col-span-2 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 h-[300px] flex flex-col">

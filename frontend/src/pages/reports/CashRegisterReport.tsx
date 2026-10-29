@@ -30,7 +30,7 @@ export const CashRegisterReport: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter.label, filter.startDate?.toISOString(), searchTerm]);
+  }, [filter.label, filter.startDate?.toISOString(), filter.endDate?.toISOString(), searchTerm]);
 
   const loadReport = async () => {
     setIsLoading(true); setError(null);
@@ -44,7 +44,7 @@ export const CashRegisterReport: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadReport(); }, [filter.label, filter.startDate?.toISOString()]);
+  useEffect(() => { loadReport(); }, [filter.label, filter.startDate?.toISOString(), filter.endDate?.toISOString()]);
 
   const fmt = (n: number) => {
     if (isNaN(n) || !isFinite(n)) return 'Rs. 0';

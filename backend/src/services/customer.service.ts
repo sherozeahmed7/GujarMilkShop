@@ -11,6 +11,24 @@ function money(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function parseRangeStart(value: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const d = new Date(value);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  return new Date(value);
+}
+
+function parseRangeEnd(value: string): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const d = new Date(value);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  return new Date(value);
+}
+
 /** Start of current billing period for a ledger customer (local calendar). */
 function customerPeriodStart(customerType: string, now = new Date()): Date {
   if (customerType === 'daily_ledger') {
@@ -171,7 +189,11 @@ export class CustomerService {
     const where: any = { customerType: { in: [...CUSTOMER_TYPES] } };
     const andFilters: any[] = [];
 
-    where.status = filters?.status?.trim() || 'active';
+    if (filters?.status === 'all') {
+      // Do not restrict by status, fetch both active and inactive
+    } else {
+      where.status = filters?.status?.trim() || 'active';
+    }
 
     if (filters?.customerType) {
       if (!(CUSTOMER_TYPES as readonly string[]).includes(filters.customerType as any)) {
@@ -221,13 +243,13 @@ export class CustomerService {
     let rangeStart: Date | null = null;
     let rangeEnd: Date | null = null;
     if (filters?.fromDate) {
-      rangeStart = new Date(filters.fromDate);
+      rangeStart = parseRangeStart(filters.fromDate);
       if (Number.isNaN(rangeStart.getTime())) {
         return { success: false, statusCode: 400, message: 'Invalid fromDate.' };
       }
     }
     if (filters?.toDate) {
-      rangeEnd = new Date(filters.toDate);
+      rangeEnd = parseRangeEnd(filters.toDate);
       if (Number.isNaN(rangeEnd.getTime())) {
         return { success: false, statusCode: 400, message: 'Invalid toDate.' };
       }
@@ -294,11 +316,24 @@ export class CustomerService {
         _sum: { remainingBalance: true }
       }),
 
-      // 2. Total paid amount across all time
-      prisma.sale.groupBy({
-        by: ['customerId'],
-        where: { customerId: { in: customerIds } },
-        _sum: { paidAmount: true }
+      // 2. Total paid amount from completed payments within the active date range
+      // (when no date filter is set, returns all-time totals)
+      prisma.payment.groupBy({
+        by: ['saleId'],
+        where: {
+          amount: { gt: 0 },
+          status: 'completed',
+          sale: { customerId: { in: customerIds } },
+          ...(rangeStart || rangeEnd
+            ? {
+                createdAt: {
+                  ...(rangeStart ? { gte: rangeStart } : {}),
+                  ...(rangeEnd ? { lte: rangeEnd } : {}),
+                },
+              }
+            : {}),
+        },
+        _sum: { amount: true },
       }),
 
       // 3a. Current period: daily_ledger customers (today onwards)
@@ -339,7 +374,24 @@ export class CustomerService {
 
     // Build lookup maps for O(1) access
     const remainingMap = new Map(remainingAgg.map((r) => [r.customerId!, r._sum.remainingBalance || 0]));
-    const paidMap = new Map(paidAgg.map((r) => [r.customerId!, r._sum.paidAmount || 0]));
+
+    // Resolve payment saleIds to customerIds for accurate paid totals
+    const paidSaleIds = paidAgg.map((r) => r.saleId).filter(Boolean) as number[];
+    const paidSales = paidSaleIds.length > 0
+      ? await prisma.sale.findMany({
+          where: { id: { in: paidSaleIds } },
+          select: { id: true, customerId: true },
+        })
+      : [];
+    const saleCustMap = new Map(paidSales.map((s) => [s.id, s.customerId]));
+    const paidMap = new Map<number, number>();
+    for (const r of paidAgg) {
+      const cId = saleCustMap.get(r.saleId!);
+      if (cId) {
+        paidMap.set(cId, (paidMap.get(cId) || 0) + (r._sum.amount || 0));
+      }
+    }
+
     const currentDailyMap = new Map(currentDailyAgg.map((r) => [r.customerId!, r._sum.totalAmount || 0]));
     const currentMonthlyMap = new Map(currentMonthlyAgg.map((r) => [r.customerId!, r._sum.totalAmount || 0]));
     const lastSaleMap = new Map(lastSaleAgg.map((r) => [r.customerId!, r._max.createdAt]));
@@ -391,9 +443,9 @@ export class CustomerService {
    * Default (no scope): Customers screen — mixes ledger + walk-in + split.
    * scope=ledger: Khata Ledger cards only — accounts, outstanding, collectedToday.
    */
-  static async getCustomersSummary(scope?: string) {
+  static async getCustomersSummary(scope?: string, fromDate?: string, toDate?: string) {
     if (scope === 'ledger') {
-      return CustomerService.getLedgerSummary();
+      return CustomerService.getLedgerSummary(fromDate, toDate);
     }
 
     const [activeLedgerCount, walkInCount, splitCount] = await Promise.all([
@@ -473,29 +525,146 @@ export class CustomerService {
   /**
    * Khata Ledger summary cards (ledger customers only).
    */
-  static async getLedgerSummary() {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
+  static async getLedgerSummary(fromDate?: string, toDate?: string) {
+    // ── Date range ────────────────────────────────────────────────────────────
+    let rangeStart: Date | null = null;
+    let rangeEnd: Date | null = null;
+    let fromYMD: string | undefined = undefined;
+    let toYMD: string | undefined = undefined;
 
-    const [khataAccounts, outstandingAgg, collectedAgg, pendingCount, paidCount, supplierStats] =
-      await Promise.all([
-        prisma.customer.count({ where: { status: 'active', customerType: { in: [...CUSTOMER_TYPES] } } }),
-        prisma.sale.aggregate({
-          where: {
-            saleType: { in: ['ledger_daily', 'ledger_monthly'] },
-            status: { in: ['pending', 'partial'] },
-            remainingBalance: { gt: 0 },
-            customer: { status: 'active' }
+    if (fromDate) {
+      rangeStart = parseRangeStart(fromDate);
+      fromYMD = fromDate.slice(0, 10);
+      if (Number.isNaN(rangeStart.getTime())) { rangeStart = null; fromYMD = undefined; }
+    }
+    if (toDate) {
+      rangeEnd = parseRangeEnd(toDate);
+      toYMD = toDate.slice(0, 10);
+      if (Number.isNaN(rangeEnd.getTime())) { rangeEnd = null; toYMD = undefined; }
+    }
+
+    const isFiltered = !!(rangeStart || rangeEnd);
+    // When no date filter (All Time), query all payments. When filtered, constrain by range.
+    const collectedDateFilter: any = isFiltered
+      ? {
+          ...(rangeStart ? { gte: rangeStart } : {}),
+          ...(rangeEnd ? { lte: rangeEnd } : {}),
+        }
+      : undefined;
+
+    // Supplier payment date filter (stored as 'YYYY-MM-DD' strings)
+    const supplierPaymentWhere: any = {};
+    if (isFiltered) {
+      supplierPaymentWhere.date = {
+        ...(fromYMD ? { gte: fromYMD } : {}),
+        ...(toYMD ? { lte: toYMD } : {}),
+      };
+    }
+
+    // ── Outstanding: filter by sale creation date when range is active ─────────
+    const outstandingWhere: any = {
+      saleType: { in: ['ledger_daily', 'ledger_monthly'] },
+      status: { in: ['pending', 'partial'] },
+      remainingBalance: { gt: 0 },
+      customer: { status: 'active' },
+    };
+    if (isFiltered) {
+      outstandingWhere.createdAt = {
+        ...(rangeStart ? { gte: rangeStart } : {}),
+        ...(rangeEnd ? { lte: rangeEnd } : {}),
+      };
+    }
+
+    // ── Pending / Paid customer counts ──────────────────────────────────────────
+    const saleDateFilter: any = isFiltered
+      ? {
+          createdAt: {
+            ...(rangeStart ? { gte: rangeStart } : {}),
+            ...(rangeEnd ? { lte: rangeEnd } : {}),
           },
-          _sum: { remainingBalance: true }
-        }),
+        }
+      : {};
+
+    const pendingCountWhere: any = {
+      status: 'active',
+      customerType: { in: [...CUSTOMER_TYPES] },
+      sales: {
+        some: {
+          status: { in: ['pending', 'partial'] },
+          remainingBalance: { gt: 0 },
+          ...saleDateFilter,
+        },
+      },
+    };
+    const paidCountWhere: any = {
+      status: 'active',
+      customerType: { in: [...CUSTOMER_TYPES] },
+      sales: {
+        none: {
+          status: { in: ['pending', 'partial'] },
+          remainingBalance: { gt: 0 },
+          ...saleDateFilter,
+        },
+      },
+    };
+
+    // ── Khata account count ──────────────────────────────────────────────────────
+    // Filtered: customers with at least one sale in range. All-time: all active.
+    const accountCountWhere: any = isFiltered
+      ? {
+          status: 'active',
+          customerType: { in: [...CUSTOMER_TYPES] },
+          sales: {
+            some: {
+              createdAt: {
+                ...(rangeStart ? { gte: rangeStart } : {}),
+                ...(rangeEnd ? { lte: rangeEnd } : {}),
+              },
+            },
+          },
+        }
+      : { status: 'active', customerType: { in: [...CUSTOMER_TYPES] } };
+
+    // ── Supplier payables ────────────────────────────────────────────────────────
+    // Filtered: net flow (collections − payments) within range.
+    // All-time: overall balance (collections − payments − advance).
+    let supplierStatsPromise: Promise<Array<{ accounts: number; outstanding: number | null }>>;
+    if (isFiltered) {
+      const fromStr = rangeStart ? rangeStart.toISOString().slice(0, 10) : '1970-01-01';
+      const toStr = rangeEnd ? rangeEnd.toISOString().slice(0, 10) : '9999-12-31';
+      supplierStatsPromise = prisma.$queryRaw<Array<{ accounts: number; outstanding: number | null }>>`
+        SELECT COUNT(DISTINCT s.id) as accounts,
+               COALESCE(SUM(
+                 (SELECT COALESCE(SUM(c.amount), 0) FROM SupplierCollection c
+                  WHERE c.supplierId = s.id AND date(c.createdAt) BETWEEN ${fromStr} AND ${toStr}) -
+                 (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p
+                  WHERE p.supplierId = s.id AND date(p.createdAt) BETWEEN ${fromStr} AND ${toStr})
+               ), 0) as outstanding
+        FROM Supplier s
+        WHERE s.isActive = 1
+      `;
+    } else {
+      supplierStatsPromise = prisma.$queryRaw<Array<{ accounts: number; outstanding: number | null }>>`
+        SELECT COUNT(*) as accounts,
+               COALESCE(SUM(
+                 (SELECT COALESCE(SUM(c.amount), 0) FROM SupplierCollection c WHERE c.supplierId = s.id) -
+                 (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p WHERE p.supplierId = s.id) -
+                 COALESCE(s.guaranteedAdvance, 0)
+               ), 0) as outstanding
+        FROM Supplier s
+        WHERE s.isActive = 1
+      `;
+    }
+
+    const [khataAccounts, outstandingAgg, collectedAgg, pendingCount, paidCount, supplierStats, supplierPaidAgg] =
+      await Promise.all([
+        prisma.customer.count({ where: accountCountWhere }),
+        prisma.sale.aggregate({ where: outstandingWhere, _sum: { remainingBalance: true } }),
         prisma.payment.aggregate({
           where: {
             amount: { gt: 0 },
             status: 'completed',
-            createdAt: { gte: startOfToday, lte: endOfToday },
+            ...(collectedDateFilter ? { createdAt: collectedDateFilter } : {}),
             sale: {
               saleType: { in: ['ledger_daily', 'ledger_monthly'] },
               customer: { status: 'active' }
@@ -503,38 +672,13 @@ export class CustomerService {
           },
           _sum: { amount: true }
         }),
-        prisma.customer.count({
-          where: {
-            status: 'active', customerType: { in: [...CUSTOMER_TYPES] },
-            sales: {
-              some: {
-                status: { in: ['pending', 'partial'] },
-                remainingBalance: { gt: 0 }
-              }
-            }
-          }
+        prisma.customer.count({ where: pendingCountWhere }),
+        prisma.customer.count({ where: paidCountWhere }),
+        supplierStatsPromise,
+        prisma.supplierPayment.aggregate({
+          where: supplierPaymentWhere,
+          _sum: { amount: true }
         }),
-        prisma.customer.count({
-          where: {
-            status: 'active', customerType: { in: [...CUSTOMER_TYPES] },
-            sales: {
-              none: {
-                status: { in: ['pending', 'partial'] },
-                remainingBalance: { gt: 0 }
-              }
-            }
-          }
-        }),
-        prisma.$queryRaw<Array<{ accounts: number; outstanding: number | null }>>`
-          SELECT COUNT(*) as accounts,
-                 COALESCE(SUM(
-                   (SELECT COALESCE(SUM(c.amount), 0) FROM SupplierCollection c WHERE c.supplierId = s.id) -
-                   (SELECT COALESCE(SUM(p.amount), 0) FROM SupplierPayment p WHERE p.supplierId = s.id) -
-                   COALESCE(s.guaranteedAdvance, 0)
-                 ), 0) as outstanding
-          FROM Supplier s
-          WHERE s.isActive = 1
-        `
       ]);
 
     return {
@@ -542,16 +686,122 @@ export class CustomerService {
       statusCode: 200,
       data: {
         khataAccounts,
-        // Customer dues only — supplier balances are separate (supplierPayables)
         totalOutstanding: money(outstandingAgg._sum.remainingBalance || 0),
         collectedToday: money(collectedAgg._sum.amount || 0),
         pendingCount,
         paidCount,
         supplierAccounts: Number(supplierStats[0]?.accounts || 0),
-        // Signed: can be negative when advance credit remains
-        supplierPayables: money(Number(supplierStats[0]?.outstanding || 0))
+        supplierPayables: money(Number(supplierStats[0]?.outstanding || 0)),
+        supplierPaid: money(supplierPaidAgg._sum.amount || 0),
       }
     };
+  }
+
+  /**
+   * Collected breakdown — per-customer payment totals for a date range.
+   * Used by the "Collected Today / Period" breakdown modal in Khata Ledger.
+   */
+  static async getCollectedBreakdown(fromDate?: string, toDate?: string) {
+    let rangeStart: Date | null = null;
+    let rangeEnd: Date | null = null;
+
+    if (fromDate) {
+      rangeStart = parseRangeStart(fromDate);
+      if (Number.isNaN(rangeStart.getTime())) rangeStart = null;
+    }
+    if (toDate) {
+      rangeEnd = parseRangeEnd(toDate);
+      if (Number.isNaN(rangeEnd.getTime())) rangeEnd = null;
+    }
+
+    const isFiltered = !!(rangeStart || rangeEnd);
+    const createdAtFilter: any = isFiltered
+      ? {
+          ...(rangeStart ? { gte: rangeStart } : {}),
+          ...(rangeEnd ? { lte: rangeEnd } : {}),
+        }
+      : undefined;
+
+    const rows = await prisma.payment.groupBy({
+      by: ['saleId'],
+      where: {
+        amount: { gt: 0 },
+        status: 'completed',
+        ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+        sale: {
+          saleType: { in: ['ledger_daily', 'ledger_monthly'] },
+          customer: { status: 'active' },
+        },
+      },
+      _sum: { amount: true },
+      _max: { createdAt: true },
+    });
+
+    if (rows.length === 0) {
+      return { success: true, statusCode: 200, data: [] };
+    }
+
+    const saleIds = rows.map((r) => r.saleId).filter(Boolean) as number[];
+    const sales = await prisma.sale.findMany({
+      where: { id: { in: saleIds } },
+      select: {
+        id: true,
+        customer: {
+          select: { id: true, name: true, phone: true, address: true, customerType: true },
+        },
+      },
+    });
+
+    const saleMap = new Map(sales.map((s) => [s.id, s.customer]));
+
+    type BreakdownEntry = {
+      customerId: number;
+      customerName: string;
+      phone: string | null;
+      address: string | null;
+      customerType: string;
+      totalPaid: number;
+      lastPaymentDate: Date | null;
+      paymentCount: number;
+    };
+
+    const customerMap = new Map<number, BreakdownEntry>();
+
+    for (const row of rows) {
+      const customer = saleMap.get(row.saleId!);
+      if (!customer) continue;
+      const paid = Number(row._sum.amount || 0);
+      const payDate = row._max.createdAt ?? null;
+      const existing = customerMap.get(customer.id);
+      if (existing) {
+        existing.totalPaid += paid;
+        existing.paymentCount += 1;
+        if (payDate && (!existing.lastPaymentDate || payDate > existing.lastPaymentDate)) {
+          existing.lastPaymentDate = payDate;
+        }
+      } else {
+        customerMap.set(customer.id, {
+          customerId: customer.id,
+          customerName: customer.name,
+          phone: customer.phone ?? null,
+          address: customer.address ?? null,
+          customerType: customer.customerType ?? '',
+          totalPaid: paid,
+          lastPaymentDate: payDate,
+          paymentCount: 1,
+        });
+      }
+    }
+
+    const data = Array.from(customerMap.values())
+      .sort((a, b) => b.totalPaid - a.totalPaid)
+      .map((r) => ({
+        ...r,
+        totalPaid: Math.round(r.totalPaid * 100) / 100,
+        lastPaymentDate: r.lastPaymentDate?.toISOString() ?? null,
+      }));
+
+    return { success: true, statusCode: 200, data };
   }
 
   /**

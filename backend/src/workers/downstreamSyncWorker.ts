@@ -526,6 +526,7 @@ async function applyCreate(
           customerPhone: p.customerPhone ?? null,
           totalAmount: Number(p.totalAmount),
           paidAmount: Number(p.paidAmount ?? 0),
+          discountAmount: Number(p.discountAmount ?? p.discount_amount ?? 0),
           remainingBalance: Number(p.remainingBalance ?? 0),
           status: p.status ?? 'paid',
           tokenNumber: Number(p.tokenNumber ?? 0),
@@ -646,6 +647,7 @@ async function applyCreate(
           remaining: Number(p.remaining ?? 0),
           reason: p.reason ?? null,
           addedBy: p.addedBy ?? 'sync',
+          expenseType: (p.expenseType || p.expense_type || 'SHOP').toUpperCase(),
           createdAt: p.createdAt ? new Date(p.createdAt) : undefined,
         }
       });

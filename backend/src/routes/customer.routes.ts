@@ -13,6 +13,9 @@ router.get('/', authenticateJWT, CustomerController.listCustomers);
 // GET /api/customers/summary — Dashboard stats (must be before /:id)
 router.get('/summary', authenticateJWT, CustomerController.getSummary);
 
+// GET /api/customers/collected-breakdown — Per-customer paid totals for a date range
+router.get('/collected-breakdown', authenticateJWT, CustomerController.getCollectedBreakdown);
+
 // GET /api/customers/:id/dues — Pending/partial sales for customer
 // (must be registered BEFORE /:id so "dues" is not treated as an id)
 router.get('/:id/dues', authenticateJWT, CustomerController.getDues);

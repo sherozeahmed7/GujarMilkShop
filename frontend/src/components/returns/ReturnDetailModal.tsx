@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, ReceiptText, User, Calendar, CreditCard, Package, Printer } from 'lucide-react';
 import { ReturnRecord, ReturnType } from '../../types';
+import { formatReceiptUnitPrice } from '../../utils/escposRasterizer';
 
 const returnTypeColors: Record<ReturnType, string> = {
   'Full Return': 'bg-rose-100 text-rose-700',
@@ -118,7 +119,7 @@ export const ReturnDetailModal: React.FC<ReturnDetailModalProps> = ({ record, on
                     <tr key={item.itemId} className="bg-white dark:bg-[#1a2e1f]">
                       <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-[#e2f5e8]">{item.name}</td>
                       <td className="px-3 py-2.5 text-right text-slate-600 dark:text-[#a7c4ae]">{item.returnQty}</td>
-                      <td className="px-3 py-2.5 text-right text-slate-600 dark:text-[#a7c4ae]">Rs. {item.unitPrice}</td>
+                      <td className="px-3 py-2.5 text-right text-slate-600 dark:text-[#a7c4ae]">Rs. {formatReceiptUnitPrice(item.unitPrice)}</td>
                       <td className="px-3 py-2.5 text-right font-bold text-emerald-700">Rs. {item.refundAmount.toLocaleString()}</td>
                     </tr>
                   ))}

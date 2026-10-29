@@ -12,6 +12,7 @@ import { buildReceipt, buildPixelPerfectReceipt } from '../utils/escposBuilder';
 import { NumericKeypadInput } from '../components/pos/NumericKeypadInput';
 import { inventoryService } from '../services/inventoryService';
 import { getInitialStandardPrices, computeStandardPrices, cacheStandardRates } from '../utils/pricingCalculator';
+import { nextToken, prewarmTokenAllocator } from '../utils/tokenAllocator';
 
 interface CartItem {
   id: string;
@@ -46,7 +47,7 @@ function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number):
     .map((c) => {
       const itemName = NAME_MAP[c.name];
       if (!itemName) throw new Error(`Unrecognised cart item name: "${c.name}"`);
-      return { itemName, quantity: c.quantity, lineTotal: money(c.total) };
+      return { itemName, quantity: c.quantity, lineTotal: money(c.total), catalogRate: c.pricePerKg };
     });
 
   if (raw.length === 0) return [];
@@ -66,13 +67,12 @@ function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number):
     });
   }
 
-  // Keep the effective rate at full precision: rounding both weight and rate
-  // can change the agreed rupee amount when the backend multiplies them.
+  // Keep the effective rate at full precision for backend mathematical balance:
   return raw.map((r, idx) => {
     const line = lineTotals[idx];
     const qty = qtyMoney(r.quantity) || 0.001;
     const unitPrice = line / qty;
-    return { itemName: r.itemName, quantity: qty, unitPrice };
+    return { itemName: r.itemName, quantity: qty, unitPrice, catalogRate: r.catalogRate };
   });
 }
 
@@ -122,6 +122,10 @@ export const POS: React.FC = () => {
   const [heldCartsLoading, setHeldCartsLoading] = useState(false);
 
   const [posConfig, setPosConfig] = useState<POSConfigData | null>(null);
+  // Auto-print: seeded from localStorage for instant startup; synced from backend config once loaded
+  const [autoPrint, setAutoPrint] = useState<boolean>(() => {
+    try { return localStorage.getItem('posAutoPrint') !== 'false'; } catch { return true; }
+  });
   const [lastSaleDetails, setLastSaleDetails] = useState<any>(null);
   // Duplicate-print protection: track which sale IDs have already been sent to the printer
   const printedSaleIds = useRef<Set<number>>(new Set());
@@ -129,18 +133,13 @@ export const POS: React.FC = () => {
   // Shared print helper — used by auto-print and Reprint button
   const executePrint = React.useCallback(async (saleData: any, forceRaster = false) => {
     if (!posConfig || !posConfig.printerEnabled) return;
-    // Use instant text ESC/POS mode (takes <1ms byte generation) for lightning fast checkout printing
-    const useRaster = forceRaster || (posConfig as any).printMode === 'raster';
+    // Default to raster mode unless explicitly configured as 'text'
+    const useRaster = forceRaster || (posConfig as any).printMode !== 'text';
     let receiptBytes: number[];
     if (useRaster) {
-      try {
-        receiptBytes = await buildPixelPerfectReceipt(saleData);
-      } catch (rasterErr) {
-        console.warn('[PRINT] Rasterizer failed, falling back to text ESC/POS mode:', rasterErr);
-        receiptBytes = buildReceipt(saleData);
-      }
+      // No silent fallback — let error throw to caller so cashier is alerted
+      receiptBytes = await buildPixelPerfectReceipt(saleData);
     } else {
-      // Instant ESC/POS hardware text mode (< 0.5ms)
       receiptBytes = buildReceipt(saleData);
     }
     await invoke<boolean>('print_raw_bytes', {
@@ -176,7 +175,12 @@ export const POS: React.FC = () => {
     const loadConfig = async () => {
       try {
         const conf = await posConfigService.getPOSConfig();
-        if (!cancelled) setPosConfig(conf);
+        if (!cancelled) {
+          setPosConfig(conf);
+          // Sync autoPrint from backend config (authoritative source)
+          setAutoPrint(conf.printReceiptAutomatically);
+          try { localStorage.setItem('posAutoPrint', conf.printReceiptAutomatically ? 'true' : 'false'); } catch { /* ignore */ }
+        }
       } catch (e) {
         console.error('Failed to load POS config', e);
       }
@@ -184,6 +188,9 @@ export const POS: React.FC = () => {
 
     syncDailyRates();
     loadConfig();
+
+    // Pre-warm token allocator so first checkout token is available instantly
+    prewarmTokenAllocator();
 
     // Startup Crash Recovery: Scan durable pending journal and safely reconcile any uncommitted sales
     invoke<any>('recover_pending_journal')
@@ -224,7 +231,7 @@ export const POS: React.FC = () => {
     setKhataLoadError(null);
 
     customerService
-      .getCustomers({ status: 'active' })
+      .getCustomers({ status: 'all' })
       .then((list) => {
         if (cancelled) return;
         const ledgerOnly = list.filter(
@@ -268,6 +275,19 @@ export const POS: React.FC = () => {
       localStorage.setItem('posCartLineMode', mode);
     } catch {
       /* ignore */
+    }
+  };
+
+  /** Toggle auto-print: persists to backend POSConfig + localStorage cache */
+  const setAutoPrintPersisted = async (value: boolean) => {
+    setAutoPrint(value);
+    try { localStorage.setItem('posAutoPrint', value ? 'true' : 'false'); } catch { /* ignore */ }
+    if (posConfig) {
+      const updated = { ...posConfig, printReceiptAutomatically: value };
+      setPosConfig(updated);
+      try { await posConfigService.updatePOSConfig(updated); } catch (e) {
+        console.warn('[POS] Failed to persist autoPrint to backend:', e);
+      }
     }
   };
 
@@ -581,9 +601,13 @@ export const POS: React.FC = () => {
     // ─── INSTANT CASH OK ORCHESTRATION WITH DURABLE RECOVERY JOURNAL ────────────
     const t0 = performance.now();
 
-    // 1. Generate unique permanent checkoutUuid
+    // 1. Generate unique permanent checkoutUuid and reserve next token
     const checkoutUuid = crypto.randomUUID();
     payload.checkoutUuid = checkoutUuid;
+    const tokenNumber = await nextToken();
+    payload.tokenNumber = tokenNumber;
+    const currentUserId = Number(localStorage.getItem('userId')) || undefined;
+    payload.createdById = currentUserId;
 
     // 2. Deep-clone / freeze immutable sale snapshot
     const snapshotCart = [...cart];
@@ -627,21 +651,22 @@ export const POS: React.FC = () => {
     }
     setCheckoutSuccess(successLabel);
 
-    // 5. BUILD NATIVE ESC/POS TEXT RECEIPT ENTIRELY FROM SNAPSHOT
+    // 5. BUILD & PRINT RASTER RECEIPT FROM SNAPSHOT (instant — token already known)
     let tCmdBuilt = tUiReset;
     let tIpcDispatched = tUiReset;
 
-    if (posConfig?.printReceiptAutomatically && posConfig?.printerEnabled) {
+    if (autoPrint && posConfig?.printerEnabled) {
       try {
         const saleData = {
           checkoutUuid,
+          tokenNumber,
           shopName: posConfig.shopName || 'Gujar Milk Shop',
           createdAt: snapshotCreatedAt,
           customerName: snapshotCustomerName,
           items: items.map((i: any) => ({
             itemName: i.itemName,
             quantity: i.quantity,
-            unitPrice: i.unitPrice,
+            unitPrice: i.catalogRate ?? i.unitPrice,
             totalPrice: money(i.quantity * i.unitPrice),
           })),
           totalAmount,
@@ -654,21 +679,17 @@ export const POS: React.FC = () => {
           footerText: posConfig.receiptFooterText,
           autoCutter: posConfig.autoCutter,
         };
-
-        const receiptBytes = buildReceipt(saleData);
         tCmdBuilt = performance.now();
 
-        // 6. IMMEDIATELY DISPATCH PRINTER IPC (Non-blocking, background hardware thread)
-        invoke<boolean>('print_raw_bytes', {
-          printerName: posConfig.printerName || '',
-          data: receiptBytes,
-        }).catch((printErr) => {
-          console.warn('[PRINT] Async print dispatch warning:', printErr);
-          setCheckoutError(`Receipt printing warning: ${printErr}.`);
+        // 6. IMMEDIATELY DISPATCH PRINTER VIA executePrint (raster mode by default, no silent fallback)
+        executePrint(saleData).catch((printErr) => {
+          console.error('[PRINT] Async print dispatch error:', printErr);
+          setCheckoutError(`Receipt printing error: ${printErr}. Check printer connection.`);
         });
         tIpcDispatched = performance.now();
       } catch (printBuildErr) {
         console.error('[PRINT] Failed to build receipt bytes:', printBuildErr);
+        setCheckoutError(`Receipt generation error: ${printBuildErr}`);
       }
     }
 
@@ -687,7 +708,7 @@ export const POS: React.FC = () => {
         console.log(
           `⚡ [CASH OK ORCHESTRATION] Journal: ${(tJournalWritten - t0).toFixed(2)}ms | ` +
           `UI reset: ${(tUiReset - tJournalWritten).toFixed(2)}ms | ` +
-          `ESC/POS built: ${(tCmdBuilt - tUiReset).toFixed(2)}ms | ` +
+          `Receipt built: ${(tCmdBuilt - tUiReset).toFixed(2)}ms | ` +
           `Printer IPC: ${(tIpcDispatched - tCmdBuilt).toFixed(2)}ms | ` +
           `SQLite commit: ${(tCommit - t0).toFixed(2)}ms`
         );
@@ -700,6 +721,7 @@ export const POS: React.FC = () => {
 
         setLastSaleDetails({
           ...sale,
+          tokenNumber: sale?.tokenNumber ?? tokenNumber,
           subtotal: snapshotSubtotal,
           discount: snapshotDiscount,
           paymentMethod: snapshotPaymentMethod === 'khata' ? 'KHATA' : snapshotPaymentMethod,
@@ -1038,6 +1060,7 @@ export const POS: React.FC = () => {
                   <div className="divide-y divide-slate-100">
                     {filteredKhataCustomers.map((c) => {
                       const isMonthly = c.customerType === 'monthly_ledger';
+                      const isInactive = c.status === 'inactive';
                       return (
                         <button
                           key={c.id}
@@ -1046,13 +1069,30 @@ export const POS: React.FC = () => {
                             setSelectedKhataCustomer(c);
                             setCheckoutError(null);
                           }}
-                          className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-[#FEF3C7]/40 active:bg-[#FEF3C7]/70 transition-colors"
+                          className={`w-full text-left px-4 py-4 flex items-center gap-3 transition-colors ${
+                            isInactive 
+                              ? 'bg-red-50/50 hover:bg-red-100/50 active:bg-red-100' 
+                              : 'hover:bg-[#FEF3C7]/40 active:bg-[#FEF3C7]/70'
+                          }`}
                         >
-                          <div className="w-10 h-10 rounded-full bg-[#FEF3C7] text-[#166534] border border-[#FDE68A] flex items-center justify-center flex-shrink-0">
+                          <div className={`w-10 h-10 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                            isInactive 
+                              ? 'bg-red-100 text-red-600 border-red-200' 
+                              : 'bg-[#FEF3C7] text-[#166534] border-[#FDE68A]'
+                          }`}>
                             <UserRound className="w-5 h-5" />
                           </div>
                           <div className="min-w-0 flex-1 text-left">
-                            <div className="text-sm font-bold text-slate-800 truncate">{c.name}</div>
+                            <div className={`text-sm truncate ${
+                              isInactive 
+                                ? 'line-through text-red-500 font-bold' 
+                                : 'font-bold text-slate-800'
+                            }`}>
+                              {c.name}
+                            </div>
+                            {isInactive && (
+                              <div className="text-[10px] text-red-500 font-semibold">Khata Ended / Inactive</div>
+                            )}
                           </div>
                           <div className="flex-shrink-0 flex flex-col items-end gap-1">
                             <span
@@ -1112,12 +1152,22 @@ export const POS: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Card options: same item → new line OR combine (last line only) */}
+                {/* Card options: auto-print | same item → new line OR combine (last line only) */}
                 <div className="rounded-xl bg-white/10 border border-white/15 px-3 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100 mb-2">
-                    Same item click
-                  </p>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mb-2">
+                    {/* Auto-print toggle */}
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-white" title="Auto-print receipt on every Cash OK">
+                      <input
+                        type="checkbox"
+                        checked={autoPrint}
+                        onChange={(e) => setAutoPrintPersisted(e.target.checked)}
+                        className="h-4 w-4 rounded border-white/30 accent-[#FEF3C7] cursor-pointer"
+                      />
+                      Print Receipt
+                    </label>
+                    {/* Divider */}
+                    <span className="text-white/20 text-sm select-none hidden sm:inline">|</span>
+                    {/* Same-item mode */}
                     <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-white">
                       <input
                         type="checkbox"
@@ -1137,10 +1187,12 @@ export const POS: React.FC = () => {
                       New line
                     </label>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-emerald-100/70 leading-snug">
+                  <p className="text-[10px] text-emerald-100/70 leading-snug">
+                    {autoPrint ? '🖨 Receipt prints automatically after each sale.' : '🔕 Auto-print off — use Reprint to print manually.'}
+                    {' '}
                     {cartLineMode === 'combine'
-                      ? 'Adds qty to the last matching line only — earlier separate lines stay as they are.'
-                      : 'Every click adds a new cart line, even for the same product.'}
+                      ? 'Same item: qty combined on last line.'
+                      : 'Same item: always adds a new line.'}
                   </p>
                 </div>
               </div>
@@ -1329,13 +1381,32 @@ export const POS: React.FC = () => {
                 )}
 
                 {paymentMethod === 'khata' && selectedKhataCustomer && (
-                  <div className="mb-4 flex items-center gap-2 p-3 bg-[#FEF3C7] border border-[#FDE68A] rounded-xl">
-                    <div className="w-9 h-9 rounded-full bg-[#166534] text-white flex items-center justify-center flex-shrink-0 font-bold">
+                  <div className={`mb-4 flex items-center gap-2 p-3 rounded-xl border ${
+                    selectedKhataCustomer.status === 'inactive'
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-[#FEF3C7] border-[#FDE68A]'
+                  }`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold ${
+                      selectedKhataCustomer.status === 'inactive'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-[#166534] text-white'
+                    }`}>
                       <UserRound className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-[#78350F] truncate">{selectedKhataCustomer.name}</div>
-                      <div className="text-[10px] text-[#78350F]/80 truncate">
+                      <div className={`text-xs truncate ${
+                        selectedKhataCustomer.status === 'inactive'
+                          ? 'line-through text-red-600 font-bold'
+                          : 'font-bold text-[#78350F]'
+                      }`}>
+                        {selectedKhataCustomer.name}
+                      </div>
+                      <div className={`text-[10px] truncate ${
+                        selectedKhataCustomer.status === 'inactive'
+                          ? 'text-red-500 font-semibold'
+                          : 'text-[#78350F]/80'
+                      }`}>
+                        {selectedKhataCustomer.status === 'inactive' ? 'Khata Ended · ' : ''}
                         {selectedKhataCustomer.phone?.trim() || 'Not Available'}
                         {' · '}
                         {selectedKhataCustomer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily'}

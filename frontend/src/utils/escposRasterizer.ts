@@ -8,13 +8,39 @@ const ESC = 0x1b;
 const GS = 0x1d;
 const LF = 0x0a;
 
-const INIT = [ESC, 0x40];
-const CUT = [GS, 0x56, 0x00]; // Full cut
+const INIT = [
+  ESC, 0x40,                               // Reset / initialize printer
+  ESC, 0x37, 0x07, 0xf0, 0x02,             // Max heating dots & pulse duration (2400us for deep black thermal burn)
+  GS,  0x28, 0x4b, 0x02, 0x00, 0x31, 0x02, // Set print density to dark (+2)
+];
+// Single clean cut: GS V 0 (Standard ESC/POS full cut - fires cutter blade exactly once)
+const CUT = [GS, 0x56, 0x00];
+
+/**
+ * Formats a unit price for receipts, displays, and modals.
+ * Cleans floating-point inaccuracies from rupee-to-kg conversions
+ * (e.g. 50 / 0.185 = 270.27027027027026 -> "270").
+ */
+export function formatReceiptUnitPrice(unitPrice: number): string {
+  const num = Number(unitPrice);
+  if (!num || isNaN(num)) return '0';
+
+  if (Number.isInteger(num)) return num.toString();
+
+  // If very close to an integer (within 0.45, e.g. 270.27027... or 239.808...)
+  const rounded = Math.round(num);
+  if (Math.abs(num - rounded) < 0.45) {
+    return rounded.toString();
+  }
+
+  // Otherwise, round to at most 2 decimal places without trailing zeros
+  return (Math.round(num * 100) / 100).toString();
+}
 
 export interface RasterReceiptOptions {
   widthMm?: '58mm' | '80mm';
   autoCutter?: boolean;
-  densityThreshold?: number; // 0-255 (default ~180 for deep crisp black)
+  densityThreshold?: number; // 0-255 (default ~225 for deep crisp solid black)
 }
 
 /**
@@ -34,24 +60,19 @@ export function canvasToEscposRaster(
 
   // ESC/POS raster width must be multiple of 8 bits (1 byte)
   const widthBytes = Math.ceil(width / 8);
-  const threshold = options.densityThreshold ?? 185; // Binarization threshold
+  const threshold = options.densityThreshold ?? 225; // 225 captures anti-aliased font edges as crisp solid black
 
   const bytes: number[] = [];
 
   // 1. Initialise
   bytes.push(...INIT);
 
-  // 2. GS v 0 header:
-  // [GS, 0x76, 0x30, mode (0), xL, xH, yL, yH]
-  const xL = widthBytes & 0xff;
-  const xH = (widthBytes >> 8) & 0xff;
-  const yL = height & 0xff;
-  const yH = (height >> 8) & 0xff;
-
-  bytes.push(GS, 0x76, 0x30, 0x00, xL, xH, yL, yH);
-
-  // 4. Pack 8 monochrome pixels into 1 byte (1 = Black, 0 = White)
+  // ---------------------------------------------------------------------------
+  // 2. Build monochrome pixel rows first (pack 8 pixels per byte)
+  // ---------------------------------------------------------------------------
+  const rowBytes: number[][] = [];
   for (let y = 0; y < height; y++) {
+    const row: number[] = [];
     for (let xByte = 0; xByte < widthBytes; xByte++) {
       let byteVal = 0;
       for (let bit = 0; bit < 8; bit++) {
@@ -62,25 +83,46 @@ export function canvasToEscposRaster(
           const g = pixels[idx + 1];
           const b = pixels[idx + 2];
           const a = pixels[idx + 3];
-
-          // Treat transparent background as white
-          if (a < 50) {
-            // White (bit 0)
-          } else {
-            // Standard luminance formula
+          if (a >= 25) {
             const lum = 0.299 * r + 0.587 * g + 0.114 * b;
             if (lum < threshold) {
-              byteVal |= 0x80 >> bit; // Black (bit 1)
+              byteVal |= 0x80 >> bit;
             }
           }
         }
       }
-      bytes.push(byteVal);
+      row.push(byteVal);
+    }
+    rowBytes.push(row);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Send raster data in chunks using GS v 0 (raster bit image)
+  //    Chunk size: 255 rows per command to avoid overwhelming the printer
+  //    buffer on BC-105 and similar budget 80mm printers.
+  // ---------------------------------------------------------------------------
+  const CHUNK_ROWS = 255;
+  const xL = widthBytes & 0xff;
+  const xH = (widthBytes >> 8) & 0xff;
+
+  for (let start = 0; start < height; start += CHUNK_ROWS) {
+    const end = Math.min(start + CHUNK_ROWS, height);
+    const chunkHeight = end - start;
+    const yL = chunkHeight & 0xff;
+    const yH = (chunkHeight >> 8) & 0xff;
+
+    // GS v 0 header for this chunk
+    bytes.push(GS, 0x76, 0x30, 0x00, xL, xH, yL, yH);
+
+    for (let r = start; r < end; r++) {
+      bytes.push(...rowBytes[r]);
     }
   }
 
-  // 5. Feed paper & Auto cut
-  bytes.push(LF, LF, LF, LF);
+  // ---------------------------------------------------------------------------
+  // 4. Flush raster line buffer with single LF, then issue hardware cut
+  // ---------------------------------------------------------------------------
+  bytes.push(LF);
   if (options.autoCutter !== false) {
     bytes.push(...CUT);
   }
@@ -145,7 +187,7 @@ export async function renderReceiptToCanvas(
   const currency = sale.currencySymbol || 'Rs.';
   const shopName = (sale.shopName || 'GUJAR MILK SHOP').toUpperCase();
 
-  let y = 16;
+  let y = 6;
 
   // 1. Shop Title (font-black 900)
   ctx.font = '900 34px "Inter", "Arial", sans-serif';
@@ -167,7 +209,8 @@ export async function renderReceiptToCanvas(
   // 4. Bill & Date Header
   ctx.font = '700 20px "Inter", "Arial", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`Bill: BILL-${sale.id}`, 20, y);
+  const billLabel = sale.id != null ? `BILL-${sale.id}` : `REF-${(sale.checkoutUuid || '').slice(-8).toUpperCase()}`;
+  ctx.fillText(`Bill: ${billLabel}`, 20, y);
   
   ctx.textAlign = 'right';
   const d = new Date(sale.createdAt);
@@ -243,10 +286,10 @@ export async function renderReceiptToCanvas(
 
     y += 28;
 
-    // Sub-line: Quantity x Unit Price
-    ctx.font = '700 20px "Inter", "Arial", sans-serif';
+    // Sub-line: Quantity x Unit Price (bold, high-contrast, clean rate)
+    ctx.font = '800 22px "Inter", "Arial", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`${item.quantity} x ${currency}${item.unitPrice}`, 20, y);
+    ctx.fillText(`${item.quantity} x ${currency}${formatReceiptUnitPrice(item.unitPrice)}`, 20, y);
     y += 32;
   }
 
@@ -277,7 +320,7 @@ export async function renderReceiptToCanvas(
   y += 56;
 
   // 11. Barcode
-  const barcodeText = `BILL-${sale.id}`;
+  const barcodeText = sale.id != null ? `BILL-${sale.id}` : (sale.checkoutUuid ? `REF-${sale.checkoutUuid.slice(-8).toUpperCase()}` : 'POS-RECEIPT');
   drawCode39Barcode(ctx, barcodeText, 20, y, targetWidth - 40, 54);
   y += 62;
 
@@ -291,6 +334,9 @@ export async function renderReceiptToCanvas(
   ctx.font = '700 22px "Inter", "Arial", sans-serif';
   ctx.fillText(sale.footerText || 'Thank you for your visit!', targetWidth / 2, y);
   y += 36;
+
+  // 14. Bottom margin — minimal 0.2 cm blank space (~16px at 203 DPI) before cut
+  y += 16;
 
   // Final trim canvas height
   const finalCanvas = document.createElement('canvas');

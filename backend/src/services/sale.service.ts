@@ -32,6 +32,7 @@ export interface CreateSalePayload {
   customerName?: string;
   customerPhone?: string;
   checkoutUuid?: string;
+  tokenNumber?: number;
 }
 
 function money(n: number): number {
@@ -287,9 +288,13 @@ function trendBucketKey(date: Date, start: Date, end: Date): string {
 
 function buildSalesAnalytics(
   sales: Array<{
+    id?: number;
     saleType: string;
     totalAmount: number;
     paidAmount: number;
+    discountAmount?: number | null;
+    customerName?: string | null;
+    customer?: { name: string } | null;
     createdAt: Date;
     items?: { itemName: string; totalPrice: number }[];
     payments?: { method: string }[];
@@ -315,12 +320,31 @@ function buildSalesAnalytics(
     sales.filter((s) => s.saleType === 'split').reduce((sum, s) => sum + s.totalAmount, 0)
   );
 
+  const totalDiscount = money(
+    sales.reduce((sum, s) => sum + (s.discountAmount || 0), 0)
+  );
+
+  // Build per-sale discount breakdown for the popup modal
+  const discountSales = sales
+    .filter((s) => s.discountAmount && s.discountAmount > 0)
+    .map((s) => ({
+      id: s.id,
+      customerName: s.customerName || s.customer?.name || null,
+      saleType: s.saleType,
+      createdAt: s.createdAt,
+      discountAmount: money(s.discountAmount || 0),
+      // originalAmount = totalAmount before discount was applied
+      originalAmount: money(s.totalAmount + (s.discountAmount || 0)),
+      afterDiscountAmount: money(s.totalAmount),
+    }));
+
   const summary = {
     netSales,
     cashSales,
     onlineSales,
     splitSales,
-    totalBills: sales.length
+    totalBills: sales.length,
+    totalDiscount,
   };
 
   const start = rangeStart || (sales.length
@@ -390,7 +414,7 @@ function buildSalesAnalytics(
       value: categoryTotal > 0 ? Math.round((amount / categoryTotal) * 100) : 0
     }));
 
-  return { summary, trend, paymentMethods, categoryBreakdown };
+  return { summary, trend, paymentMethods, categoryBreakdown, discountSales };
 }
 
 function isLedgerType(saleType: string): boolean {
@@ -462,7 +486,10 @@ async function getNextTokenNumber(tx: any): Promise<number> {
     select: { tokenNumber: true },
   });
 
-  return lastSale ? (lastSale.tokenNumber || 0) + 1 : 1;
+  if (!lastSale || !lastSale.tokenNumber || lastSale.tokenNumber < 1000) {
+    return 1000;
+  }
+  return lastSale.tokenNumber + 1;
 }
 
 export class SaleService {
@@ -648,7 +675,7 @@ export class SaleService {
           txWaitMs = money(tTxStart - t0);
 
           const walkInCustomer = await getOrCreateWalkInCustomer(tx);
-          const tokenNumber = await getNextTokenNumber(tx);
+          const tokenNumber = payload.tokenNumber ?? (await getNextTokenNumber(tx));
           const saleCloudUuid = checkoutUuid || crypto.randomUUID();
           
           const itemsWithUuids = normalizedItems.map((item) => ({
@@ -670,6 +697,7 @@ export class SaleService {
               remainingBalance: 0,
               status: 'paid',
               tokenNumber,
+              createdById: userId || null,
               cloudUuid: saleCloudUuid,
               items: { create: itemsWithUuids },
               payments: {
@@ -827,6 +855,7 @@ export class SaleService {
             remainingBalance: remaining,
             status: 'partial',
             tokenNumber,
+            createdById: userId || null,
             cloudUuid: saleCloudUuid,
             items: { create: itemsWithUuids },
             payments: {
@@ -971,6 +1000,7 @@ export class SaleService {
               remainingBalance: total,
               status: 'pending',
               tokenNumber,
+              createdById: userId || null,
               cloudUuid: saleCloudUuid,
               items: { create: itemsWithUuids },
               payments: {
@@ -1114,7 +1144,8 @@ export class SaleService {
         include: {
           items: true,
           payments: true,
-          customer: { select: { id: true, name: true, phone: true } }
+          customer: { select: { id: true, name: true, phone: true } },
+          createdBy: { select: { id: true, name: true, email: true } },
         }
       }),
       prisma.sale.count({ where })
@@ -1124,6 +1155,7 @@ export class SaleService {
       ...s,
       customerName: s.customerName || s.customer?.name || null,
       customerPhone: s.customerPhone || s.customer?.phone || null,
+      createdByName: (s as any).createdBy?.name || (s as any).createdBy?.email || null,
     }));
 
     if (!includeAnalytics) {
@@ -1147,7 +1179,15 @@ export class SaleService {
       const allSalesLean = await prisma.sale.findMany({
         where,
         orderBy: { id: 'desc' },
-        include: {
+        select: {
+          id: true,
+          saleType: true,
+          totalAmount: true,
+          paidAmount: true,
+          discountAmount: true,
+          customerName: true,
+          createdAt: true,
+          customer: { select: { name: true } },
           items: { select: { itemName: true, totalPrice: true } },
           payments: { select: { method: true } }
         }
@@ -1196,7 +1236,8 @@ export class SaleService {
       include: {
         items: true,
         payments: true,
-        customer: true
+        customer: true,
+        createdBy: { select: { id: true, name: true, email: true } },
       }
     });
 
@@ -1215,6 +1256,7 @@ export class SaleService {
         ...sale,
         customerName: sale.customerName || sale.customer?.name || null,
         customerPhone: sale.customerPhone || sale.customer?.phone || null,
+        createdByName: (sale as any).createdBy?.name || (sale as any).createdBy?.email || null,
       }
     };
   }

@@ -26,6 +26,7 @@ model User {
   closedShifts     Shift[]  @relation("ShiftClosedBy")
   createdSupplierCollections SupplierCollection[] @relation("CollectionCreatedBy")
   createdSupplierPayments    SupplierPayment[]    @relation("PaymentCreatedBy")
+  createdSales               Sale[]               @relation("SaleCreatedBy")
 }
 
 model Supplier {
@@ -209,6 +210,8 @@ model Sale {
   discountAmount   Float      @default(0)
   status           String     // "paid" | "partial" | "pending"
   tokenNumber      Int        @default(0)
+  createdById      Int?       // User who created this sale (null for legacy records)
+  createdBy        User?      @relation("SaleCreatedBy", fields: [createdById], references: [id])
   cloudUuid        String?    @unique // Embedded cloud identity (Phase 6)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
@@ -321,6 +324,7 @@ model Expense {
   remaining    Float    @default(0)
   reason       String?
   addedBy      String
+  expenseType  String   @default("SHOP") // "SHOP" | "PERSONAL"
   cloudUuid    String?  @unique // Embedded cloud identity (Phase 6)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -328,6 +332,8 @@ model Expense {
 
   @@index([date])
   @@index([category])
+  @@index([expenseType])
+  @@index([expenseType, date])
 }
 
 /** Cash paid toward an expense (links to open shift for expected-cash deduction) */

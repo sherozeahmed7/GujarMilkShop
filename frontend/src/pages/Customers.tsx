@@ -186,6 +186,7 @@ export const Customers: React.FC = () => {
         customerTypeFilter === 'walk_in';
 
       const customerFilters = {
+        status: 'all',
         search: debouncedSearch || undefined,
         dues: filterType === 'Dues' || undefined,
         customerType: ledgerType,

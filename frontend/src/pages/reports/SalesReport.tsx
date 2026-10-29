@@ -12,17 +12,15 @@ import { SummaryCard } from '../../components/reports/SummaryCard';
 
 import { LoadingState, ErrorState } from '../../components/reports/ReportStates';
 
-import { Banknote, CreditCard, MonitorSmartphone, ReceiptText, DollarSign } from 'lucide-react';
+import { Banknote, CreditCard, MonitorSmartphone, ReceiptText, DollarSign, Tag, X } from 'lucide-react';
 
 import {
-
   saleService,
-
   SaleRecord,
-
   SalesReportAnalytics,
-
+  DiscountSaleItem,
 } from '../../services/sale.service';
+import { formatUserName } from '../../utils/userFormat';
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -137,10 +135,12 @@ const EMPTY_ANALYTICS: SalesReportAnalytics = {
     onlineSales: 0,
     splitSales: 0,
     totalBills: 0,
+    totalDiscount: 0,
   },
   trend: [],
   paymentMethods: [],
   categoryBreakdown: [],
+  discountSales: [],
 };
 
 export const SalesReport: React.FC = () => {
@@ -152,6 +152,7 @@ export const SalesReport: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -181,7 +182,7 @@ export const SalesReport: React.FC = () => {
 
       setSales(result.sales || []);
 
-      setAnalytics(result.analytics || EMPTY_ANALYTICS);
+      setAnalytics({ ...EMPTY_ANALYTICS, ...(result.analytics || {}), summary: { ...EMPTY_ANALYTICS.summary, ...(result.analytics?.summary || {}) } });
 
     } catch (e: any) {
 
@@ -223,6 +224,8 @@ export const SalesReport: React.FC = () => {
 
     customer: saleCustomerLabel(s),
 
+    createdBy: formatUserName(s.createdByName),
+
     products: productsLabel(s),
 
     saleType: saleTypeLabel(s.saleType),
@@ -247,6 +250,8 @@ export const SalesReport: React.FC = () => {
 
   return (
 
+    <>
+
     <ReportLayout>
 
       <ReportHeader
@@ -266,6 +271,8 @@ export const SalesReport: React.FC = () => {
           { header: 'Time', dataKey: 'time' },
 
           { header: 'Customer', dataKey: 'customer' },
+
+          { header: 'Created By', dataKey: 'createdBy' },
 
           { header: 'Products', dataKey: 'products' },
 
@@ -316,7 +323,7 @@ export const SalesReport: React.FC = () => {
 
         <>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
 
             <SummaryCard title="Net Sales" value={fmt(summary.netSales)} icon={DollarSign} valueColor="text-emerald-600 dark:text-emerald-400" />
 
@@ -327,6 +334,26 @@ export const SalesReport: React.FC = () => {
             <SummaryCard title="Split Bills" value={fmt(summary.splitSales)} icon={CreditCard} valueColor="text-amber-600 dark:text-amber-400" />
 
             <SummaryCard title="Total Bills" value={summary.totalBills} icon={ReceiptText} />
+
+            {/* Discount card — clickable */}
+            <button
+              onClick={() => setDiscountModalOpen(true)}
+              className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 flex flex-col justify-between text-left hover:ring-2 hover:ring-rose-400/60 hover:border-rose-300 dark:hover:border-rose-500 transition-all group"
+              title="Click to see discount breakdown"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="text-sm font-semibold text-slate-500 dark:text-[#8ba895] group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">Discounts</h4>
+                <Tag className="w-5 h-5 text-rose-400 dark:text-rose-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+                  {fmt(summary.totalDiscount)}
+                </div>
+                <div className="text-xs text-slate-400 dark:text-[#64916e] mt-1">
+                  {analytics.discountSales.length} sale{analytics.discountSales.length !== 1 ? 's' : ''} with discount
+                </div>
+              </div>
+            </button>
 
           </div>
 
@@ -482,43 +509,25 @@ export const SalesReport: React.FC = () => {
                   <tr>
 
                     {[
-
                       'Invoice No',
-
                       'Date',
-
                       'Customer',
-
+                      'Created By',
                       'Products',
-
                       'Sale Type',
-
                       'Payment',
-
                       'Total',
-
                       'Paid',
-
                       'Remaining',
-
                       'Status',
-
                     ].map((h) => (
-
                       <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-[#a7c4ae] uppercase">
-
                         {h}
-
                       </th>
-
                     ))}
-
                   </tr>
-
                 </thead>
-
                 <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
-
                   {sales
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((s) => {
@@ -544,6 +553,11 @@ export const SalesReport: React.FC = () => {
                           {(s.customerPhone || s.customer?.phone) && (
                             <div className="text-xs text-slate-400 dark:text-[#64916e]">{s.customerPhone || s.customer?.phone}</div>
                           )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-[#1f3524] text-slate-700 dark:text-[#a7c4ae]">
+                            {formatUserName(s.createdByName)}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700 dark:text-[#a7c4ae] max-w-[220px]">
                           <div className="truncate" title={productsLabel(s)}>
@@ -591,7 +605,7 @@ export const SalesReport: React.FC = () => {
                   })}
                   {sales.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-slate-400 dark:text-[#64916e] text-sm">
+                      <td colSpan={11} className="px-4 py-8 text-center text-slate-400 dark:text-[#64916e] text-sm">
                         No sales found for the selected period. Complete a sale from POS to see it here.
                       </td>
                     </tr>
@@ -616,6 +630,85 @@ export const SalesReport: React.FC = () => {
 
     </ReportLayout>
 
+    {/* ── Discount Breakdown Modal ─────────────────────────────────────── */}
+    {discountModalOpen && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        onClick={(e) => { if (e.target === e.currentTarget) setDiscountModalOpen(false); }}
+      >
+        <div className="relative bg-white dark:bg-[#142119] rounded-2xl shadow-2xl border border-slate-200 dark:border-[#2d4a35] w-full max-w-2xl max-h-[80vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-[#2d4a35]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center">
+                <Tag className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-800 dark:text-[#e2f5e8]">Discount Breakdown</h2>
+                <p className="text-xs text-slate-400 dark:text-[#8ba895]">{filter.label}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setDiscountModalOpen(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-[#1e3124] text-slate-400 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Summary row */}
+          <div className="px-6 py-3 bg-rose-50 dark:bg-rose-500/10 border-b border-rose-100 dark:border-rose-500/20 flex gap-6">
+            <div>
+              <p className="text-xs text-slate-400 dark:text-[#8ba895] uppercase tracking-wider">Total Discounts Given</p>
+              <p className="text-xl font-bold text-rose-600 dark:text-rose-400">{fmt(summary.totalDiscount)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 dark:text-[#8ba895] uppercase tracking-wider">No. of Sales</p>
+              <p className="text-xl font-bold text-slate-700 dark:text-[#e2f5e8]">{analytics.discountSales.length}</p>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-y-auto flex-1">
+            {analytics.discountSales.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-[#64916e]">
+                <Tag className="w-10 h-10 mb-3 opacity-30" />
+                <p className="text-sm">No discounts were given in this period.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 dark:bg-[#0f1a12] sticky top-0">
+                  <tr>
+                    {['Date', 'Customer', 'Original Price', 'Discount', 'After Discount'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-[#8ba895] uppercase">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
+                  {(analytics.discountSales as DiscountSaleItem[]).map((d, i) => (
+                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-[#1e3124] transition-colors">
+                      <td className="px-4 py-3 text-sm text-slate-500 dark:text-[#a7c4ae]">
+                        <div>{new Date(d.createdAt).toLocaleDateString()}</div>
+                        <div className="text-xs text-slate-400 dark:text-[#64916e]">
+                          {new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-slate-700 dark:text-[#e2f5e8]">
+                        {d.customerName || (d.saleType === 'walk_in' ? 'Walk-in' : saleTypeLabel(d.saleType))}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{fmt(d.originalAmount)}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-rose-600 dark:text-rose-400">− {fmt(d.discountAmount)}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmt(d.afterDiscountAmount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 
 };

@@ -5,16 +5,15 @@ import { Eye, Edit2, Trash2, FileText, Search } from 'lucide-react';
 import { ExpenseModals } from './ExpenseModals';
 import { Pagination } from '../common/Pagination';
 
-type FilterTab = 'Today' | 'This Week' | 'This Month' | 'All Time';
+type FilterTab = 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'All Time';
 
 function money(n: number) {
   return Math.round(n || 0).toLocaleString();
 }
 
 export const ExpenseHistory: React.FC = () => {
-  const { expenses, isLoading } = useExpenseStore();
+  const { expenses, isLoading, filterTab, setFilterTab } = useExpenseStore();
 
-  const [activeTab, setActiveTab] = useState<FilterTab>('Today');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -25,21 +24,34 @@ export const ExpenseHistory: React.FC = () => {
   const [payExpense, setPayExpense] = useState<ExpenseRecord | null>(null);
 
   const filteredExpenses = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const toYMD = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const now = new Date();
+    const todayStr = toYMD(now);
 
     let filtered = expenses;
 
-    if (activeTab === 'Today') {
-      filtered = filtered.filter((e) => new Date(e.date) >= today);
-    } else if (activeTab === 'This Week') {
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      filtered = filtered.filter((e) => new Date(e.date) >= weekAgo);
-    } else if (activeTab === 'This Month') {
-      const monthAgo = new Date(today);
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      filtered = filtered.filter((e) => new Date(e.date) >= monthAgo);
+    if (filterTab === 'Today') {
+      filtered = filtered.filter((e) => e.date === todayStr);
+    } else if (filterTab === 'Yesterday') {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const yStr = toYMD(y);
+      filtered = filtered.filter((e) => e.date === yStr);
+    } else if (filterTab === 'This Week') {
+      const start = new Date(now);
+      const dow = start.getDay();
+      start.setDate(start.getDate() - (dow === 0 ? 6 : dow - 1)); // Monday
+      const startStr = toYMD(start);
+      filtered = filtered.filter((e) => e.date >= startStr && e.date <= todayStr);
+    } else if (filterTab === 'This Month') {
+      const startStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      filtered = filtered.filter((e) => e.date >= startStr && e.date <= todayStr);
     }
 
     if (searchQuery.trim()) {
@@ -54,22 +66,22 @@ export const ExpenseHistory: React.FC = () => {
     }
 
     return filtered;
-  }, [expenses, activeTab, searchQuery]);
+  }, [expenses, filterTab, searchQuery]);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchQuery]);
+  }, [filterTab, searchQuery]);
 
   return (
     <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-sm border border-slate-200 dark:border-[#2d4a35] overflow-hidden flex flex-col mt-6">
       <div className="border-b border-slate-200 dark:border-[#2d4a35] px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex space-x-1 overflow-x-auto custom-scrollbar">
-          {(['Today', 'This Week', 'This Month', 'All Time'] as FilterTab[]).map((tab) => (
+          {(['Today', 'Yesterday', 'This Week', 'This Month', 'All Time'] as FilterTab[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => setFilterTab(tab)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === tab
+                filterTab === tab
                   ? 'bg-slate-800 dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-sm'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#223927]'
               }`}

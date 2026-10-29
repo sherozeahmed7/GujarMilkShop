@@ -26,6 +26,17 @@ async function startServer() {
     startAutoBackupWorker();
     const lassiResetTimer = startLassiMidnightReset();
 
+    // Auto-close past midnight shifts on startup and every 60 seconds
+    import('./services/shift.service').then(({ ShiftService }) => {
+      ShiftService.autoClosePastMidnightShifts().catch(err => {
+        console.error('[STARTUP] Error in autoClosePastMidnightShifts:', err.message);
+      });
+      const shiftAutoCloseInterval = setInterval(() => {
+        ShiftService.autoClosePastMidnightShifts().catch(() => {});
+      }, 60_000);
+      (server as any).shiftAutoCloseInterval = shiftAutoCloseInterval;
+    });
+
     // Trigger daily startup sync queue retention check asynchronously
     import('./services/syncRetention.service').then(({ SyncRetentionService }) => {
       SyncRetentionService.runStartupRetentionCheck().catch(err => {
@@ -62,6 +73,8 @@ async function startServer() {
     console.log('Stopping POS backend server...');
     const lassiResetTimer = (server as any).lassiResetTimer;
     if (lassiResetTimer) clearTimeout(lassiResetTimer);
+    const shiftInterval = (server as any).shiftAutoCloseInterval;
+    if (shiftInterval) clearInterval(shiftInterval);
     server.close(() => {
       console.log('HTTP server closed.');
       process.exit(0);

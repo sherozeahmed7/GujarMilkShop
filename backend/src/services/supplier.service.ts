@@ -155,25 +155,22 @@ export class SupplierService {
     let rangeStart: string | null = null;
     let rangeEnd: string | null = null;
     if (filters?.fromDate) {
-      const d = new Date(filters.fromDate);
-      if (!Number.isNaN(d.getTime())) rangeStart = localDateKey(d);
+      if (filters.fromDate.length === 10) rangeStart = filters.fromDate;
+      else {
+        const d = new Date(filters.fromDate);
+        if (!Number.isNaN(d.getTime())) rangeStart = localDateKey(d);
+      }
     }
     if (filters?.toDate) {
-      const d = new Date(filters.toDate);
-      if (!Number.isNaN(d.getTime())) rangeEnd = localDateKey(d);
+      if (filters.toDate.length === 10) rangeEnd = filters.toDate;
+      else {
+        const d = new Date(filters.toDate);
+        if (!Number.isNaN(d.getTime())) rangeEnd = localDateKey(d);
+      }
     }
 
-    // Filter suppliers if a date range is provided (only those with activity)
-    if (rangeStart || rangeEnd) {
-      where.collections = {
-        some: {
-          ...(rangeStart ? { date: { gte: rangeStart } } : {}),
-          ...(rangeEnd ? { date: { lte: rangeEnd } } : {})
-        }
-      };
-    }
-
-    // 1. Fetch lean suppliers + opening balances
+    // 1. Fetch suppliers + opening balances
+    // NOTE: Keep all suppliers visible across filters; do not restrict `suppliers` list by collections date
     const suppliers = await prisma.supplier.findMany({
       where,
       orderBy: { id: 'desc' },
@@ -190,6 +187,7 @@ export class SupplierService {
 
     const supplierIds = suppliers.map((s) => s.id);
     const now = new Date();
+    const isFiltered = Boolean(rangeStart || rangeEnd);
 
     // Group suppliers by cycleType to determine current period
     const cycleGroups: Record<string, number[]> = {};
@@ -200,24 +198,35 @@ export class SupplierService {
     }
 
     // 2. Parallel aggregates
-    // - total purchased all time
-    // - total paid all time
-    // - period morning/evening quantities and amounts for the selected filter
+    // When a date range filter is provided:
+    // - purchasedAgg & paidAgg must only reflect activity inside the range
+    // - shiftAgg reflects milk inside the range
+    // When All Time:
+    // - purchasedAgg & paidAgg reflect all-time historical activity
+    const dateFilterObj: any = {};
+    if (rangeStart) dateFilterObj.gte = rangeStart;
+    if (rangeEnd) dateFilterObj.lte = rangeEnd;
+    const hasDateFilter = Object.keys(dateFilterObj).length > 0;
+
     const filterCollectionsWhere: any = {
       supplierId: { in: supplierIds },
-      ...(rangeStart ? { date: { gte: rangeStart } } : {}),
-      ...(rangeEnd ? { date: { lte: rangeEnd } } : {}),
+      ...(hasDateFilter ? { date: dateFilterObj } : {}),
+    };
+
+    const filterPaymentsWhere: any = {
+      supplierId: { in: supplierIds },
+      ...(hasDateFilter ? { date: dateFilterObj } : {}),
     };
 
     const aggPromises: Promise<any>[] = [
       prisma.supplierCollection.groupBy({
         by: ['supplierId'],
-        where: { supplierId: { in: supplierIds } },
+        where: isFiltered ? filterCollectionsWhere : { supplierId: { in: supplierIds } },
         _sum: { amount: true }
       }),
       prisma.supplierPayment.groupBy({
         by: ['supplierId'],
-        where: { supplierId: { in: supplierIds } },
+        where: isFiltered ? filterPaymentsWhere : { supplierId: { in: supplierIds } },
         _sum: { amount: true }
       }),
       prisma.supplierCollection.groupBy({
@@ -228,36 +237,37 @@ export class SupplierService {
     ];
 
     // Current and Previous period aggregations
+    // Only calculate historical cycle groupings when All Time.
+    // When date-filtered, Current Cycle is the period purchases and Previous Cycle is 0.
     const cycleKeys = Object.keys(cycleGroups);
-    for (const cycle of cycleKeys) {
-      const pStart = rangeStart || supplierPeriodStart(cycle, now);
-      
-      // Current Period
-      aggPromises.push(
-        prisma.supplierCollection.groupBy({
-          by: ['supplierId'],
-          where: {
-            supplierId: { in: cycleGroups[cycle] },
-            date: {
-              gte: pStart,
-              ...(rangeEnd ? { lte: rangeEnd } : {})
-            }
-          },
-          _sum: { amount: true }
-        }).then(res => ({ cycle, type: 'current', data: res }))
-      );
+    if (!isFiltered) {
+      for (const cycle of cycleKeys) {
+        const pStart = supplierPeriodStart(cycle, now);
+        
+        // Current Period
+        aggPromises.push(
+          prisma.supplierCollection.groupBy({
+            by: ['supplierId'],
+            where: {
+              supplierId: { in: cycleGroups[cycle] },
+              date: { gte: pStart }
+            },
+            _sum: { amount: true }
+          }).then(res => ({ cycle, type: 'current', data: res }))
+        );
 
-      // Previous Period (Strictly before pStart)
-      aggPromises.push(
-        prisma.supplierCollection.groupBy({
-          by: ['supplierId'],
-          where: {
-            supplierId: { in: cycleGroups[cycle] },
-            date: { lt: pStart }
-          },
-          _sum: { amount: true }
-        }).then(res => ({ cycle, type: 'previous', data: res }))
-      );
+        // Previous Period (Strictly before pStart)
+        aggPromises.push(
+          prisma.supplierCollection.groupBy({
+            by: ['supplierId'],
+            where: {
+              supplierId: { in: cycleGroups[cycle] },
+              date: { lt: pStart }
+            },
+            _sum: { amount: true }
+          }).then(res => ({ cycle, type: 'previous', data: res }))
+        );
+      }
     }
 
     const results = await Promise.all(aggPromises);
@@ -290,11 +300,13 @@ export class SupplierService {
     const currentPurchasedMap = new Map<number, number>();
     const previousPurchasedMap = new Map<number, number>();
     
-    for (let i = 3; i < results.length; i++) {
-      const { type, data } = results[i] as { type: string, data: any[] };
-      for (const r of data) {
-        if (type === 'current') currentPurchasedMap.set(r.supplierId, r._sum.amount || 0);
-        if (type === 'previous') previousPurchasedMap.set(r.supplierId, r._sum.amount || 0);
+    if (!isFiltered) {
+      for (let i = 3; i < results.length; i++) {
+        const { type, data } = results[i] as { type: string, data: any[] };
+        for (const r of data) {
+          if (type === 'current') currentPurchasedMap.set(r.supplierId, r._sum.amount || 0);
+          if (type === 'previous') previousPurchasedMap.set(r.supplierId, r._sum.amount || 0);
+        }
       }
     }
 
@@ -302,15 +314,13 @@ export class SupplierService {
     return suppliers.map((s) => {
       const purchased = purchasedMap.get(s.id) || 0;
       const paid = paidMap.get(s.id) || 0;
-      const advance = Number(s.guaranteedAdvance) || 0;
+      // Advance is only applicable all-time (or if period has an advance rule); when filtered to a period, Advance = 0 unless all time
+      const advance = !isFiltered ? (Number(s.guaranteedAdvance) || 0) : 0;
       
-      const openingBalance = s.collections?.[0] ? money(s.collections[0].amount) : 0;
+      const openingBalance = (!isFiltered && s.collections?.[0]) ? money(s.collections[0].amount) : 0;
       
-      const currPurchased = currentPurchasedMap.get(s.id) || 0;
-      const prevPurchased = previousPurchasedMap.get(s.id) || 0;
-
-      const currentAmount = money(currPurchased);
-      const previousAmount = money(prevPurchased);
+      const currentAmount = isFiltered ? money(purchased) : money(currentPurchasedMap.get(s.id) || 0);
+      const previousAmount = isFiltered ? 0 : money(previousPurchasedMap.get(s.id) || 0);
       const totalAmount = money(purchased - advance);
       const paidAmount = money(paid);
       const remainingBalance = money(totalAmount - paidAmount);

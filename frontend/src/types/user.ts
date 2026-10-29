@@ -26,4 +26,5 @@ export interface UpdateUserPayload {
   assignedRole?: string;
   assignedScreens?: string[];
   status?: 'Active' | 'Inactive';
+  password?: string;
 }

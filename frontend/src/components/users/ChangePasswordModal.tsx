@@ -9,7 +9,8 @@ interface ChangePasswordModalProps {
 }
 
 export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ user, onClose }) => {
-  const isChangingOwn = !user;
+  const loggedInUserId = localStorage.getItem('userId');
+  const isChangingOwn = !user || (loggedInUserId && String(user.id) === loggedInUserId);
   
   const [adminPassword, setAdminPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');

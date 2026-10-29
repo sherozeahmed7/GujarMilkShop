@@ -159,7 +159,12 @@ async function main() {
         date: today,
       },
     });
-    console.log('💰 [Template DB] Starter Daily Rates seeded');
+    // Run migration runner to stamp all 18 migrations so template.db has all indexes & AppMigration records
+    process.env.DATABASE_URL = dbUrl;
+    const { preparePendingDataMigrations, runPendingDataMigrations } = await import('../src/migrations/migrationRunner');
+    const prepared = await preparePendingDataMigrations(prisma);
+    await runPendingDataMigrations(prisma, prepared);
+    console.log('⚡ [Template DB] All versioned migrations stamped and verified');
 
   } finally {
     await prisma.$disconnect();

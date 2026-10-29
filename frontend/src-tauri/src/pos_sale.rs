@@ -34,6 +34,12 @@ pub struct CreateSalePayload {
     pub discount_amount: Option<f64>,
     #[serde(rename = "checkoutUuid")]
     pub checkout_uuid: Option<String>,
+    /// Frontend-allocated token number. When supplied, stored verbatim.
+    /// When absent (legacy / recovery path), computed from MAX(tokenNumber)+1.
+    #[serde(rename = "tokenNumber")]
+    pub token_number: Option<i64>,
+    #[serde(rename = "createdById")]
+    pub created_by_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -404,6 +410,9 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
     conn.busy_timeout(std::time::Duration::from_millis(5000))
         .map_err(|e| format!("Failed to set SQLite busy timeout: {e}"))?;
 
+    // Auto-heal missing schema columns if connecting to older client database
+    ensure_sale_schema(&conn);
+
     // Basic Validation
     if payload.items.is_empty() {
         return Err("Items array cannot be empty".into());
@@ -598,33 +607,37 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
         .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
         .map_err(|e| format!("Failed to begin SQLite write transaction: {e}"))?;
 
-    // A. Allocate token number safely (monthly increment)
-    // Compute month-start as Unix ms for correct comparison against Prisma-stored OR Rust-stored integers
     let local_now = Local::now();
-    let month_start = NaiveDate::from_ymd_opt(local_now.year(), local_now.month(), 1)
-        .unwrap_or_default()
-        .and_hms_opt(0, 0, 0)
-        .unwrap_or_default();
-    // Convert to UTC Unix ms for comparison with createdAt (stored as Unix ms by Prisma & now by Rust)
-    let month_start_ms = month_start
-        .and_utc()
-        .timestamp_millis();
 
-    let max_token: Option<i64> = tx
-        .query_row(
-            "SELECT MAX(tokenNumber) FROM Sale WHERE createdAt >= ?1",
-            params![month_start_ms],
-            |row| row.get(0),
-        )
-        .unwrap_or(None);
-    let next_token = max_token.unwrap_or(0) + 1;
+    // A. Determine token number.
+    // If the frontend already allocated a token (pre-reserved block strategy), use it verbatim.
+    // Otherwise fall back to MAX(tokenNumber)+1 for the current month (recovery / legacy path).
+    let next_token: i64 = if let Some(frontend_token) = payload.token_number {
+        frontend_token
+    } else {
+        // Compute month-start as Unix ms
+        let month_start = NaiveDate::from_ymd_opt(local_now.year(), local_now.month(), 1)
+            .unwrap_or_default()
+            .and_hms_opt(0, 0, 0)
+            .unwrap_or_default();
+        let month_start_ms = month_start.and_utc().timestamp_millis();
+        let max_token: Option<i64> = tx
+            .query_row(
+                "SELECT MAX(tokenNumber) FROM Sale WHERE createdAt >= ?1",
+                params![month_start_ms],
+                |row| row.get(0),
+            )
+            .unwrap_or(None);
+        let max_val = max_token.unwrap_or(0);
+        if max_val < 1000 { 1000 } else { max_val + 1 }
+    };
 
     // B. Insert Sale — store createdAt/updatedAt as Unix ms (i64) to match Prisma format
     tx.execute(
         "INSERT INTO Sale (
             saleType, customerId, customerName, customerPhone, totalAmount, paidAmount,
-            discountAmount, remainingBalance, status, tokenNumber, cloudUuid, createdAt, updatedAt
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)",
+            discountAmount, remainingBalance, status, tokenNumber, cloudUuid, createdById, createdAt, updatedAt
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13)",
         params![
             &payload.sale_type,
             final_customer_id,
@@ -637,6 +650,7 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
             &sale_status,
             next_token,
             &checkout_uuid,
+            payload.created_by_id,
             now_ms,
         ],
     )
@@ -733,8 +747,8 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
         let day_start_ms = local_day_start.and_utc().timestamp_millis();
         let day_end_ms = local_day_end.and_utc().timestamp_millis() + 999;
 
-        let stock_row: Result<(i64, f64, f64, f64, f64, f64, f64), _> = tx.query_row(
-            "SELECT id, lassiSold, lassiRemaining, butterSold, butterClosing, gheeSold, gheeClosing 
+        let stock_row: Result<(i64, f64, f64, f64, f64, f64, f64, Option<String>), _> = tx.query_row(
+            "SELECT id, lassiSold, lassiRemaining, butterSold, butterClosing, gheeSold, gheeClosing, cloudUuid 
              FROM MilkProductDailyStock 
              WHERE date >= ?1 AND date <= ?2 LIMIT 1",
             params![day_start_ms, day_end_ms],
@@ -747,18 +761,28 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
                     row.get(4)?,
                     row.get(5)?,
                     row.get(6)?,
+                    row.get(7)?,
                 ))
             },
         );
 
-        let stock_id = match stock_row {
-            Ok((id, l_sold, l_rem, b_sold, b_clos, g_sold, g_clos)) => {
+        let (stock_id, final_stock_uuid) = match stock_row {
+            Ok((id, l_sold, l_rem, b_sold, b_clos, g_sold, g_clos, maybe_uuid)) => {
                 let new_l_sold = round_money(l_sold + lassi_sold_delta);
                 let new_l_rem = round_money(l_rem - lassi_sold_delta);
                 let new_b_sold = round_money(b_sold + butter_sold_delta);
                 let new_b_clos = round_money(b_clos - butter_sold_delta);
                 let new_g_sold = round_money(g_sold + ghee_sold_delta);
                 let new_g_clos = round_money(g_clos - ghee_sold_delta);
+
+                let resolved_uuid = match maybe_uuid {
+                    Some(u) if !u.trim().is_empty() => u,
+                    _ => {
+                        let new_u = Uuid::new_v4().to_string();
+                        let _ = tx.execute("UPDATE MilkProductDailyStock SET cloudUuid = ?1 WHERE id = ?2", params![&new_u, id]);
+                        new_u
+                    }
+                };
 
                 tx.execute(
                     "UPDATE MilkProductDailyStock SET 
@@ -779,7 +803,7 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
                     ],
                 )
                 .map_err(|e| format!("Failed to update MilkProductDailyStock: {e}"))?;
-                id
+                (id, resolved_uuid)
             }
             Err(_) => {
                 let stock_uuid = Uuid::new_v4().to_string();
@@ -801,11 +825,11 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
                     ],
                 )
                 .map_err(|e| format!("Failed to insert MilkProductDailyStock: {e}"))?;
-                tx.last_insert_rowid()
+                (tx.last_insert_rowid(), stock_uuid)
             }
         };
 
-        // Enqueue SyncQueue for MilkProductDailyStock update
+        // Enqueue SyncQueue for MilkProductDailyStock update with stable cloudUuid
         let f2_sync_uuid = Uuid::new_v4().to_string();
         let f2_payload = serde_json::json!({
             "id": stock_id,
@@ -817,11 +841,12 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
             "INSERT INTO SyncQueue (
                 eventUuid, deviceId, entityType, localId, cloudUuid, operation,
                 payload, status, layer, retryCount, createdAt, updatedAt
-            ) VALUES (?1, ?2, 'MilkProductDailyStock', ?3, '', 'UPDATE', ?4, 'PENDING', 2, 0, ?5, ?5)",
+            ) VALUES (?1, ?2, 'MilkProductDailyStock', ?3, ?4, 'UPDATE', ?5, 'PENDING', 2, 0, ?6, ?6)",
             params![
                 &f2_sync_uuid,
                 &device_id,
                 stock_id,
+                &final_stock_uuid,
                 f2_payload.to_string(),
                 now_ms
             ],
@@ -915,6 +940,7 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
         "remainingBalance": remaining_balance,
         "status": sale_status,
         "tokenNumber": next_token,
+        "createdById": payload.created_by_id,
         "createdAt": now_iso_json,
         "updatedAt": now_iso_json,
     });
@@ -1015,4 +1041,128 @@ fn execute_save_pos_sale(payload: CreateSalePayload) -> Result<SavedSaleResponse
         items: saved_items,
         payments: saved_payments,
     })
+}
+
+/// ─── Token Pre-Reservation ───────────────────────────────────────────────────
+///
+/// Reserves a contiguous block of token numbers for the frontend allocator.
+/// Uses an EXCLUSIVE transaction to ensure no two concurrent calls overlap.
+/// Monthly scoping: tokens are counted from the start of the current local month.
+///
+/// Returns { start, end } — the frontend hands them out locally (instant, 0ms).
+#[tauri::command]
+pub async fn reserve_token_block(block_size: i64) -> Result<serde_json::Value, String> {
+    let size = block_size.max(1).min(200);
+    tauri::async_runtime::spawn_blocking(move || execute_reserve_token_block(size))
+        .await
+        .map_err(|e| format!("reserve_token_block thread failed: {e}"))?
+}
+
+fn execute_reserve_token_block(block_size: i64) -> Result<serde_json::Value, String> {
+    let db_path = get_sqlite_db_path();
+    if !db_path.exists() {
+        // DB not yet initialised — return tokens starting at 1
+        return Ok(serde_json::json!({ "start": 1, "end": block_size }));
+    }
+
+    let conn = Connection::open_with_flags(
+        &db_path,
+        OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| format!("Failed to open DB for token reservation: {e}"))?;
+
+    conn.busy_timeout(std::time::Duration::from_millis(3000))
+        .map_err(|e| format!("Failed to set busy timeout: {e}"))?;
+
+    // Auto-heal missing schema columns if connecting to older client database
+    ensure_sale_schema(&conn);
+
+    // EXCLUSIVE transaction prevents two sessions racing on the same block
+    conn.execute_batch("BEGIN EXCLUSIVE")
+        .map_err(|e| format!("Failed to begin EXCLUSIVE transaction: {e}"))?;
+
+    let local_now = Local::now();
+    let month_start = NaiveDate::from_ymd_opt(local_now.year(), local_now.month(), 1)
+        .unwrap_or_default()
+        .and_hms_opt(0, 0, 0)
+        .unwrap_or_default();
+    let month_start_ms = month_start.and_utc().timestamp_millis();
+
+    let max_token: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(tokenNumber), 0) FROM Sale WHERE createdAt >= ?1",
+            params![month_start_ms],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    let start = if max_token < 1000 { 1000 } else { max_token + 1 };
+    let end   = start + block_size - 1;
+
+    conn.execute_batch("COMMIT")
+        .map_err(|e| format!("Failed to commit token reservation: {e}"))?;
+
+    Ok(serde_json::json!({ "start": start, "end": end }))
+}
+
+/// Auto-heals missing columns on Sale table if running against an older local SQLite database.
+fn ensure_sale_schema(conn: &Connection) {
+    let has_discount: bool = conn
+        .prepare("PRAGMA table_info(Sale)")
+        .and_then(|mut stmt| {
+            let cols = stmt.query_map([], |row| row.get::<_, String>(1))?;
+            let mut found = false;
+            for c in cols.flatten() {
+                if c == "discountAmount" {
+                    found = true;
+                    break;
+                }
+            }
+            Ok(found)
+        })
+        .unwrap_or(true);
+
+    if !has_discount {
+        let _ = conn.execute("ALTER TABLE Sale ADD COLUMN discountAmount REAL NOT NULL DEFAULT 0", []);
+    }
+
+    let has_token: bool = conn
+        .prepare("PRAGMA table_info(Sale)")
+        .and_then(|mut stmt| {
+            let cols = stmt.query_map([], |row| row.get::<_, String>(1))?;
+            let mut found = false;
+            for c in cols.flatten() {
+                if c == "tokenNumber" {
+                    found = true;
+                    break;
+                }
+            }
+            Ok(found)
+        })
+        .unwrap_or(true);
+
+    if !has_token {
+        let _ = conn.execute("ALTER TABLE Sale ADD COLUMN tokenNumber INTEGER NOT NULL DEFAULT 0", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS Sale_createdAt_tokenNumber_idx ON Sale(createdAt, tokenNumber)", []);
+    }
+
+    let has_created_by: bool = conn
+        .prepare("PRAGMA table_info(Sale)")
+        .and_then(|mut stmt| {
+            let cols = stmt.query_map([], |row| row.get::<_, String>(1))?;
+            let mut found = false;
+            for c in cols.flatten() {
+                if c == "createdById" {
+                    found = true;
+                    break;
+                }
+            }
+            Ok(found)
+        })
+        .unwrap_or(true);
+
+    if !has_created_by {
+        let _ = conn.execute("ALTER TABLE Sale ADD COLUMN createdById INTEGER", []);
+        let _ = conn.execute("CREATE INDEX IF NOT EXISTS Sale_createdById_idx ON Sale(createdById)", []);
+    }
 }

@@ -137,7 +137,7 @@ export class UserService {
   /**
    * Updates an existing user
    */
-  static async updateUser(id: number, payload: { name?: string; email: string; role: string; assignedScreens: string[] }) {
+  static async updateUser(id: number, payload: { name?: string; email: string; role: string; assignedScreens: string[]; password?: string }) {
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
       return { success: false, statusCode: 404, message: 'User not found.' };
@@ -152,15 +152,21 @@ export class UserService {
       }
     }
 
+    const updateData: any = {
+      name: payload.name || null,
+      email: payload.email.toLowerCase().trim(),
+      role: payload.role,
+      assignedScreens: JSON.stringify(payload.assignedScreens || [])
+    };
+
+    if (payload.password && payload.password.trim() !== '') {
+      updateData.password = await hashPassword(payload.password.trim());
+    }
+
     const updatedUser = await prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id },
-        data: {
-          name: payload.name || null,
-          email: payload.email.toLowerCase().trim(),
-          role: payload.role,
-          assignedScreens: JSON.stringify(payload.assignedScreens || [])
-        }
+        data: updateData
       });
       await SyncQueueService.enqueueUpdate(tx, 'User', updated.id, updated, 0);
       return updated;

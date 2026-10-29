@@ -55,42 +55,85 @@ export class ReportsController {
       const weekStart = toYMD(new Date(new Date().setDate(new Date().getDate() - 6)));
       const monthStart = toYMD(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
+      const typeParam = req.query.type ? String(req.query.type).toUpperCase() : undefined;
+      // type can be 'SHOP', 'PERSONAL', or 'COMBINED' / undefined (all)
+
       const [allExp, periodExp] = await Promise.all([
-        prisma.expense.findMany({ orderBy: { date: 'desc' } }),
-        prisma.expense.findMany({ where: { date: { gte: from, lte: to } }, orderBy: { date: 'desc' } }),
+        prisma.expense.findMany({
+          orderBy: [{ date: 'desc' }, { id: 'desc' }],
+          include: { payments: true },
+        }),
+        prisma.expense.findMany({
+          where: {
+            date: { gte: from, lte: to },
+            ...(typeParam && typeParam !== 'COMBINED' ? { expenseType: typeParam } : {}),
+          },
+          orderBy: [{ date: 'desc' }, { id: 'desc' }],
+          include: { payments: true },
+        }),
       ]);
 
-      const totalAmount = money(periodExp.reduce((s, e) => s + e.netExpense, 0));
+      // Metrics for the active filtered rows
+      const totalAmount = money(periodExp.reduce((s, e) => s + (e.amount || e.netExpense || 0), 0));
+      const totalPaid = money(periodExp.reduce((s, e) => s + (e.paidAmount || 0), 0));
+      const totalRemaining = money(periodExp.reduce((s, e) => s + (e.remaining || 0), 0));
+
       const catTotals: Record<string, number> = {};
       const byDate: Record<string, number> = {};
       for (const e of periodExp) {
-        catTotals[e.category] = money((catTotals[e.category] || 0) + e.netExpense);
-        byDate[e.date] = money((byDate[e.date] || 0) + e.netExpense);
+        const amt = money(e.amount || e.netExpense || 0);
+        catTotals[e.category] = money((catTotals[e.category] || 0) + amt);
+        byDate[e.date] = money((byDate[e.date] || 0) + amt);
       }
       const byCategory = Object.entries(catTotals).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
       const topCategory = byCategory[0]?.label || '—';
 
-      const fmt = (list: typeof allExp) => list.reduce((s, e) => s + e.netExpense, 0);
+      const fmtAmt = (list: typeof allExp) => list.reduce((s, e) => s + (e.amount || e.netExpense || 0), 0);
+
+      // Separate Shop and Personal stats for the selected period
+      const periodShop = periodExp.filter(e => (e.expenseType || 'SHOP') === 'SHOP');
+      const periodPersonal = periodExp.filter(e => e.expenseType === 'PERSONAL');
+
+      const shopTotal = money(periodShop.reduce((s, e) => s + (e.amount || e.netExpense || 0), 0));
+      const shopPaid = money(periodShop.reduce((s, e) => s + (e.paidAmount || 0), 0));
+      const shopRemaining = money(periodShop.reduce((s, e) => s + (e.remaining || 0), 0));
+
+      const personalTotal = money(periodPersonal.reduce((s, e) => s + (e.amount || 0), 0));
+      const personalReceived = money(periodPersonal.reduce((s, e) => s + (e.paidAmount || 0), 0));
+      const personalRemaining = money(periodPersonal.reduce((s, e) => s + (e.remaining || 0), 0));
 
       return ApiResponse.success(res, 'Expenses report.', {
         summary: {
           totalExpenses: periodExp.length,
           totalAmount,
+          totalPaid,
+          totalRemaining,
           avgExpense: periodExp.length ? money(totalAmount / periodExp.length) : 0,
-          todayAmount: money(fmt(allExp.filter(e => e.date === today))),
-          thisWeekAmount: money(fmt(allExp.filter(e => e.date >= weekStart))),
-          thisMonthAmount: money(fmt(allExp.filter(e => e.date >= monthStart))),
-          cashExpenses: money(fmt(periodExp.filter(e => !e.description?.toLowerCase().includes('bank')))),
-          bankExpenses: 0,
+          todayAmount: money(fmtAmt(allExp.filter(e => e.date === today && (!typeParam || typeParam === 'COMBINED' || e.expenseType === typeParam)))),
+          thisWeekAmount: money(fmtAmt(allExp.filter(e => e.date >= weekStart && (!typeParam || typeParam === 'COMBINED' || e.expenseType === typeParam)))),
+          thisMonthAmount: money(fmtAmt(allExp.filter(e => e.date >= monthStart && (!typeParam || typeParam === 'COMBINED' || e.expenseType === typeParam)))),
+          cashExpenses: totalPaid,
           topCategory,
+          // Segmented breakdowns for Combined view
+          shopExpenses: shopTotal,
+          shopPaid,
+          shopRemaining,
+          personalExpenses: personalTotal,
+          personalReceived,
+          personalRemaining,
         },
         expenses: periodExp.map(e => ({
-          id: String(e.id), date: e.date, category: e.category,
+          id: String(e.id),
+          date: e.date,
+          category: e.category,
           description: e.description || e.category,
-          amount: money(e.netExpense),
+          amount: money(e.amount || e.netExpense || 0),
+          paidAmount: money(e.paidAmount || 0),
+          remaining: money(e.remaining || 0),
           paymentMethod: 'Cash',
           addedBy: e.addedBy,
-          status: 'Paid',
+          expenseType: e.expenseType || 'SHOP',
+          status: e.remaining <= 0 ? 'Settled' : e.paidAmount > 0 ? 'Partial' : 'Pending',
         })),
         byCategory,
         dailyTrend: fillDailyTrend(from, to, byDate),
@@ -155,26 +198,56 @@ export class ReportsController {
       const { from, to, start, end } = parseRange(req);
 
       const shifts = await prisma.shift.findMany({
-        where: { shiftDate: { gte: from, lte: to } },
+        where: {
+          OR: [
+            { shiftDate: { gte: from, lte: to } },
+            { openedAt: { gte: start, lte: end } },
+          ],
+        },
         include: { openedBy: true, closedBy: true },
-        orderBy: { shiftDate: 'desc' },
+        orderBy: { openedAt: 'desc' },
       });
 
-      // --- PERFORMANCE FIX: single batch query instead of N per-shift queries ---
-      // Fetch all sales+payments that fall within the full range of all shifts at once
-      const allSalesInRange = shifts.length > 0
-        ? await prisma.sale.findMany({
-            where: {
-              createdAt: {
-                gte: shifts[shifts.length - 1].openedAt, // oldest shift start
-                lte: shifts[0].closedAt ?? new Date(),   // newest shift end
-              },
-            },
-            include: { payments: true },
-          })
-        : [];
+      if (shifts.length === 0) {
+        return ApiResponse.success(res, 'Shifts report.', {
+          summary: {
+            totalShifts: 0,
+            openShifts: 0,
+            closedShifts: 0,
+            totalHours: 0,
+            openingCash: 0,
+            expectedCash: 0,
+            countedCash: 0,
+            totalVariance: 0,
+          },
+          shifts: [],
+          salesByShift: [],
+          byCashier: [],
+          varianceByShift: [],
+        });
+      }
 
-      // Map sales to their shift windows in-memory (no extra DB round trips)
+      const shiftIds = shifts.map(s => s.id);
+      const earliestOpened = shifts.reduce((min, s) => s.openedAt < min ? s.openedAt : min, shifts[0].openedAt);
+      const latestClosed = shifts.reduce((max, s) => {
+        const c = s.closedAt ?? new Date();
+        return c > max ? c : max;
+      }, shifts[0].closedAt ?? new Date());
+
+      // Fetch all sales, expense payments, supplier cash payments, and cash returns in shift windows
+      const [allSalesInRange, allExpensePayments, allSupplierPayments, allReturns] = await Promise.all([
+        prisma.sale.findMany({
+          where: { createdAt: { gte: earliestOpened, lte: latestClosed } },
+          include: { payments: true },
+        }),
+        prisma.expensePayment.findMany({ where: { shiftId: { in: shiftIds } } }),
+        prisma.supplierPayment.findMany({ where: { shiftId: { in: shiftIds }, method: 'cash' } }),
+        prisma.return.findMany({
+          where: { createdAt: { gte: earliestOpened, lte: latestClosed }, paymentMethod: 'Cash' },
+        }),
+      ]);
+
+      // Map sales and outflows to their shift windows in-memory (no extra DB round trips)
       const shiftRows = shifts.map((s) => {
         const shiftEnd = s.closedAt ?? new Date();
         const sales = allSalesInRange.filter(
@@ -182,12 +255,35 @@ export class ReportsController {
         );
         let cashSales = 0;
         for (const sale of sales) {
-          if (sale.saleType === 'walk_in' && sale.payments[0]?.method === 'cash') cashSales += sale.totalAmount;
-          if (sale.saleType === 'split') cashSales += (sale.payments[0]?.amount ?? 0);
+          const cashPmts = (sale.payments || []).filter(p => p.method === 'cash');
+          if (cashPmts.length > 0) {
+            cashSales += cashPmts.reduce((sum, p) => sum + (p.amount || 0), 0);
+          } else if (sale.saleType === 'walk_in') {
+            cashSales += (sale.paidAmount || sale.totalAmount || 0);
+          } else if (sale.saleType === 'split') {
+            cashSales += (sale.paidAmount || 0);
+          }
         }
+
+        const expPayments = allExpensePayments.filter(ep => ep.shiftId === s.id);
+        const supPayments = allSupplierPayments.filter(sp => sp.shiftId === s.id);
+        const rets = allReturns.filter(r => r.createdAt >= s.openedAt && r.createdAt <= shiftEnd);
+
+        const expensePaidTotal = expPayments.reduce((sum, ep) => sum + ep.amount, 0);
+        const supplierCashOut = supPayments.reduce((sum, sp) => sum + sp.amount, 0);
+        const refundsTotal = rets.reduce((sum, r) => sum + r.refundAmount, 0);
+
+        const cashIn = money(cashSales);
+        const cashOut = money(expensePaidTotal + supplierCashOut + refundsTotal);
+        const calculatedExpected = money(s.openingCash + cashIn - cashOut);
+        const expectedCash = s.status === 'Open' ? calculatedExpected : (s.expectedCash || calculatedExpected);
+        const countedCash = s.countedCash ?? (s.status === 'Open' ? calculatedExpected : 0);
+        const variance = s.difference ?? money(countedCash - expectedCash);
+
         const durationH = s.closedAt
           ? Math.round((s.closedAt.getTime() - s.openedAt.getTime()) / 3600000)
-          : 0;
+          : Math.round((new Date().getTime() - s.openedAt.getTime()) / 3600000);
+
         return {
           id: `SHIFT-${s.shiftDate}`,
           date: s.shiftDate,
@@ -195,11 +291,11 @@ export class ReportsController {
           openTime: s.openedAt.toISOString(),
           closedBy: s.closedBy?.name || s.closedBy?.email || '—',
           closeTime: s.closedAt?.toISOString() || '',
-          openingCash: s.openingCash,
+          openingCash: money(s.openingCash),
           cashSales: money(cashSales),
-          expectedCash: s.expectedCash,
-          countedCash: s.countedCash ?? 0,
-          variance: s.difference ?? 0,
+          expectedCash: money(expectedCash),
+          countedCash: money(countedCash),
+          variance: money(variance),
           durationHours: durationH,
           status: s.status,
         };
@@ -238,9 +334,14 @@ export class ReportsController {
       const { from, to, start, end } = parseRange(req);
 
       const shifts = await prisma.shift.findMany({
-        where: { shiftDate: { gte: from, lte: to } },
+        where: {
+          OR: [
+            { shiftDate: { gte: from, lte: to } },
+            { openedAt: { gte: start, lte: end } },
+          ],
+        },
         include: { openedBy: true, closedBy: true },
-        orderBy: { shiftDate: 'asc' },
+        orderBy: { openedAt: 'asc' },
       });
 
       if (shifts.length === 0) {
@@ -304,7 +405,6 @@ export class ReportsController {
           }
         }
 
-        // 2. Expenses & outflows from pre-fetched maps
         const expensePayments = expPayByShift.get(s.id) || [];
         const dateExpenses = dateExpByDate.get(s.shiftDate) || [];
         const supplierCashPayments = supPayByShift.get(s.id) || [];
@@ -312,9 +412,11 @@ export class ReportsController {
 
         const expensePaidTotal = expensePayments.length > 0
           ? expensePayments.reduce((sum, ep) => sum + ep.amount, 0)
-          : dateExpenses.reduce((sum, e) => sum + e.netExpense, 0);
+          : (s.status === 'Open' ? 0 : dateExpenses.reduce((sum, e) => sum + e.netExpense, 0));
         const supplierCashOut = supplierCashPayments.reduce((sum, sp) => sum + sp.amount, 0);
-        const refundsTotal = returnsList.reduce((sum, r) => sum + r.refundAmount, 0);
+        const refundsTotal = s.status === 'Open'
+          ? allReturns.filter(r => r.createdAt >= s.openedAt && r.createdAt <= shiftEnd).reduce((sum, r) => sum + r.refundAmount, 0)
+          : returnsList.reduce((sum, r) => sum + r.refundAmount, 0);
 
         const cashIn = money(cashSales);
         const cashOut = money(expensePaidTotal + supplierCashOut + refundsTotal);
@@ -489,42 +591,173 @@ export class ReportsController {
   // ── INVENTORY REPORT ────────────────────────────────────────────────────────
   static async inventory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const [products, rate, supplierCollections] = await Promise.all([
+      const fromQuery = req.query.from as string | undefined;
+      const toQuery = req.query.to as string | undefined;
+      const supplierQuery = req.query.supplierId as string | undefined || req.query.supplier as string | undefined;
+
+      const from = fromQuery;
+      const to = toQuery;
+      const isAllTime = !from && !to;
+
+      // ── Build UTC DateTime bounds from YYYY-MM-DD strings (PKT = UTC+5) ──
+      // A local calendar day in PKT: 00:00:00 PKT = previous day 19:00:00 UTC
+      //                              23:59:59 PKT = same day 18:59:59 UTC
+      // We subtract 5 hours to convert PKT midnight→UTC.
+      let movementStart: Date | undefined;
+      let movementEnd: Date | undefined;
+      if (!isAllTime) {
+        if (from) {
+          // Start of day in PKT: YYYY-MM-DD 00:00:00 PKT = YYYY-MM-DD−1 19:00:00 UTC
+          const d = new Date(from + 'T00:00:00+05:00');
+          movementStart = d;
+        }
+        if (to) {
+          // End of day in PKT: YYYY-MM-DD 23:59:59.999 PKT = YYYY-MM-DD 18:59:59.999 UTC
+          const d = new Date(to + 'T23:59:59.999+05:00');
+          movementEnd = d;
+        }
+      }
+
+      // ── Build movement filter (date + optional supplier) ──
+      const whereMovements: any = {};
+      if (!isAllTime) {
+        whereMovements.date = {};
+        if (movementStart) whereMovements.date.gte = movementStart;
+        if (movementEnd) whereMovements.date.lte = movementEnd;
+      }
+      let supplierIdFilter: number | undefined;
+      if (supplierQuery && supplierQuery !== 'All') {
+        const supIdNum = Number(supplierQuery);
+        if (!Number.isNaN(supIdNum) && supIdNum > 0) {
+          supplierIdFilter = supIdNum;
+        }
+      }
+      // For supplier filter on movements: only filter STOCK_IN by supplier
+      // (SALEs have no supplierId — we show all movements for the product in period)
+      // We do NOT restrict non-STOCK_IN movements by supplier to show full product activity
+
+      // ── Supplier collection filter (for milk rate calc) ──
+      const whereCollections: any = {
+        quantity: { gt: 0 },
+        rate: { gt: 0 },
+      };
+      if (!isAllTime) {
+        if (from) whereCollections.date = { ...(whereCollections.date || {}), gte: from };
+        if (to) whereCollections.date = { ...(whereCollections.date || {}), lte: to };
+      }
+      if (supplierIdFilter) {
+        whereCollections.supplierId = supplierIdFilter;
+      } else if (supplierQuery && supplierQuery !== 'All') {
+        whereCollections.supplier = { name: supplierQuery };
+      }
+
+      const [products, rate, supplierCollections, allSuppliers, periodMovementsRaw] = await Promise.all([
         prisma.inventoryProduct.findMany({
           where: { isActive: true },
-          include: { movements: true },
+          include: {
+            movements: {
+              orderBy: { date: 'asc' },
+            },
+          },
           orderBy: { name: 'asc' },
         }),
         prisma.dailyRate.findFirst({ orderBy: { id: 'desc' } }),
         prisma.supplierCollection.findMany({
-          where: {
-            quantity: { gt: 0 },
-            rate: { gt: 0 },
+          where: whereCollections,
+          select: {
+            id: true,
+            date: true,
+            shift: true,
+            milkType: true,
+            quantity: true,
+            rate: true,
+            amount: true,
+            supplierId: true,
+            supplier: { select: { id: true, name: true, code: true } },
           },
-          select: { quantity: true, rate: true },
+          orderBy: [{ date: 'desc' }, { id: 'desc' }],
+        }),
+        prisma.supplier.findMany({
+          where: { isActive: true },
+          select: { id: true, name: true, code: true },
+          orderBy: { name: 'asc' },
+        }),
+        prisma.inventoryMovement.findMany({
+          where: Object.keys(whereMovements).length > 0 ? whereMovements : undefined,
+          select: {
+            productId: true,
+            movementType: true,
+            quantity: true,
+            unitCost: true,
+            supplierId: true,
+            date: true,
+          },
+          orderBy: { date: 'asc' },
         }),
       ]);
 
-      // Calculate dynamic weighted average milk purchase rate from supplier collections
+      // Map period movements by productId
+      const periodMovementsByProduct: Record<number, typeof periodMovementsRaw> = {};
+      for (const m of periodMovementsRaw) {
+        if (!periodMovementsByProduct[m.productId]) {
+          periodMovementsByProduct[m.productId] = [];
+        }
+        periodMovementsByProduct[m.productId].push(m);
+      }
+
+      // Calculate dynamic weighted average milk purchase rate from supplier collections inside selected filter
       let totalMilkQty = 0;
       let totalMilkCost = 0;
       for (const sc of supplierCollections) {
-        totalMilkQty += sc.quantity;
-        totalMilkCost += sc.quantity * sc.rate;
+        const q = sc.quantity || 0;
+        const r = sc.rate || 0;
+        totalMilkQty += q;
+        totalMilkCost += q * r;
       }
       const supplierMilkAvgCost = totalMilkQty > 0 ? money(totalMilkCost / totalMilkQty) : 0;
 
       const rows = products.map(p => {
-        const stock = p.movements.reduce((s, m) => s + m.quantity, 0);
-        const costRows = p.movements.filter(m => m.unitCost && m.unitCost > 0);
-        const movementAvgCost = costRows.length ? money(costRows.reduce((s, m) => s + (m.unitCost || 0), 0) / costRows.length) : 0;
-        
+        // Actual current stock-on-hand = ALL lifetime cumulative movements
+        const currentStock = money(p.movements.reduce((s, m) => s + m.quantity, 0));
+
+        // Period movements for this product within selected date filter
+        const pMoves = periodMovementsByProduct[p.id] || [];
+        const periodStockIn = money(
+          pMoves.filter(m => m.movementType === 'STOCK_IN').reduce((s, m) => s + m.quantity, 0)
+        );
+        const periodSales = money(
+          Math.abs(pMoves.filter(m => m.movementType === 'SALE').reduce((s, m) => s + m.quantity, 0))
+        );
+        const periodReturns = money(
+          pMoves.filter(m => m.movementType === 'RETURN').reduce((s, m) => s + m.quantity, 0)
+        );
+        const periodNetMovement = money(
+          pMoves.reduce((s, m) => s + m.quantity, 0)
+        );
+
+        // Period purchase cost calculation
+        const periodStockInRows = pMoves.filter(m => m.movementType === 'STOCK_IN' && m.unitCost && m.unitCost > 0);
+        const periodStockInQty = periodStockInRows.reduce((s, m) => s + m.quantity, 0);
+        const periodStockInCost = periodStockInRows.reduce((s, m) => s + m.quantity * (m.unitCost || 0), 0);
+        const periodWeightedCost = periodStockInQty > 0 ? money(periodStockInCost / periodStockInQty) : 0;
+
+        // Lifetime stock in weighted cost (fallback for products without period stock-in)
+        const allStockInRows = p.movements.filter(m => m.movementType === 'STOCK_IN' && m.unitCost && m.unitCost > 0);
+        const allStockInQty = allStockInRows.reduce((s, m) => s + m.quantity, 0);
+        const allStockInCost = allStockInRows.reduce((s, m) => s + m.quantity * (m.unitCost || 0), 0);
+        const allWeightedCost = allStockInQty > 0 ? money(allStockInCost / allStockInQty) : 0;
+
         const name = p.name.toLowerCase();
         const code = (p.code || '').toLowerCase();
         const isMilk = name.includes('milk') || code.includes('milk');
 
-        // Dynamic inventory cost: for milk, use supplier weighted average if available, else fallback to movement average
-        const costPrice = isMilk && supplierMilkAvgCost > 0 ? supplierMilkAvgCost : movementAvgCost;
+        // Cost price for inventory valuation:
+        // For milk: use supplier milk avg cost if received in period, otherwise latest available or all-time
+        // For other items: use period weighted cost if available, else all-time weighted cost
+        const costPrice = isMilk
+          ? (supplierMilkAvgCost > 0 ? supplierMilkAvgCost : allWeightedCost)
+          : (periodWeightedCost > 0 ? periodWeightedCost : allWeightedCost);
+
         const salePrice = name.includes('milk')
           ? rate?.milkRate || 0
           : name.includes('yogurt')
@@ -536,26 +769,53 @@ export class ReportsController {
                 : name.includes('ghee')
                   ? rate?.gheeRate || 0
                   : costPrice;
-        const stockStatus = stock <= 0 ? 'Out of Stock' : stock <= p.lowStockThreshold ? 'Low Stock' : 'In Stock';
-        const lastMove = p.movements.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
+
+        const stockStatus = currentStock <= 0 ? 'Out of Stock' : currentStock <= p.lowStockThreshold ? 'Low Stock' : 'In Stock';
+        const sortedMoves = [...p.movements].sort((a, b) => b.date.getTime() - a.date.getTime());
+        const lastMove = sortedMoves[0];
+
         return {
-          sku: p.code, name: p.name, category: p.category,
-          supplier: 'N/A', stock: money(stock), costPrice, salePrice,
-          inventoryValue: money(stock * costPrice),
-          retailValue: money(stock * salePrice),
+          sku: p.code,
+          name: p.name,
+          category: p.category,
+          supplier: 'N/A',
+          stock: currentStock, // Actual current stock on hand
+          currentStock,
+          periodStockIn,
+          periodSales,
+          periodReturns,
+          periodNetMovement,
+          periodPurchaseCost: periodWeightedCost,
+          costPrice,
+          salePrice,
+          inventoryValue: money(currentStock * costPrice),
+          retailValue: money(currentStock * salePrice),
           stockStatus,
           lastUpdated: lastMove?.date?.toISOString() || p.updatedAt.toISOString(),
         };
       });
 
       const categories = [...new Set(rows.map(r => r.category))];
-      const suppliersSet = [...new Set(rows.map(r => r.supplier))];
+      const supplierOptions = allSuppliers.map(s => ({ id: String(s.id), name: s.name, code: s.code }));
       const valueByCategory: Record<string, number> = {};
       const stockByCategory: Record<string, number> = {};
       rows.forEach(r => {
         valueByCategory[r.category] = money((valueByCategory[r.category] || 0) + r.inventoryValue);
-        stockByCategory[r.category] = money((stockByCategory[r.category] || 0) + r.stock);
+        stockByCategory[r.category] = money((stockByCategory[r.category] || 0) + r.currentStock);
       });
+
+      const supplierMilkReceipts = supplierCollections.map(sc => ({
+        id: String(sc.id),
+        date: sc.date,
+        supplierId: String(sc.supplierId),
+        supplierName: sc.supplier?.name || 'Unknown',
+        supplierCode: sc.supplier?.code || '',
+        shift: sc.shift,
+        milkType: sc.milkType,
+        quantity: sc.quantity,
+        rate: sc.rate,
+        purchaseCost: money(sc.quantity * sc.rate),
+      }));
 
       return ApiResponse.success(res, 'Inventory report.', {
         summary: {
@@ -566,10 +826,17 @@ export class ReportsController {
           inventoryValue: money(rows.reduce((s, r) => s + r.inventoryValue, 0)),
           costValue: money(rows.reduce((s, r) => s + r.inventoryValue, 0)),
           estimatedRetailValue: money(rows.reduce((s, r) => s + r.retailValue, 0)),
+          // Milk Receiving dynamic metrics for the selected period & supplier
+          totalMilkReceived: money(totalMilkQty),
+          totalMilkCost: money(totalMilkCost),
+          averageMilkRate: supplierMilkAvgCost,
+          supplierReceiptCount: supplierCollections.length,
         },
         products: rows,
         categories,
-        suppliers: suppliersSet,
+        suppliers: supplierOptions.map(s => s.name),
+        supplierOptions,
+        supplierMilkReceipts,
         stockByCategory: Object.entries(stockByCategory).map(([label, value]) => ({ label, value })),
         valueByCategory: Object.entries(valueByCategory).map(([label, value]) => ({ label, value })),
         lowStockProducts: rows.filter(r => r.stockStatus !== 'In Stock').map(r => {
@@ -622,8 +889,11 @@ export class ReportsController {
         }),
         prisma.return.findMany({
           where: {
-            date: { gte: from, lte: toISOEnd },
             status: { not: 'Cancelled' },
+            OR: [
+              { createdAt: { gte: start, lte: end } },
+              { date: { gte: from, lte: toISOEnd } },
+            ],
           },
           include: { items: true },
         }),
@@ -671,7 +941,16 @@ export class ReportsController {
           where: { status: { not: 'voided' }, createdAt: { gte: f2LookbackStart, lte: end }, items: { some: { itemName: { in: ['lassi', 'butter', 'ghee'] } } } },
           include: { items: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         }),
-        prisma.return.findMany({ where: { date: { gte: f2LookbackYMD, lte: toISOEnd }, status: { not: 'Cancelled' } }, include: { items: true } }),
+        prisma.return.findMany({
+          where: {
+            status: { not: 'Cancelled' },
+            OR: [
+              { createdAt: { gte: f2LookbackStart, lte: end } },
+              { date: { gte: f2LookbackYMD, lte: toISOEnd } },
+            ],
+          },
+          include: { items: true },
+        }),
         prisma.inventoryMovement.findMany({
           where: { date: { gte: f2LookbackStart, lte: end }, product: { OR: [{ code: { in: ['LASSI', 'BUTTER', 'GHEE'] } }, { name: { in: ['Lassi', 'Butter', 'Ghee', 'lassi', 'butter', 'ghee'] } }] } },
           include: { product: { select: { code: true, name: true } } }, orderBy: [{ date: 'asc' }, { id: 'asc' }],
@@ -691,15 +970,23 @@ export class ReportsController {
       // Fetch all-time returns for the period's sales to correctly compute per-sale returned amounts.
       // This is a lightweight query (saleId + refundAmount only) and needed because the return service
       // reduces sale.totalAmount when a return is processed — even if the return date is outside this period.
-      const allReturnsBySaleInPeriod = sales.length > 0
-        ? await prisma.return.findMany({
+      // Chunked to avoid SQLite parameter limits when sales list has thousands of records (e.g. All Time).
+      let allReturnsBySaleInPeriod: Array<{ saleId: number | null; refundAmount: number }> = [];
+      if (sales.length > 0) {
+        const saleIds = Array.from(new Set(sales.map(s => s.id)));
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < saleIds.length; i += CHUNK_SIZE) {
+          const chunk = saleIds.slice(i, i + CHUNK_SIZE);
+          const chunkReturns = await prisma.return.findMany({
             where: {
-              saleId: { in: sales.map(s => s.id) },
+              saleId: { in: chunk },
               status: { not: 'Cancelled' },
             },
             select: { saleId: true, refundAmount: true },
-          })
-        : [];
+          });
+          allReturnsBySaleInPeriod.push(...chunkReturns);
+        }
+      }
 
 
       // Dynamic Milk Cost: Weighted average purchase rate paid to suppliers from SupplierCollection
@@ -1033,17 +1320,30 @@ export class ReportsController {
       const grossMargin = netSales > 0 ? parseFloat(((grossProfit / netSales) * 100).toFixed(2)) : 0;
 
       // ── 5. OPERATING EXPENSES WITH SUBCATEGORIES ─────────────────────────────
-      // totalExpenses (paidExpenses) = sum of netExpense — cash already paid out, affects P&L.
-      // grossExpenses = sum of expense.amount — the full bill cost including unpaid portions (display only).
-      let totalExpenses = 0;   // paid / P&L-affecting
-      let grossExpenses = 0;   // full bill total (visual reference)
+      // Shop Expenses (paidExpenses) = sum of netExpense for SHOP expenses — cash already paid out, affects P&L.
+      // Personal Expenses = tracked separately as an informational line (does NOT change Net Profit business logic).
+      let totalExpenses = 0;   // Shop Expenses (paid / P&L-affecting)
+      let grossExpenses = 0;   // full Shop bill total (visual reference)
+      let personalExpensesTotal = 0; // Total Personal Expenses in period (display line)
+      let personalCashReceivedTotal = 0; // Personal cash received/repaid in period
+      let personalOutstandingTotal = 0; // Personal remaining balance in period
+
       const expenseCategoryMap = new Map<string, { total: number; subcategories: Record<string, number> }>();
 
       for (const exp of periodExpenses) {
-        const cat = (exp.category || 'Other').trim() || 'Other';
-        const sub = (exp.description || exp.category || 'General').trim() || 'General';
+        const isPersonal = exp.expenseType === 'PERSONAL';
         const paidAmt = money(exp.paidAmount > 0 ? exp.paidAmount : (exp.netExpense || 0));
         const billAmt = money(exp.amount || exp.netExpense || 0);
+
+        if (isPersonal) {
+          personalExpensesTotal = money(personalExpensesTotal + billAmt);
+          personalCashReceivedTotal = money(personalCashReceivedTotal + (exp.paidAmount || 0));
+          personalOutstandingTotal = money(personalOutstandingTotal + (exp.remaining || 0));
+          continue; // Do NOT add personal expenses to shop operating expenses
+        }
+
+        const cat = (exp.category || 'Other').trim() || 'Other';
+        const sub = (exp.description || exp.category || 'General').trim() || 'General';
 
         totalExpenses = money(totalExpenses + paidAmt);
         grossExpenses = money(grossExpenses + billAmt);
@@ -1075,6 +1375,7 @@ export class ReportsController {
       expenseBreakdown.sort((a, b) => b.total - a.total);
 
       // ── 6. NET PROFIT & MARGIN ──────────────────────────────────────────────
+      // Existing Net Profit logic PRESERVED: Net Profit = Gross Profit - Shop Expenses (totalExpenses)
       const netProfit = money(grossProfit - totalExpenses);
       const netProfitMargin = netSales > 0 ? parseFloat(((netProfit / netSales) * 100).toFixed(2)) : 0;
 
@@ -1171,8 +1472,13 @@ export class ReportsController {
           cogs: totalCogs,
           grossProfit,
           grossMargin,
-          totalExpenses,       // paid expenses — affects P&L
-          grossExpenses,        // full bill total — display only
+          totalExpenses,       // paid shop expenses — affects P&L
+          grossExpenses,        // full bill shop total — display only
+          shopExpenses: totalExpenses, // Explicit Shop Expenses
+          personalExpenses: personalCashReceivedTotal, // User requested: Personal expense just show the received amount
+          personalGrossExpenses: personalExpensesTotal,
+          personalCashReceived: personalCashReceivedTotal,
+          personalOutstanding: personalOutstandingTotal,
           totalSupplierPaid,
           supplierCashPaid,
           supplierOnlinePaid,
@@ -1181,6 +1487,7 @@ export class ReportsController {
           netProfit,
           netProfitMargin,
           amountCollected: totalAmountCollected,
+          onlineAmount: onlineCollected || onlineSales,
           borrowedAmount,
           cashInHand: drawerCash.amount,
           cashInHandBasis: drawerCash.basis,

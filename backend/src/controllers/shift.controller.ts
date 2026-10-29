@@ -1,11 +1,26 @@
 import { Response, NextFunction } from 'express';
 import { ShiftService } from '../services/shift.service';
 import { ApiResponse } from '../utils/apiResponse';
-import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { AuthenticatedRequest, isSuperAdmin } from '../middleware/auth.middleware';
 
 export class ShiftController {
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    try { return ApiResponse.success(res, 'Shifts fetched successfully', await ShiftService.list(), 200); }
+    try {
+      const user = req.user;
+      const role = String(user?.role || '').toLowerCase().trim();
+      const email = String(user?.email || '').toLowerCase().trim();
+      const isAdmin =
+        isSuperAdmin(req) ||
+        role === 'admin' ||
+        role === 'super_admin' ||
+        role === 'superadmin' ||
+        role.includes('admin') ||
+        email === 'admin@gujarmilkshop.com' ||
+        user?.userId === 1;
+
+      const targetUserId = isAdmin ? undefined : user?.userId;
+      return ApiResponse.success(res, 'Shifts fetched successfully', await ShiftService.list(targetUserId), 200);
+    }
     catch (error) { next(error); }
   }
 

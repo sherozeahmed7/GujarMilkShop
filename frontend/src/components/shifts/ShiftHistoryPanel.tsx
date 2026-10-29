@@ -4,6 +4,7 @@ import { Pagination } from '../common/Pagination';
 import { useShiftStore } from '../../store/shiftStore';
 import { ShiftRecord, ShiftDifferenceStatus } from '../../types';
 import { ShiftDetailModal } from './ShiftDetailModal';
+import { formatUserName } from '../../utils/userFormat';
 
 const diffColors: Record<ShiftDifferenceStatus, string> = {
   Balanced: 'bg-emerald-100 text-emerald-700',
@@ -54,8 +55,8 @@ export const ShiftHistoryPanel: React.FC = () => {
               .map((shift) => (
               <tr key={shift.id} className="hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors">
                 <td className="px-4 py-3 font-medium text-slate-800 dark:text-[#e2f5e8]">{shift.date}</td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{shift.openedBy}</td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{shift.closedBy || '—'}</td>
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatUserName(shift.openedBy)}</td>
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatUserName(shift.closedBy)}</td>
                 <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">Rs. {shift.expectedCash.toLocaleString()}</td>
                 <td className="px-4 py-3 text-right">
                   {shift.difference !== undefined ? (

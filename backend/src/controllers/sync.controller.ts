@@ -96,12 +96,12 @@ function buildInsert(entityType: string, p: any): { sql: string; vals: any[] } {
       return {
         sql: `INSERT INTO sales
                 (id,local_id,device_id,sale_type,customer_uuid,customer_name,customer_phone,
-                 total_amount,paid_amount,remaining_balance,status,created_at,updated_at)
-              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                 total_amount,paid_amount,discount_amount,remaining_balance,status,token_number,created_at,updated_at)
+              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
               ON CONFLICT(device_id,local_id) DO NOTHING`,
         vals: [p.id,p.local_id,p.device_id,p.sale_type,p.customer_uuid,p.customer_name,
-               p.customer_phone,p.total_amount,p.paid_amount,p.remaining_balance,
-               p.status,p.created_at,p.updated_at],
+               p.customer_phone,p.total_amount,p.paid_amount,p.discount_amount ?? 0,p.remaining_balance,
+               p.status,p.token_number ?? null,p.created_at,p.updated_at],
       };
 
     case 'SaleItem':
@@ -127,12 +127,12 @@ function buildInsert(entityType: string, p: any): { sql: string; vals: any[] } {
       return {
         sql: `INSERT INTO expenses
                 (id,local_id,device_id,date,category,description,quantity,unit_cost,gross_loss,
-                 sold_recovery,net_expense,amount,paid_amount,remaining,reason,added_by,created_at,updated_at)
-              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+                 sold_recovery,net_expense,amount,paid_amount,remaining,reason,added_by,expense_type,created_at,updated_at)
+              VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
               ON CONFLICT(device_id,local_id) DO NOTHING`,
         vals: [p.id,p.local_id,p.device_id,p.date,p.category,p.description,p.quantity,
                p.unit_cost,p.gross_loss,p.sold_recovery,p.net_expense,p.amount,
-               p.paid_amount,p.remaining,p.reason,p.added_by,p.created_at,p.updated_at],
+               p.paid_amount,p.remaining,p.reason,p.added_by,p.expense_type || p.expenseType || 'SHOP',p.created_at,p.updated_at],
       };
 
     case 'ExpensePayment':

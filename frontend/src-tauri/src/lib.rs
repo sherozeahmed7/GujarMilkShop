@@ -108,15 +108,36 @@ async fn print_raw_bytes(printer_name: String, data: Vec<u8>) -> Result<bool, St
     .map_err(|e| format!("Print thread failed: {e}"))?
 }
 
+fn is_virtual_printer(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    lower.contains("microsoft xps")
+        || lower.contains("microsoft print to pdf")
+        || lower.contains("onenote")
+        || lower.contains("fax")
+        || lower.contains("send to onenote")
+        || lower.contains("adobe pdf")
+        || lower.contains("bullzip")
+        || lower.contains("foxit")
+        || lower.contains("cutepdf")
+        || lower.contains("pdf creator")
+}
+
 fn print_raw_bytes_blocking(printer_name: String, data: Vec<u8>) -> Result<bool, String> {
     unsafe {
         let mut target_printer = printer_name.trim().to_string();
+        // If no printer configured, pick the first real (non-virtual) printer
         if target_printer.is_empty() {
             if let Ok(printers) = list_printers() {
-                if let Some(first) = printers.first() {
+                if let Some(real) = printers.iter().find(|p| !is_virtual_printer(p)) {
+                    target_printer = real.clone();
+                } else if let Some(first) = printers.first() {
                     target_printer = first.clone();
                 }
             }
+        }
+
+        if target_printer.is_empty() {
+            return Err("No printer found. Install a printer in Windows Settings -> Printers & Scanners and select it in POS Settings.".into());
         }
 
         let printer_name_wide: Vec<u16> = OsStr::new(&target_printer)
@@ -131,11 +152,12 @@ fn print_raw_bytes_blocking(printer_name: String, data: Vec<u8>) -> Result<bool,
             Some(ptr::null_mut()),
         );
 
-        // If specific printer failed to open, try to find an alternative active printer
+        // If specific printer failed to open, try another REAL printer as fallback
         if (ok.is_err() || h_printer.is_invalid()) && !target_printer.is_empty() {
             if let Ok(printers) = list_printers() {
                 for alt in printers {
-                    if alt != target_printer {
+                    // Skip virtual printers and the one that already failed
+                    if alt != target_printer && !is_virtual_printer(&alt) {
                         let alt_wide: Vec<u16> = OsStr::new(&alt)
                             .encode_wide()
                             .chain(std::iter::once(0))
@@ -251,7 +273,7 @@ fn kill_port_or_orphan_backend() {
 }
 
 mod pos_sale;
-use pos_sale::{clear_pending_journal, recover_pending_journal, save_pos_sale, write_pending_journal};
+use pos_sale::{clear_pending_journal, recover_pending_journal, reserve_token_block, save_pos_sale, write_pending_journal};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -372,7 +394,8 @@ pub fn run() {
             save_pos_sale,
             write_pending_journal,
             clear_pending_journal,
-            recover_pending_journal
+            recover_pending_journal,
+            reserve_token_block
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

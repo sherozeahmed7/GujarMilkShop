@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS sales (
   customer_phone VARCHAR,
   total_amount DECIMAL NOT NULL,
   paid_amount DECIMAL NOT NULL,
+  discount_amount DECIMAL NOT NULL DEFAULT 0,
   remaining_balance DECIMAL NOT NULL DEFAULT 0,
   status VARCHAR NOT NULL DEFAULT 'completed',
   token_number VARCHAR,
@@ -224,6 +225,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   remaining DECIMAL NOT NULL,
   reason TEXT,
   added_by VARCHAR NOT NULL,
+  expense_type VARCHAR NOT NULL DEFAULT 'SHOP',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(device_id, local_id)
@@ -423,6 +425,18 @@ export async function ensureNeonSchema(): Promise<void> {
     const client = await pool.connect();
     try {
       await client.query(NEON_POSTGRES_SCHEMA);
+      // Additive column for existing Neon databases
+      await client.query(`
+        ALTER TABLE IF EXISTS expenses ADD COLUMN IF NOT EXISTS expense_type VARCHAR NOT NULL DEFAULT 'SHOP';
+        ALTER TABLE IF EXISTS sales ADD COLUMN IF NOT EXISTS discount_amount DECIMAL NOT NULL DEFAULT 0;
+        ALTER TABLE IF EXISTS returns ALTER COLUMN customer DROP NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_expenses_type ON expenses(expense_type);
+        CREATE INDEX IF NOT EXISTS idx_expenses_type_date ON expenses(expense_type, date);
+        CREATE INDEX IF NOT EXISTS idx_sales_discount_amount ON sales(discount_amount);
+        INSERT INTO customers (id, local_id, device_id, name, customer_type, status)
+        VALUES ('00000000-0000-4000-8000-000000000001', 0, 'SYSTEM', 'Walk-in Customer', 'walk_in', 'active')
+        ON CONFLICT (id) DO NOTHING;
+      `);
       schemaInitialized = true;
       console.log('✅ [Neon] Cloud PostgreSQL schema verified and ready.');
     } finally {

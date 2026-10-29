@@ -44,6 +44,18 @@ export interface LedgerSummaryStats {
   paidCount: number;
   supplierAccounts?: number;
   supplierPayables?: number;
+  supplierPaid?: number;
+}
+
+export interface CollectedBreakdownEntry {
+  customerId: number;
+  customerName: string;
+  phone: string | null;
+  address: string | null;
+  customerType: string;
+  totalPaid: number;
+  lastPaymentDate: string | null;
+  paymentCount: number;
 }
 
 export const customerService = {
@@ -58,8 +70,11 @@ export const customerService = {
   /**
    * GET /api/customers/summary?scope=ledger — Khata Ledger cards
    */
-  getLedgerSummary: async (): Promise<LedgerSummaryStats> => {
-    const response = await apiClient.get('/customers/summary', { scope: 'ledger' });
+  getLedgerSummary: async (fromDate?: string, toDate?: string): Promise<LedgerSummaryStats> => {
+    const params: Record<string, string> = { scope: 'ledger' };
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
+    const response = await apiClient.get('/customers/summary', params);
     return response.data as LedgerSummaryStats;
   },
 
@@ -111,6 +126,14 @@ export const customerService = {
   },
 
   /**
+   * PATCH /api/customers/:id/status — Activate / Deactivate
+   */
+  updateStatus: async (id: number, status: 'active' | 'inactive'): Promise<ApiCustomer> => {
+    const response = await apiClient.patch(`/customers/${id}/status`, { status });
+    return response.data as ApiCustomer;
+  },
+
+  /**
    * POST /api/customers/:id/settle-all — clear all ledger dues
    */
   settleAll: async (
@@ -125,5 +148,16 @@ export const customerService = {
       ...(discount !== undefined && discount > 0 ? { discount } : {}),
     });
     return response.data;
+  },
+
+  /**
+   * GET /api/customers/collected-breakdown — per-customer payment totals for a date range.
+   */
+  getCollectedBreakdown: async (fromDate?: string, toDate?: string): Promise<CollectedBreakdownEntry[]> => {
+    const params: Record<string, string> = {};
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
+    const response = await apiClient.get('/customers/collected-breakdown', Object.keys(params).length ? params : undefined);
+    return (response.data || []) as CollectedBreakdownEntry[];
   },
 };

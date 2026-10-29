@@ -48,6 +48,7 @@ const localDateKey = (value: string | Date) => {
 async function getSales(customerId: string, from?: Date, to?: Date): Promise<SaleRecord[]> {
   const sales = await apiClient.get('/sales', {
     customerId: Number(customerId),
+    limit: 0,
     ...(from ? { fromDate: from.toISOString() } : {}),
     ...(to ? { toDate: to.toISOString() } : {}),
   });
@@ -99,16 +100,27 @@ export const customerLedgerService = {
 
   async getMonthlyPayments(customerId: string, month: number, year: number): Promise<PaymentEntry[]> {
     const range = monthRange(month, year);
-    const sales = await getSales(customerId, range.start, range.end);
-    return getPayments(sales, customerId);
+    // Fetch all sales for this customer so payments made this month on previous sales are captured
+    const allSales = await getSales(customerId);
+    const allPayments = getPayments(allSales, customerId);
+    return allPayments.filter((p) => {
+      const pDate = new Date(p.date);
+      return pDate >= range.start && pDate <= range.end;
+    });
   },
 
   async getPreviousBalance(customerId: string, month: number, year: number): Promise<number> {
     const range = monthRange(month, year);
+    // All sales billed before the start of this month
     const historicalSales = await getSales(customerId, undefined, new Date(range.start.getTime() - 1));
     const billed = historicalSales.reduce((sum, sale) => sum + Number(sale.totalAmount || 0), 0);
-    const paid = getPayments(historicalSales, customerId).reduce((sum, payment) => sum + payment.amount, 0);
-    return money(billed - paid);
+    // All payments made before the start of this month
+    const allSales = await getSales(customerId);
+    const allPayments = getPayments(allSales, customerId);
+    const paidBeforeThisMonth = allPayments
+      .filter((p) => new Date(p.date) < range.start)
+      .reduce((sum, payment) => sum + payment.amount, 0);
+    return money(billed - paidBeforeThisMonth);
   },
 
   async getMonthlySummary(customerId: string, month: number, year: number): Promise<LedgerSummary> {

@@ -224,15 +224,9 @@ export const POSConfig: React.FC = () => {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col gap-4 justify-center">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={config.printReceiptAutomatically}
-                        onChange={(e) => handleChange('printReceiptAutomatically', e.target.checked)}
-                        className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
-                      />
-                      <span className="text-sm font-medium text-slate-700 dark:text-[#a7c4ae]">Print Receipt Automatically</span>
-                    </label>
+                    <p className="text-xs text-slate-500 dark:text-[#64916e] italic">
+                      Auto-print is now controlled directly on the POS screen (beside Combine / New Line).
+                    </p>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="checkbox"

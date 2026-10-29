@@ -29,8 +29,25 @@ export class CustomerController {
   static async getSummary(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const scope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
-      const result = await CustomerService.getCustomersSummary(scope);
+      const fromDate = typeof req.query.fromDate === 'string' ? req.query.fromDate : undefined;
+      const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : undefined;
+      const result = await CustomerService.getCustomersSummary(scope, fromDate, toDate);
       return ApiResponse.success(res, 'Customer summary fetched successfully', result.data, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/customers/collected-breakdown
+   * Query: fromDate, toDate — returns per-customer payment totals for the period.
+   */
+  static async getCollectedBreakdown(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const fromDate = typeof req.query.fromDate === 'string' ? req.query.fromDate : undefined;
+      const toDate = typeof req.query.toDate === 'string' ? req.query.toDate : undefined;
+      const result = await CustomerService.getCollectedBreakdown(fromDate, toDate);
+      return ApiResponse.success(res, 'Collected breakdown fetched', result.data, 200);
     } catch (error) {
       next(error);
     }

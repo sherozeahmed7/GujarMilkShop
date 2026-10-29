@@ -139,7 +139,7 @@ export class UserController {
         return ApiResponse.error(res, 'Forbidden: Only super_admin can perform this action.', 403);
       }
 
-      const { name, email, role, assignedScreens } = req.body;
+      const { name, email, role, assignedScreens, password } = req.body;
 
       if (!email || !role) {
         return ApiResponse.error(res, 'Email and role are required fields.', 400);
@@ -172,7 +172,8 @@ export class UserController {
         name,
         email,
         role,
-        assignedScreens
+        assignedScreens,
+        password: typeof password === 'string' && password.trim() ? password.trim() : undefined,
       });
 
       if (!result.success) {

@@ -100,13 +100,13 @@ export const ALL_SCREENS = [
  */
 async function seedSuperAdmin() {
   try {
-    const adminEmail = 'admin@gujarmilkshop.com';
-    const existingAdmin = await prisma.user.findUnique({
-      where: { email: adminEmail },
-      select: { id: true },
+    const existingAdmin = await prisma.user.findFirst({
+      where: { role: SUPER_ADMIN_ROLE },
+      select: { id: true, name: true, email: true },
     });
 
     if (!existingAdmin) {
+      const adminEmail = 'admin@gujarmilkshop.com';
       const hashedPassword = await hashPassword('admin123');
       await prisma.user.create({
         data: {
@@ -118,11 +118,20 @@ async function seedSuperAdmin() {
           assignedScreens: JSON.stringify(ALL_SCREENS)
         }
       });
+      console.log(`👤 Super Admin created: Shehroz (${adminEmail}) Role: ${SUPER_ADMIN_ROLE}`);
+    } else {
+      if (!existingAdmin.name || !existingAdmin.name.trim() || existingAdmin.name.includes('@')) {
+        await prisma.user.update({
+          where: { id: existingAdmin.id },
+          data: { name: 'Admin' },
+        });
+        console.log(`👤 Super Admin name updated to Admin (${existingAdmin.email}) Role: ${SUPER_ADMIN_ROLE}`);
+      } else {
+        console.log(`👤 Super Admin active: ${existingAdmin.name} (${existingAdmin.email}) Role: ${SUPER_ADMIN_ROLE}`);
+      }
     }
-
-    console.log(`👤 Super Admin ready: Shehroz (admin@gujarmilkshop.com / admin123) Role: ${SUPER_ADMIN_ROLE}`);
   } catch (error) {
-    console.error('⚠️ Error seeding super_admin user:', error);
+    console.error('⚠️ Error verifying super_admin user:', error);
   }
 }
 
@@ -223,6 +232,12 @@ export async function connectDB() {
     await prisma.$queryRawUnsafe(`PRAGMA mmap_size = 268435456;`);
     await prisma.$queryRawUnsafe(`PRAGMA synchronous = NORMAL;`);
     await prisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON;`);
+
+    // Universal Schema Auto-Healer: scans all Prisma models and live SQLite tables.
+    // If ANY column or table is missing on the client machine (e.g. Sale.discountAmount),
+    // it automatically alters the table and adds it immediately!
+    const { autoHealDatabaseSchema } = await import('../services/schemaAutoHealer.service');
+    await autoHealDatabaseSchema(prisma);
 
     // Run versioned schema and data migrations with backup, locks, transactions, and verification
     const { preparePendingDataMigrations, runPendingDataMigrations } = await import('../migrations/migrationRunner');

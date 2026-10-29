@@ -9,8 +9,12 @@ const ESC = 0x1b;
 const GS  = 0x1d;
 const LF  = 0x0a;
 
-// Initialise printer
-const INIT         = [ESC, 0x40];
+// Initialise printer & configure thermal print head for maximum darkness & density
+const INIT         = [
+  ESC, 0x40,                               // Reset / init
+  ESC, 0x37, 0x07, 0xf0, 0x02,             // Max heating dots & pulse duration (2400us for deep black)
+  GS,  0x28, 0x4b, 0x02, 0x00, 0x31, 0x02, // Set print density to dark (+2)
+];
 
 // Alignment
 const ALIGN_LEFT   = [ESC, 0x61, 0x00];
@@ -29,8 +33,8 @@ const DOUBLE_ON    = [GS,  0x21, 0x11]; // Double height + Double width
 const DOUBLE_OFF   = [GS,  0x21, 0x00];
 const DBL_HEIGHT   = [GS,  0x21, 0x01]; // Double height only
 
-// Auto cut
-const CUT          = [GS,  0x56, 0x00];
+// Single clean cut: GS V 0 (Standard ESC/POS full cut - fires cutter blade exactly once)
+const CUT          = [GS, 0x56, 0x00];
 
 // Line feed
 const newline = (): number[] => [LF];
@@ -245,8 +249,8 @@ export function buildReceipt(sale: ReceiptSale): number[] {
     push(dottedRow(itemUpper, itemTotalStr, cols));
     push(BOLD_OFF);
     
-    // Line 2: 3.5 x Rs.240 (SEMI-BOLD)
-    const subLine = `${item.quantity} x ${currency}${item.unitPrice}`;
+    // Line 2: 0.185 x Rs.270 (SEMI-BOLD)
+    const subLine = `${item.quantity} x ${currency}${formatReceiptUnitPrice(item.unitPrice)}`;
     push(SEMIBOLD_ON);
     push(encodeText(subLine), newline());
     push(SEMIBOLD_OFF);
@@ -283,8 +287,8 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   footerLines.forEach(line => push(centeredLine(line, cols), newline()));
   push(SEMIBOLD_OFF);
 
-  // ── 10. Feed Paper & Cut ──────────────────────────────────────────────────
-  push(newline(), newline(), newline());
+  // Bottom margin — minimal 0.2 cm (1 LF) after footer message before cut
+  push(newline());
   if (sale.autoCutter !== false) {
     push(CUT);
   }
@@ -292,7 +296,7 @@ export function buildReceipt(sale: ReceiptSale): number[] {
   return bytes;
 }
 
-import { canvasToEscposRaster, renderReceiptToCanvas } from './escposRasterizer';
+import { canvasToEscposRaster, renderReceiptToCanvas, formatReceiptUnitPrice } from './escposRasterizer';
 
 /**
  * Build a 100% pixel-perfect monochrome raster ESC/POS receipt matching the UI Preview.
@@ -302,6 +306,7 @@ export async function buildPixelPerfectReceipt(sale: ReceiptSale): Promise<numbe
   const canvas = await renderReceiptToCanvas(
     {
       id: sale.id,
+      checkoutUuid: sale.checkoutUuid,
       tokenNumber: sale.tokenNumber,
       shopName: sale.shopName,
       createdAt: sale.createdAt,

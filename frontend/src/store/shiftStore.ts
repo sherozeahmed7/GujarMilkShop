@@ -21,6 +21,17 @@ export const useShiftStore = create<ShiftStore>((set, get) => ({
   error: null,
 
   getCurrentShift: () => {
+    const currentUserId = Number(localStorage.getItem('userId'));
+    const userName = (localStorage.getItem('userName') || '').toLowerCase().trim();
+    if (currentUserId || userName) {
+      const userShift = get().shifts.find(
+        (s: any) =>
+          s.status === 'Open' &&
+          (s.openedById === currentUserId ||
+            (userName && (s.openedBy || '').toLowerCase().trim() === userName))
+      );
+      if (userShift) return userShift;
+    }
     return get().shifts.find((s) => s.status === 'Open') || null;
   },
 

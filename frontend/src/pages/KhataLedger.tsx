@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { KhataSummaryCards } from '../components/khata/KhataSummaryCards';
+import { CollectedBreakdownModal } from '../components/khata/CollectedBreakdownModal';
 import { KhataCashCollectModal } from '../components/khata/KhataCashCollectModal';
 import { KhataLedgerModal } from '../components/khata/KhataLedgerModal';
 import { KhataCustomerFormModal } from '../components/khata/KhataCustomerFormModal';
@@ -18,7 +19,7 @@ import { KhataSupplierFormModal } from '../components/khata/KhataSupplierFormMod
 import { useDebounce } from '../hooks/useDebounce';
 import {
   Search, Download, FileText, Printer, Filter, Plus, ChevronDown,
-  DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw, MoreVertical, AlertTriangle
+  DollarSign, BookOpen, Edit2, Trash2, CheckCircle2, RefreshCw, MoreVertical, AlertTriangle, Power
 } from 'lucide-react';
 import { CustomerTypeFilter, NameSortOrder } from '../components/customers/CustomerToolbar';
 import { Pagination } from '../components/common/Pagination';
@@ -82,6 +83,7 @@ export const KhataLedger: React.FC = () => {
   const [ledgerSupplier, setLedgerSupplier] = useState<Supplier | null>(null);
   const [editSupplier, setEditSupplier] = useState<Supplier | null>(null);
   const [dailyLedgerOpen, setDailyLedgerOpen] = useState(false);
+  const [collectedBreakdownOpen, setCollectedBreakdownOpen] = useState(false);
   const [summary, setSummary] = useState<LedgerSummaryStats>(EMPTY_SUMMARY);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -94,6 +96,8 @@ export const KhataLedger: React.FC = () => {
   const [filterMode, setFilterMode] = useState<'All' | 'Paid' | 'Pending'>('All');
   const [customerTypeFilter, setCustomerTypeFilter] =
     useState<CustomerTypeFilter>('All');
+  const [customerStatusFilter, setCustomerStatusFilter] =
+    useState<'all' | 'active' | 'inactive'>('all');
   const [supplierCycleFilter, setSupplierCycleFilter] =
     useState<SupplierCycleFilter>('All');
   const [nameSort, setNameSort] = useState<NameSortOrder>('default');
@@ -148,7 +152,7 @@ export const KhataLedger: React.FC = () => {
     }
     setCustomerPage(1);
     setSupplierPage(1);
-  }, [debouncedSearch, filterMode, customerTypeFilter, supplierCycleFilter, nameSort, dateFilter, partyMode]);
+  }, [debouncedSearch, filterMode, customerTypeFilter, customerStatusFilter, supplierCycleFilter, nameSort, dateFilter, partyMode]);
 
   const sortedCustomers = useMemo(
     () => sortByName(customers, nameSort),
@@ -206,20 +210,26 @@ export const KhataLedger: React.FC = () => {
           ? customerTypeFilter
           : undefined;
 
+      const toYMD = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      const fromYMD = dateFilter.startDate ? toYMD(dateFilter.startDate) : undefined;
+      const toYMDStr = dateFilter.endDate ? toYMD(dateFilter.endDate) : undefined;
+
       const [list, ledgerSummary] = await Promise.all([
         customerService.getCustomers({
-          status: 'active',
+          status: customerStatusFilter,
           search: debouncedSearch.trim() || undefined,
           duesStatus,
           customerType: ledgerType,
-          ...(dateFilter.startDate
-            ? { fromDate: dateFilter.startDate.toISOString() }
-            : {}),
-          ...(dateFilter.endDate
-            ? { toDate: dateFilter.endDate.toISOString() }
-            : {}),
+          fromDate: fromYMD,
+          toDate: toYMDStr,
         }),
-        customerService.getLedgerSummary(),
+        customerService.getLedgerSummary(fromYMD, toYMDStr),
       ]);
 
       setCustomers(list);
@@ -231,7 +241,7 @@ export const KhataLedger: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filterMode, dateFilter, customerTypeFilter]);
+  }, [debouncedSearch, filterMode, dateFilter, customerTypeFilter, customerStatusFilter]);
 
   const loadSuppliers = useCallback(async () => {
     try {
@@ -312,6 +322,24 @@ export const KhataLedger: React.FC = () => {
       setError(message);
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (c: ApiCustomer) => {
+    const nextStatus = c.status === 'inactive' ? 'active' : 'inactive';
+    try {
+      await customerService.updateStatus(c.id, nextStatus);
+      activityLogger.log({
+        action: nextStatus === 'active' ? 'CUSTOMER_ACTIVATED' : 'CUSTOMER_DEACTIVATED',
+        module: 'Customers',
+        description: `Customer "${c.name}" (ID: ${c.id}) is now marked as ${nextStatus}.`,
+        entityId: String(c.id),
+        status: 'Success',
+      });
+      await refreshAfterAction();
+    } catch (err: any) {
+      const msg = err?.message || `Failed to set customer to ${nextStatus}`;
+      setError(msg);
     }
   };
 
@@ -620,7 +648,13 @@ export const KhataLedger: React.FC = () => {
       )}
 
       <div className="flex-shrink-0">
-        <KhataSummaryCards summary={summary} loading={loading} />
+      <KhataSummaryCards
+        summary={summary}
+        loading={loading}
+        dateFilterLabel={dateFilter.label}
+        partyMode={partyMode}
+        onCollectedClick={() => setCollectedBreakdownOpen(true)}
+      />
       </div>
 
       {(partyMode === 'customers' || partyMode === 'suppliers') && (
@@ -669,6 +703,18 @@ export const KhataLedger: React.FC = () => {
             <option value="All">All Types</option>
             <option value="daily_ledger">Daily Ledger</option>
             <option value="monthly_ledger">Monthly Ledger</option>
+          </select>
+          <select
+            value={customerStatusFilter}
+            onChange={(e) =>
+              setCustomerStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
+            }
+            className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+            title="Filter by Active / Inactive"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
           </select>
           <select
             value={nameSort}
@@ -761,6 +807,8 @@ export const KhataLedger: React.FC = () => {
                       <span className="text-sm font-medium text-slate-400 dark:text-[#64916e]">Rs. 0</span>
                     );
 
+                  const isInactive = c.status === 'inactive';
+
                   return (
                     <tr id={`customer-row-${c.id}`} key={c.id} className="hover:bg-slate-50/70 dark:hover:bg-[#1e3124] transition-colors group">
                       <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 dark:text-[#64916e] tabular-nums">
@@ -774,8 +822,12 @@ export const KhataLedger: React.FC = () => {
                               sessionStorage.setItem('khata_scroll_to_id', `customer-row-${c.id}`);
                               navigate(`/ledger/customers/${c.id}`);
                             }}
-                            className="font-semibold text-sm text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac] hover:underline truncate text-left block w-full"
-                            title={c.name}
+                            className={`font-semibold text-sm hover:underline truncate text-left block w-full ${
+                              isInactive 
+                                ? 'line-through text-red-500 dark:text-red-400 font-bold hover:text-red-600 dark:hover:text-red-300' 
+                                : 'text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac]'
+                            }`}
+                            title={isInactive ? `${c.name} (Inactive / Khata Ended)` : c.name}
                           >
                             {c.name}
                           </button>
@@ -833,13 +885,29 @@ export const KhataLedger: React.FC = () => {
                             type="button"
                             onClick={() => setOpenActionMenu(openActionMenu === c.id ? null : c.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-[#e2f5e8] hover:bg-slate-100 dark:hover:bg-[#223927] transition-colors"
-                            title="Actions"
+                            title="More Actions"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
 
                           {openActionMenu === c.id && (
                             <div className="absolute right-0 top-full mt-1 z-30 w-48 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xl border border-slate-200 dark:border-[#2d4a35] py-1 overflow-hidden">
+                              {/* Toggle Active from menu too */}
+                              <button
+                                type="button"
+                                onClick={() => { handleToggleActive(c); setOpenActionMenu(null); }}
+                                className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm font-semibold transition-colors ${
+                                  isInactive
+                                    ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-[#223927]'
+                                    : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-[#223927]'
+                                }`}
+                              >
+                                <Power className="w-4 h-4" />
+                                {isInactive ? 'Mark as Active' : 'Mark as Inactive'}
+                              </button>
+
+                              <div className="h-px bg-slate-100 dark:bg-[#2d4a35] my-1" />
+
                               {/* Cash Collect */}
                               <button
                                 type="button"
@@ -1033,7 +1101,8 @@ export const KhataLedger: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
-                {paginatedSuppliers.map((supplier, index) => {
+                {(() => {
+                    const rows = paginatedSuppliers.map((supplier, index) => {
                     const current = supplier.currentAmount ?? 0;
                     const previous = supplier.previousAmount ?? 0;
                     const totalToPay = supplier.totalAmount ?? current + previous;
@@ -1041,8 +1110,10 @@ export const KhataLedger: React.FC = () => {
                     const remaining = supplier.remainingBalance ?? supplier.payableBalance;
                     const morningMilk = supplier.morningQty ?? 0;
                     const eveningMilk = supplier.eveningQty ?? 0;
-                    const supplierRate = supplier.rate ?? supplier.defaultRate ?? 0;
-                    const periodTotal = supplier.periodPurchases ?? ((morningMilk + eveningMilk) * supplierRate);
+                    const totalMilk = morningMilk + eveningMilk;
+                    // ── RATE: from Supplier page's defaultRate if period has milk, else 0 ──
+                    const supplierRate = totalMilk > 0 ? (supplier.defaultRate ?? 0) : 0;
+                    const periodTotal = supplier.periodPurchases ?? (totalMilk * (supplier.defaultRate ?? 0));
 
                     const fmtAmt = (n: number) => {
                       if (n < 0) {
@@ -1088,7 +1159,7 @@ export const KhataLedger: React.FC = () => {
                           {eveningMilk > 0 ? `${eveningMilk.toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : '—'}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-semibold text-slate-700 dark:text-[#e2f5e8] tabular-nums">
-                          {supplierRate > 0 ? `Rs. ${supplierRate}` : '—'}
+                          {supplierRate > 0 ? `Rs. ${supplierRate}` : 'Rs. 0'}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-slate-800 dark:text-[#e2f5e8] tabular-nums">
                           {periodTotal > 0 ? `Rs. ${Math.round(periodTotal).toLocaleString()}` : '—'}
@@ -1140,7 +1211,82 @@ export const KhataLedger: React.FC = () => {
                         </td>
                       </tr>
                     );
-                  })}
+                  });
+                    return rows;
+                  })()}
+
+                  {/* ── Grand Total Row ── */}
+                  {visibleSuppliers.length > 0 && (() => {
+                    // Calculate totals over ALL filtered suppliers (visibleSuppliers) regardless of pagination
+                    let gtMorning = 0, gtEvening = 0, gtPeriodTotal = 0;
+                    let gtAdvance = 0, gtCurrent = 0, gtPrevious = 0;
+                    let gtTotalToPay = 0, gtPaid = 0, gtRemaining = 0;
+                    let gtWeightedRateNum = 0, gtWeightedRateDen = 0;
+                    for (const s of visibleSuppliers) {
+                      const morning = s.morningQty ?? 0;
+                      const evening = s.eveningQty ?? 0;
+                      const totalKg = morning + evening;
+                      const sRate = s.defaultRate ?? 0;
+                      const speriodTotal = s.periodPurchases ?? (totalKg * sRate);
+                      const scurrent = s.currentAmount ?? 0;
+                      const sprevious = s.previousAmount ?? 0;
+                      const stotalToPay = s.totalAmount ?? (scurrent + sprevious);
+                      const spaid = s.paidAmount ?? 0;
+                      const sremaining = s.remainingBalance ?? s.payableBalance;
+                      gtMorning += morning;
+                      gtEvening += evening;
+                      gtPeriodTotal += speriodTotal;
+                      gtAdvance += s.guaranteedAdvance || 0;
+                      gtCurrent += scurrent;
+                      gtPrevious += sprevious;
+                      gtTotalToPay += stotalToPay;
+                      gtPaid += spaid;
+                      gtRemaining += sremaining;
+                      gtWeightedRateNum += totalKg * sRate;
+                      gtWeightedRateDen += totalKg;
+                    }
+                    const weightedAvgRate = gtWeightedRateDen > 0
+                      ? Math.round(gtWeightedRateNum / gtWeightedRateDen)
+                      : 0;
+                    const fmtTotal = (n: number) => n !== 0 ? `Rs. ${Math.round(Math.abs(n)).toLocaleString()}` : 'Rs. 0';
+                    return (
+                      <tr className="bg-slate-100 dark:bg-[#111e14] border-t-2 border-slate-300 dark:border-[#2d4a35] font-bold">
+                        <td className="px-3 py-3 text-center text-xs font-bold text-slate-500 dark:text-[#8ba895] uppercase tracking-wider">—</td>
+                        <td className="px-4 py-3 text-xs font-bold text-slate-600 dark:text-[#a7c4ae] uppercase tracking-wider" colSpan={3}>Grand Total</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-amber-700 dark:text-amber-400 tabular-nums">
+                          {gtMorning > 0 ? `${gtMorning.toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-indigo-700 dark:text-indigo-400 tabular-nums">
+                          {gtEvening > 0 ? `${gtEvening.toLocaleString(undefined, { maximumFractionDigits: 3 })} kg` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-slate-700 dark:text-[#e2f5e8] tabular-nums">
+                          {weightedAvgRate > 0 ? `≈ Rs. ${weightedAvgRate}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-slate-800 dark:text-[#e2f5e8] tabular-nums">
+                          {gtPeriodTotal > 0 ? fmtTotal(gtPeriodTotal) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                          {gtAdvance > 0 ? `−Rs. ${Math.round(gtAdvance).toLocaleString()}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-[#e2f5e8]">{fmtTotal(gtCurrent)}</td>
+                        <td className="px-4 py-3 text-sm font-bold text-slate-700 dark:text-[#e2f5e8]">{fmtTotal(gtPrevious)}</td>
+                        <td className="px-4 py-3 text-sm font-bold text-slate-800 dark:text-[#e2f5e8]">{fmtTotal(gtTotalToPay)}</td>
+                        <td className="px-4 py-3">
+                          <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400">Rs. {Math.round(gtPaid).toLocaleString()}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {gtRemaining > 0 ? (
+                            <span className="font-bold text-amber-700 dark:text-amber-400">Rs. {Math.round(gtRemaining).toLocaleString()}</span>
+                          ) : gtRemaining < 0 ? (
+                            <span className="font-bold text-emerald-700 dark:text-emerald-400">Rs. −{Math.abs(Math.round(gtRemaining)).toLocaleString()}</span>
+                          ) : (
+                            <span className="text-sm font-medium text-slate-400">Rs. 0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3" />
+                      </tr>
+                    );
+                  })()}
               </tbody>
             </table>
           </div>
@@ -1261,6 +1407,26 @@ export const KhataLedger: React.FC = () => {
           </div>
         </div>
       )}
+
+      {collectedBreakdownOpen && (() => {
+        const toYMD = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+        const fromDate = dateFilter.startDate ? toYMD(dateFilter.startDate) : undefined;
+        const toDate = dateFilter.endDate ? toYMD(dateFilter.endDate) : undefined;
+        return (
+          <CollectedBreakdownModal
+            mode={partyMode}
+            periodLabel={dateFilter.label}
+            fromDate={fromDate}
+            toDate={toDate}
+            onClose={() => setCollectedBreakdownOpen(false)}
+          />
+        );
+      })()}
     </div>
   );
 };

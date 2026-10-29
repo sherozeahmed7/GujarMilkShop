@@ -29,6 +29,7 @@ export interface ExpenseRecord {
   remaining: number;
   reason?: string;
   addedBy: string;
+  expenseType?: 'SHOP' | 'PERSONAL';
   createdAt: string;
   payments?: ExpensePaymentRecord[];
 }
@@ -40,6 +41,11 @@ export interface ExpenseSummaryData {
   netExpense: number;
   paid?: number;
   remaining?: number;
+  // Personal expense summary fields
+  totalPersonalExpense?: number;
+  totalCashReceived?: number;
+  remainingBalance?: number;
+  personalCount?: number;
 }
 
 export interface CostBreakdownItem {

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { X, Printer } from 'lucide-react';
 import { ReturnRecord, ReturnType } from '../../types';
 import { BrandLogo } from '../BrandLogo';
+import { formatReceiptUnitPrice } from '../../utils/escposRasterizer';
 
 const returnTypeColors: Record<ReturnType, string> = {
   'Full Return': 'bg-rose-100 text-rose-700',
@@ -29,8 +30,58 @@ interface PrintReceiptModalProps {
 }
 
 
+import { posConfigService } from '../../services/posConfig.service';
+
 export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({ record, onClose }) => {
-  const handlePrint = () => {
+  const [isPrinting, setIsPrinting] = React.useState(false);
+
+  const handlePrint = async () => {
+    try {
+      setIsPrinting(true);
+      if (typeof window !== 'undefined' && ((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__)) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const posConfig = await posConfigService.getPOSConfig().catch(() => null);
+
+        const ESC = 0x1b;
+        const GS = 0x1d;
+        const LF = 0x0a;
+        const bytes: number[] = [
+          ESC, 0x40, // INIT
+          ESC, 0x61, 0x01, // Center
+          ESC, 0x45, 0x01, // Bold ON
+          ...Array.from(new TextEncoder().encode('GUJAR MILK SHOP\nRETURN / REFUND RECEIPT\n')),
+          ESC, 0x45, 0x00, // Bold OFF
+          ...Array.from(new TextEncoder().encode(`Return ID: ${record.returnId}\nBill No: ${formatInvoiceNumber(record.billNumber)}\nDate: ${formatDate(record.date)}\nCustomer: ${record.customer}\nPayment: ${record.paymentMethod}\n`)),
+          ...Array.from(new TextEncoder().encode('--------------------------------\n')),
+          ESC, 0x61, 0x00, // Left
+        ];
+
+        for (const item of record.items) {
+          bytes.push(...Array.from(new TextEncoder().encode(`${item.name} x ${item.returnQty}\n  Refund: Rs. ${item.refundAmount}\n`)));
+        }
+
+        bytes.push(
+          ...Array.from(new TextEncoder().encode('--------------------------------\n')),
+          ESC, 0x45, 0x01, // Bold ON
+          ...Array.from(new TextEncoder().encode(`REFUND TOTAL: Rs. ${record.refundAmount}\n`)),
+          ESC, 0x45, 0x00, // Bold OFF
+          ESC, 0x61, 0x01, // Center
+          LF, // Minimal 0.2 cm feed before cut
+          GS, 0x56, 0x00 // Standard ESC/POS full cut (fires blade once)
+        );
+
+        await invoke('print_raw_bytes', {
+          printerName: posConfig?.printerName || '',
+          data: bytes,
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Tauri raw print error, falling back to window.print():', e);
+    } finally {
+      setIsPrinting(false);
+    }
+
     window.print();
   };
 
@@ -118,7 +169,7 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({ record, on
                     <span>Rs. {item.refundAmount.toLocaleString()}</span>
                   </div>
                   <div className="text-slate-400 text-[11px]">
-                    {item.returnQty} × Rs. {item.unitPrice}
+                    {item.returnQty} × Rs. {formatReceiptUnitPrice(item.unitPrice)}
                   </div>
                 </div>
               ))}
@@ -162,10 +213,11 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({ record, on
           </button>
           <button
             onClick={handlePrint}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all"
+            disabled={isPrinting}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all"
           >
             <Printer className="w-4 h-4" />
-            Print
+            {isPrinting ? 'Printing...' : 'Print'}
           </button>
         </div>
       </div>

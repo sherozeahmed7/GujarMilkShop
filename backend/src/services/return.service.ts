@@ -264,20 +264,39 @@ export class ReturnService {
       };
     }
 
-    const normalizedItems = (items || []).map((i) => ({
-      itemId: String(i.itemId || ''),
-      name: String(i.name || '').trim(),
-      returnQty: money(Number(i.returnQty) || 0),
-      unitPrice: money(Number(i.unitPrice) || 0),
-      refundAmount: money(Number(i.refundAmount) || 0),
-    }));
+    const isFullReturn = returnType === 'Full Return';
+    const refund = isFullReturn && sale ? money(sale.totalAmount) : money(Number(refundAmount));
 
-    const refund = money(Number(refundAmount));
+    const normalizedItems = (items || []).map((i) => {
+      const returnQty = Math.round((Number(i.returnQty) || 0) * 1000) / 1000;
+      return {
+        itemId: String(i.itemId || ''),
+        name: String(i.name || '').trim(),
+        returnQty,
+        unitPrice: money(Number(i.unitPrice) || 0),
+        refundAmount: money(Number(i.refundAmount) || 0),
+      };
+    });
 
-    // Normalize date to YYYY-MM-DD — frontend may send full ISO string
-    const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(date)
-      ? date
-      : new Date(date).toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD
+    // Normalize date to YYYY-MM-DD
+    let dateStr = '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      dateStr = date;
+    } else {
+      const parsed = new Date(date);
+      if (!isNaN(parsed.getTime())) {
+        const y = parsed.getFullYear();
+        const m = String(parsed.getMonth() + 1).padStart(2, '0');
+        const d = String(parsed.getDate()).padStart(2, '0');
+        dateStr = `${y}-${m}-${d}`;
+      } else {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        dateStr = `${y}-${m}-${d}`;
+      }
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       // Server-side double-return guard: validate returnable quantities within the transaction
@@ -406,7 +425,7 @@ export class ReturnService {
       cashier: 'System',
       items: (sale.items || []).map((i) => {
         const alreadyReturned = returnedByName.get(i.itemName.toLowerCase()) || 0;
-        const maxReturnable = money(Math.max(0, i.quantity - alreadyReturned));
+        const maxReturnable = Math.max(0, Math.round((i.quantity - alreadyReturned) * 1000) / 1000);
         return {
           id: String(i.id),
           name: i.itemName,

@@ -66,6 +66,9 @@ export const userService = {
     if (payload.name && payload.name.trim() !== '') {
       apiPayload.name = payload.name;
     }
+    if (payload.password && payload.password.trim() !== '') {
+      apiPayload.password = payload.password.trim();
+    }
 
     const response = await apiClient.put(`/users/${id}`, apiPayload);
     const user = response.data;

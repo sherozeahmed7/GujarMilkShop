@@ -21,6 +21,9 @@ import { migration014PerformanceAndLedgerIndexes } from './migrations/014_perfor
 import { migration015ExpenseAndReportIndexes } from './migrations/015_expense_and_report_indexes';
 import { migration016PosTokenIndex } from './migrations/016_pos_token_index';
 import { migration017FixPosRfc3339Timestamps } from './migrations/017_fix_pos_rfc3339_timestamps';
+import { migration018AddExpenseType } from './migrations/018_add_expense_type';
+import { migration019AddSaleDiscountAndTokenColumns } from './migrations/019_add_sale_discount_and_token_columns';
+import { migration020AddSaleCreatedBy } from './migrations/020_add_sale_created_by';
 
 export const ALL_MIGRATIONS: Migration[] = [
   migration001BaselineTracking,
@@ -40,6 +43,9 @@ export const ALL_MIGRATIONS: Migration[] = [
   migration015ExpenseAndReportIndexes,
   migration016PosTokenIndex,
   migration017FixPosRfc3339Timestamps,
+  migration018AddExpenseType,
+  migration019AddSaleDiscountAndTokenColumns,
+  migration020AddSaleCreatedBy,
 ];
 
 export interface PreparedMigration {
