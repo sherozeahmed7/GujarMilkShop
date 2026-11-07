@@ -8,6 +8,7 @@ export interface CreateCustomerPayload {
   customerType: 'daily_ledger' | 'monthly_ledger';
   /** Optional existing dues — shows in Previous column */
   openingBalance?: number;
+  customMilkRate?: number | null;
 }
 
 export interface UpdateCustomerPayload {
@@ -16,6 +17,7 @@ export interface UpdateCustomerPayload {
   address?: string;
   customerType?: 'daily_ledger' | 'monthly_ledger';
   openingBalance?: number;
+  customMilkRate?: number | null;
 }
 
 export interface CustomerListFilters {
@@ -81,6 +83,11 @@ export const customerService = {
   /**
    * GET /api/customers?search=&dues=&duesStatus=&customerType=&status=
    */
+  getCustomer: async (id: number | string): Promise<ApiCustomer> => {
+    const response = await apiClient.get('/customers/' + id);
+    return response.data as ApiCustomer;
+  },
+
   getCustomers: async (filters?: CustomerListFilters): Promise<ApiCustomer[]> => {
     const params: Record<string, string> = {};
     if (filters?.status) params.status = filters.status;

@@ -5,6 +5,7 @@ import { SummaryCard } from '../reports/SummaryCard';
 import { Pagination } from '../common/Pagination';
 import { PersonalCashReceiveModal } from './PersonalCashReceiveModal';
 import { AddPersonalExpenseModal } from './AddPersonalExpenseModal';
+import { formatUserName } from '../../utils/userFormat';
 import {
   Wallet, DollarSign, Scale, FileText, Plus,
   Calendar, Search, RefreshCw, Trash2, ArrowDownLeft
@@ -306,13 +307,14 @@ export const PersonalExpensesSection: React.FC = () => {
                 <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-right">Remaining</th>
                 <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Notes</th>
+                <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Added By</th>
                 <th className="px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-[#2d4a35]">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400 dark:text-[#64916e] text-sm">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400 dark:text-[#64916e] text-sm">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-emerald-500 dark:border-[#22c55e] border-t-transparent rounded-full animate-spin" />
                       Loading…
@@ -321,7 +323,7 @@ export const PersonalExpensesSection: React.FC = () => {
                 </tr>
               ) : paginatedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400 dark:text-[#64916e] text-sm">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400 dark:text-[#64916e] text-sm">
                     No personal expenses recorded for this period.
                   </td>
                 </tr>
@@ -362,6 +364,9 @@ export const PersonalExpensesSection: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500 dark:text-[#8ba895] max-w-[160px] truncate">
                         {row.reason || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae] whitespace-nowrap">
+                        {formatUserName(row.addedBy)}
                       </td>
                       <td className="px-4 py-3 text-sm text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -405,7 +410,7 @@ export const PersonalExpensesSection: React.FC = () => {
                   <td className="px-4 py-3 text-sm font-black text-emerald-700 dark:text-emerald-300 text-right tabular-nums">
                     {fmt(remainingBalance)}
                   </td>
-                  <td colSpan={3} className="px-4 py-3 text-xs text-slate-500 dark:text-[#8ba895]">
+                  <td colSpan={4} className="px-4 py-3 text-xs text-slate-500 dark:text-[#8ba895]">
                     Net Outstanding Balance
                   </td>
                 </tr>

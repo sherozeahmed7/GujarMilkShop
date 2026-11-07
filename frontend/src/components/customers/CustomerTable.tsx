@@ -181,8 +181,13 @@ const CustomerRow: React.FC<CustomerRowProps> = ({
             <div className={`font-semibold text-sm truncate ${isInactive ? "line-through text-red-500 dark:text-red-400 font-bold" : "text-slate-800 dark:text-[#e2f5e8]"}`} title={isInactive ? `${row.name} (Inactive / Khata Ended)` : row.name}>
               {displayText(row.name)}
             </div>
-            <div className="text-[10px] text-slate-400 dark:text-[#64916e] mt-0.5 truncate">
+            <div className="text-[10px] text-slate-400 dark:text-[#64916e] mt-0.5 truncate flex items-center gap-1.5 flex-wrap">
               {displayText(row.address)}
+              {row.customMilkRate != null && row.customMilkRate > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800/50">
+                  Rate: Rs. {row.customMilkRate}/kg
+                </span>
+              )}
             </div>
           </div>
         </div>

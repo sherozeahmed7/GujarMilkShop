@@ -21,6 +21,8 @@ function formatTimestamp(iso?: string) {
   });
 }
 
+const isAutoClosedShift = (s: any) => Boolean(s.isAutoClosed || (!s.closedById && s.status === "Closed") || (s.closingNotes && /auto-close|auto-closed|midnight/i.test(s.closingNotes)));
+
 export const ShiftHistoryPanel: React.FC = () => {
   const { shifts } = useShiftStore();
   const [viewRecord, setViewRecord] = useState<ShiftRecord | null>(null);
@@ -56,7 +58,7 @@ export const ShiftHistoryPanel: React.FC = () => {
               <tr key={shift.id} className="hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors">
                 <td className="px-4 py-3 font-medium text-slate-800 dark:text-[#e2f5e8]">{shift.date}</td>
                 <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatUserName(shift.openedBy)}</td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatUserName(shift.closedBy)}</td>
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{isAutoClosedShift(shift) ? "—" : formatUserName(shift.closedBy)}</td>
                 <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">Rs. {shift.expectedCash.toLocaleString()}</td>
                 <td className="px-4 py-3 text-right">
                   {shift.difference !== undefined ? (

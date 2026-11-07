@@ -244,7 +244,7 @@ export const ProfitLossReport: React.FC = () => {
                       Cash &amp; Online (excl. Khata)
                     </div>
                     {(data.collectionsBreakdown?.khataReceived ?? 0) > 0 && (
-                      <div className="text-[11px] text-indigo-500 dark:text-indigo-400 mt-0.5">
+                      <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-1 whitespace-nowrap truncate" title={`+ ${fmt(data.collectionsBreakdown.khataReceived)} Khata recovered`}>
                         + {fmt(data.collectionsBreakdown.khataReceived)} Khata recovered
                       </div>
                     )}
@@ -352,7 +352,28 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 10. Paid to Suppliers */}
+                {/* 10. Personal Payment Send */}
+                <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-rose-200 dark:border-rose-900/40 p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <span className="text-xs font-semibold text-rose-700 dark:text-rose-400">Personal Payment Send</span>
+                    <ArrowUpRight className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold text-rose-700 dark:text-rose-400">
+                      {fmt(data.summary.personalGrossExpenses ?? 0)}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#64916e] mt-0.5">
+                      Total personal expenses billed in period
+                    </div>
+                    {(data.summary.personalOutstanding ?? 0) > 0 && (
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5 font-semibold">
+                        Still owed: {fmt(data.summary.personalOutstanding)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 11. Paid to Suppliers */}
                 <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Paid to Suppliers</span>
@@ -371,7 +392,7 @@ export const ProfitLossReport: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 11. Cash in Hand */}
+                {/* 12. Cash in Hand */}
                 <div className="bg-white dark:bg-[#1a2e1f] rounded-xl shadow-xs border border-slate-200 dark:border-[#2d4a35] p-4 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-xs font-semibold text-slate-500 dark:text-[#8ba895]">Cash in Hand</span>

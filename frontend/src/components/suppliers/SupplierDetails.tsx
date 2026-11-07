@@ -22,7 +22,7 @@ export const SupplierDetails: React.FC<SupplierDetailsProps> = ({ supplier }) =>
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8]">{supplier.name}</h2>
+              <h2 className={`text-2xl font-bold ${supplier.isActive ? 'text-slate-800 dark:text-[#e2f5e8]' : 'line-through text-red-500 dark:text-red-400'}`}>{supplier.name}{!supplier.isActive ? ' (Inactive)' : ''}</h2>
               <button 
                 onClick={() => setIsEditModalOpen(true)}
                 className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"

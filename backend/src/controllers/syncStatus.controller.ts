@@ -251,3 +251,15 @@ export async function getCheckoutDiagnostics(req: Request, res: Response) {
   }
 }
 
+// POST /api/sync/auto-repair  — Universal Self-Healing & Repair Engine
+export async function autoRepairSync(req: Request, res: Response) {
+  try {
+    const { SyncAutoRepairService } = await import('../services/syncAutoRepair.service');
+    const report = await SyncAutoRepairService.runAutoRepair();
+    res.json({ success: true, message: 'Auto-repair completed successfully.', report });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Auto-repair failed' });
+  }
+}
+
+

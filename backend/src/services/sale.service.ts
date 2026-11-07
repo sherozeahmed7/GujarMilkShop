@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+﻿import crypto from 'crypto';
 import { performance } from 'perf_hooks';
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
@@ -570,12 +570,23 @@ export class SaleService {
     const normalizedItems: { itemName: string; quantity: number; unitPrice: number; totalPrice: number }[] = [];
     let itemsSum = 0;
 
+    // Fetch active custom product names once for this validation pass
+    const activeCustomProducts = await prisma.inventoryProduct.findMany({
+      where: { isActive: true },
+      select: { name: true, code: true },
+    });
+    const activeNames = new Set<string>([
+      ...(ITEM_NAMES as readonly string[]),
+      ...activeCustomProducts.map((p: { name: string }) => p.name.toLowerCase()),
+      ...activeCustomProducts.map((p: { code: string }) => p.code.toLowerCase()),
+    ]);
+
     for (const item of items) {
-      if (!item.itemName || !(ITEM_NAMES as readonly string[]).includes(item.itemName)) {
+      if (!item.itemName || !activeNames.has(item.itemName.toLowerCase())) {
         return {
           success: false,
           statusCode: 400,
-          message: `Invalid itemName "${item.itemName}". Allowed: ${ITEM_NAMES.join(', ')}`
+          message: `Invalid itemName "${item.itemName}". Must be a known product or active inventory product name.`
         };
       }
       const quantity = Number(item.quantity);

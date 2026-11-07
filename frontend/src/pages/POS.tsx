@@ -767,10 +767,10 @@ export const POS: React.FC = () => {
   const showKhataPicker = paymentMethod === 'khata' && !selectedKhataCustomer;
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-6">
-      {/* Left Panel - Products */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex gap-2 mb-4">
+    <div className="min-h-full xl:h-full flex flex-col xl:flex-row gap-4 lg:gap-6 min-w-0">
+      {/* Left Panel - Products (On screens < xl, orders after Current Bill) */}
+      <div className="order-2 xl:order-1 flex-1 flex flex-col min-h-0 min-w-0">
+        <div className="flex gap-2 mb-4 shrink-0">
           <button
             className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'milk-yogurt'
               ? 'bg-[#166534] text-white shadow-sm shadow-[#166534]/25'
@@ -791,7 +791,7 @@ export const POS: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex-1 bg-white dark:bg-[#1a2e1f] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 bg-white dark:bg-[#1a2e1f] rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col min-h-0 xl:overflow-y-auto custom-scrollbar">
           {activeTab === 'items' ? (
             <MilkProducts
               onAddToCart={(name, qty, unitPrice, customTotal) =>
@@ -827,21 +827,22 @@ export const POS: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <div className="flex-1 bg-[#F0FDF4] dark:bg-[#1a3d24]/60 border border-[#BBF7D0] dark:border-[#2d4a35] rounded-2xl p-4 flex flex-col shadow-xs">
-                <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col 2xl:flex-row gap-4 lg:gap-6 min-w-0 w-full">
+              {/* Milk Terminal Card */}
+              <div className="flex-1 w-full min-w-0 bg-[#F0FDF4] dark:bg-[#1a3d24]/60 border border-[#BBF7D0] dark:border-[#2d4a35] rounded-2xl p-3 sm:p-4 flex flex-col shadow-xs">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 sm:mb-6">
                   <h2 className="text-xl font-black text-[#166534] dark:text-[#22c55e]">Milk</h2>
-                  <div className="flex items-center gap-2 bg-white dark:bg-[#142119] rounded-xl p-2 border border-[#BBF7D0] dark:border-[#2d4a35] shadow-sm">
-                    <div className="flex bg-slate-100 dark:bg-[#1e3124] rounded-lg p-0.5">
+                  <div className="flex items-center gap-2 bg-white dark:bg-[#142119] rounded-xl p-1.5 sm:p-2 border border-[#BBF7D0] dark:border-[#2d4a35] shadow-sm max-w-full overflow-x-auto">
+                    <div className="flex bg-slate-100 dark:bg-[#1e3124] rounded-lg p-0.5 shrink-0">
                       <button
                         onClick={() => setMilkCustomType('rs')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'rs' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'rs' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         RS
                       </button>
                       <button
                         onClick={() => setMilkCustomType('kg')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'kg' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold rounded-md transition-colors ${milkCustomType === 'kg' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         KG
                       </button>
@@ -854,18 +855,18 @@ export const POS: React.FC = () => {
                       title="Milk amount"
                       accent="primary"
                       confirmLabel="Add"
-                      className="w-36"
+                      className="w-20 sm:w-28 md:w-32 min-w-[60px]"
                       triggerClassName="border-none"
                     />
                     <button
                       onClick={() => handleCustomAdd('milk')}
-                      className="bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] hover:bg-[#14532d] dark:hover:bg-[#16a34a] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
+                      className="bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] hover:bg-[#14532d] dark:hover:bg-[#16a34a] active:bg-[#0f3d21] px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-colors shadow-xs shrink-0"
                     >
                       Add
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-3 gap-2 sm:gap-3">
                   {(() => {
                     const milkPresets = prices?.milk ?? [];
                     const amtPresets = prices?.milkByAmount ?? [];
@@ -885,27 +886,27 @@ export const POS: React.FC = () => {
                     }
 
                     return items.map((item, i) => {
-                      if (item.type === 'empty') return <div key={`milk-empty-${i}`} />;
+                      if (item.type === 'empty') return <div key={`milk-empty-${i}`} className="hidden sm:block" />;
                       return item.type === 'weight' ? (
                         <button
                           key={`milk-w-${item.preset.weight}-${i}`}
                           onClick={() => addToCart('Milk', item.preset.weight, 'kg', item.preset.price, milkRatePerKg)}
-                          className="border border-emerald-100/80 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] hover:border-[#166534] dark:hover:border-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1e3124] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-emerald-100/80 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] hover:border-[#166534] dark:hover:border-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1e3124] rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center transition-colors group shadow-sm min-w-0"
                         >
-                          <div className="font-bold text-slate-800 dark:text-[#e2f5e8] group-hover:text-[#166534] dark:group-hover:text-[#22c55e] text-lg">{item.preset.label}</div>
-                          <div className="text-xs text-slate-500 dark:text-[#64916e] font-medium mt-1">Rs. {item.preset.price}</div>
+                          <div className="font-bold text-slate-800 dark:text-[#e2f5e8] group-hover:text-[#166534] dark:group-hover:text-[#22c55e] text-base sm:text-lg truncate max-w-full">{item.preset.label}</div>
+                          <div className="text-xs text-slate-500 dark:text-[#64916e] font-medium mt-1 truncate max-w-full">Rs. {item.preset.price}</div>
                         </button>
                       ) : (
                         <button
                           key={`milk-rs-${item.preset.amount}`}
                           type="button"
                           onClick={() => addToCart('Milk', item.preset.weight, 'rs', item.preset.amount, milkRatePerKg)}
-                          className="rounded-xl border border-[#FDE68A] dark:border-[#3d2f12] bg-[#FEF3C7]/40 dark:bg-[#2a1f0a] hover:bg-[#FEF3C7] dark:hover:bg-[#3d2f12] hover:border-[#FDE68A] p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="rounded-xl border border-[#FDE68A] dark:border-[#3d2f12] bg-[#FEF3C7]/40 dark:bg-[#2a1f0a] hover:bg-[#FEF3C7] dark:hover:bg-[#3d2f12] hover:border-[#FDE68A] p-2.5 sm:p-3 flex flex-col items-center justify-center transition-colors group shadow-sm min-w-0"
                         >
-                          <span className="font-black text-[#166534] dark:text-[#fcd34d] text-base sm:text-lg">
+                          <span className="font-black text-[#166534] dark:text-[#fcd34d] text-base sm:text-lg truncate max-w-full">
                             {item.preset.amount}
                           </span>
-                          <span className="text-[10px] text-[#78350F] dark:text-[#fcd34d]/80 font-bold mt-0.5">
+                          <span className="text-[10px] sm:text-xs text-[#78350F] dark:text-[#fcd34d]/80 font-bold mt-0.5 truncate max-w-full">
                             {item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}
                           </span>
                         </button>
@@ -915,22 +916,21 @@ export const POS: React.FC = () => {
                 </div>
               </div>
 
-              <div className="hidden lg:block w-px bg-slate-100"></div>
-
-              <div className="flex-1 bg-[#FFFDF5] dark:bg-[#2a1f0a]/40 border border-[#FDE68A] dark:border-[#3d2f12] rounded-2xl p-4 flex flex-col shadow-xs">
-                <div className="flex justify-between items-center mb-6">
+              {/* Yogurt Terminal Card */}
+              <div className="flex-1 w-full min-w-0 bg-[#FFFDF5] dark:bg-[#2a1f0a]/40 border border-[#FDE68A] dark:border-[#3d2f12] rounded-2xl p-3 sm:p-4 flex flex-col shadow-xs">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 sm:mb-6">
                   <h2 className="text-xl font-black text-[#78350F] dark:text-[#fcd34d]">Yogurt</h2>
-                  <div className="flex items-center gap-2 bg-white dark:bg-[#142119] rounded-xl p-2 border border-[#FDE68A] dark:border-[#3d2f12] shadow-sm">
-                    <div className="flex bg-slate-100 dark:bg-[#1e3124] rounded-lg p-0.5">
+                  <div className="flex items-center gap-2 bg-white dark:bg-[#142119] rounded-xl p-1.5 sm:p-2 border border-[#FDE68A] dark:border-[#3d2f12] shadow-sm max-w-full overflow-x-auto">
+                    <div className="flex bg-slate-100 dark:bg-[#1e3124] rounded-lg p-0.5 shrink-0">
                       <button
                         onClick={() => setYogurtCustomType('rs')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'rs' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'rs' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         RS
                       </button>
                       <button
                         onClick={() => setYogurtCustomType('kg')}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'kg' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold rounded-md transition-colors ${yogurtCustomType === 'kg' ? 'bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] shadow-xs' : 'text-slate-500 dark:text-[#64916e] hover:text-slate-700 dark:hover:text-[#a7c4ae]'}`}
                       >
                         KG
                       </button>
@@ -943,18 +943,18 @@ export const POS: React.FC = () => {
                       title="Yogurt amount"
                       accent="cream"
                       confirmLabel="Add"
-                      className="w-36"
+                      className="w-20 sm:w-28 md:w-32 min-w-[60px]"
                       triggerClassName="border-none"
                     />
                     <button
                       onClick={() => handleCustomAdd('yogurt')}
-                      className="bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] hover:bg-[#14532d] dark:hover:bg-[#16a34a] active:bg-[#0f3d21] px-4 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-xs"
+                      className="bg-[#166534] dark:bg-[#22c55e] text-white dark:text-[#0d1a10] hover:bg-[#14532d] dark:hover:bg-[#16a34a] active:bg-[#0f3d21] px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-colors shadow-xs shrink-0"
                     >
                       Add
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-3 gap-2 sm:gap-3">
                   {(() => {
                     const weightPresets = prices?.yogurtByWeight ?? [];
                     const amtPresets = prices?.yogurtByAmount ?? [];
@@ -974,25 +974,25 @@ export const POS: React.FC = () => {
                     }
 
                     return items.map((item, i) => {
-                      if (item.type === 'empty') return <div key={`yogurt-empty-${i}`} />;
+                      if (item.type === 'empty') return <div key={`yogurt-empty-${i}`} className="hidden sm:block" />;
                       return item.type === 'weight' ? (
                         <button
                           key={`y-w-${item.preset.weight}-${i}`}
                           onClick={() => addToCart('Yogurt', item.preset.weight, 'kg', item.preset.price, yogurtRatePerKg)}
-                          className="border border-amber-100/80 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] hover:border-[#166534] dark:hover:border-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1e3124] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-amber-100/80 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] hover:border-[#166534] dark:hover:border-[#22c55e] hover:bg-[#F0FDF4] dark:hover:bg-[#1e3124] rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center transition-colors group shadow-sm min-w-0"
                         >
-                          <div className="font-bold text-slate-800 dark:text-[#e2f5e8] group-hover:text-[#166534] dark:group-hover:text-[#22c55e] text-lg">{item.preset.label}</div>
-                          <div className="text-xs text-slate-500 dark:text-[#64916e] font-medium mt-1">Rs. {item.preset.price}</div>
+                          <div className="font-bold text-slate-800 dark:text-[#e2f5e8] group-hover:text-[#166534] dark:group-hover:text-[#22c55e] text-base sm:text-lg truncate max-w-full">{item.preset.label}</div>
+                          <div className="text-xs text-slate-500 dark:text-[#64916e] font-medium mt-1 truncate max-w-full">Rs. {item.preset.price}</div>
                         </button>
                       ) : (
                         <button
                           key={`y-rs-${item.preset.amount}`}
                           type="button"
                           onClick={() => addToCart('Yogurt', item.preset.weight, 'rs', item.preset.amount, yogurtRatePerKg)}
-                          className="border border-[#FDE68A] dark:border-[#3d2f12] bg-[#FEF3C7]/40 dark:bg-[#2a1f0a] hover:bg-[#FEF3C7] dark:hover:bg-[#3d2f12] rounded-xl p-3 flex flex-col items-center justify-center transition-colors group shadow-sm"
+                          className="border border-[#FDE68A] dark:border-[#3d2f12] bg-[#FEF3C7]/40 dark:bg-[#2a1f0a] hover:bg-[#FEF3C7] dark:hover:bg-[#3d2f12] rounded-xl p-2.5 sm:p-3 flex flex-col items-center justify-center transition-colors group shadow-sm min-w-0"
                         >
-                          <div className="font-black text-[#166534] dark:text-[#fcd34d] text-lg">{item.preset.label}</div>
-                          <div className="text-xs text-[#78350F] dark:text-[#fcd34d]/80 font-bold mt-1">{item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}</div>
+                          <div className="font-black text-[#166534] dark:text-[#fcd34d] text-base sm:text-lg truncate max-w-full">{item.preset.label}</div>
+                          <div className="text-xs text-[#78350F] dark:text-[#fcd34d]/80 font-bold mt-1 truncate max-w-full">{item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}</div>
                         </button>
                       );
                     });
@@ -1004,9 +1004,9 @@ export const POS: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Panel - Current Bill / Khata customer picker */}
-      <div className="w-full md:w-[380px] lg:w-[420px] flex flex-col gap-4 min-h-0">
-        <div className="flex-1 bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden min-h-[520px] md:min-h-0">
+      {/* Right Panel - Current Bill / Khata customer picker (On screens < xl, orders first on top) */}
+      <div className="order-1 xl:order-2 w-full xl:w-[380px] 2xl:w-[420px] flex flex-col gap-4 min-h-0 shrink-0">
+        <div className="flex-1 bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col min-h-0">
 
           {showKhataPicker ? (
             <div className="flex flex-col flex-1 min-h-0 transition-opacity duration-300">

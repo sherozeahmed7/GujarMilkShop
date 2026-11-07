@@ -45,6 +45,8 @@ export interface CreateCustomerPayload {
   customerType: string;
   /** Optional existing dues to seed as Previous balance */
   openingBalance?: number;
+  /** Optional custom milk rate per kg */
+  customMilkRate?: number | null;
 }
 
 export interface UpdateCustomerPayload {
@@ -53,6 +55,8 @@ export interface UpdateCustomerPayload {
   address?: string;
   customerType?: string;
   openingBalance?: number;
+  /** Optional custom milk rate per kg */
+  customMilkRate?: number | null;
 }
 
 export class CustomerService {
@@ -62,7 +66,7 @@ export class CustomerService {
    * period so it appears in Previous and can be collected like normal dues.
    */
   static async createCustomer(payload: CreateCustomerPayload) {
-    const { name, phone, address, customerType, openingBalance } = payload;
+    const { name, phone, address, customerType, openingBalance, customMilkRate } = payload;
 
     if (!name || !name.trim()) {
       return {
@@ -96,7 +100,8 @@ export class CustomerService {
           phone: phone?.trim() || null,
           address: address?.trim() || null,
           customerType,
-          status: 'active'
+          status: 'active',
+          customMilkRate: customMilkRate != null && Number(customMilkRate) > 0 ? Number(customMilkRate) : null
         }
       });
 
@@ -259,7 +264,13 @@ export class CustomerService {
       const createdAt: any = {};
       if (rangeStart) createdAt.gte = rangeStart;
       if (rangeEnd) createdAt.lte = rangeEnd;
-      andFilters.push({ sales: { some: { createdAt } } });
+      // Include customer if they have sales in range OR payments collected in range
+      andFilters.push({
+        OR: [
+          { sales: { some: { createdAt } } },
+          { sales: { some: { payments: { some: { amount: { gt: 0 }, status: 'completed', createdAt } } } } }
+        ]
+      });
     }
 
     if (andFilters.length === 1) {
@@ -614,14 +625,31 @@ export class CustomerService {
       ? {
           status: 'active',
           customerType: { in: [...CUSTOMER_TYPES] },
-          sales: {
-            some: {
-              createdAt: {
-                ...(rangeStart ? { gte: rangeStart } : {}),
-                ...(rangeEnd ? { lte: rangeEnd } : {}),
+          OR: [
+            {
+              sales: {
+                some: {
+                  createdAt: {
+                    ...(rangeStart ? { gte: rangeStart } : {}),
+                    ...(rangeEnd ? { lte: rangeEnd } : {}),
+                  },
+                },
               },
             },
-          },
+            {
+              sales: {
+                some: {
+                  payments: {
+                    some: {
+                      amount: { gt: 0 },
+                      status: 'completed',
+                      ...(collectedDateFilter ? { createdAt: collectedDateFilter } : {}),
+                    },
+                  },
+                },
+              },
+            },
+          ],
         }
       : { status: 'active', customerType: { in: [...CUSTOMER_TYPES] } };
 
@@ -898,7 +926,8 @@ export class CustomerService {
           ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
           ...(payload.phone !== undefined ? { phone: payload.phone?.trim() || null } : {}),
           ...(payload.address !== undefined ? { address: payload.address?.trim() || null } : {}),
-          ...(payload.customerType !== undefined ? { customerType: payload.customerType } : {})
+          ...(payload.customerType !== undefined ? { customerType: payload.customerType } : {}),
+          ...(payload.customMilkRate !== undefined ? { customMilkRate: payload.customMilkRate != null && Number(payload.customMilkRate) > 0 ? Number(payload.customMilkRate) : null } : {})
         }
       });
 

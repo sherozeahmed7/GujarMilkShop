@@ -10,7 +10,7 @@ datasource db {
 // User model for authentication and role-based access control
 model User {
   id              Int      @id @default(autoincrement())
-  name            String?  // Optional display name of the user
+  name            String   @default("User") // Display name of the user
   email           String   @unique
   password        String   // Hashed password string using bcrypt
   role            String   @default("user") // User role (e.g. "admin", "cashier", "manager")
@@ -186,6 +186,7 @@ model Customer {
   address      String?
   customerType String   // "daily_ledger" | "monthly_ledger" | "walk_in"
   status       String   @default("active") // "active" | "inactive"
+  customMilkRate Float? // Custom fixed milk rate per kg
   cloudUuid    String?  @unique // Embedded cloud identity (Phase 6); walk-in uses canonical 00000000-0000-4000-8000-000000000001
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -350,6 +351,21 @@ model ExpensePayment {
 
   @@index([shiftId])
   @@index([expenseId])
+}
+
+model ExpenseCustomer {
+  id               Int      @id @default(autoincrement())
+  name             String
+  phone            String?
+  notes            String?
+  customerCategory String   @default("SHOP") // "SHOP" | "PERSONAL"
+  status           String   @default("active") // "active" | "inactive"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([name])
+  @@index([customerCategory])
+  @@index([status])
 }
 
 // Return / refund records linked to an original sale

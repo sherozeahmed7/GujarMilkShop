@@ -35,7 +35,12 @@ function createPool(): Pool {
     console.error('[Neon] Pool-level connection error (will recreate on next use):', err.message);
     // Destroy the pool reference so getNeonPool() creates a fresh one next time.
     // This handles "Connection terminated unexpectedly" from Neon scale-to-zero.
+    // End the stale pool silently so pg stops emitting errors on dead clients.
+    const stale = neonPool;
     neonPool = null;
+    if (stale) {
+      stale.end().catch(() => {});
+    }
   });
 
   console.log('[Neon] PostgreSQL pool initialized.');

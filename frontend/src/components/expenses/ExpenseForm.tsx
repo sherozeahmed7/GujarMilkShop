@@ -1,12 +1,26 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useExpenseStore } from '../../store/expenseStore';
-import { Wallet } from 'lucide-react';
+import { Wallet, Users, ChevronDown, Check } from 'lucide-react';
+import { getExpenseCustomers } from '../../services/expenseService';
+import { ExpenseCustomer } from '../../types/expense';
 
 export const ExpenseForm: React.FC = () => {
   const { createExpense, isSaving } = useExpenseStore();
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [product, setProduct] = useState('');
+  const [customers, setCustomers] = useState<ExpenseCustomer[]>([]);
+
+  const fetchCustomers = () => {
+    getExpenseCustomers({ customerCategory: 'SHOP' })
+      .then((data) => setCustomers(data || []))
+      .catch((err) => console.error('Failed to load expense customers:', err));
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
   const [amount, setAmount] = useState('');
   const [paidNow, setPaidNow] = useState('');
   const [notes, setNotes] = useState('');
@@ -24,7 +38,7 @@ export const ExpenseForm: React.FC = () => {
 
     const productText = product.trim();
     if (!date || !productText) {
-      setError('Date and product are required.');
+      setError('Date and product/customer name are required.');
       return;
     }
     if (!Number.isFinite(total) || total <= 0) {
@@ -83,7 +97,7 @@ export const ExpenseForm: React.FC = () => {
         <h2 className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">Add Expense</h2>
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
-        Record shop costs (milk, yogurt, shoppers, etc.). Cash paid now is taken from the open shift
+        Record shop costs (milk, yogurt, shoppers, customer expenses, etc.). Cash paid now is taken from the open shift
         expected cash. Any unpaid balance stays on the table until you clear it.
       </p>
 
@@ -101,15 +115,35 @@ export const ExpenseForm: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1.5 sm:col-span-1 lg:col-span-1">
-            <label className={labelClass}>Product</label>
-            <input
-              type="text"
-              value={product}
-              onChange={(e) => { setProduct(e.target.value); setSuccess(null); }}
-              placeholder="e.g. Milk, Yogurt, Shoppers"
-              className={inputClass}
-              required
-            />
+            <div className="flex items-center justify-between">
+              <label className={labelClass}>Customer / Product</label>
+              <span className="text-[10px] text-slate-400 dark:text-[#8ba895]">Select or type custom</span>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                list="expense-customers-list"
+                value={product}
+                onFocus={fetchCustomers}
+                onChange={(e) => {
+                  setProduct(e.target.value);
+                  setSuccess(null);
+                }}
+                placeholder="Choose customer or type product..."
+                className={`${inputClass} w-full pr-8 [appearance:textfield] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
+                required
+              />
+              <datalist id="expense-customers-list">
+                {customers.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.phone ? `${c.name} (${c.phone})` : c.name}
+                  </option>
+                ))}
+              </datalist>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronDown className="w-4 h-4 opacity-70" />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -163,14 +197,14 @@ export const ExpenseForm: React.FC = () => {
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. bought from market, supplier bill"
+              placeholder="e.g. bought from market, supplier bill, customer note"
               className={inputClass}
             />
           </div>
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 dark:bg-[#22c55e] hover:bg-emerald-700 dark:hover:bg-[#1ea34d] text-white dark:text-[#0d1a10] font-semibold rounded-lg transition-colors disabled:opacity-70 whitespace-nowrap"
+            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 dark:bg-[#22c55e] hover:bg-emerald-700 dark:hover:bg-[#1ea34d] text-white dark:text-[#0d1a10] font-semibold rounded-lg transition-colors disabled:opacity-70 whitespace-nowrap cursor-pointer"
           >
             {isSaving ? 'Saving…' : 'Save Expense'}
           </button>

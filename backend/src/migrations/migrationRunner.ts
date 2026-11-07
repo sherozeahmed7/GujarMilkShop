@@ -24,6 +24,10 @@ import { migration017FixPosRfc3339Timestamps } from './migrations/017_fix_pos_rf
 import { migration018AddExpenseType } from './migrations/018_add_expense_type';
 import { migration019AddSaleDiscountAndTokenColumns } from './migrations/019_add_sale_discount_and_token_columns';
 import { migration020AddSaleCreatedBy } from './migrations/020_add_sale_created_by';
+import { migration021UserNameNotNull } from './migrations/021_user_name_not_null';
+import { migration022ExpenseCustomers } from './migrations/022_expense_customers';
+import { migration023ExpenseCustomerCategory } from './migrations/023_expense_customer_category';
+import { migration024CustomerCustomRate } from './migrations/024_customer_custom_rate';
 
 export const ALL_MIGRATIONS: Migration[] = [
   migration001BaselineTracking,
@@ -46,6 +50,10 @@ export const ALL_MIGRATIONS: Migration[] = [
   migration018AddExpenseType,
   migration019AddSaleDiscountAndTokenColumns,
   migration020AddSaleCreatedBy,
+  migration021UserNameNotNull,
+  migration022ExpenseCustomers,
+  migration023ExpenseCustomerCategory,
+  migration024CustomerCustomRate,
 ];
 
 export interface PreparedMigration {

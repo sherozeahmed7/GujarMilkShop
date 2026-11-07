@@ -63,19 +63,19 @@ export const Suppliers: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between mb-4 flex-shrink-0 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 flex-shrink-0 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">
             Suppliers & Milk Purchase
           </h1>
-          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">
+          <p className="text-slate-500 dark:text-[#64916e] text-xs sm:text-sm mt-0.5 sm:mt-1">
             {pageView === 'farms'
               ? 'Select a farm to add entries or make payments.'
               : 'Payment history by farm, shift, method, and date.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="inline-flex rounded-xl border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#1a2e1f] p-1 shadow-sm">
             <button
               type="button"
@@ -104,7 +104,7 @@ export const Suppliers: React.FC = () => {
 
           {pageView === 'farms' && (
             <>
-              <div className="relative w-64">
+              <div className="relative flex-1 sm:w-64 min-w-[150px]">
                 <Search className="w-4 h-4 text-slate-400 dark:text-[#64916e] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -115,40 +115,42 @@ export const Suppliers: React.FC = () => {
                 />
               </div>
 
-              <div className="w-px h-10 bg-slate-200 dark:bg-[#2d4a35]" />
+              <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-[#2d4a35]" />
 
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-semibold text-slate-500 dark:text-[#64916e] uppercase tracking-wider">
-                  Today&apos;s Milk
-                </span>
-                <span className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">
-                  {todaysMilk.toFixed(2)} kg
-                </span>
-              </div>
-              <div className="w-px h-10 bg-slate-200 dark:bg-[#2d4a35]" />
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Total Payables
-                </span>
-                <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                  {formatCurrency(totalPayables)}
-                </span>
-              </div>
-              <div className="w-px h-10 bg-slate-200 dark:bg-[#2d4a35]" />
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Next-Cycle Credit
-                </span>
-                <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(
-                    suppliers.reduce((sum, s) => sum + (s.guaranteedAdvance || 0), 0)
-                  )}
-                </span>
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                <div className="flex flex-col sm:items-end">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-[#64916e] uppercase tracking-wider">
+                    Today&apos;s Milk
+                  </span>
+                  <span className="text-sm sm:text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">
+                    {todaysMilk.toFixed(2)} kg
+                  </span>
+                </div>
+                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-[#2d4a35]" />
+                <div className="flex flex-col sm:items-end">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Total Payables
+                  </span>
+                  <span className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400">
+                    {formatCurrency(totalPayables)}
+                  </span>
+                </div>
+                <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-[#2d4a35]" />
+                <div className="flex flex-col sm:items-end">
+                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Next-Cycle Credit
+                  </span>
+                  <span className="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(
+                      suppliers.reduce((sum, s) => sum + (s.guaranteedAdvance || 0), 0)
+                    )}
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => fetchData()}
-                className="ml-2 p-2 h-fit bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#86efac] rounded-lg hover:bg-slate-50 dark:hover:bg-[#223927] shadow-sm transition-colors"
+                className="p-2 h-fit bg-white dark:bg-[#1a2e1f] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#86efac] rounded-lg hover:bg-slate-50 dark:hover:bg-[#223927] shadow-sm transition-colors shrink-0"
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
@@ -171,8 +173,8 @@ export const Suppliers: React.FC = () => {
           />
         </div>
       ) : (
-        <div className="flex gap-6 flex-1 min-h-0">
-          <div className="w-[320px] bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden flex-shrink-0">
+        <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
+          <div className="w-full md:w-[320px] max-h-[300px] md:max-h-none bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden shrink-0">
             <div className="p-4 border-b border-slate-100 dark:border-[#2d4a35] flex flex-col gap-3 flex-shrink-0 bg-slate-50/50 dark:bg-[#142119]/50">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-slate-800 dark:text-[#e2f5e8] flex items-center gap-2">
@@ -214,7 +216,7 @@ export const Suppliers: React.FC = () => {
                   <div>
                     <h3
                       className={`font-bold text-sm ${
-                        selectedSupplierId === sup.id ? 'text-[#166534] dark:text-[#22c55e]' : 'text-slate-800 dark:text-[#e2f5e8]'
+                        !sup.isActive ? 'line-through text-red-500 dark:text-red-400 font-bold' : selectedSupplierId === sup.id ? 'text-[#166534] dark:text-[#22c55e]' : 'text-slate-800 dark:text-[#e2f5e8]'
                       }`}
                     >
                       {sup.name}

@@ -80,12 +80,12 @@ export const ShopInfo: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-6 min-h-0">
       {/* Header */}
-      <div className="flex items-start justify-between flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Shop Info</h1>
           <p className="text-slate-500 text-sm mt-1">Manage basic information, contact details, and shop location.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={loadConfig}
             disabled={loading || saving}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Cloud, CloudOff, AlertCircle, HardDrive, Wifi, WifiOff, Clock, DownloadCloud, Play, Link2Off, Link2 } from 'lucide-react';
+import { RefreshCw, Cloud, CloudOff, AlertCircle, HardDrive, Wifi, WifiOff, Clock, DownloadCloud, Play, Link2Off, Link2, Wrench, CheckCircle } from 'lucide-react';
 import { cloudSyncService, CloudStatusData, SyncItem } from '../../services/cloudSync.service';
 import { RestoreCloudDataModal } from '../../components/settings/RestoreCloudDataModal';
 import { Pagination } from '../../components/common/Pagination';
@@ -29,6 +29,8 @@ export const CloudSync: React.FC = () => {
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairReport, setRepairReport] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const pollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -146,6 +148,31 @@ export const CloudSync: React.FC = () => {
     }
   };
 
+  const handleAutoRepair = async () => {
+    setRepairing(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await cloudSyncService.autoRepair();
+      if (res.success) {
+        setRepairReport(res.report);
+        const details = [];
+        if (res.report?.staleSyncingReset) details.push(`${res.report.staleSyncingReset} stale locks cleared`);
+        if (res.report?.failedEventsHealed) details.push(`${res.report.failedEventsHealed} failed events re-queued`);
+        if (res.report?.orphanedMappingsRepaired) details.push(`${res.report.orphanedMappingsRepaired} mappings healed`);
+        const summary = details.length > 0 ? ` (${details.join(', ')})` : '';
+        setSuccessMsg(`Auto-repair complete! Sync loops re-engaged${summary}.`);
+      } else {
+        setError(res.message || 'Auto-repair encountered an issue.');
+      }
+      await loadData();
+    } catch (err: any) {
+      setError(err?.message || 'Auto-repair failed to execute.');
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   const handleRetryAll = async () => {
     setActionInProgress(true);
     setError(null);
@@ -170,7 +197,7 @@ export const CloudSync: React.FC = () => {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-start justify-between flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">Cloud &amp; Sync</h1>
           <p className="text-slate-500 dark:text-[#8ba895] text-sm mt-1">
@@ -181,11 +208,22 @@ export const CloudSync: React.FC = () => {
             This is optional — your POS works fully offline without cloud sync.
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Auto-Repair Sync */}
+          <button
+            onClick={handleAutoRepair}
+            disabled={loading || syncing || repairing || actionInProgress}
+            title="Diagnose sync bottlenecks, reset stuck locks, heal failed events, and trigger sync"
+            className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] hover:bg-slate-50 dark:hover:bg-[#1e3124] border border-amber-200 dark:border-[#3d2f12] text-amber-800 dark:text-[#fcd34d] px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
+          >
+            <Wrench className={`w-4 h-4 text-amber-600 ${repairing ? 'animate-bounce' : ''}`} />
+            {repairing ? 'Repairing…' : 'Auto-Repair Sync'}
+          </button>
+
           {/* Restore Cloud Data */}
           <button
             onClick={() => setIsRestoreModalOpen(true)}
-            disabled={loading || syncing || actionInProgress || !statusData?.cloudConnected}
+            disabled={loading || syncing || repairing || actionInProgress || !statusData?.cloudConnected}
             title={!statusData?.cloudConnected ? 'Connect to cloud to restore data.' : 'Restore data from online cloud backup'}
             className="flex items-center gap-2 bg-white dark:bg-[#1a2e1f] hover:bg-slate-50 dark:hover:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] px-4 py-2 rounded-xl font-medium shadow-sm transition-colors disabled:opacity-50"
           >
@@ -195,7 +233,7 @@ export const CloudSync: React.FC = () => {
 
           <button
             onClick={handleSyncNow}
-            disabled={loading || syncing || actionInProgress || isDisconnected}
+            disabled={loading || syncing || repairing || actionInProgress || isDisconnected}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -230,7 +268,7 @@ export const CloudSync: React.FC = () => {
         ) : (
           <>
             {/* Top Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-shrink-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 flex-shrink-0">
 
               {/* Sync Status Card */}
               <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] p-6 flex items-center gap-4 shadow-sm">

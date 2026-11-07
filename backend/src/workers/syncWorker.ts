@@ -8,8 +8,12 @@ let isSyncing = false;
 const SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MS || '30000', 10);
 const SYNC_BATCH_SIZE = parseInt(process.env.SYNC_BATCH_SIZE || '15', 10);
 const SYNC_WORKER_ENABLED = process.env.SYNC_WORKER_ENABLED === 'true';
-const SYNC_INTERNAL_SECRET = process.env.SYNC_INTERNAL_SECRET || 'secret';
+const SYNC_INTERNAL_SECRET = process.env.SYNC_INTERNAL_SECRET?.trim() || '';
 const API_URL = process.env.SYNC_API_URL || 'http://localhost:5000/api/sync/batch';
+
+if (SYNC_WORKER_ENABLED && !SYNC_INTERNAL_SECRET) {
+  console.error('[SYNC WORKER] FATAL CONFIGURATION ERROR: SYNC_INTERNAL_SECRET is required when SYNC_WORKER_ENABLED=true. Cloud synchronization cannot start without authentication.');
+}
 
 function calculateNextRetry(retryCount: number): Date {
   const now = new Date();
@@ -26,6 +30,10 @@ import { isRestoreInProgress } from '../utils/restoreLock';
 import { writeGate } from '../utils/writeGate';
 
 export async function processSyncQueue() {
+  if (!SYNC_INTERNAL_SECRET) {
+    console.error('[SYNC WORKER] Skipping queue processing: SYNC_INTERNAL_SECRET is missing.');
+    return;
+  }
   if (isSyncing || isRestoreInProgress()) return;
   isSyncing = true;
 
@@ -324,6 +332,11 @@ let workerInterval: NodeJS.Timeout | null = null;
 export function startSyncWorker() {
   if (!SYNC_WORKER_ENABLED) {
     console.log('[SYNC WORKER] Sync worker is disabled (SYNC_WORKER_ENABLED=false).');
+    return;
+  }
+
+  if (!SYNC_INTERNAL_SECRET) {
+    console.error('[SYNC WORKER] FATAL: Cannot start sync worker because SYNC_INTERNAL_SECRET is not configured.');
     return;
   }
 

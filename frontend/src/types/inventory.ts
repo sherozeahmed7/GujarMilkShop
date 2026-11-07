@@ -15,6 +15,8 @@ export interface Product {
   status: ProductStatus;
   isLocked: boolean;
   lowStockThreshold: number;
+  /** false when soft-deleted from Inventory; active cards must check this */
+  isActive?: boolean;
 }
 
 export interface StockIn {

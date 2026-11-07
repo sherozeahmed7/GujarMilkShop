@@ -5,6 +5,10 @@ import { CollectedBreakdownModal } from '../components/khata/CollectedBreakdownM
 import { KhataCashCollectModal } from '../components/khata/KhataCashCollectModal';
 import { KhataLedgerModal } from '../components/khata/KhataLedgerModal';
 import { KhataCustomerFormModal } from '../components/khata/KhataCustomerFormModal';
+import { KhataReceiptModal } from '../components/khata/KhataReceiptModal';
+import { KhataReceiptData } from '../utils/khataReceiptPrinter';
+import { posConfigService, POSConfigData } from '../services/posConfig.service';
+import { customerLedgerService } from '../services/customerLedgerService';
 import { ReportFilters } from '../components/reports/ReportFilters';
 import {
   customerService,
@@ -91,6 +95,8 @@ export const KhataLedger: React.FC = () => {
   const [ledgerCustomer, setLedgerCustomer] = useState<ApiCustomer | null>(null);
   const [formCustomer, setFormCustomer] = useState<ApiCustomer | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [activeReceipt, setActiveReceipt] = useState<KhataReceiptData | null>(null);
+  const [posConfig, setPosConfig] = useState<POSConfigData | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'All' | 'Paid' | 'Pending'>('All');
@@ -98,6 +104,8 @@ export const KhataLedger: React.FC = () => {
     useState<CustomerTypeFilter>('All');
   const [customerStatusFilter, setCustomerStatusFilter] =
     useState<'all' | 'active' | 'inactive'>('all');
+  const [supplierStatusFilter, setSupplierStatusFilter] =
+    useState<'all' | 'active' | 'inactive'>('active');
   const [supplierCycleFilter, setSupplierCycleFilter] =
     useState<SupplierCycleFilter>('All');
   const [nameSort, setNameSort] = useState<NameSortOrder>('default');
@@ -110,6 +118,10 @@ export const KhataLedger: React.FC = () => {
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
+  useEffect(() => {
+    posConfigService.getPOSConfig().then(setPosConfig).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (openActionMenu === null) return;
     const handler = (e: MouseEvent) => {
@@ -154,10 +166,15 @@ export const KhataLedger: React.FC = () => {
     setSupplierPage(1);
   }, [debouncedSearch, filterMode, customerTypeFilter, customerStatusFilter, supplierCycleFilter, nameSort, dateFilter, partyMode]);
 
-  const sortedCustomers = useMemo(
-    () => sortByName(customers, nameSort),
-    [customers, nameSort]
-  );
+  const sortedCustomers = useMemo(() => {
+    let list = customers;
+    if (dateFilter.startDate !== null) {
+      list = list.filter(
+        (c) => (c.currentDue ?? 0) > 0 || (c.paidAmount ?? 0) > 0
+      );
+    }
+    return sortByName(list, nameSort);
+  }, [customers, nameSort, dateFilter]);
 
   const paginatedCustomers = useMemo(() => {
     const start = (customerPage - 1) * customerItemsPerPage;
@@ -165,11 +182,18 @@ export const KhataLedger: React.FC = () => {
   }, [sortedCustomers, customerPage, customerItemsPerPage]);
 
   const visibleSuppliers = useMemo(() => {
-    const filtered = suppliers.filter((s) =>
+    let list = suppliers;
+    // When a date filter is active, only show suppliers who have activity in that period
+    if (dateFilter.startDate !== null) {
+      list = list.filter(
+        (s) => (s.periodPurchases ?? 0) > 0 || (s.paidAmount ?? 0) > 0 || (s.totalQty ?? 0) > 0
+      );
+    }
+    const filtered = list.filter((s) =>
       `${s.name} ${s.code}`.toLowerCase().includes(searchQuery.toLowerCase())
     );
     return sortByName(filtered, nameSort);
-  }, [suppliers, searchQuery, nameSort]);
+  }, [suppliers, searchQuery, nameSort, dateFilter]);
 
   const paginatedSuppliers = useMemo(() => {
     const start = (supplierPage - 1) * supplierItemsPerPage;
@@ -252,6 +276,7 @@ export const KhataLedger: React.FC = () => {
         return `${y}-${m}-${day}`;
       };
 
+      const isActiveFilter = supplierStatusFilter === 'active' ? true : supplierStatusFilter === 'inactive' ? false : undefined;
       const list = await supplierService.list({
         ...(supplierCycleFilter !== 'All'
           ? { cycleType: supplierCycleFilter }
@@ -262,13 +287,16 @@ export const KhataLedger: React.FC = () => {
         ...(dateFilter.endDate
           ? { toDate: toYMD(dateFilter.endDate) }
           : {}),
+        ...(isActiveFilter !== undefined
+          ? { isActive: isActiveFilter }
+          : {}),
       });
       setSuppliers(list);
     } catch (err: any) {
       setError(err?.message || 'Failed to load suppliers');
       setSuppliers([]);
     }
-  }, [supplierCycleFilter, dateFilter]);
+  }, [supplierCycleFilter, dateFilter, supplierStatusFilter]);
 
   const refreshAfterAction = useCallback(async () => {
     await Promise.all([
@@ -339,6 +367,24 @@ export const KhataLedger: React.FC = () => {
       await refreshAfterAction();
     } catch (err: any) {
       const msg = err?.message || `Failed to set customer to ${nextStatus}`;
+      setError(msg);
+    }
+  };
+
+  const handleToggleActiveSupplier = async (s: Supplier) => {
+    const nextActive = s.isActive === false ? true : false;
+    try {
+      await supplierService.toggleActive(s.id, nextActive);
+      activityLogger.log({
+        action: nextActive ? 'SUPPLIER_ACTIVATED' : 'SUPPLIER_DEACTIVATED',
+        module: 'Suppliers',
+        description: `Supplier "${s.name}" (ID: ${s.id}) is now marked as ${nextActive ? 'active' : 'inactive'}.`,
+        entityId: String(s.id),
+        status: 'Success',
+      });
+      await refreshAfterAction();
+    } catch (err: any) {
+      const msg = err?.message || `Failed to set supplier to ${nextActive ? 'active' : 'inactive'}`;
       setError(msg);
     }
   };
@@ -570,6 +616,42 @@ export const KhataLedger: React.FC = () => {
     }
   };
 
+  const handlePrintCustomerSlip = async (c: ApiCustomer) => {
+    try {
+      const now = new Date();
+      const summaryData = await customerLedgerService.getMonthlySummary(
+        String(c.id),
+        now.getMonth() + 1,
+        now.getFullYear()
+      ).catch(() => null);
+
+      let prevBal = c.previousDue ?? 0;
+      let paidAmt = c.paidAmount ?? 0;
+      let remBal = c.remainingBalance ?? c.totalDue ?? 0;
+
+      if (summaryData) {
+        prevBal = summaryData.previousBalance;
+        paidAmt = summaryData.totalReceived;
+        remBal = summaryData.remaining;
+      }
+
+      const receiptData: KhataReceiptData = {
+        customerName: c.name,
+        customerPhone: c.phone,
+        customerType: c.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily',
+        date: new Date(),
+        previousBalance: prevBal,
+        paidAmount: paidAmt,
+        remainingBalance: remBal,
+        paymentMethod: 'cash',
+      };
+
+      setActiveReceipt(receiptData);
+    } catch (err) {
+      console.error('Failed to prepare customer receipt slip:', err);
+    }
+  };
+
   const filterLabel =
     filterMode === 'All'
       ? 'Paid / Pending'
@@ -670,7 +752,7 @@ export const KhataLedger: React.FC = () => {
       )}
 
       {partyMode === 'customers' ? <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35] flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0 flex items-center gap-3">
+        <div className="p-4 border-b border-slate-100 dark:border-[#2d4a35] flex-shrink-0 flex flex-wrap items-center gap-3">
           <div className="relative w-56 flex-shrink-0">
             <button type="button" onClick={() => setPartyPickerOpen((open) => !open)} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#e2f5e8] rounded-xl text-sm font-semibold shadow-sm" aria-haspopup="listbox" aria-expanded={partyPickerOpen}>
               {partyMode === 'customers' ? 'Customers' : 'Suppliers'}
@@ -729,7 +811,7 @@ export const KhataLedger: React.FC = () => {
         </div>
 
         <div className="w-full overflow-x-auto">
-          <table className="w-full table-fixed text-left border-collapse">
+          <table className="w-full table-fixed text-left border-collapse min-w-[900px]">
             <thead className="bg-slate-50 dark:bg-[#142119] sticky top-0 z-10">
               <tr>
                 <th className="w-14 px-3 py-3.5 font-semibold text-xs text-slate-500 dark:text-[#64916e] uppercase tracking-wider border-b border-slate-100 dark:border-[#2d4a35] text-center">
@@ -831,11 +913,18 @@ export const KhataLedger: React.FC = () => {
                           >
                             {c.name}
                           </button>
-                          {c.address && (
-                            <p className="text-[10px] text-slate-400 dark:text-[#64916e] truncate">
-                              {c.address}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            {c.address && (
+                              <p className="text-[10px] text-slate-400 dark:text-[#64916e] truncate">
+                                {c.address}
+                              </p>
+                            )}
+                            {c.customMilkRate != null && c.customMilkRate > 0 && (
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800/50 text-[10px]">
+                                Rate: Rs. {c.customMilkRate}/kg
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-[#a7c4ae] truncate max-w-[140px]" title={c.phone?.trim() ? c.phone : 'Not Available'}>
@@ -931,6 +1020,16 @@ export const KhataLedger: React.FC = () => {
                               >
                                 <BookOpen className="w-4 h-4" />
                                 View Ledger
+                              </button>
+
+                              {/* Print Receipt / Slip */}
+                              <button
+                                type="button"
+                                onClick={() => { handlePrintCustomerSlip(c); setOpenActionMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-[#e2f5e8] hover:bg-emerald-50 dark:hover:bg-[#223927] hover:text-[#166534] dark:hover:text-[#22c55e] transition-colors"
+                              >
+                                <Printer className="w-4 h-4" />
+                                Print Slip
                               </button>
 
                               <div className="h-px bg-slate-100 dark:bg-[#2d4a35] my-1" />
@@ -1037,6 +1136,18 @@ export const KhataLedger: React.FC = () => {
               />
             </div>
             <select
+              value={supplierStatusFilter}
+              onChange={(e) =>
+                setSupplierStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
+              }
+              className="px-3 py-2.5 rounded-xl text-sm font-semibold bg-white dark:bg-[#1e3124] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+              title="Filter by status"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </select>
+            <select
               value={supplierCycleFilter}
               onChange={(e) =>
                 setSupplierCycleFilter(e.target.value as SupplierCycleFilter)
@@ -1114,6 +1225,7 @@ export const KhataLedger: React.FC = () => {
                     // ── RATE: from Supplier page's defaultRate if period has milk, else 0 ──
                     const supplierRate = totalMilk > 0 ? (supplier.defaultRate ?? 0) : 0;
                     const periodTotal = supplier.periodPurchases ?? (totalMilk * (supplier.defaultRate ?? 0));
+                    const isInactive = supplier.isActive === false;
 
                     const fmtAmt = (n: number) => {
                       if (n < 0) {
@@ -1133,7 +1245,7 @@ export const KhataLedger: React.FC = () => {
                       );
                     };
                     return (
-                      <tr id={`supplier-row-${supplier.id}`} key={supplier.id} className="hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors">
+                      <tr id={`supplier-row-${supplier.id}`} key={supplier.id} className={`hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors ${isInactive ? 'opacity-70' : ''}`}>
                         <td className="px-3 py-3 text-center text-sm font-medium text-slate-500 dark:text-slate-400 tabular-nums">
                           {(supplierPage - 1) * supplierItemsPerPage + index + 1}
                         </td>
@@ -1144,8 +1256,12 @@ export const KhataLedger: React.FC = () => {
                               sessionStorage.setItem('khata_scroll_to_id', `supplier-row-${supplier.id}`);
                               navigate(`/ledger/suppliers/${supplier.id}`);
                             }}
-                            className="text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac] hover:underline truncate block w-full text-left"
-                            title={supplier.name}
+                            className={`font-semibold text-sm hover:underline truncate text-left block w-full ${
+                              isInactive
+                                ? 'line-through text-red-500 dark:text-red-400 font-bold hover:text-red-600 dark:hover:text-red-300'
+                                : 'text-blue-600 dark:text-[#22c55e] hover:text-blue-800 dark:hover:text-[#86efac]'
+                            }`}
+                            title={isInactive ? `${supplier.name} (Inactive)` : supplier.name}
                           >
                             {supplier.name}
                           </button>
@@ -1198,6 +1314,18 @@ export const KhataLedger: React.FC = () => {
                               className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                             >
                               Ledger
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleActiveSupplier(supplier)}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                isInactive
+                                  ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 dark:text-emerald-400'
+                                  : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 dark:text-amber-400'
+                              }`}
+                              title={isInactive ? 'Mark as Active' : 'Mark as Inactive'}
+                            >
+                              <Power className="w-4 h-4" />
                             </button>
                             <button
                               type="button"
@@ -1315,6 +1443,14 @@ export const KhataLedger: React.FC = () => {
           customer={collectCustomer}
           onClose={() => setCollectCustomer(null)}
           onCollected={refreshAfterAction}
+          onOpenReceipt={(receiptData) => setActiveReceipt(receiptData)}
+        />
+      )}
+      {activeReceipt && (
+        <KhataReceiptModal
+          receipt={activeReceipt}
+          posConfig={posConfig}
+          onClose={() => setActiveReceipt(null)}
         />
       )}
       {ledgerCustomer && (

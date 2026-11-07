@@ -23,6 +23,12 @@ function formatUserName(user?: { name?: string | null; email?: string | null; ro
   return user.role || 'User';
 }
 
+function isShiftAutoClosed(shift: any): boolean {
+  if (shift.closedById == null && shift.status === 'Closed') return true;
+  const notes = (shift.closingNotes || '').toLowerCase();
+  return notes.includes('auto-close') || notes.includes('auto-closed') || notes.includes('midnight');
+}
+
 function formatShift(shift: any, salesAggregates?: {
   billsCount: number;
   grossSales: number;
@@ -38,8 +44,9 @@ function formatShift(shift: any, salesAggregates?: {
     openedAt: shift.openedAt.toISOString(),
     openingCash: shift.openingCash,
     openingNotes: shift.openingNotes || undefined,
-    closedById: shift.closedById || undefined,
-    closedBy: shift.closedBy ? formatUserName(shift.closedBy) : undefined,
+    closedById: isShiftAutoClosed(shift) ? undefined : (shift.closedById || undefined),
+    closedBy: isShiftAutoClosed(shift) ? undefined : (shift.closedBy ? formatUserName(shift.closedBy) : undefined),
+    isAutoClosed: isShiftAutoClosed(shift),
     closedAt: shift.closedAt?.toISOString(),
     expectedCash: shift.expectedCash,
     countedCash: shift.countedCash ?? undefined,
@@ -178,7 +185,7 @@ export class ShiftService {
           const closed = await tx.shift.update({
             where: { id: shift.id },
             data: {
-              closedById: shift.openedById,
+              closedById: null,
               closedAt,
               countedCash: expected,
               expectedCash: expected,
@@ -305,5 +312,255 @@ export class ShiftService {
 
     const salesAgg = await getSalesAggregates(current.openedAt, closedAt);
     return { success: true, statusCode: 200, data: formatShift(updated, salesAgg) };
+  }
+
+  static async getShiftLedger(shiftId: number) {
+    const shift = await prisma.shift.findUnique({
+      where: { id: shiftId },
+      include: { openedBy: true, closedBy: true },
+    });
+
+    if (!shift) {
+      return { success: false, statusCode: 404, message: 'Shift not found' };
+    }
+
+    const opAt = shift.openedAt;
+    const clAt = shift.closedAt;
+    const opId = shift.openedById;
+    const openCash = Number(shift.openingCash) || 0;
+    const expectedCashAmount = Number(shift.expectedCash) || 0;
+
+    const baseWhere: any = {
+      method: 'cash',
+      status: { in: ['completed', 'partial'] },
+      createdAt: { gte: opAt, ...(clAt ? { lte: clAt } : {}) },
+    };
+
+    const paymentsWithUser = await prisma.payment.findMany({
+      where: {
+        ...baseWhere,
+        ...(opId ? {
+          sale: {
+            OR: [
+              { createdById: opId },
+              { createdById: null },
+            ],
+          },
+        } : {}),
+      },
+      include: {
+        sale: {
+          select: {
+            id: true,
+            saleType: true,
+            customerName: true,
+            customerPhone: true,
+            customerId: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const supplierPayments = await prisma.supplierPayment.findMany({
+      where: {
+        method: 'cash',
+        shiftId: shift.id,
+      },
+      include: {
+        supplier: {
+          select: { id: true, name: true, phone: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const expensePayments = await prisma.expensePayment.findMany({
+      where: {
+        shiftId: shift.id,
+      },
+      include: {
+        expense: {
+          select: { id: true, category: true, description: true, expenseType: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const sumP1 = paymentsWithUser.reduce((s, p) => s + Number(p.amount), 0);
+    const sumSup = supplierPayments.reduce((s, sp) => s + Number(sp.amount), 0);
+    const sumExp = expensePayments.reduce((s, ep) => s + Number(ep.amount), 0);
+
+    let chosenPayments = paymentsWithUser;
+    const calc1 = money(openCash + sumP1 - sumSup - sumExp);
+
+    if (Math.abs(calc1 - expectedCashAmount) >= 0.001) {
+      const allPayments = await prisma.payment.findMany({
+        where: baseWhere,
+        include: {
+          sale: {
+            select: {
+              id: true,
+              saleType: true,
+              customerName: true,
+              customerPhone: true,
+              customerId: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      const sumPAll = allPayments.reduce((s, p) => s + Number(p.amount), 0);
+      if (Math.abs(money(openCash + sumPAll - sumSup - sumExp) - expectedCashAmount) < 0.001) {
+        chosenPayments = allPayments;
+      }
+    }
+
+    const rawItems: Array<{
+      id: string;
+      timestamp: string;
+      rawTime: number;
+      flowType: 'CASH_IN' | 'CASH_OUT';
+      category: string;
+      description: string;
+      party: string;
+      cashIn: number;
+      cashOut: number;
+      referenceId?: string;
+    }> = [];
+
+    rawItems.push({
+      id: 'open-' + shift.id,
+      timestamp: shift.openedAt.toISOString(),
+      rawTime: shift.openedAt.getTime(),
+      flowType: 'CASH_IN',
+      category: 'Opening Cash',
+      description: shift.openingNotes || 'Initial Cash Drawer Balance',
+      party: formatUserName(shift.openedBy),
+      cashIn: openCash,
+      cashOut: 0,
+      referenceId: 'SHIFT-' + shift.id,
+    });
+
+    for (const p of chosenPayments) {
+      const isWalkIn = p.sale?.saleType === 'walk_in';
+      const cat = isWalkIn ? 'Walk-in Customer Sale' : 'Customer Khata Payment';
+      const party = p.sale?.customerName || (isWalkIn ? 'Walk-in Customer' : 'Customer Account');
+      const amt = Number(p.amount) || 0;
+      const saleId = p.sale?.id || p.saleId || '';
+
+      rawItems.push({
+        id: 'pay-' + p.id,
+        timestamp: p.createdAt.toISOString(),
+        rawTime: p.createdAt.getTime(),
+        flowType: 'CASH_IN',
+        category: cat,
+        description: 'Sale #' + saleId + ' (' + (p.sale?.saleType || 'cash') + ')',
+        party,
+        cashIn: amt,
+        cashOut: 0,
+        referenceId: saleId ? 'SALE-' + saleId : undefined,
+      });
+    }
+
+    for (const sp of supplierPayments) {
+      const amt = Number(sp.amount) || 0;
+      const party = sp.supplier?.name || ('Supplier #' + sp.supplierId);
+      const desc = sp.notes || 'Supplier Milk Payment / Cash Out';
+
+      rawItems.push({
+        id: 'sup-' + sp.id,
+        timestamp: sp.createdAt.toISOString(),
+        rawTime: sp.createdAt.getTime(),
+        flowType: 'CASH_OUT',
+        category: 'Supplier Payment',
+        description: desc,
+        party,
+        cashIn: 0,
+        cashOut: amt,
+        referenceId: 'SUP-' + sp.id,
+      });
+    }
+
+    for (const ep of expensePayments) {
+      const amt = Number(ep.amount) || 0;
+      const cat = ep.expense?.category || 'Shop Expense';
+      const desc = ep.expense?.description || cat;
+      const party = ep.addedBy ? ('By ' + ep.addedBy) : 'Shop Staff';
+
+      rawItems.push({
+        id: 'exp-' + ep.id,
+        timestamp: ep.createdAt.toISOString(),
+        rawTime: ep.createdAt.getTime(),
+        flowType: 'CASH_OUT',
+        category: 'Shop Expense',
+        description: desc,
+        party,
+        cashIn: 0,
+        cashOut: amt,
+        referenceId: 'EXP-' + ep.id,
+      });
+    }
+
+    rawItems.sort((a, b) => {
+      if (a.rawTime !== b.rawTime) return a.rawTime - b.rawTime;
+      if (a.category === 'Opening Cash') return -1;
+      if (b.category === 'Opening Cash') return 1;
+      return 0;
+    });
+
+    let runningBalance = 0;
+    const ledger = rawItems.map((item) => {
+      if (item.flowType === 'CASH_IN') {
+        runningBalance = money(runningBalance + item.cashIn);
+      } else {
+        runningBalance = money(runningBalance - item.cashOut);
+      }
+      return {
+        ...item,
+        runningBalance,
+      };
+    });
+
+    const walkInTotal = chosenPayments
+      .filter((p) => p.sale?.saleType === 'walk_in')
+      .reduce((s, p) => s + Number(p.amount), 0);
+    const khataTotal = chosenPayments
+      .filter((p) => p.sale?.saleType !== 'walk_in')
+      .reduce((s, p) => s + Number(p.amount), 0);
+    const supplierTotal = supplierPayments.reduce((s, sp) => s + Number(sp.amount), 0);
+    const expenseTotal = expensePayments.reduce((s, ep) => s + Number(ep.amount), 0);
+    const totalCashIn = money(openCash + walkInTotal + khataTotal);
+    const totalCashOut = money(supplierTotal + expenseTotal);
+
+    return {
+      success: true,
+      statusCode: 200,
+      data: {
+        shiftId: shift.id,
+        shiftDate: shift.shiftDate,
+        status: shift.status,
+        openedBy: formatUserName(shift.openedBy),
+        openedAt: shift.openedAt.toISOString(),
+        closedBy: isShiftAutoClosed(shift) ? undefined : (shift.closedBy ? formatUserName(shift.closedBy) : undefined),
+        isAutoClosed: isShiftAutoClosed(shift),
+        closedAt: shift.closedAt?.toISOString(),
+        summary: {
+          openingCash: openCash,
+          walkInCashSales: money(walkInTotal),
+          customerKhataPayments: money(khataTotal),
+          totalCashIn,
+          supplierCashOut: money(supplierTotal),
+          expenseCashOut: money(expenseTotal),
+          totalCashOut,
+          expectedCash: shift.expectedCash,
+          countedCash: shift.countedCash ?? undefined,
+          difference: shift.difference ?? undefined,
+          differenceStatus: shift.differenceStatus ?? undefined,
+          isBalanced: Math.abs(runningBalance - Number(shift.expectedCash)) < 0.01,
+        },
+        ledger,
+      },
+    };
   }
 }

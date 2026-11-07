@@ -1195,10 +1195,27 @@ export async function processDownstreamSync(): Promise<void> {
     }
 
   } catch (err: any) {
-    console.error('[Downstream] Worker error:', err.message);
-    
+    const isNetworkOrDnsError = 
+      err?.code === 'ENOTFOUND' ||
+      err?.code === 'EAI_AGAIN' ||
+      err?.code === 'ECONNREFUSED' ||
+      err?.code === 'ETIMEDOUT' ||
+      err?.code === 'EHOSTUNREACH' ||
+      err?.response?.status === 503 ||
+      err?.response?.data?.offline ||
+      err?.message?.includes('ENOTFOUND') ||
+      err?.message?.includes('getaddrinfo') ||
+      err?.message?.includes('status code 503');
+
     let errorMsg = err.message;
 
+    if (isNetworkOrDnsError) {
+      console.warn('[Downstream] Cloud unreachable (DNS/offline). Will retry automatically on next cycle.');
+      errorMsg = 'Cloud unreachable (temporary)';
+    } else {
+      console.error('[Downstream] Worker error:', err.message);
+    }
+    
     // Detect our custom 410 Gone / restoreRequired response
     if (err.response?.status === 410 && err.response?.data?.restoreRequired) {
       console.error('[Downstream] 🚨 SYNC_HISTORY_EXPIRED: The local cursor is too old and history was deleted.');
@@ -1217,7 +1234,7 @@ export async function processDownstreamSync(): Promise<void> {
     try {
       await prisma.downstreamSyncState.updateMany({
         where: { id: 1 },
-        data: { lastError: errorMsg }
+        data: { lastError: isNetworkOrDnsError ? null : errorMsg }
       });
     } catch { /* ignore secondary error */ }
   } finally {

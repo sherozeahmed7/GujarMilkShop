@@ -37,6 +37,7 @@ export interface SupplierInfo {
   phone: string;
   cycleType: string;
   payableBalance: number;
+  isActive: boolean;
 }
 
 const monthRange = (month: number, year: number) => ({
@@ -62,7 +63,7 @@ export const supplierLedgerService = {
     const response = await apiClient.get(`/suppliers/${supplierId}`);
     const supplier = response.data;
     if (!supplier) throw new Error(`Supplier ${supplierId} not found`);
-    return { id: String(supplier.id), name: supplier.name, phone: supplier.phone || '', cycleType: supplier.cycleType, payableBalance: Number(supplier.payableBalance || 0) };
+    return { id: String(supplier.id), name: supplier.name, phone: supplier.phone || '', cycleType: supplier.cycleType, payableBalance: Number(supplier.payableBalance || 0), isActive: supplier.isActive !== false };
   },
 
   async getMonthlyPurchaseEntries(supplierId: string, month: number, year: number): Promise<PurchaseEntry[]> {

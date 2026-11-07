@@ -23,6 +23,7 @@ export interface ApiCustomer {
   /** Alias of remainingBalance (open dues) */
   totalDue?: number;
   lastSaleDate?: string | null;
+  customMilkRate?: number | null;
 }
 
 export type CustomerRowKind = 'ledger' | 'walk_in' | 'split';
@@ -54,6 +55,7 @@ export interface CustomerTableRow {
   /** ISO date or null */
   lastSaleDate: string | null;
   status?: string;
+  customMilkRate?: number | null;
   /** cash | online | Split | Not Available */
   paymentType: string | null;
   /** For split groups — all sale ids in the group */

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Plus, Calendar, Tag, FileText } from 'lucide-react';
-import { createExpense } from '../../services/expenseService';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Calendar, Tag, FileText, Users, ChevronDown } from 'lucide-react';
+import { getExpenseCustomers, createExpense } from '../../services/expenseService';
+import { ExpenseCustomer } from '../../types/expense';
 
 interface AddPersonalExpenseModalProps {
   onClose: () => void;
@@ -12,6 +13,18 @@ export const AddPersonalExpenseModal: React.FC<AddPersonalExpenseModalProps> = (
   onSuccess,
 }) => {
   const [description, setDescription] = useState('');
+  const [customers, setCustomers] = useState<ExpenseCustomer[]>([]);
+
+  const fetchCustomers = () => {
+    getExpenseCustomers({ customerCategory: 'PERSONAL' })
+      .then((data) => setCustomers(data || []))
+      .catch((err) => console.error('Failed to load expense customers:', err));
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
   const [category, setCategory] = useState('Personal');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -31,7 +44,7 @@ export const AddPersonalExpenseModal: React.FC<AddPersonalExpenseModalProps> = (
 
     const desc = description.trim();
     if (!desc) {
-      setError('Please provide a description or purpose for this personal expense.');
+      setError('Please provide a customer name or description for this personal expense.');
       return;
     }
 
@@ -47,7 +60,7 @@ export const AddPersonalExpenseModal: React.FC<AddPersonalExpenseModalProps> = (
         soldRecovery: 0,
         netExpense: parsedAmt,
         amount: parsedAmt,
-        paidAmount: 0, // Unsettled personal expense; settled via Cash Received
+        paidAmount: 0,
         remaining: parsedAmt,
         reason: notes.trim() || undefined,
         addedBy: localStorage.getItem('userName') || 'User',
@@ -56,17 +69,17 @@ export const AddPersonalExpenseModal: React.FC<AddPersonalExpenseModalProps> = (
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to add personal expense.');
+      setError(err?.message || 'Failed to save personal expense');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl max-w-md w-full border border-slate-200 dark:border-[#2d4a35] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-[#2d4a35]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-[#2d4a35] flex justify-between items-center bg-slate-50 dark:bg-[#142119]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#2d4a35] bg-slate-50/50 dark:bg-[#142119]">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
               <Plus className="w-4 h-4" />
@@ -93,103 +106,105 @@ export const AddPersonalExpenseModal: React.FC<AddPersonalExpenseModalProps> = (
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-[#a7c4ae] uppercase tracking-wider mb-1.5">
-              Description / Purpose *
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Home purchase, Family groceries, Fuel, Medical"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              autoFocus
-              required
-              className="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e]"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-[#a7c4ae] uppercase tracking-wider">
+                Customer / Name *
+              </label>
+              <span className="text-[10px] text-slate-400 dark:text-[#8ba895]">Select or type custom</span>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                list="personal-expense-customers-list"
+                placeholder="Choose customer or type name/purpose..."
+                value={description}
+                onFocus={fetchCustomers}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-3.5 py-2.5 pr-8 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e] [appearance:textfield] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                required
+              />
+              <datalist id="personal-expense-customers-list">
+                {customers.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.phone ? `${c.name} (${c.phone})` : c.name}
+                  </option>
+                ))}
+              </datalist>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronDown className="w-4 h-4 opacity-70" />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-[#a7c4ae] uppercase tracking-wider mb-1.5">
-                Amount (Rs.) *
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">
-                  Rs.
-                </span>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-[#a7c4ae] uppercase tracking-wider mb-1.5">
-                Category
+                Amount (Rs) *
               </label>
               <input
-                type="text"
-                placeholder="Personal"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e]"
+                type="number"
+                min="1"
+                placeholder="5000"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] text-sm font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e]"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-[#a7c4ae] uppercase tracking-wider mb-1.5">
+                Date *
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e]"
+                required
               />
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-[#a7c4ae] uppercase tracking-wider mb-1.5">
-              Date *
+              Category
             </label>
-            <div className="relative">
-              <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-2 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e]"
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Personal, Home, Fuel, Loan, etc."
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e]"
+            />
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-[#a7c4ae] uppercase tracking-wider mb-1.5">
               Notes (Optional)
             </label>
-            <div className="relative">
-              <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <textarea
-                rows={2}
-                placeholder="Any additional details..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e] resize-none"
-              />
-            </div>
+            <textarea
+              rows={2}
+              placeholder="Any context or expected return date..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-800 dark:text-[#e2f5e8] text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-[#22c55e] resize-none"
+            />
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-[#8ba895] hover:bg-slate-100 dark:hover:bg-[#1e3124] rounded-xl transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-[#2d4a35] text-slate-600 dark:text-[#8ba895] hover:bg-slate-50 dark:hover:bg-[#1e3124] text-xs font-bold transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-sm font-bold text-white dark:text-[#0d1a10] bg-emerald-600 hover:bg-emerald-700 dark:bg-[#22c55e] dark:hover:bg-[#1ea34d] rounded-xl shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 dark:bg-[#22c55e] hover:bg-emerald-700 dark:hover:bg-[#1ea34d] text-white dark:text-[#0d1a10] text-xs font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50"
             >
-              {loading ? 'Adding…' : 'Save Personal Expense'}
+              {loading ? 'Adding...' : 'Save Personal Expense'}
             </button>
           </div>
         </form>

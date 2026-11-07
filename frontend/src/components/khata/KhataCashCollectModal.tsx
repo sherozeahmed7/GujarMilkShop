@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { X, DollarSign, AlertTriangle } from 'lucide-react';
+import { X, DollarSign, AlertTriangle, Printer } from 'lucide-react';
 import { ApiCustomer } from '../../types/customer';
 import { customerService } from '../../services/customer.service';
+import { KhataReceiptData, printKhataReceipt } from '../../utils/khataReceiptPrinter';
 
 interface KhataCashCollectModalProps {
   customer: ApiCustomer;
   onClose: () => void;
   onCollected: () => void;
+  onOpenReceipt?: (data: KhataReceiptData) => void;
 }
 
 export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
   customer,
   onClose,
   onCollected,
+  onOpenReceipt,
 }) => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online'>('cash');
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +23,7 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
   const [customAmount, setCustomAmount] = useState<string>('');
   const [discountAmount, setDiscountAmount] = useState<string>('');
 
-  const totalAmount = customer.totalDue ?? 0;
+  const totalAmount = customer.totalDue ?? customer.remainingBalance ?? 0;
   const parsedDiscount = discountAmount.trim() === '' ? 0 : Number(discountAmount);
   const amountBlank = customAmount.trim() === '';
   const parsedCollect = amountBlank ? NaN : Number(customAmount);
@@ -28,7 +31,7 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
     (Number.isFinite(parsedCollect) ? parsedCollect : 0) +
     (Number.isFinite(parsedDiscount) ? parsedDiscount : 0);
 
-  const handleConfirm = async () => {
+  const handleAction = async (withPrint: boolean) => {
     setError(null);
 
     if (amountBlank) {
@@ -56,6 +59,19 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
       return;
     }
 
+    const remaining = Math.max(0, totalAmount - (parsed + discount));
+    const receiptData: KhataReceiptData = {
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      customerType: customer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily',
+      date: new Date(),
+      previousBalance: totalAmount,
+      paidAmount: parsed,
+      discountAmount: discount > 0 ? discount : undefined,
+      remainingBalance: remaining,
+      paymentMethod,
+    };
+
     setSubmitting(true);
     try {
       await customerService.settleAll(
@@ -64,7 +80,20 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
         parsed,
         discount > 0 ? discount : undefined
       );
+
+      // Print immediately in background if "Confirm & Print" was clicked
+      if (withPrint) {
+        printKhataReceipt(receiptData).catch((printErr) => {
+          console.warn('[KHATA PRINT] Immediate print warning:', printErr);
+        });
+      }
+
       onCollected();
+
+      // Show receipt modal with Print and Cancel options
+      if (onOpenReceipt) {
+        onOpenReceipt(receiptData);
+      }
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to collect payment');
@@ -194,23 +223,34 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
           )}
         </div>
 
-        <div className="p-5 border-t border-slate-100 flex gap-3">
+        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-[#2d4a35] flex flex-col sm:flex-row gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex-1 py-3 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-[#1a2e1f]"
+            className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-[#142119] border border-slate-200 dark:border-[#2d4a35] text-slate-700 dark:text-[#e2f5e8] rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-[#1a2e1f] transition-colors"
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={submitting || !canSubmit}
-            className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-40"
-          >
-            {submitting ? 'Collecting…' : 'Confirm Collect'}
-          </button>
+          <div className="flex-1 flex gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => handleAction(false)}
+              disabled={submitting || !canSubmit}
+              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Collecting…' : 'Confirm'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAction(true)}
+              disabled={submitting || !canSubmit}
+              className="flex-1 py-2.5 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-[#166534]/25 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Printer className="w-4 h-4 shrink-0" />
+              <span>Confirm & Print</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

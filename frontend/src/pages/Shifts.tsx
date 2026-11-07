@@ -32,9 +32,9 @@ export const Shifts: React.FC = () => {
       {error && <div className="flex-shrink-0 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{error}</div>}
 
       {/* Main Content Layout */}
-      <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
         {/* Left: Current Shift Form / Details */}
-        <div className="w-[45%] flex-shrink-0 min-h-0 flex flex-col overflow-hidden">
+        <div className="w-full lg:w-[45%] shrink-0 min-h-0 flex flex-col overflow-hidden">
           <CurrentShiftPanel />
         </div>
 

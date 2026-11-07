@@ -30,6 +30,11 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       ? String(customer.openingBalance)
       : ''
   );
+  const [customMilkRate, setCustomMilkRate] = useState(
+    customer?.customMilkRate !== undefined && customer?.customMilkRate !== null
+      ? String(customer.customMilkRate)
+      : ''
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,15 +53,22 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       return;
     }
 
+    const customRateNum = customMilkRate.trim() === '' ? null : Number(customMilkRate);
+    if (customRateNum !== null && (Number.isNaN(customRateNum) || customRateNum < 0)) {
+      setError('Custom milk rate must be a valid positive amount.');
+      return;
+    }
+
     setSaving(true);
     try {
       if (isEdit && customer) {
         await customerService.updateCustomer(customer.id, {
           name: name.trim(),
-          phone: phone.trim(),
-          address: address.trim(),
+          phone: phone.trim() || undefined,
+          address: address.trim() || undefined,
           customerType,
           openingBalance: opening,
+          customMilkRate: customRateNum,
         });
       } else {
         const payload: CreateCustomerPayload = {
@@ -65,6 +77,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
           ...(phone.trim() ? { phone: phone.trim() } : {}),
           ...(address.trim() ? { address: address.trim() } : {}),
           ...(opening > 0 ? { openingBalance: opening } : {}),
+          ...(customRateNum != null && customRateNum > 0 ? { customMilkRate: customRateNum } : {}),
         };
         await customerService.createCustomer(payload);
       }

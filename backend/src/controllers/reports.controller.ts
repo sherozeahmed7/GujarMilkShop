@@ -289,7 +289,7 @@ export class ReportsController {
           date: s.shiftDate,
           openedBy: s.openedBy.name || s.openedBy.email,
           openTime: s.openedAt.toISOString(),
-          closedBy: s.closedBy?.name || s.closedBy?.email || '—',
+          closedBy: ((s.closedById == null && s.status === 'Closed') || (s.closingNotes || '').toLowerCase().includes('auto-close') || (s.closingNotes || '').toLowerCase().includes('midnight')) ? '—' : (s.closedBy?.name || s.closedBy?.email || '—'),
           closeTime: s.closedAt?.toISOString() || '',
           openingCash: money(s.openingCash),
           cashSales: money(cashSales),

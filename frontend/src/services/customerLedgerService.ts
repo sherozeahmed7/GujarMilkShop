@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+﻿import { apiClient } from './apiClient';
 import { SaleRecord } from './sale.service';
 
 export interface MilkEntry {
@@ -71,17 +71,49 @@ function getMilkItems(sales: SaleRecord[], customerId: string): MilkEntry[] {
 }
 
 function getPayments(sales: SaleRecord[], customerId: string): PaymentEntry[] {
-  return sales.flatMap((sale) => (sale.payments || [])
-    .filter((payment) => Number(payment.amount) > 0)
-    .map((payment) => ({
-      id: String(payment.id),
-      customerId,
-      date: localDateKey(payment.createdAt),
-      amount: Number(payment.amount),
-      paymentMethod: payment.method,
-      reference: `SALE-${sale.id}`,
-      addedBy: 'System',
-    })));
+  // Flatten all payment records, skipping write-offs/discounts
+  const rawPayments = sales.flatMap((sale) =>
+    (sale.payments || [])
+      .filter((payment) => Number(payment.amount) > 0 && payment.method !== 'discount')
+      .map((payment) => {
+        const d = payment.createdAt ? new Date(payment.createdAt) : new Date(0);
+        return {
+          id: String(payment.id),
+          customerId,
+          date: localDateKey(payment.createdAt),
+          amount: Number(payment.amount),
+          paymentMethod: payment.method,
+          // Session key: same hour+minute means payments came from one collect action
+          sessionKey: `${d.getHours()}-${d.getMinutes()}`,
+          saleId: sale.id,
+        };
+      })
+  );
+
+  // Group by date + method + session so one "Collect Payment" for Rs. 20,000
+  // (which internally creates per-sale Payment rows) shows as a single Rs. 20,000 row.
+  const grouped = new Map<string, PaymentEntry>();
+
+  for (const p of rawPayments) {
+    const key = `${p.date}__${p.paymentMethod}__${p.sessionKey}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.amount = money(existing.amount + p.amount);
+      existing.reference = 'Payment';
+    } else {
+      grouped.set(key, {
+        id: p.id,
+        customerId: p.customerId,
+        date: p.date,
+        amount: p.amount,
+        paymentMethod: p.paymentMethod,
+        reference: `SALE-${p.saleId}`,
+        addedBy: 'System',
+      });
+    }
+  }
+
+  return Array.from(grouped.values());
 }
 
 export const customerLedgerService = {

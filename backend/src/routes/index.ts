@@ -22,6 +22,7 @@ import backupRoutes from './backup.routes';
 import cashbookRoutes from './cashbook.routes';
 import notificationRoutes from './notification.routes';
 import activityLogRoutes from './activityLog.routes';
+import expenseCustomerRoutes from './expenseCustomer.routes';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.use('/shifts',          shiftRoutes);
 router.use('/suppliers',       supplierRoutes);
 router.use('/inventory',       inventoryRoutes);
 router.use('/expenses',        expenseRoutes);
+router.use('/expense-customers', expenseCustomerRoutes);
 router.use('/returns',         returnRoutes);
 router.use('/audits',          auditRoutes);
 router.use('/dashboard',       dashboardRoutes);

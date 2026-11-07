@@ -45,7 +45,7 @@ export class UserService {
     const newUser = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
-          name: name ? name.trim() : null,
+          name: (name && name.trim()) ? name.trim() : email.split('@')[0],
           email: email.toLowerCase().trim(),
           password: hashedPassword,
           role: userRole,
@@ -153,7 +153,7 @@ export class UserService {
     }
 
     const updateData: any = {
-      name: payload.name || null,
+      name: (payload.name && payload.name.trim()) ? payload.name.trim() : user.name,
       email: payload.email.toLowerCase().trim(),
       role: payload.role,
       assignedScreens: JSON.stringify(payload.assignedScreens || [])

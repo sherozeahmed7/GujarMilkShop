@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useExpenseStore } from '../../store/expenseStore';
 import { ExpenseRecord } from '../../types';
-import { Eye, Edit2, Trash2, FileText, Search } from 'lucide-react';
+import { Eye, Edit2, Trash2, FileText, Search, CreditCard, MoreVertical } from 'lucide-react';
 import { ExpenseModals } from './ExpenseModals';
 import { Pagination } from '../common/Pagination';
+import { formatUserName } from '../../utils/userFormat';
 
 type FilterTab = 'Today' | 'Yesterday' | 'This Week' | 'This Month' | 'All Time';
 
@@ -22,6 +23,22 @@ export const ExpenseHistory: React.FC = () => {
   const [editExpense, setEditExpense] = useState<ExpenseRecord | null>(null);
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
   const [payExpense, setPayExpense] = useState<ExpenseRecord | null>(null);
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
+  const actionMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+        setOpenActionId(null);
+      }
+    };
+    if (openActionId) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [openActionId]);
 
   const filteredExpenses = useMemo(() => {
     const toYMD = (d: Date) => {
@@ -163,31 +180,74 @@ export const ExpenseHistory: React.FC = () => {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                      {expense.addedBy}
+                      {formatUserName(expense.addedBy)}
                     </td>
                     <td className="px-4 py-3 text-sm whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setViewExpense(expense)}
-                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setEditExpense(expense)}
-                          className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded transition-colors"
-                          title="Edit Expense"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteExpenseId(expense.id)}
-                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition-colors"
-                          title="Delete Expense"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="flex items-center gap-1.5">
+                        {remaining > 0 && (
+                          <button
+                            onClick={() => setPayExpense(expense)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/60 rounded-lg transition-colors shadow-2xs"
+                            title="Pay remaining expense balance"
+                          >
+                            <CreditCard className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Pay Now</span>
+                          </button>
+                        )}
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenActionId(openActionId === expense.id ? null : expense.id);
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              openActionId === expense.id
+                                ? 'bg-slate-200 text-slate-800 dark:bg-[#223927] dark:text-[#e2f5e8]'
+                                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-[#223927] dark:hover:text-slate-200'
+                            }`}
+                            title="More actions"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+
+                          {openActionId === expense.id && (
+                            <div
+                              ref={actionMenuRef}
+                              className="absolute right-0 mt-1 w-40 bg-white dark:bg-[#1a2e1f] rounded-xl shadow-lg border border-slate-200 dark:border-[#2d4a35] py-1 z-30 animate-in fade-in zoom-in-95 duration-100"
+                            >
+                              <button
+                                onClick={() => {
+                                  setViewExpense(expense);
+                                  setOpenActionId(null);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-blue-500" />
+                                <span>View Details</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditExpense(expense);
+                                  setOpenActionId(null);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#223927] transition-colors"
+                              >
+                                <Edit2 className="w-3.5 h-3.5 text-emerald-500" />
+                                <span>Edit Expense</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeleteExpenseId(expense.id);
+                                  setOpenActionId(null);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors border-t border-slate-100 dark:border-[#2d4a35]/60"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                <span>Delete Expense</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

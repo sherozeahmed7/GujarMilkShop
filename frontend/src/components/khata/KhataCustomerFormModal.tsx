@@ -30,6 +30,11 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
       ? String(customer.openingBalance)
       : ''
   );
+  const [customMilkRate, setCustomMilkRate] = useState(
+    customer?.customMilkRate !== undefined && customer?.customMilkRate !== null
+      ? String(customer.customMilkRate)
+      : ''
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +53,12 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
       return;
     }
 
+    const customRateNum = customMilkRate.trim() === '' ? null : Number(customMilkRate);
+    if (customRateNum !== null && (Number.isNaN(customRateNum) || customRateNum < 0)) {
+      setError('Custom milk rate must be a valid positive amount.');
+      return;
+    }
+
     setSaving(true);
     try {
       if (isEdit && customer) {
@@ -57,6 +68,7 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
           address: address.trim() || undefined,
           customerType,
           openingBalance: opening,
+          customMilkRate: customRateNum,
         });
       } else {
         const payload: CreateCustomerPayload = {
@@ -65,6 +77,7 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
           ...(phone.trim() ? { phone: phone.trim() } : {}),
           ...(address.trim() ? { address: address.trim() } : {}),
           ...(opening > 0 ? { openingBalance: opening } : {}),
+          ...(customRateNum != null && customRateNum > 0 ? { customMilkRate: customRateNum } : {}),
         };
         await customerService.createCustomer(payload);
       }
@@ -190,6 +203,25 @@ export const KhataCustomerFormModal: React.FC<KhataCustomerFormModalProps> = ({
             />
             <p className="text-[11px] text-slate-400">
               Existing dues appear in Previous Month / Day and Remaining Balance.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Custom Milk Rate (Rs / kg){' '}
+              <span className="text-slate-400 font-normal normal-case">(optional)</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="1"
+              value={customMilkRate}
+              onChange={(e) => setCustomMilkRate(e.target.value)}
+              placeholder="e.g. 230 (Leave empty to use shop standard rate)"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+            <p className="text-[11px] text-slate-400">
+              Fixed rate for this customer. When selected in POS or Ledger, milk calculations will use this rate automatically.
             </p>
           </div>
         </form>

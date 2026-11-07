@@ -20,22 +20,24 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
   exportSummaryTitle
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1a2e1f] p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35]">
-      <div className="flex items-center gap-4">
-        <BrandLogo variant="report" className="hidden sm:block" />
-        <div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8]">{title}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1a2e1f] p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-[#2d4a35]">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <BrandLogo variant="report" className="hidden sm:block shrink-0" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-[#e2f5e8] truncate">{title}</h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">{description}</p>
         </div>
       </div>
       
-      <ExportButtons 
-        reportName={title} 
-        data={exportData} 
-        columns={exportColumns}
-        summaryData={exportSummary}
-        summaryTitle={exportSummaryTitle}
-      />
+      <div className="shrink-0 flex items-center gap-2">
+        <ExportButtons 
+          reportName={title} 
+          data={exportData} 
+          columns={exportColumns}
+          summaryData={exportSummary}
+          summaryTitle={exportSummaryTitle}
+        />
+      </div>
     </div>
   );
 };

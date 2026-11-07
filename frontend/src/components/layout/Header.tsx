@@ -1,16 +1,18 @@
 import React from 'react';
-import { Search, Sun, Moon } from 'lucide-react';
+import { Search, Sun, Moon, Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { NotificationPanel } from './NotificationPanel';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useSystemClock } from '../../hooks/useSystemClock';
 import { useTheme } from '../../context/ThemeContext';
+import { useResponsiveSidebar } from '../../context/ResponsiveSidebarContext';
 
 export const Header: React.FC = () => {
   const location = useLocation();
   const isOnline = useOnlineStatus();
   const { dateStr, timeStr } = useSystemClock();
   const { isDark, toggleTheme } = useTheme();
+  const { toggleMobileOpen } = useResponsiveSidebar();
 
   // Determine title from path
   const path = location.pathname;
@@ -19,16 +21,25 @@ export const Header: React.FC = () => {
   if (path.includes('inventory')) title = 'Inventory';
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 md:px-6 bg-transparent gap-3 md:gap-6 min-w-0 w-full relative z-50">
+    <header className="h-16 flex items-center justify-between px-3 sm:px-4 md:px-6 bg-transparent gap-2 sm:gap-3 md:gap-6 min-w-0 w-full relative z-40">
       
-      {/* Title Area */}
-      <div className="shrink-0 flex items-center lg:flex-1 min-w-0">
-        <h2 className="text-lg md:text-xl font-semibold text-slate-800 dark:text-[#e2f5e8] truncate hidden sm:block transition-colors duration-250">
+      {/* Title & Mobile Hamburger Area */}
+      <div className="shrink-0 flex items-center gap-2 lg:flex-1 min-w-0">
+        <button
+          type="button"
+          onClick={toggleMobileOpen}
+          className="lg:hidden p-2 rounded-xl text-slate-700 dark:text-[#a7c4ae] hover:bg-slate-200/70 dark:hover:bg-[#1e3124] focus:outline-none focus:ring-2 focus:ring-[#166534] dark:focus:ring-[#22c55e] transition-colors"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-slate-800 dark:text-[#e2f5e8] truncate hidden sm:block transition-colors duration-250">
           {title}
         </h2>
         {/* Very small screens: Show minimal title or let it shrink */}
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-[#e2f5e8] truncate block sm:hidden transition-colors duration-250">
-          {title.length > 9 ? title.substring(0, 9) + '...' : title}
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-[#e2f5e8] truncate block sm:hidden transition-colors duration-250 max-w-[90px] xs:max-w-[120px]">
+          {title}
         </h2>
       </div>
 

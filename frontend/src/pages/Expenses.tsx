@@ -5,10 +5,11 @@ import { ExpenseSummary } from '../components/expenses/ExpenseSummary';
 import { ExpenseHistory } from '../components/expenses/ExpenseHistory';
 import { CostBreakdown } from '../components/expenses/CostBreakdown';
 import { PersonalExpensesSection } from '../components/expenses/PersonalExpensesSection';
-import { Wallet, Info, Store, User } from 'lucide-react';
+import { CustomerExpensesSection } from '../components/expenses/CustomerExpensesSection';
+import { Wallet, Info, Store, User, Users } from 'lucide-react';
 
 export const Expenses: React.FC = () => {
-  const [expenseSection, setExpenseSection] = useState<'shop' | 'personal'>('shop');
+  const [expenseSection, setExpenseSection] = useState<'shop' | 'personal' | 'customer'>('shop');
   const { fetchExpenses, isLoading, error, clearError } = useExpenseStore();
 
   useEffect(() => {
@@ -17,8 +18,8 @@ export const Expenses: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 relative">
-      {/* ── Section Switch: Shop Expenses | Personal Expenses ── */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-200/70 dark:bg-[#142119] rounded-2xl w-fit border border-slate-300/60 dark:border-[#2d4a35]">
+      {/* ── Section Switch: Shop Expenses | Personal Expenses | Customers ── */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-200/70 dark:bg-[#142119] rounded-2xl w-full sm:w-fit border border-slate-300/60 dark:border-[#2d4a35]">
         <button
           type="button"
           onClick={() => setExpenseSection('shop')}
@@ -43,10 +44,24 @@ export const Expenses: React.FC = () => {
           <User className="w-4 h-4 text-emerald-500" />
           <span>Personal Expenses</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setExpenseSection('customer')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+            expenseSection === 'customer'
+              ? 'bg-white dark:bg-[#1a2e1f] text-slate-900 dark:text-[#e2f5e8] shadow-sm'
+              : 'text-slate-600 dark:text-[#8ba895] hover:text-slate-900 dark:hover:text-[#e2f5e8]'
+          }`}
+        >
+          <Users className="w-4 h-4 text-purple-500" />
+          <span>Customers</span>
+        </button>
       </div>
 
       {expenseSection === 'personal' ? (
         <PersonalExpensesSection />
+      ) : expenseSection === 'customer' ? (
+        <CustomerExpensesSection />
       ) : (
         <>
           {error && (

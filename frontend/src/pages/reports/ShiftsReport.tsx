@@ -17,6 +17,8 @@ import { formatUserName } from '../../utils/userFormat';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
 
+const isAutoClosedShift = (s: any) => Boolean(s.isAutoClosed || (!s.closedById && s.status === "Closed") || (s.closingNotes && /auto-close|auto-closed|midnight/i.test(s.closingNotes)));
+
 export const ShiftsReport: React.FC = () => {
   const { grid, axis, tooltipStyle, tooltipLabelStyle } = useChartTheme();
   const [filter, setFilter] = useState<DateFilterType>({
@@ -159,7 +161,7 @@ export const ShiftsReport: React.FC = () => {
                       <td className="px-3 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{s.date}</td>
                       <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{formatUserName(s.openedBy)}</td>
                       <td className="px-3 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{new Date(s.openTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{formatUserName(s.closedBy)}</td>
+                      <td className="px-3 py-3 text-sm text-slate-700 dark:text-[#e2f5e8]">{isAutoClosedShift(s) ? "—" : formatUserName(s.closedBy)}</td>
                       <td className="px-3 py-3 text-sm text-slate-500 dark:text-[#8ba895]">{new Date(s.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                       <td className="px-3 py-3 text-sm text-slate-600 dark:text-[#a7c4ae]">{fmt(s.openingCash)}</td>
                       <td className="px-3 py-3 text-sm text-emerald-600 dark:text-emerald-400 font-medium">{fmt(s.cashSales)}</td>

@@ -10,7 +10,7 @@ export const InventorySummaryCards: React.FC<InventorySummaryCardsProps> = ({ su
   const formatCurrency = (n: number) => `Rs. ${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div className="bg-white dark:bg-[#1a2e1f] p-4 rounded-xl border border-slate-200 dark:border-[#2d4a35] shadow-sm flex flex-col gap-2">
         <div className="flex items-center gap-2 text-slate-500 dark:text-[#64916e] font-bold text-xs uppercase tracking-wider">
           <Package className="w-4 h-4 text-slate-400 dark:text-[#64916e]" /> Products

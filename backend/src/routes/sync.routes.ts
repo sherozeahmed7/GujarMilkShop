@@ -12,6 +12,7 @@ import {
   getFailedDiagnostics,
   runManualPrune,
   getCheckoutDiagnostics,
+  autoRepairSync,
 } from '../controllers/syncStatus.controller';
 import { restoreCloudData } from '../controllers/syncRestore.controller';
 import { authenticateJWT } from '../middleware/auth.middleware';
@@ -40,6 +41,7 @@ router.post('/toggle',           authenticateJWT, toggleSync);
 router.post('/check-connection', authenticateJWT, checkConnection);
 router.post('/restore',          authenticateJWT, restoreCloudData);
 router.get('/failed-diagnostics', authenticateJWT, getFailedDiagnostics);
+router.post('/auto-repair',       authenticateJWT, autoRepairSync);
 router.post('/prune',             authenticateJWT, runManualPrune);
 router.get('/diagnostics/checkout', authenticateJWT, getCheckoutDiagnostics);
 

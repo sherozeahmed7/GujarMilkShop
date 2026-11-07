@@ -372,7 +372,7 @@ export const SupplierMonthlyPurchaseLedger: React.FC = () => {
         <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2d4a35] p-5 flex flex-wrap gap-x-12 gap-y-4 items-center">
           <div>
             <p className="text-xs font-semibold text-slate-400 dark:text-[#64916e] uppercase tracking-wider mb-1">Supplier Name</p>
-            <p className="text-lg font-bold text-slate-800 dark:text-[#e2f5e8]">{supplier?.name}</p>
+            <p className={`text-lg font-bold ${supplier?.isActive === false ? 'line-through text-red-500 dark:text-red-400' : 'text-slate-800 dark:text-[#e2f5e8]'}`}>{supplier?.name}{supplier?.isActive === false ? ' (Inactive)' : ''}</p>
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-400 dark:text-[#64916e] uppercase tracking-wider mb-1">Phone</p>

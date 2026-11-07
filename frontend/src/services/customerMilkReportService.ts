@@ -160,12 +160,20 @@ export const customerMilkReportService = {
     month: number,
     year: number,
   ): Promise<MonthlyStatement> => {
-    // 1. Fetch all sales for this customer
+    // 1. Fetch all sales & customer details for this customer
     let allSales: SaleRecord[] = [];
+    let customCustomerMilkRate: number | null = null;
     try {
-      allSales = await saleService.listSales({ customerId });
+      const [sales, cust] = await Promise.all([
+        saleService.listSales({ customerId }),
+        customerService.getCustomer(customerId).catch(() => null),
+      ]);
+      allSales = sales;
+      if (cust && cust.customMilkRate != null && Number(cust.customMilkRate) > 0) {
+        customCustomerMilkRate = Number(cust.customMilkRate);
+      }
     } catch (e) {
-      console.warn('Failed to fetch sales for customer', customerId, e);
+      console.warn('Failed to fetch sales or customer for customer', customerId, e);
     }
 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -273,7 +281,7 @@ export const customerMilkReportService = {
     const allPayments = [...realPayments, ...manualPayments];
 
     // Determine final milk rate per kg display
-    const finalRate = defaultRate || CUSTOMER_RATES[customerId] || 180;
+    const finalRate = customCustomerMilkRate || defaultRate || CUSTOMER_RATES[customerId] || 180;
 
     return {
       customerId,

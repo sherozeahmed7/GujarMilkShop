@@ -128,6 +128,22 @@ export const cloudSyncService = {
     await apiClient.post('/sync/retry-failed');
   },
 
+  autoRepair: async (): Promise<{
+    success: boolean;
+    message: string;
+    report?: {
+      staleSyncingReset: number;
+      failedEventsHealed: number;
+      orphanedMappingsRepaired: number;
+      downstreamCursorRepaired: boolean;
+      upstreamTriggered: boolean;
+      downstreamTriggered: boolean;
+      timestamp: string;
+    };
+  }> => {
+    return await apiClient.post('/sync/auto-repair');
+  },
+
   restoreCloudData: async (): Promise<{
     success: boolean;
     message: string;

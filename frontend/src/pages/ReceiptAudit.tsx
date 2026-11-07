@@ -101,9 +101,9 @@ export const ReceiptAudit: React.FC = () => {
       </div>
 
       {/* Main Content Layout */}
-      <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
         {/* Left: Input Panel */}
-        <div className="w-[45%] flex-shrink-0 min-h-0 flex flex-col overflow-hidden">
+        <div className="w-full lg:w-[45%] shrink-0 min-h-0 flex flex-col overflow-hidden">
           <ClosingReceiptCount onRunAudit={handleRunAudit} />
         </div>
 

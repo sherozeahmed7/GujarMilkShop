@@ -35,11 +35,13 @@ export const supplierService = {
     cycleType?: string;
     fromDate?: string;
     toDate?: string;
+    isActive?: boolean;
   }): Promise<Supplier[]> {
     const params: Record<string, string> = {};
     if (filters?.cycleType) params.cycleType = filters.cycleType;
     if (filters?.fromDate) params.fromDate = filters.fromDate;
     if (filters?.toDate) params.toDate = filters.toDate;
+    if (filters?.isActive !== undefined) params.isActive = String(filters.isActive);
     const response = await apiClient.get(
       '/suppliers',
       Object.keys(params).length ? params : undefined
@@ -73,6 +75,10 @@ export const supplierService = {
   },
   async create(payload: Omit<Supplier, 'id' | 'payableBalance' | 'code'> & { code?: string; openingBalance?: number }): Promise<Supplier> { const response = await apiClient.post('/suppliers', payload); return mapSupplier(response.data); },
   async update(id: string, payload: Partial<Supplier>): Promise<Supplier> { const response = await apiClient.put(`/suppliers/${id}`, payload); return mapSupplier(response.data); },
+  async toggleActive(id: string, isActive: boolean): Promise<Supplier> {
+    const response = await apiClient.put(`/suppliers/${id}`, { isActive });
+    return mapSupplier(response.data);
+  },
   async entries(id: string): Promise<{ collections: MilkCollection[]; payments: SupplierPayment[] }> {
     const response = await apiClient.get(`/suppliers/${id}/entries`);
     return { collections: (response.data?.collections || []).map(mapCollection), payments: (response.data?.payments || []).map(mapPayment) };

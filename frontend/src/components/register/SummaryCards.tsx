@@ -7,7 +7,7 @@ export const SummaryCards: React.FC = () => {
   if (!currentRegister) return null;
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
       {/* Opening Balance */}
       <div className="bg-white dark:bg-[#1a2e1f] border-2 border-blue-100 dark:border-[#2d4a35] rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
         <div className="absolute -right-4 -bottom-4 opacity-5 text-blue-500">

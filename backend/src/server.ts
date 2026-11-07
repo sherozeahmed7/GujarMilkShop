@@ -10,6 +10,13 @@ import { ensureNeonSchema } from './services/neonSchemaInit.service';
 // Load environment variables from .env file
 dotenv.config();
 
+process.on('uncaughtException', (err: any) => {
+  console.error('[Process] uncaughtException:', err?.message || String(err));
+});
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[Process] unhandledRejection:', reason?.message || String(reason));
+});
+
 const PORT = process.env.PORT || 5000;
 
 // Connect to database and start Express server

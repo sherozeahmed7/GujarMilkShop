@@ -146,8 +146,12 @@ export class SupplierService {
     cycleType?: string;
     fromDate?: string;
     toDate?: string;
+    isActive?: boolean;
   }) {
     const where: any = {};
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
     if (filters?.cycleType && CYCLE_TYPES.includes(filters.cycleType)) {
       where.cycleType = filters.cycleType;
     }

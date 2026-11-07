@@ -113,12 +113,12 @@ export const POSConfig: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-6 min-h-0">
       {/* Header */}
-      <div className="flex items-start justify-between flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">POS Configuration</h1>
           <p className="text-slate-500 dark:text-[#8ba895] text-sm mt-1">Configure general point of sale behaviour, receipts, and display settings.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={loadConfig}
             disabled={loading || saving}

@@ -3,6 +3,7 @@
  * Drop-in replacement for the old localStorage implementation.
  */
 import { ExpenseRecord, ExpenseSummaryData, CostBreakdownItem } from '../types';
+import { ExpenseCustomer } from '../types/expense';
 import { apiClient } from './apiClient';
 
 export const getExpenses = async (filters?: {
@@ -98,4 +99,39 @@ export const getExpenseSummary = async (expenseType?: 'SHOP' | 'PERSONAL'): Prom
 export const getCostBreakdown = async (): Promise<CostBreakdownItem[]> => {
   const res = await apiClient.get('/expenses/breakdown');
   return (res.data ?? []) as CostBreakdownItem[];
+};
+
+
+export const getExpenseCustomers = async (params?: { customerCategory?: 'SHOP' | 'PERSONAL' }): Promise<ExpenseCustomer[]> => {
+  const res = await apiClient.get('/expense-customers', params);
+  if (Array.isArray(res)) return res as ExpenseCustomer[];
+  return (res.data ?? []) as ExpenseCustomer[];
+};
+
+export const createExpenseCustomer = async (data: {
+  name: string;
+  phone?: string;
+  notes?: string;
+  customerCategory?: 'SHOP' | 'PERSONAL';
+}): Promise<ExpenseCustomer> => {
+  const res = await apiClient.post('/expense-customers', data);
+  return (res.data ?? res) as ExpenseCustomer;
+};
+
+export const updateExpenseCustomer = async (
+  id: number,
+  data: {
+    name?: string;
+    phone?: string;
+    notes?: string;
+    customerCategory?: 'SHOP' | 'PERSONAL';
+    status?: 'active' | 'inactive';
+  }
+): Promise<ExpenseCustomer> => {
+  const res = await apiClient.put(`/expense-customers/${id}`, data);
+  return (res.data ?? res) as ExpenseCustomer;
+};
+
+export const deleteExpenseCustomer = async (id: number): Promise<void> => {
+  await apiClient.delete(`/expense-customers/${id}`);
 };

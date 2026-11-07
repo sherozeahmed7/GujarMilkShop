@@ -5,6 +5,7 @@ import { authenticateJWT } from '../middleware/auth.middleware';
 const router = Router();
 router.use(authenticateJWT);
 router.get('/', ShiftController.list);
+router.get('/:id/ledger', ShiftController.getLedger);
 router.post('/', ShiftController.open);
 router.post('/close', ShiftController.close);
 

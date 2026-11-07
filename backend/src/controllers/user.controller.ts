@@ -14,6 +14,10 @@ export class UserController {
       const { name, email, password, assignedRole, role, assignedScreens } = req.body;
 
       // 1. Determine email (handle cases where frontend sends email or name as primary identifier)
+      if (!name || !name.trim()) {
+        return ApiResponse.error(res, 'Name is required and cannot be empty.', 400);
+      }
+
       const userEmail = email || (name && name.includes('@') ? name : null);
 
       if (!userEmail || !password) {
@@ -140,6 +144,10 @@ export class UserController {
       }
 
       const { name, email, role, assignedScreens, password } = req.body;
+
+      if (!name || !name.trim()) {
+        return ApiResponse.error(res, 'Name is required and cannot be empty.', 400);
+      }
 
       if (!email || !role) {
         return ApiResponse.error(res, 'Email and role are required fields.', 400);

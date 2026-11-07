@@ -15,11 +15,12 @@ export class SupplierController {
   }
   static async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { cycleType, fromDate, toDate } = req.query;
+      const { cycleType, fromDate, toDate, isActive } = req.query;
       const data = await SupplierService.list({
         cycleType: typeof cycleType === 'string' ? cycleType : undefined,
         fromDate: typeof fromDate === 'string' ? fromDate : undefined,
         toDate: typeof toDate === 'string' ? toDate : undefined,
+        isActive: isActive !== undefined ? isActive === 'true' || isActive === '1' : undefined,
       });
       return ApiResponse.success(res, 'Suppliers fetched successfully', data);
     } catch (e) {

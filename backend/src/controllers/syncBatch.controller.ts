@@ -258,6 +258,10 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
           throw new Error('Malformed payload item: missing required fields');
         }
 
+        // Ensure clean transaction state for this event
+        try {
+          await client.query('ROLLBACK');
+        } catch {}
         await client.query('BEGIN');
 
         // Permanent compact claim protects against duplicates even after the
@@ -468,7 +472,10 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
           }
 
           // Resolve supplier_uuid FK if needed
-          if (payloadObj.supplier_uuid) {
+          if (entityType === 'Supplier') {
+            // Suppliers don't have supplier_uuid column; eliminate if present in payloadObj
+            delete payloadObj.supplier_uuid;
+          } else if (payloadObj.supplier_uuid) {
             const supCheck = await client.query('SELECT id FROM suppliers WHERE id=$1', [payloadObj.supplier_uuid]);
             if (supCheck.rowCount === 0) {
               const supLocalId = rawPayload.supplierId || rawPayload.supplierLocalId;
@@ -492,6 +499,7 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
               // If still not found in Neon, auto-provision the supplier placeholder
               if (!supResolved) {
                 try {
+                  await client.query('SAVEPOINT prov_sup');
                   const supName = rawPayload.supplierName || rawPayload.supplier || `Supplier ${supLocalId || 1}`;
                   const codeToUse = supCode || `SUP_${deviceId.slice(0, 4)}_${supLocalId || 1}`;
                   const provSup = await client.query(
@@ -505,7 +513,9 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                     payloadObj.supplier_uuid = provSup.rows[0].id;
                     supResolved = true;
                   }
+                  await client.query('RELEASE SAVEPOINT prov_sup');
                 } catch {
+                  try { await client.query('ROLLBACK TO SAVEPOINT prov_sup'); } catch {}
                   // If concurrent provision collided, re-query
                   const fbSup = await client.query('SELECT id FROM suppliers WHERE id=$1', [payloadObj.supplier_uuid]);
                   if (fbSup.rowCount && fbSup.rowCount > 0) {
@@ -548,6 +558,7 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                   payloadObj.supplier_uuid = firstSup.rows[0].id;
                 } else {
                   try {
+                    await client.query('SAVEPOINT prov_sup2');
                     const newSupId = crypto.randomUUID();
                     const prov = await client.query(
                       `INSERT INTO suppliers (id, device_id, local_id, name, code, is_active)
@@ -558,7 +569,9 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                     if (prov.rowCount && prov.rowCount > 0) {
                       payloadObj.supplier_uuid = prov.rows[0].id;
                     }
+                    await client.query('RELEASE SAVEPOINT prov_sup2');
                   } catch {
+                    try { await client.query('ROLLBACK TO SAVEPOINT prov_sup2'); } catch {}
                     const fallbackSup = await client.query('SELECT id FROM suppliers LIMIT 1');
                     if (fallbackSup.rowCount && fallbackSup.rowCount > 0) {
                       payloadObj.supplier_uuid = fallbackSup.rows[0].id;
@@ -610,6 +623,101 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
             }
           }
 
+          // Resolve return_uuid FK if needed for ReturnItem
+          if (entityType === 'ReturnItem') {
+            let retResolved = false;
+            if (payloadObj.return_uuid) {
+              const rCheck = await client.query('SELECT id FROM returns WHERE id=$1', [payloadObj.return_uuid]);
+              if (rCheck.rowCount && rCheck.rowCount > 0) {
+                retResolved = true;
+              }
+            }
+            if (!retResolved) {
+              const retLocalId = rawPayload.returnId || rawPayload.returnLocalId || rawPayload.local_id || 1;
+              const retFb = await client.query('SELECT id FROM returns WHERE device_id=$1 AND local_id=$2 LIMIT 1', [deviceId, retLocalId]);
+              if (retFb.rowCount && retFb.rowCount > 0) {
+                payloadObj.return_uuid = retFb.rows[0].id;
+                retResolved = true;
+              } else {
+                // Auto-provision placeholder return parent so child return_items can safely insert
+                try {
+                  await client.query('SAVEPOINT prov_ret');
+                  const newRetId = payloadObj.return_uuid || crypto.randomUUID();
+                  const retDate = rawPayload.date || new Date().toISOString().slice(0, 10);
+                  const retCustomer = rawPayload.customer || rawPayload.customerName || 'Walk-in Customer';
+                  const retType = rawPayload.returnType || 'Normal Return';
+                  const provRet = await client.query(
+                    `INSERT INTO returns (id, device_id, local_id, date, customer, return_type, refund_amount, processed_by, status)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed')
+                     ON CONFLICT (id) DO NOTHING
+                     RETURNING id`,
+                    [newRetId, deviceId, retLocalId, retDate, retCustomer, retType, Number(rawPayload.refundAmount || rawPayload.refund_amount || 0), 'Sync Auto-Provision']
+                  );
+                  if (provRet.rowCount && provRet.rowCount > 0) {
+                    payloadObj.return_uuid = provRet.rows[0].id;
+                    retResolved = true;
+                  }
+                  await client.query('RELEASE SAVEPOINT prov_ret');
+                } catch {
+                  try { await client.query('ROLLBACK TO SAVEPOINT prov_ret'); } catch {}
+                  const anyRet = await client.query('SELECT id FROM returns ORDER BY created_at DESC LIMIT 1');
+                  if (anyRet.rowCount && anyRet.rowCount > 0) {
+                    payloadObj.return_uuid = anyRet.rows[0].id;
+                    retResolved = true;
+                  }
+                }
+              }
+            }
+          }
+
+          // Resolve expense_uuid FK if needed for ExpensePayment
+          if (entityType === 'ExpensePayment') {
+            let expResolved = false;
+            if (payloadObj.expense_uuid) {
+              const eCheck = await client.query('SELECT id FROM expenses WHERE id=$1', [payloadObj.expense_uuid]);
+              if (eCheck.rowCount && eCheck.rowCount > 0) {
+                expResolved = true;
+              }
+            }
+            if (!expResolved) {
+              const expLocalId = rawPayload.expenseId || rawPayload.expenseLocalId || rawPayload.local_id || 1;
+              const expFb = await client.query('SELECT id FROM expenses WHERE device_id=$1 AND local_id=$2 LIMIT 1', [deviceId, expLocalId]);
+              if (expFb.rowCount && expFb.rowCount > 0) {
+                payloadObj.expense_uuid = expFb.rows[0].id;
+                expResolved = true;
+              } else {
+                // Auto-provision placeholder expense parent so child expense_payments can safely insert
+                try {
+                  await client.query('SAVEPOINT prov_exp');
+                  const newExpId = payloadObj.expense_uuid || crypto.randomUUID();
+                  const expDate = rawPayload.date || new Date().toISOString().slice(0, 10);
+                  const expCat = rawPayload.category || 'General';
+                  const expDesc = rawPayload.description || `Auto-Provisioned Parent Expense #${expLocalId}`;
+                  const expAmt = Number(rawPayload.amount || 0);
+                  const provExp = await client.query(
+                    `INSERT INTO expenses (id, device_id, local_id, date, category, description, amount, remaining, expense_type)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'SHOP')
+                     ON CONFLICT (id) DO NOTHING
+                     RETURNING id`,
+                    [newExpId, deviceId, expLocalId, expDate, expCat, expDesc, expAmt, 0]
+                  );
+                  if (provExp.rowCount && provExp.rowCount > 0) {
+                    payloadObj.expense_uuid = provExp.rows[0].id;
+                    expResolved = true;
+                  }
+                  await client.query('RELEASE SAVEPOINT prov_exp');
+                } catch {
+                  try { await client.query('ROLLBACK TO SAVEPOINT prov_exp'); } catch {}
+                  const anyExp = await client.query('SELECT id FROM expenses ORDER BY created_at DESC LIMIT 1');
+                  if (anyExp.rowCount && anyExp.rowCount > 0) {
+                    payloadObj.expense_uuid = anyExp.rows[0].id;
+                    expResolved = true;
+                  }
+                }
+              }
+            }
+          }
+
           // Resolve cash_person_uuid FK if needed
           if (payloadObj.cash_person_uuid) {
             const cpCheck = await client.query('SELECT id FROM cash_persons WHERE id=$1', [payloadObj.cash_person_uuid]);
@@ -625,6 +733,7 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
               }
               if (!cpResolved) {
                 try {
+                  await client.query('SAVEPOINT prov_cp');
                   const cpName = rawPayload.cashPersonName || rawPayload.personName || `Cash Person ${cpLocalId || 1}`;
                   const provCp = await client.query(
                     `INSERT INTO cash_persons (id, device_id, local_id, name, opening_balance, status)
@@ -637,7 +746,9 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                     payloadObj.cash_person_uuid = provCp.rows[0].id;
                     cpResolved = true;
                   }
+                  await client.query('RELEASE SAVEPOINT prov_cp');
                 } catch {
+                  try { await client.query('ROLLBACK TO SAVEPOINT prov_cp'); } catch {}
                   const anyCp = await client.query('SELECT id FROM cash_persons LIMIT 1');
                   if (anyCp.rowCount && anyCp.rowCount > 0) {
                     payloadObj.cash_person_uuid = anyCp.rows[0].id;
@@ -654,6 +765,7 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
               payloadObj.cash_person_uuid = cpFallback.rows[0].id;
             } else {
               try {
+                await client.query('SAVEPOINT prov_cp2');
                 const newCpId = crypto.randomUUID();
                 const provCp = await client.query(
                   `INSERT INTO cash_persons (id, device_id, local_id, name, opening_balance, status)
@@ -664,7 +776,9 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                 if (provCp.rowCount && provCp.rowCount > 0) {
                   payloadObj.cash_person_uuid = provCp.rows[0].id;
                 }
+                await client.query('RELEASE SAVEPOINT prov_cp2');
               } catch {
+                try { await client.query('ROLLBACK TO SAVEPOINT prov_cp2'); } catch {}
                 const anyCp = await client.query('SELECT id FROM cash_persons LIMIT 1');
                 if (anyCp.rowCount && anyCp.rowCount > 0) {
                   payloadObj.cash_person_uuid = anyCp.rows[0].id;
@@ -679,6 +793,7 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
           if ((entityType === 'SupplierCollection' || entityType === 'SupplierPayment') && !payloadObj.supplier_uuid) {
             // Final safety net auto-provisioning
             try {
+              await client.query('SAVEPOINT prov_sup_final');
               const fallbackId = crypto.randomUUID();
               await client.query(
                 `INSERT INTO suppliers (id, device_id, local_id, name, code, is_active)
@@ -687,7 +802,9 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
                 [fallbackId, deviceId, `SUP_${deviceId.slice(0, 4)}_RESTORED`]
               );
               payloadObj.supplier_uuid = fallbackId;
+              await client.query('RELEASE SAVEPOINT prov_sup_final');
             } catch {
+              try { await client.query('ROLLBACK TO SAVEPOINT prov_sup_final'); } catch {}
               const anySup = await client.query('SELECT id FROM suppliers LIMIT 1');
               if (anySup.rowCount && anySup.rowCount > 0) {
                 payloadObj.supplier_uuid = anySup.rows[0].id;
@@ -808,7 +925,9 @@ export const syncBatch = async (req: Request, res: Response): Promise<void> => {
         await client.query('COMMIT');
         results.push({ eventUuid, status: 'SYNCED', resolvedUuid });
       } catch (err: any) {
-        await client.query('ROLLBACK');
+        try {
+          await client.query('ROLLBACK');
+        } catch {}
         console.error(`[Sync API] Event ${eventUuid} FAILED:`, err.message);
         results.push({
           eventUuid,

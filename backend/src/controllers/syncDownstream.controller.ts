@@ -28,11 +28,31 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
     DOWNSTREAM_BATCH_SIZE
   );
 
-  const client = await getNeonPool().connect().catch((err: any) => {
+  let client: any = null;
+  try {
+    client = await getNeonPool().connect();
+  } catch (err: any) {
+    const isNetworkOrDnsError = 
+      err?.code === 'ENOTFOUND' ||
+      err?.code === 'EAI_AGAIN' ||
+      err?.code === 'ECONNREFUSED' ||
+      err?.code === 'ETIMEDOUT' ||
+      err?.code === 'EHOSTUNREACH' ||
+      err?.message?.includes('ENOTFOUND') ||
+      err?.message?.includes('getaddrinfo');
+
+    if (isNetworkOrDnsError) {
+      // Cloud database is offline or DNS lookup failed; return 503 Service Unavailable gracefully without error stack
+      res.status(503).json({
+        offline: true,
+        retryable: true,
+        error: 'Cloud database currently unreachable (offline/DNS)',
+        details: err.message
+      });
+      return;
+    }
+
     console.error('[Downstream API] Error opening snapshot:', err.message);
-    return null;
-  });
-  if (!client) {
     res.status(500).json({ error: 'Failed to fetch downstream changes' });
     return;
   }
@@ -118,7 +138,9 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
       hasMore
     });
   } catch (err: any) {
-    await client.query('ROLLBACK').catch(() => { });
+    if (client) {
+      await client.query('ROLLBACK').catch(() => { });
+    }
     if (err?.code === '42P01' || err?.message?.includes('cloud_sync_events')) {
       // Table does not exist (single POS setup) - return empty changes gracefully
       res.status(200).json({
@@ -128,10 +150,32 @@ export const syncDownstream = async (req: Request, res: Response): Promise<void>
       });
       return;
     }
+
+    const isNetworkOrDnsError = 
+      err?.code === 'ENOTFOUND' ||
+      err?.code === 'EAI_AGAIN' ||
+      err?.code === 'ECONNREFUSED' ||
+      err?.code === 'ETIMEDOUT' ||
+      err?.code === 'EHOSTUNREACH' ||
+      err?.message?.includes('ENOTFOUND') ||
+      err?.message?.includes('getaddrinfo');
+
+    if (isNetworkOrDnsError) {
+      res.status(503).json({
+        offline: true,
+        retryable: true,
+        error: 'Cloud database currently unreachable (offline/DNS)',
+        details: err.message
+      });
+      return;
+    }
+
     console.error('[Downstream API] Error fetching changes:', err.message);
     res.status(500).json({ error: 'Failed to fetch downstream changes', details: err.message });
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 };
 
@@ -155,6 +199,25 @@ export const getDownstreamCursor = async (req: Request, res: Response): Promise<
       res.status(200).json({ cursor: '0' });
       return;
     }
+
+    const isNetworkOrDnsError = 
+      err?.code === 'ENOTFOUND' ||
+      err?.code === 'EAI_AGAIN' ||
+      err?.code === 'ECONNREFUSED' ||
+      err?.code === 'ETIMEDOUT' ||
+      err?.code === 'EHOSTUNREACH' ||
+      err?.message?.includes('ENOTFOUND') ||
+      err?.message?.includes('getaddrinfo');
+
+    if (isNetworkOrDnsError) {
+      res.status(503).json({
+        cursor: '0',
+        offline: true,
+        error: 'Cloud database currently unreachable (offline/DNS)'
+      });
+      return;
+    }
+
     console.error('[Downstream API] Error fetching cursor:', err.message);
     res.status(500).json({ error: 'Failed to fetch cursor' });
   }

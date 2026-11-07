@@ -50,6 +50,7 @@ function mapLedgerRow(c: ApiCustomer): CustomerTableRow {
     balance: remaining,
     lastSaleDate: c.lastSaleDate ?? null,
     status: c.status,
+    customMilkRate: c.customMilkRate,
     paymentType: 'Khata',
   };
 }
@@ -404,21 +405,21 @@ export const Customers: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-[#e2f5e8] tracking-tight">
             Customers &amp; Khata
           </h1>
-          <p className="text-slate-500 dark:text-[#64916e] text-sm mt-1">
+          <p className="text-slate-500 dark:text-[#64916e] text-xs sm:text-sm mt-0.5 sm:mt-1">
             Ledger accounts, walk-in bills, and split dues (grouped by phone).
           </p>
         </div>
         <button
           type="button"
           onClick={handleAddClick}
-          className="flex items-center gap-2 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-[#166534]/25 transition-all"
+          className="flex items-center justify-center gap-2 bg-[#166534] hover:bg-[#14532d] active:bg-[#0f3d21] text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold shadow-md shadow-[#166534]/25 transition-all shrink-0"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
           Add Customer
         </button>
       </div>

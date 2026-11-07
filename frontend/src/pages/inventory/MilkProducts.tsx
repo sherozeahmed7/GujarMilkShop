@@ -2,14 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { MilkProductsDailyStock } from '../../types/milkProducts.types';
 import { milkProductsService } from '../../services/milkProducts.service';
 import { rateService } from '../../services/rate.service';
+import { inventoryService } from '../../services/inventoryService';
+import { Product } from '../../types/inventory';
 import { MilkSummary } from '../../components/milk-products/MilkSummary';
 import { LassiSection } from '../../components/milk-products/LassiSection';
 import { ButterSection } from '../../components/milk-products/ButterSection';
 import { GheeSection } from '../../components/milk-products/GheeSection';
+import { CustomProductCard } from '../../components/milk-products/CustomProductCard';
 import { ButterGheeConversionModal } from '../../components/milk-products/ButterGheeConversionModal';
 import { DayEndLassiModal } from '../../components/milk-products/DayEndLassiModal';
 import { ProductHistory } from '../../components/milk-products/ProductHistory';
 import { Calendar, Plus } from 'lucide-react';
+
+/** Lowercase names of the 5 core products that have dedicated section components */
+const CORE_PRODUCT_NAMES = new Set(['milk', 'yogurt', 'lassi', 'butter', 'ghee']);
 
 /** Returns YYYY-MM-DD in local time (not UTC) */
 const getLocalDateStr = (d = new Date()): string => {
@@ -33,6 +39,9 @@ export const MilkProducts: React.FC<{
 
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
   const [isLassiModalOpen, setIsLassiModalOpen] = useState(false);
+
+  // Custom inventory products (non-core, active only)
+  const [customProducts, setCustomProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     loadData();
@@ -72,6 +81,28 @@ export const MilkProducts: React.FC<{
     };
   }, []);
 
+  // Load custom inventory products (non-core, active)
+  useEffect(() => {
+    let cancelled = false;
+    const loadCustomProducts = async () => {
+      try {
+        const all = await inventoryService.getProducts();
+        if (!cancelled) {
+          const custom = all.filter(
+            (p) =>
+              p.isActive !== false &&
+              !CORE_PRODUCT_NAMES.has(p.name.trim().toLowerCase())
+          );
+          setCustomProducts(custom);
+        }
+      } catch {
+        // non-fatal — custom products section just stays empty
+      }
+    };
+    loadCustomProducts();
+    return () => { cancelled = true; };
+  }, []);
+
   // Register loadData so POS can trigger a refresh after a sale
   useEffect(() => {
     onRegisterRefresh?.(loadData);
@@ -83,6 +114,15 @@ export const MilkProducts: React.FC<{
     try {
       const data = await milkProductsService.getDailyStock(selectedDate);
       setStock(data);
+      // Also refresh custom product stock on each loadData
+      const all = await inventoryService.getProducts();
+      setCustomProducts(
+        all.filter(
+          (p) =>
+            p.isActive !== false &&
+            !CORE_PRODUCT_NAMES.has(p.name.trim().toLowerCase())
+        )
+      );
     } catch (err: any) {
       setLoadError(err.message || 'Failed to load stock data.');
     } finally {
@@ -106,7 +146,7 @@ export const MilkProducts: React.FC<{
     return (
       <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-[#64916e] text-sm">
         <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-        Loading stock dataâ€¦
+        Loading stock data…
       </div>
     );
 
@@ -124,7 +164,7 @@ export const MilkProducts: React.FC<{
     return (
       <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-[#64916e] text-sm">
         <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-        Loading stock dataâ€¦
+        Loading stock data…
       </div>
     );
 
@@ -134,7 +174,7 @@ export const MilkProducts: React.FC<{
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-[#e2f5e8]">Milk Products / F2</h1>
           <p className="text-sm text-slate-500 dark:text-[#8ba895] mt-1">
-            Manage production and inventory for Lassi, Butter, and Ghee
+            Manage production and inventory for Lassi, Butter, Ghee and custom products
           </p>
         </div>
 
@@ -170,10 +210,10 @@ export const MilkProducts: React.FC<{
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex flex-wrap gap-6 items-stretch">
-            <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 items-stretch">
+            <div className="w-full min-w-0">
               <LassiSection
                 stock={stock}
                 onOpenDayEnd={() => setIsLassiModalOpen(true)}
@@ -181,7 +221,7 @@ export const MilkProducts: React.FC<{
                 defaultRatePerKg={f2Rates.lassi}
               />
             </div>
-            <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
+            <div className="w-full min-w-0">
               <ButterSection
                 stock={stock}
                 inventoryStockKg={stock.butterClosing}
@@ -190,7 +230,7 @@ export const MilkProducts: React.FC<{
                 defaultRatePerKg={f2Rates.butter}
               />
             </div>
-            <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] min-w-[300px]">
+            <div className="w-full min-w-0">
               <GheeSection
                 stock={stock}
                 inventoryStockKg={stock.gheeClosing}
@@ -198,6 +238,19 @@ export const MilkProducts: React.FC<{
                 defaultRatePerKg={f2Rates.ghee}
               />
             </div>
+
+            {/* Dynamic custom product cards */}
+            {customProducts.map((prod) => (
+              <div
+                key={prod.id}
+                className="w-full min-w-0"
+              >
+                <CustomProductCard
+                  product={prod}
+                  onAddToCart={onAddToCart}
+                />
+              </div>
+            ))}
           </div>
 
           <MilkSummary stock={stock} />
@@ -226,4 +279,3 @@ export const MilkProducts: React.FC<{
     </div>
   );
 };
-

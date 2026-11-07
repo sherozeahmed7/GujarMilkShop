@@ -27,7 +27,7 @@ export const LocalBackup: React.FC = () => {
 
   return (
     <div className="flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Backup & Restore</h1>
           <p className="text-sm text-slate-500 mt-1">Create local backups of your database. Auto-backup runs nightly at 2:00 AM.</p>

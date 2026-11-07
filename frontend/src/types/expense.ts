@@ -53,3 +53,14 @@ export interface CostBreakdownItem {
   amount: number;
   percentage: number;
 }
+
+export interface ExpenseCustomer {
+  id: number;
+  name: string;
+  phone?: string | null;
+  notes?: string | null;
+  customerCategory?: 'SHOP' | 'PERSONAL';
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}

@@ -1,9 +1,12 @@
 import { apiClient } from './apiClient';
 
 export interface SaleItemPayload {
-  itemName: 'milk' | 'yogurt' | 'lassi' | 'butter' | 'ghee';
+  /** Core or custom product name (lowercase) */
+  itemName: string;
   quantity: number;
   unitPrice: number;
+  /** Optional: the catalogue selling rate (used for receipt display) */
+  catalogRate?: number;
 }
 
 export interface CreateSalePayload {
@@ -149,7 +152,6 @@ export const saleService = {
     if (filters?.dateTo) params.dateTo = filters.dateTo;
     if (filters?.page !== undefined) params.page = filters.page;
     if (filters?.limit !== undefined) params.limit = filters.limit;
-
     const response = await apiClient.get(
       '/sales',
       Object.keys(params).length ? params : undefined

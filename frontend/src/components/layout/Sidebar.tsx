@@ -6,9 +6,10 @@ import {
   LayoutDashboard, ShoppingCart, Package, Truck, UserSquare2,
   BookOpen, Undo2, Receipt, LogOut, Moon, Clock, Monitor,
   Database, Wallet, FileText, Settings, ChevronDown, ChevronRight,
-  PanelLeftClose, PanelLeftOpen, BookMarked
+  PanelLeftClose, PanelLeftOpen, BookMarked, X
 } from 'lucide-react';
 import { BrandLogo } from '../BrandLogo';
+import { useResponsiveSidebar } from '../../context/ResponsiveSidebarContext';
 
 const mainNavItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -54,6 +55,8 @@ const settingsItems = [
 ];
 
 export const Sidebar: React.FC = () => {
+  const { mobileOpen, setMobileOpen } = useResponsiveSidebar();
+
   // Navigation accordions
   const [reportsOpen, setReportsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -143,17 +146,45 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div 
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden transition-opacity duration-300"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Container */}
       <aside 
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`${isCollapsed ? 'w-[72px]' : 'w-[240px]'} transition-[width] duration-300 ease-in-out shrink-0 bg-[#F9FAF8] dark:bg-[#111e14] border-r border-slate-200 dark:border-[#1e3124] h-full flex flex-col text-slate-700 dark:text-[#a7c4ae]`}
+        className={`fixed lg:static inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out shrink-0 bg-[#F9FAF8] dark:bg-[#111e14] border-r border-slate-200 dark:border-[#1e3124] h-full flex flex-col text-slate-700 dark:text-[#a7c4ae] ${
+          // Mobile state: slide in/out
+          mobileOpen ? 'translate-x-0 shadow-2xl w-[260px]' : '-translate-x-full lg:translate-x-0'
+        } ${
+          // Desktop collapsed vs expanded state
+          isCollapsed ? 'lg:w-[72px]' : 'lg:w-[240px]'
+        }`}
       >
         {/* Header / Logo */}
-        <div className={`p-5 flex items-center shrink-0 border-b border-slate-100 dark:border-[#1e3124] ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
-          <BrandLogo variant="sidebar" />
-          <span className={`text-sm font-bold tracking-tight text-[#166534] dark:text-[#22c55e] whitespace-nowrap transition-opacity duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
-            Gujar Milk Shop
-          </span>
+        <div className={`p-4 sm:p-5 flex items-center shrink-0 border-b border-slate-100 dark:border-[#1e3124] ${isCollapsed ? 'lg:justify-center lg:px-0 justify-between' : 'justify-between'}`}>
+          <div className="flex items-center gap-3">
+            <BrandLogo variant="sidebar" />
+            <span className={`text-sm font-bold tracking-tight text-[#166534] dark:text-[#22c55e] whitespace-nowrap transition-opacity duration-300 ${isCollapsed ? 'lg:opacity-0 lg:w-0 lg:hidden opacity-100' : 'opacity-100'}`}>
+              Gujar Milk Shop
+            </span>
+          </div>
+
+          {/* Close button for mobile drawer */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-[#a7c4ae] dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-[#1e3124] transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Area */}
@@ -354,12 +385,12 @@ export const Sidebar: React.FC = () => {
           {/* Action Buttons */}
           <div className={`flex text-slate-500 dark:text-[#64916e] w-full ${isCollapsed ? 'flex-col items-center gap-2' : 'items-center justify-between px-2'}`}>
             
-            {/* Sidebar Toggle (Only show on normal pages) */}
+            {/* Sidebar Toggle (Only show on normal pages, desktop only) */}
             {!isPosPage && (
               <button 
                 onClick={() => setIsManuallyCollapsed(!isManuallyCollapsed)}
                 title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                className="p-1.5 hover:bg-slate-200 dark:hover:bg-[#1e3124] rounded-md transition-colors flex justify-center items-center"
+                className="hidden lg:flex p-1.5 hover:bg-slate-200 dark:hover:bg-[#1e3124] rounded-md transition-colors justify-center items-center"
               >
                 {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
               </button>

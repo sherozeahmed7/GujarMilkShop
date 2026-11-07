@@ -15,7 +15,7 @@ export const CustomerSummary: React.FC<CustomerSummaryProps> = ({
   const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString()}`;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
       <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-[#2d4a35] flex items-center gap-4">
         <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
           <Users className="w-6 h-6" />

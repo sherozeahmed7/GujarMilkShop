@@ -105,8 +105,7 @@ CREATE TABLE IF NOT EXISTS shifts (
   status VARCHAR NOT NULL DEFAULT 'Open',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(device_id, local_id),
-  UNIQUE(device_id, shift_date)
+  UNIQUE(device_id, local_id)
 );
 
 CREATE TABLE IF NOT EXISTS sales (
@@ -430,6 +429,7 @@ export async function ensureNeonSchema(): Promise<void> {
         ALTER TABLE IF EXISTS expenses ADD COLUMN IF NOT EXISTS expense_type VARCHAR NOT NULL DEFAULT 'SHOP';
         ALTER TABLE IF EXISTS sales ADD COLUMN IF NOT EXISTS discount_amount DECIMAL NOT NULL DEFAULT 0;
         ALTER TABLE IF EXISTS returns ALTER COLUMN customer DROP NOT NULL;
+        ALTER TABLE IF EXISTS shifts DROP CONSTRAINT IF EXISTS shifts_device_id_shift_date_key;
         CREATE INDEX IF NOT EXISTS idx_expenses_type ON expenses(expense_type);
         CREATE INDEX IF NOT EXISTS idx_expenses_type_date ON expenses(expense_type, date);
         CREATE INDEX IF NOT EXISTS idx_sales_discount_amount ON sales(discount_amount);

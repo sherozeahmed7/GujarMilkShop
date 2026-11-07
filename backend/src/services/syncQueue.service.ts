@@ -202,6 +202,7 @@ export class SyncQueueService {
     payload: any
   ) {
     const eventUuid = crypto.randomUUID();
+    const safeCloudUuid = cloudUuid && cloudUuid.trim() ? cloudUuid : crypto.randomUUID();
     const enriched = await this.enrichPayload(entityType, payload, prisma);
 
     return await prisma.syncQueue.create({
@@ -210,7 +211,7 @@ export class SyncQueueService {
         deviceId: this.getDeviceId(),
         entityType,
         localId,
-        cloudUuid,
+        cloudUuid: safeCloudUuid,
         operation,
         payload: JSON.stringify(enriched),
         status: 'PENDING',
@@ -228,6 +229,7 @@ export class SyncQueueService {
     layer: number = 0
   ) {
     const eventUuid = crypto.randomUUID();
+    const safeCloudUuid = cloudUuid && cloudUuid.trim() ? cloudUuid : crypto.randomUUID();
     const enriched = await this.enrichPayload(entityType, payload, db);
     return await db.syncQueue.create({
       data: {
@@ -235,7 +237,7 @@ export class SyncQueueService {
         deviceId: this.getDeviceId(),
         entityType,
         localId,
-        cloudUuid,
+        cloudUuid: safeCloudUuid,
         operation,
         payload: JSON.stringify(enriched),
         status: 'PENDING',

@@ -37,4 +37,19 @@ export class ShiftController {
       return result.success ? ApiResponse.success(res, 'Shift closed successfully', result.data, result.statusCode) : ApiResponse.error(res, result.message!, result.statusCode);
     } catch (error) { next(error); }
   }
+
+  static async getLedger(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const shiftId = Number(req.params.id);
+      if (!Number.isFinite(shiftId) || shiftId <= 0) {
+        return ApiResponse.error(res, 'Invalid shift ID', 400);
+      }
+      const result = await ShiftService.getShiftLedger(shiftId);
+      return result.success
+        ? ApiResponse.success(res, 'Shift ledger retrieved successfully', result.data, result.statusCode)
+        : ApiResponse.error(res, result.message!, result.statusCode);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
