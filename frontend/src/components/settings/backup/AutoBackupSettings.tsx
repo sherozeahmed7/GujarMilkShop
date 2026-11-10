@@ -86,6 +86,7 @@ export const AutoBackupSettings: React.FC = () => {
                 className="w-full rounded-lg border border-slate-200 dark:border-[#2d4a35] bg-white dark:bg-[#142119] text-slate-800 dark:text-[#e2f5e8] text-sm focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-slate-50 dark:disabled:bg-[#111e14] disabled:text-slate-400 dark:disabled:text-[#64916e]"
               >
                 <option value="7">Keep last 7 backups</option>
+                <option value="15">Keep last 15 backups</option>
                 <option value="30">Keep last 30 backups</option>
                 <option value="90">Keep last 90 backups</option>
                 <option value="all">Keep all backups</option>

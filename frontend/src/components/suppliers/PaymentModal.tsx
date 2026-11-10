@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Supplier } from '../../types';
 import { useSupplierStore } from '../../store/supplierStore';
 import { X, CreditCard, DollarSign } from 'lucide-react';
@@ -18,6 +18,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
   const [method, setMethod] = useState('cash');
   const [paymentSource, setPaymentSource] = useState<'shift' | 'hand'>('shift');
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -31,7 +32,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || isSubmittingRef.current) return;
 
     if (!Number.isFinite(numAmount) || numAmount < 0) {
       setError('Please enter a valid payment amount.');
@@ -50,9 +51,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
       return;
     }
 
+    isSubmittingRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
+      const paymentUuid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined;
       await addPayment({
         supplierId: supplier.id,
         date,
@@ -60,6 +63,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
         method,
         paymentSource: method === 'cash' ? paymentSource : 'hand',
         notes,
+        ...(paymentUuid ? { clientUuid: paymentUuid } : {}),
         ...(numDiscount > 0 ? { discount: numDiscount } : {}),
       });
       await onPaid?.();
@@ -67,6 +71,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
     } catch (err: any) {
       setError(err?.message || 'Payment failed');
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -81,9 +86,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
     combined <= payable + 1e-9;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-[#1a2e1f] rounded-2xl shadow-xl w-full max-w-md max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-[#2d4a35] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <CreditCard className="w-5 h-5" />
@@ -101,7 +106,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ supplier, onClose, o
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4 overflow-y-auto overscroll-contain">
           <div className="bg-amber-50 dark:bg-[#2a2414] border border-amber-100 dark:border-amber-900/40 rounded-xl p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-amber-800/70 dark:text-amber-300 uppercase tracking-wider">

@@ -90,7 +90,7 @@ export const supplierService = {
   async deleteCollection(id: string): Promise<void> { await apiClient.delete(`/suppliers/collections/${id}`); },
   async addPayment(
     supplierId: string,
-    payment: Omit<SupplierPayment, 'id'> & { discount?: number }
+    payment: Omit<SupplierPayment, 'id'> & { discount?: number; clientUuid?: string }
   ): Promise<SupplierPayment> {
     const response = await apiClient.post(`/suppliers/${supplierId}/payments`, payment);
     const data = Array.isArray(response.data) ? response.data[0] : response.data;

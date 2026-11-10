@@ -1007,7 +1007,25 @@ export class ReportsController {
         return totalQty > 0 ? money(totalCost / totalQty) : 0;
       };
 
-      const supplierMilkUnitCost = calcWeightedAvgMilkRate(supplierCollectionsUpToTo);
+      // 1. First preference: Supplier collections within the selected date range (from .. to)
+      const periodSupplierCollections = supplierCollectionsUpToTo.filter(c => c.date >= from && c.date <= toISOEnd);
+      const periodSupplierMilkRate = calcWeightedAvgMilkRate(periodSupplierCollections);
+
+      // 2. Second preference: Latest collection date on or before 'to'
+      let latestDaySupplierMilkRate = 0;
+      if (periodSupplierMilkRate <= 0 && supplierCollectionsUpToTo.length > 0) {
+        const latestDate = supplierCollectionsUpToTo[supplierCollectionsUpToTo.length - 1].date;
+        const latestDayCollections = supplierCollectionsUpToTo.filter(c => c.date === latestDate);
+        latestDaySupplierMilkRate = calcWeightedAvgMilkRate(latestDayCollections);
+      }
+
+      // 3. Third preference: Cumulative all-time supplier rate up to 'to'
+      const cumulativeSupplierMilkRate = calcWeightedAvgMilkRate(supplierCollectionsUpToTo);
+
+      const supplierMilkUnitCost = periodSupplierMilkRate > 0
+        ? periodSupplierMilkRate
+        : (latestDaySupplierMilkRate > 0 ? latestDaySupplierMilkRate : cumulativeSupplierMilkRate);
+
       // Use dynamic supplier weighted average rate, or fallback to inventory movements if no supplier collections exist
       const milkInventoryUnitCost = supplierMilkUnitCost > 0 ? supplierMilkUnitCost : fallbackInventoryCost;
 
@@ -1302,8 +1320,8 @@ export class ReportsController {
         // Average purchase cost: for milk, use supplier collections weighted average if available; otherwise from stock movements
         const costMoves = stockMovementsUpToTo.filter(m => m.productId === product.id && (m.unitCost ?? 0) > 0);
         let avgCost = 0;
-        if (isMilk && supplierMilkUnitCost > 0) {
-          avgCost = supplierMilkUnitCost;
+        if (isMilk && milkInventoryUnitCost > 0) {
+          avgCost = milkInventoryUnitCost;
         } else if (costMoves.length > 0) {
           avgCost = money(costMoves.reduce((s, m) => s + (m.unitCost ?? 0), 0) / costMoves.length);
         }
@@ -1657,6 +1675,25 @@ export class ReportsController {
         butterSold: 0, butterConverted: 0, gheeProduced: 0, gheeSold: 0,
       });
 
+      // Sum stock added directly in inventory within date range
+      const addedByCode: Record<string, number> = {};
+      await Promise.all(products.map(async (product) => {
+        const moves = await prisma.inventoryMovement.findMany({
+          where: { productId: product.id, date: { gte: start, lte: end } },
+          select: { quantity: true },
+        });
+        let sumAdded = 0;
+        for (const m of moves) {
+          const q = Number(m.quantity) || 0;
+          if (q > 0) sumAdded = money(sumAdded + q);
+        }
+        addedByCode[product.code] = sumAdded;
+      }));
+
+      totals.butterProduced = Math.max(totals.butterProduced, addedByCode.BUTTER || 0);
+      totals.lassiProduced = Math.max(totals.lassiProduced, addedByCode.LASSI || 0);
+      totals.gheeProduced = Math.max(totals.gheeProduced, addedByCode.GHEE || 0);
+
       const closingByCode: Record<string, number> = {};
       await Promise.all(products.map(async (product) => {
         const result = await prisma.inventoryMovement.aggregate({
@@ -1666,22 +1703,75 @@ export class ReportsController {
         closingByCode[product.code] = money(Number(result._sum.quantity || 0));
       }));
 
-      const milkCostPerKg = money(Number(supplierCost._avg.rate ?? 0) || Number(rate?.milkRate || 0) * 0.65);
+      // Pick average supplier rate in the selected date range
+      const rangeSupplierCost = await prisma.supplierCollection.aggregate({
+        where: { quantity: { gt: 0 }, rate: { gt: 0 }, date: { gte: from, lte: to } },
+        _avg: { rate: true },
+      });
+
+      const milkCostPerKg = money(
+        Number(rangeSupplierCost?._avg?.rate ?? 0) ||
+        Number(supplierCost._avg.rate ?? 0) ||
+        Number(rate?.milkRate || 0) * 0.65
+      );
       const lassiRatePerKg = Number(rate?.lassiRate || 0);
       const butterRatePerKg = Number(rate?.butterRate || 0);
+      const gheeRatePerKg = Number(rate?.gheeRate || 0);
+
       const milkAddedCost = money(totals.milkTotal * milkCostPerKg);
+
+      const butterClosing = Math.max(closingByCode.BUTTER || 0, 0);
+      const gheeClosing = Math.max(closingByCode.GHEE || 0, 0);
+
+      // 1. Butter & Lassi Market Values (use closing stock when no production recorded)
+      const effectiveButterKg = totals.butterProduced > 0 ? totals.butterProduced : butterClosing;
+      const butterPriceValue = money(effectiveButterKg * butterRatePerKg);
+      const lassiPriceValue = money(totals.lassiProduced * lassiRatePerKg);
+      const totalButterLassiPrice = money(butterPriceValue + lassiPriceValue);
+
+      // 2. Profit and Loss (Butter + Lassi) = total value - added milk cost
+      const butterLassiProfitLoss = milkAddedCost > 0 || totalButterLassiPrice > 0
+        ? money(totalButterLassiPrice - milkAddedCost)
+        : 0;
+
+      // 3. Cost Allocation proportionally between Butter and Lassi (use effectiveButterKg as denominator)
+      let butterCostPerKg = 0;
+      let lassiCostPerKg = 0;
+      if (totalButterLassiPrice > 0 && milkAddedCost > 0) {
+        const butterShare = butterPriceValue / totalButterLassiPrice;
+        const lassiShare = lassiPriceValue / totalButterLassiPrice;
+        const totalButterCost = money(milkAddedCost * butterShare);
+        const totalLassiCost = money(milkAddedCost * lassiShare);
+        butterCostPerKg = effectiveButterKg > 0 ? money(totalButterCost / effectiveButterKg) : 0;
+        lassiCostPerKg = totals.lassiProduced > 0 ? money(totalLassiCost / totals.lassiProduced) : 0;
+      } else if (milkAddedCost > 0 && effectiveButterKg > 0) {
+        butterCostPerKg = money(milkAddedCost / effectiveButterKg);
+      }
+
+      // 4. Remaining Butter Cost = remaining butter weight * butter cost per kg
+      const remainingButterCost = money(butterClosing * butterCostPerKg);
+
+      // 5. Ghee Cost (use gheeClosing when no production recorded)
+      const effectiveGheeKg = totals.gheeProduced > 0 ? totals.gheeProduced : gheeClosing;
+      const gheeTotalCost = money((totals.butterConverted > 0 ? totals.butterConverted : effectiveGheeKg) * butterCostPerKg);
+      const gheeCostPerKg = effectiveGheeKg > 0 ? money(gheeTotalCost / effectiveGheeKg) : 0;
+      const gheeTotalSellValue = money(effectiveGheeKg * gheeRatePerKg);
+      const gheeClosingSellValue = money(gheeClosing * gheeRatePerKg);
+      const gheeClosingCostValue = money(gheeClosing * gheeCostPerKg);
+
       const lassiRecovery = money(totals.lassiSold * lassiRatePerKg);
-      const butterInventoryValue = money(Math.max(closingByCode.BUTTER || 0, 0) * butterRatePerKg);
+      const butterInventoryValue = money(butterClosing * butterRatePerKg);
       const butterTotalValue = money(butterInventoryValue + lassiRecovery);
       const butterRecoveryResult = money(butterTotalValue - milkAddedCost);
 
-      return ApiResponse.success(res, 'F2 item summary.', {
+      return ApiResponse.success(res, "F2 item summary.", {
         date: to,
         milkTotal: totals.milkTotal,
         milkRatePerKg: milkCostPerKg,
         milkCostPerKg,
         lassiRatePerKg,
         butterRatePerKg,
+        gheeRatePerKg,
         milkAddedCost,
         milkRecoveredFromLassi: lassiRecovery,
         milkRecoveredFromButter: money(Math.min(totals.butterSold * butterRatePerKg, milkAddedCost)),
@@ -1696,12 +1786,25 @@ export class ReportsController {
         butterProduced: totals.butterProduced,
         butterSold: totals.butterSold,
         butterConverted: totals.butterConverted,
-        butterClosing: Math.max(closingByCode.BUTTER || 0, 0),
+        butterClosing,
         gheeOpening: 0,
         gheeProduced: totals.gheeProduced,
         gheeSold: totals.gheeSold,
-        gheeClosing: Math.max(closingByCode.GHEE || 0, 0),
+        gheeClosing,
+        butterPriceValue,
+        lassiPriceValue,
+        totalButterLassiPrice,
+        butterLassiProfitLoss,
+        butterCostPerKg,
+        lassiCostPerKg,
+        remainingButterCost,
+        gheeTotalCost,
+        gheeCostPerKg,
+        gheeTotalSellValue,
+        gheeClosingSellValue,
+        gheeClosingCostValue,
       });
+
     } catch (err) { next(err); }
   }
 }

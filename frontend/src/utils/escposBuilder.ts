@@ -33,8 +33,8 @@ const DOUBLE_ON    = [GS,  0x21, 0x11]; // Double height + Double width
 const DOUBLE_OFF   = [GS,  0x21, 0x00];
 const DBL_HEIGHT   = [GS,  0x21, 0x01]; // Double height only
 
-// Single clean cut: GS V 0 (Standard ESC/POS full cut - fires cutter blade exactly once)
-const CUT          = [GS, 0x56, 0x00];
+// Feed & Cut: GS V 66 n feeds paper past the cutter blade before cutting (130 dots / ~16mm)
+const CUT          = [LF, LF, GS, 0x56, 0x42, 0x82];
 
 // Line feed
 const newline = (): number[] => [LF];

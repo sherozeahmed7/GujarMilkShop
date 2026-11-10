@@ -66,8 +66,8 @@ export const PrintReceiptModal: React.FC<PrintReceiptModalProps> = ({ record, on
           ...Array.from(new TextEncoder().encode(`REFUND TOTAL: Rs. ${record.refundAmount}\n`)),
           ESC, 0x45, 0x00, // Bold OFF
           ESC, 0x61, 0x01, // Center
-          LF, // Minimal 0.2 cm feed before cut
-          GS, 0x56, 0x00 // Standard ESC/POS full cut (fires blade once)
+          LF, LF,
+          GS, 0x56, 0x42, 0x45 // Feed past cutter blade and cut
         );
 
         await invoke('print_raw_bytes', {

@@ -8,6 +8,8 @@ export interface KhataReceiptData {
   customerType?: string; // 'Monthly' | 'Daily'
   date?: string | Date;
   previousBalance: number;
+  previousMonthBalance?: number;
+  currentMonthDue?: number;
   paidAmount: number;
   discountAmount?: number;
   remainingBalance: number;
@@ -176,7 +178,7 @@ export async function renderKhataReceiptToCanvas(
   // 7. Statement Lines
   const drawRow = (label: string, value: string, isBig = false, isBold = true) => {
     ctx.font = isBig
-      ? '900 30px "Inter", "Arial", sans-serif'
+      ? '900 24px "Inter", "Arial", sans-serif'
       : isBold
       ? '800 22px "Inter", "Arial", sans-serif'
       : '600 20px "Inter", "Arial", sans-serif';
@@ -184,10 +186,20 @@ export async function renderKhataReceiptToCanvas(
     ctx.fillText(label, 20, y);
     ctx.textAlign = 'right';
     ctx.fillText(value, targetWidth - 20, y);
-    y += isBig ? 38 : 28;
+    y += isBig ? 34 : 28;
   };
 
-  drawRow('PREVIOUS BALANCE', `${currency} ${Math.round(data.previousBalance).toLocaleString()}`);
+  const isMonthlyCustomer = (data.customerType || '').toLowerCase().includes('month');
+  if (isMonthlyCustomer && data.previousMonthBalance !== undefined) {
+    drawRow('PREV MONTH BALANCE', `${currency} ${Math.round(data.previousMonthBalance).toLocaleString()}`);
+    if (data.currentMonthDue !== undefined && data.currentMonthDue > 0) {
+      drawRow('THIS MONTH DUE', `${currency} ${Math.round(data.currentMonthDue).toLocaleString()}`);
+    }
+    drawRow('TOTAL DUE', `${currency} ${Math.round(data.previousBalance).toLocaleString()}`, false, true);
+  } else {
+    drawRow('PREVIOUS BALANCE', `${currency} ${Math.round(data.previousBalance).toLocaleString()}`);
+  }
+
   drawRow('AMOUNT PAID', `${currency} ${Math.round(data.paidAmount).toLocaleString()}`, false, true);
 
   if (data.discountAmount && data.discountAmount > 0) {
@@ -274,6 +286,7 @@ export async function printKhataReceipt(data: KhataReceiptData): Promise<void> {
   if (printWindow) {
     const currency = posConfig?.currencySymbol || 'Rs.';
     const shopName = posConfig?.shopName || 'GUJAR MILK SHOP';
+    const isMonthlyCustomer = (data.customerType || '').toLowerCase().includes('month');
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -306,7 +319,13 @@ export async function printKhataReceipt(data: KhataReceiptData): Promise<void> {
           <div class="divider"></div>
           <div class="center bold">RECEIVED: ${(data.paymentMethod || 'CASH').toUpperCase()}</div>
           <div class="divider"></div>
-          <div class="row"><span>Previous Balance:</span><span>${currency} ${Math.round(data.previousBalance).toLocaleString()}</span></div>
+          ${isMonthlyCustomer && data.previousMonthBalance !== undefined ? `
+            <div class="row"><span>Prev Month Balance:</span><span>${currency} ${Math.round(data.previousMonthBalance).toLocaleString()}</span></div>
+            ${data.currentMonthDue !== undefined && data.currentMonthDue > 0 ? `<div class="row"><span>This Month Due:</span><span>${currency} ${Math.round(data.currentMonthDue).toLocaleString()}</span></div>` : ''}
+            <div class="row bold"><span>Total Due:</span><span>${currency} ${Math.round(data.previousBalance).toLocaleString()}</span></div>
+          ` : `
+            <div class="row"><span>Previous Balance:</span><span>${currency} ${Math.round(data.previousBalance).toLocaleString()}</span></div>
+          `}
           <div class="row bold"><span>Amount Paid:</span><span>${currency} ${Math.round(data.paidAmount).toLocaleString()}</span></div>
           ${data.discountAmount && data.discountAmount > 0 ? `<div class="row"><span>Discount:</span><span>-${currency} ${Math.round(data.discountAmount).toLocaleString()}</span></div>` : ''}
           <div class="divider"></div>

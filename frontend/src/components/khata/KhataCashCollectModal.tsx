@@ -59,13 +59,19 @@ export const KhataCashCollectModal: React.FC<KhataCashCollectModalProps> = ({
       return;
     }
 
+    const isMonthly = customer.customerType === 'monthly_ledger';
+    const prevMonthBal = isMonthly && typeof customer.previousDue === 'number' ? customer.previousDue : undefined;
+    const thisMonthDue = isMonthly && typeof customer.currentDue === 'number' ? customer.currentDue : undefined;
+
     const remaining = Math.max(0, totalAmount - (parsed + discount));
     const receiptData: KhataReceiptData = {
       customerName: customer.name,
       customerPhone: customer.phone,
-      customerType: customer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily',
+      customerType: isMonthly ? 'Monthly' : 'Daily',
       date: new Date(),
       previousBalance: totalAmount,
+      previousMonthBalance: prevMonthBal,
+      currentMonthDue: thisMonthDue,
       paidAmount: parsed,
       discountAmount: discount > 0 ? discount : undefined,
       remainingBalance: remaining,

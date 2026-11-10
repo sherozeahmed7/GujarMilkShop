@@ -1,4 +1,4 @@
-﻿import crypto from 'crypto';
+import crypto from 'crypto';
 import { performance } from 'perf_hooks';
 import { prisma } from '../config/database';
 import { SyncQueueService } from './syncQueue.service';
@@ -389,12 +389,12 @@ function buildSalesAnalytics(
       value: netSales > 0 ? Math.round((amount / netSales) * 100) : 0
     }));
 
-  const categoryAmounts: Record<string, number> = { milk: 0, yogurt: 0, lassi: 0, butter: 0, ghee: 0 };
+  const categoryAmounts: Record<string, number> = {};
 
   for (const sale of sales) {
     for (const item of sale.items || []) {
-      const key = item.itemName in categoryAmounts ? item.itemName : 'milk';
-      categoryAmounts[key] = money(categoryAmounts[key] + item.totalPrice);
+      const key = (item.itemName || 'other').trim().toLowerCase();
+      categoryAmounts[key] = money((categoryAmounts[key] || 0) + item.totalPrice);
     }
   }
 
@@ -409,7 +409,7 @@ function buildSalesAnalytics(
   const categoryBreakdown = Object.entries(categoryAmounts)
     .filter(([, amount]) => amount > 0)
     .map(([key, amount]) => ({
-      label: CATEGORY_LABELS[key] || key,
+      label: CATEGORY_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1)),
       amount,
       value: categoryTotal > 0 ? Math.round((amount / categoryTotal) * 100) : 0
     }));

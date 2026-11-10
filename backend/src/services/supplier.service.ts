@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '../config/database';
 import { Prisma } from '@prisma/client';
 import { SyncQueueService } from './syncQueue.service';
@@ -622,6 +623,22 @@ export class SupplierService {
   }
 
   static async addPayment(userId: number, supplierId: number, payload: any) {
+    const clientUuid = typeof payload.clientUuid === 'string' && payload.clientUuid.trim() ? payload.clientUuid.trim() : null;
+
+    // Idempotency check: If clientUuid is provided and already committed, return existing payment record immediately
+    if (clientUuid) {
+      const existing = await prisma.supplierPayment.findUnique({
+        where: { cloudUuid: clientUuid },
+      });
+      if (existing) {
+        return {
+          success: true,
+          statusCode: 200,
+          data: existing,
+        };
+      }
+    }
+
     const amount = Number(payload.amount ?? 0);
     const discount = Number(payload.discount ?? 0);
     if (!Number.isFinite(amount) || amount < 0) {
@@ -718,6 +735,7 @@ export class SupplierService {
 
       const rows = [];
       if (amount > 0) {
+        const paymentCloudUuid = clientUuid || crypto.randomUUID();
         const pay = await tx.supplierPayment.create({
           data: {
             supplierId,
@@ -726,7 +744,8 @@ export class SupplierService {
             method,
             notes,
             createdById: userId,
-            shiftId: isShiftCash ? openShift?.id : null
+            shiftId: isShiftCash ? openShift?.id : null,
+            cloudUuid: paymentCloudUuid,
           },
         });
         await SyncQueueService.enqueueCreate(tx, 'SupplierPayment', pay.id, pay, 1);
@@ -736,6 +755,7 @@ export class SupplierService {
         const discountNotes = notes
           ? `Discount write-off. ${notes}`
           : 'Discount write-off (balance discarded)';
+        const discountCloudUuid = clientUuid ? `${clientUuid}-discount` : crypto.randomUUID();
         const discPay = await tx.supplierPayment.create({
           data: {
             supplierId,
@@ -745,6 +765,7 @@ export class SupplierService {
             shiftId: null,
             notes: discountNotes,
             createdById: userId,
+            cloudUuid: discountCloudUuid,
           },
         });
         await SyncQueueService.enqueueCreate(tx, 'SupplierPayment', discPay.id, discPay, 1);

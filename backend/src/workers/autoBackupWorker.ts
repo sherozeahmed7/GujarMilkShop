@@ -44,10 +44,19 @@ export function startAutoBackupWorker() {
     const currentMinuteStr = now.getMinutes().toString().padStart(2, '0');
     const currentTimeStr = `${currentHourStr}:${currentMinuteStr}`;
 
-    if (currentTimeStr === config.autoBackupSettings.time) {
+    // Normalize schedule time format (e.g. "02:00" vs "2:00")
+    const targetTime = config.autoBackupSettings.time?.trim() || '';
+    const normalizedTarget = targetTime.includes(':')
+      ? targetTime.split(':').map((p: string) => p.padStart(2, '0')).join(':')
+      : targetTime;
+
+    if (currentTimeStr === normalizedTarget) {
       const backupDir = getBackupDirectory();
       
-      const todayDate = now.toISOString().split('T')[0];
+      const year = now.getFullYear();
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const date = now.getDate().toString().padStart(2, '0');
+      const localDateStr = `${year}-${month}-${date}`;
       const dayOfWeek = now.getDay(); // 0 (Sun) to 6 (Sat)
       const dateOfMonth = now.getDate(); // 1 to 31
 
@@ -62,8 +71,8 @@ export function startAutoBackupWorker() {
         return;
       }
 
-      // Determine if a backup already exists for this schedule period
-      const backupPrefix = `auto-backup-${todayDate}`;
+      // Determine if a backup already exists for this schedule period today
+      const backupPrefix = `auto-backup-${localDateStr}`;
       
       const files = fs.existsSync(backupDir) ? fs.readdirSync(backupDir) : [];
       const alreadyBackedUp = files.some(f => f.startsWith(backupPrefix));
@@ -71,8 +80,10 @@ export function startAutoBackupWorker() {
       if (!alreadyBackedUp) {
         try {
           console.log('[AutoBackup] Starting scheduled backup...');
-          const timestamp = now.toISOString().replace(/[:.]/g, '-');
-          const backupFilename = `auto-backup-${timestamp}.db`;
+          const hours = now.getHours().toString().padStart(2, '0');
+          const minutes = now.getMinutes().toString().padStart(2, '0');
+          const seconds = now.getSeconds().toString().padStart(2, '0');
+          const backupFilename = `auto-backup-${localDateStr}T${hours}-${minutes}-${seconds}.db`;
           const targetPath = path.join(backupDir, backupFilename);
 
           try {
@@ -106,11 +117,13 @@ export function startAutoBackupWorker() {
   }, 60000); // Check every minute
 }
 
-function handleRetention(backupDir: string, retentionStr: string) {
-  if (retentionStr === 'all') return;
+export function handleRetention(backupDir: string, retentionStr: string) {
+  if (!retentionStr || retentionStr === 'all') return;
   
   const keepCount = parseInt(retentionStr, 10);
-  if (isNaN(keepCount)) return;
+  if (isNaN(keepCount) || keepCount <= 0) return;
+
+  if (!fs.existsSync(backupDir)) return;
 
   const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db') && (f.startsWith('auto-') || f.startsWith('manual-')));
   if (files.length <= keepCount) return;
@@ -121,12 +134,12 @@ function handleRetention(backupDir: string, retentionStr: string) {
     return { path: filePath, mtime: fs.statSync(filePath).mtime.getTime() };
   }).sort((a, b) => b.mtime - a.mtime);
 
-  // Delete older files
+  // Delete older files beyond keepCount
   const filesToDelete = fileStats.slice(keepCount);
   for (const file of filesToDelete) {
     try {
       fs.unlinkSync(file.path);
-      console.log(`[AutoBackup] Deleted old backup: ${file.path}`);
+      console.log(`[AutoBackup] Deleted old backup per retention limit (${keepCount}): ${file.path}`);
     } catch (e) {
       console.error(`[AutoBackup] Failed to delete old backup: ${file.path}`, e);
     }

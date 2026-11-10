@@ -625,12 +625,17 @@ export const KhataLedger: React.FC = () => {
         now.getFullYear()
       ).catch(() => null);
 
+      const isMonthly = c.customerType === 'monthly_ledger';
       let prevBal = c.previousDue ?? 0;
+      let prevMonthBal: number | undefined = isMonthly ? (c.previousDue ?? 0) : undefined;
+      let thisMonthDue: number | undefined = isMonthly ? (c.currentDue ?? 0) : undefined;
       let paidAmt = c.paidAmount ?? 0;
       let remBal = c.remainingBalance ?? c.totalDue ?? 0;
 
       if (summaryData) {
-        prevBal = summaryData.previousBalance;
+        prevMonthBal = isMonthly ? summaryData.previousBalance : undefined;
+        thisMonthDue = isMonthly ? summaryData.currentMonthAmount : undefined;
+        prevBal = isMonthly ? summaryData.totalPayable : summaryData.previousBalance;
         paidAmt = summaryData.totalReceived;
         remBal = summaryData.remaining;
       }
@@ -638,9 +643,11 @@ export const KhataLedger: React.FC = () => {
       const receiptData: KhataReceiptData = {
         customerName: c.name,
         customerPhone: c.phone,
-        customerType: c.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily',
+        customerType: isMonthly ? 'Monthly' : 'Daily',
         date: new Date(),
         previousBalance: prevBal,
+        previousMonthBalance: prevMonthBal,
+        currentMonthDue: thisMonthDue,
         paidAmount: paidAmt,
         remainingBalance: remBal,
         paymentMethod: 'cash',

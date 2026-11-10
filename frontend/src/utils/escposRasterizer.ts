@@ -11,10 +11,14 @@ const LF = 0x0a;
 const INIT = [
   ESC, 0x40,                               // Reset / initialize printer
   ESC, 0x37, 0x07, 0xf0, 0x02,             // Max heating dots & pulse duration (2400us for deep black thermal burn)
-  GS,  0x28, 0x4b, 0x02, 0x00, 0x31, 0x02, // Set print density to dark (+2)
+  GS, 0x28, 0x4b, 0x02, 0x00, 0x31, 0x02, // Set print density to dark (+2)
 ];
-// Single clean cut: GS V 0 (Standard ESC/POS full cut - fires cutter blade exactly once)
-const CUT = [GS, 0x56, 0x00];
+// Clean feed and cut: GS V 66 n (Feed n vertical units before cut).
+// Thermal receipt printers physically place the cutter knife 15-25mm (approx 120-140 dots)
+// ABOVE the thermal print head. Using GS V 66 (0x42) with a 130-dot feed (0x82) pushes the bottom text
+// (barcode, scan instructions, and footer message) completely past the cutter blade before cutting.
+// Without this feed, the last lines remain behind the knife and are sliced off onto the top of the NEXT receipt!
+const CUT_WITH_FEED = [GS, 0x56, 0x42, 0x82]; // Feed 130 dots (~16mm) past cutter blade and cut (no extra LFs)
 
 /**
  * Formats a unit price for receipts, displays, and modals.
@@ -120,11 +124,10 @@ export function canvasToEscposRaster(
   }
 
   // ---------------------------------------------------------------------------
-  // 4. Flush raster line buffer with single LF, then issue hardware cut
+  // 4. Feed past cutter blade and cut (GS V 66 handles the feed mechanically)
   // ---------------------------------------------------------------------------
-  bytes.push(LF);
   if (options.autoCutter !== false) {
-    bytes.push(...CUT);
+    bytes.push(...CUT_WITH_FEED);
   }
 
   return bytes;
@@ -168,7 +171,7 @@ export async function renderReceiptToCanvas(
 
   const canvas = document.createElement('canvas');
   canvas.width = targetWidth;
-  
+
   // Estimate height and resize dynamically
   const estimatedHeight = 520 + sale.items.length * 52;
   canvas.height = estimatedHeight;
@@ -211,7 +214,7 @@ export async function renderReceiptToCanvas(
   ctx.textAlign = 'left';
   const billLabel = sale.id != null ? `BILL-${sale.id}` : `REF-${(sale.checkoutUuid || '').slice(-8).toUpperCase()}`;
   ctx.fillText(`Bill: ${billLabel}`, 20, y);
-  
+
   ctx.textAlign = 'right';
   const d = new Date(sale.createdAt);
   const day = d.toLocaleDateString('en-GB', { day: '2-digit' });
@@ -263,7 +266,7 @@ export async function renderReceiptToCanvas(
     ctx.font = '900 24px "Inter", "Arial", sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(itemName, 20, y);
-    
+
     ctx.textAlign = 'right';
     ctx.fillText(itemTotalStr, targetWidth - 20, y);
 
@@ -330,13 +333,13 @@ export async function renderReceiptToCanvas(
   ctx.fillText('SCAN FOR RETURN / AUDIT', targetWidth / 2, y);
   y += 28;
 
-  // 13. Footer Message
+  // 13. Footer Message (0cm top gap, 2cm bottom gap)
   ctx.font = '700 22px "Inter", "Arial", sans-serif';
   ctx.fillText(sale.footerText || 'Thank you for your visit!', targetWidth / 2, y);
   y += 36;
 
-  // 14. Bottom margin — minimal 0.2 cm blank space (~16px at 203 DPI) before cut
-  y += 16;
+  // 14. No extra canvas bottom margin — GS V 130-dot feed handles cutter clearance.
+  y += 0;
 
   // Final trim canvas height
   const finalCanvas = document.createElement('canvas');

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { BrandLogo } from '../BrandLogo';
 import { useResponsiveSidebar } from '../../context/ResponsiveSidebarContext';
+import { isWebMode } from '../../utils/appMode';
 
 const mainNavItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -121,9 +122,19 @@ export const Sidebar: React.FC = () => {
   const userRole = localStorage.getItem('role')?.toLowerCase();
   const isSuperAdmin = userRole === 'super_admin' || userRole === 'super admin';
 
-  const visibleMainItems = mainNavItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
-  const visibleReportItems = reportItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
-  const visibleSettingsItems = settingsItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
+  const web = isWebMode();
+  // Filter out desktop-only items when running in web browser portal mode
+  const desktopOnlyScreens = ['Point of Sale', 'Local Backup', 'Backup Report', 'POS Config'];
+
+  const visibleMainItems = mainNavItems
+    .filter(item => !web || !desktopOnlyScreens.includes(item.name))
+    .filter(item => isSuperAdmin || allowedScreens.includes(item.name));
+  const visibleReportItems = reportItems
+    .filter(item => !web || !desktopOnlyScreens.includes(item.name))
+    .filter(item => isSuperAdmin || allowedScreens.includes(item.name));
+  const visibleSettingsItems = settingsItems
+    .filter(item => !web || !desktopOnlyScreens.includes(item.name))
+    .filter(item => isSuperAdmin || allowedScreens.includes(item.name));
   const visibleBottomItems = bottomNavItems.filter(item => isSuperAdmin || allowedScreens.includes(item.name));
 
   const handleConfirmLogout = async () => {

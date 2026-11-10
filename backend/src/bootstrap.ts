@@ -142,6 +142,12 @@ function resolveResource(filename: string): string | null {
 const dotenv = require('dotenv');
 dotenv.config();
 
+// Branch immediately if running in Cloud mode (Web Portal API on Render/Heroku/Docker)
+if (process.env.APP_MODE === 'cloud') {
+  console.log('[Bootstrap] APP_MODE=cloud detected. Bypassing Windows/AppData SQLite bootstrap and delegating to cloudServer...');
+  require('./cloud/cloudServer');
+} else {
+
 const resolvedEnv = resolveResource('.env');
 if (resolvedEnv) {
   dotenv.config({ path: resolvedEnv });
@@ -234,3 +240,5 @@ process.on('unhandledRejection', (reason: any) => {
 log('[Bootstrap] Requiring server.ts...');
 require('./server');
 
+
+}

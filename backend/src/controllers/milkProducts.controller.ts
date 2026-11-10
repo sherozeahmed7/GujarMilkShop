@@ -50,48 +50,105 @@ export const getDailyStock = async (req: Request, res: Response, next: NextFunct
     const stockResult = await MilkProductsService.getDailyStock(req.query.date as string);
     const stock = stockResult.data;
 
+    const targetDateStr = (req.query.date as string) || new Date().toISOString().split("T")[0];
+    
+
     const latestRate = await prisma.dailyRate.findFirst({
-      orderBy: { id: 'desc' },
-      select: { milkRate: true, lassiRate: true, butterRate: true },
+      orderBy: { id: "desc" },
+      select: { milkRate: true, lassiRate: true, butterRate: true, gheeRate: true },
     });
-    const supplierMilkCost = await prisma.supplierCollection.aggregate({
+    const daySupplierMilkCost = await prisma.supplierCollection.aggregate({
+      where: {
+        date: targetDateStr,
+        quantity: { gt: 0 },
+        rate: { gt: 0 },
+      },
+      _avg: { rate: true },
+    });
+    const fallbackSupplierCost = await prisma.supplierCollection.aggregate({
       where: { quantity: { gt: 0 }, rate: { gt: 0 } },
       _avg: { rate: true },
     });
+
     const milkTotal = Number(stock?.milkTotal ?? 0);
     const milkSellRatePerKg = Number(latestRate?.milkRate ?? 0);
-    const milkCostPerKg = money(Number(supplierMilkCost._avg.rate ?? 0) || milkSellRatePerKg * 0.65);
+    const milkCostPerKg = money(
+      Number(daySupplierMilkCost?._avg?.rate ?? 0) ||
+      Number(fallbackSupplierCost._avg.rate ?? 0) ||
+      milkSellRatePerKg * 0.65
+    );
     const lassiRatePerKg = Number(latestRate?.lassiRate ?? 0);
     const butterRatePerKg = Number(latestRate?.butterRate ?? 0);
+    const gheeRatePerKg = Number(latestRate?.gheeRate ?? 0);
+
     const milkAddedCost = money(milkTotal * milkCostPerKg);
-    const lassiBreakEvenKg = lassiRatePerKg > 0
-      ? Math.round((milkAddedCost / lassiRatePerKg) * 1000) / 1000
-      : 0;
+
+    const butterProduced = Number(stock?.butterProduced ?? 0);
+    const lassiProduced = Number(stock?.lassiProduced ?? 0);
+    const butterSold = Number(stock?.butterSold ?? 0);
     const lassiSold = Number(stock?.lassiSold ?? 0);
-    const milkRecoveredFromLassi = money(lassiSold * lassiRatePerKg);
-    const butterSoldValue = money(Number(stock?.butterSold ?? 0) * butterRatePerKg);
-    const milkRecoveredFromButter = money(Math.min(butterSoldValue, milkAddedCost));
-    const milkRecoveryKgFromButter = milkCostPerKg > 0
-      ? Math.round((milkRecoveredFromButter / milkCostPerKg) * 1000) / 1000
+    const butterConverted = Number(stock?.butterConverted ?? 0);
+    const gheeProduced = Number(stock?.gheeProduced ?? 0);
+    const butterClosing = Math.max(Number(stock?.butterClosing ?? 0), 0);
+    const gheeClosing = Math.max(Number(stock?.gheeClosing ?? 0), 0);
+
+    // 1. Butter & Lassi Market Values (use closing stock when no production recorded)
+    const effectiveButterKg = butterProduced > 0 ? butterProduced : butterClosing;
+    const butterPriceValue = money(effectiveButterKg * butterRatePerKg);
+    const lassiPriceValue = money(lassiProduced * lassiRatePerKg);
+    const totalButterLassiPrice = money(butterPriceValue + lassiPriceValue);
+
+    // 2. Profit and Loss (Butter + Lassi) = total value - added milk cost
+    const butterLassiProfitLoss = milkAddedCost > 0 || totalButterLassiPrice > 0
+      ? money(totalButterLassiPrice - milkAddedCost)
       : 0;
+
+    // 3. Cost Allocation proportionally between Butter and Lassi (use effectiveButterKg as denominator)
+    let butterCostPerKg = 0;
+    let lassiCostPerKg = 0;
+    if (totalButterLassiPrice > 0 && milkAddedCost > 0) {
+      const butterShare = butterPriceValue / totalButterLassiPrice;
+      const lassiShare = lassiPriceValue / totalButterLassiPrice;
+      const totalButterCost = money(milkAddedCost * butterShare);
+      const totalLassiCost = money(milkAddedCost * lassiShare);
+      butterCostPerKg = effectiveButterKg > 0 ? money(totalButterCost / effectiveButterKg) : 0;
+      lassiCostPerKg = lassiProduced > 0 ? money(totalLassiCost / lassiProduced) : 0;
+    } else if (milkAddedCost > 0 && effectiveButterKg > 0) {
+      butterCostPerKg = money(milkAddedCost / effectiveButterKg);
+    }
+
+    // 4. Remaining Butter Cost = remaining butter weight * butter cost per kg
+    const remainingButterCost = money(butterClosing * butterCostPerKg);
+
+    // 5. Ghee Cost (use gheeClosing when no production recorded)
+    const effectiveGheeKg = gheeProduced > 0 ? gheeProduced : gheeClosing;
+    const gheeTotalCost = money((butterConverted > 0 ? butterConverted : effectiveGheeKg) * butterCostPerKg);
+    const gheeCostPerKg = effectiveGheeKg > 0 ? money(gheeTotalCost / effectiveGheeKg) : 0;
+    const gheeTotalSellValue = money(effectiveGheeKg * gheeRatePerKg);
+    const gheeClosingSellValue = money(gheeClosing * gheeRatePerKg);
+    const gheeClosingCostValue = money(gheeClosing * gheeCostPerKg);
+
+    const lassiBreakEvenKg = lassiRatePerKg > 0 ? Math.round((milkAddedCost / lassiRatePerKg) * 1000) / 1000 : 0;
+    const milkRecoveredFromLassi = money(lassiSold * lassiRatePerKg);
+    const butterSoldValue = money(butterSold * butterRatePerKg);
+    const milkRecoveredFromButter = money(Math.min(butterSoldValue, milkAddedCost));
+    const milkRecoveryKgFromButter = milkCostPerKg > 0 ? Math.round((milkRecoveredFromButter / milkCostPerKg) * 1000) / 1000 : 0;
     const milkRemainingKg = Math.max(milkTotal - lassiSold - milkRecoveryKgFromButter, 0);
     const milkLossCost = money(Math.max(milkAddedCost - milkRecoveredFromLassi - milkRecoveredFromButter, 0));
-    const butterBreakEvenKg = butterRatePerKg > 0
-      ? Math.round((milkAddedCost / butterRatePerKg) * 1000) / 1000
-      : 0;
+    const butterBreakEvenKg = butterRatePerKg > 0 ? Math.round((milkAddedCost / butterRatePerKg) * 1000) / 1000 : 0;
     const butterBreakEvenCost = milkAddedCost;
-    const butterInventoryKg = Math.max(Number(stock?.butterClosing ?? 0), 0);
-    const butterInventoryValue = money(butterInventoryKg * butterRatePerKg);
+    const butterInventoryValue = money(butterClosing * butterRatePerKg);
     const butterTotalValue = money(butterInventoryValue + milkRecoveredFromLassi);
     const butterRecoveryResult = money(butterTotalValue - milkAddedCost);
     const butterMilkCostShortfall = money(Math.max(milkAddedCost - butterInventoryValue, 0));
 
-    return ApiResponse.success(res, 'Daily stock fetched.', {
+    return ApiResponse.success(res, "Daily stock fetched.", {
       ...(stock ?? emptyStock(req.query.date as string)),
       milkRatePerKg: milkCostPerKg,
       milkCostPerKg,
       lassiRatePerKg,
       butterRatePerKg,
+      gheeRatePerKg,
       milkAddedCost,
       lassiBreakEvenKg,
       butterBreakEvenKg,
@@ -105,7 +162,20 @@ export const getDailyStock = async (req: Request, res: Response, next: NextFunct
       milkRecoveredFromButter,
       milkRecoveryKgFromButter,
       milkLossCost,
+      butterPriceValue,
+      lassiPriceValue,
+      totalButterLassiPrice,
+      butterLassiProfitLoss,
+      butterCostPerKg,
+      lassiCostPerKg,
+      remainingButterCost,
+      gheeTotalCost,
+      gheeCostPerKg,
+      gheeTotalSellValue,
+      gheeClosingSellValue,
+      gheeClosingCostValue,
     });
+
   } catch (err) { next(err); }
 };
 

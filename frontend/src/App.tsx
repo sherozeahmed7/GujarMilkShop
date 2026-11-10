@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
-import { apiClient } from './services/apiClient';
+import { apiClient, API_BASE_URL } from './services/apiClient';
+import { isWebMode } from './utils/appMode';
 import { SessionExpiredModal } from './components/SessionExpiredModal';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -136,7 +137,7 @@ function App() {
     const checkHealth = async () => {
       attempt++;
       try {
-        const res = await fetch('http://localhost:5000/api/health', { cache: 'no-store' });
+        const res = await fetch(API_BASE_URL + '/health', { cache: 'no-store' });
         if (res.ok && isMounted) {
           clearInterval(splashInterval);
           setSplashStatus('Backend ready!', 95);
@@ -228,7 +229,24 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
-              <Route path="pos" element={<POS />} />
+                            <Route
+                path="pos"
+                element={
+                  isWebMode() ? (
+                    <div className="p-8 text-center max-w-lg mx-auto bg-white dark:bg-[#1a2e1f] rounded-2xl border border-slate-200 dark:border-[#2d4a35] mt-12 shadow-sm">
+                      <h2 className="text-xl font-bold text-slate-800 dark:text-[#e2f5e8] mb-2">POS Checkout is Desktop-Only</h2>
+                      <p className="text-sm text-slate-500 dark:text-[#8ba895] mb-6">
+                        Direct POS hardware checkout, local token printing, and cash drawer hardware are operated securely on the in-store Windows POS terminal.
+                      </p>
+                      <a href="/" className="inline-block px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition-colors">
+                        Return to Dashboard
+                      </a>
+                    </div>
+                  ) : (
+                    <POS />
+                  )
+                }
+              />
               <Route path="inventory" element={<Inventory />} />
               <Route path="suppliers" element={<Suppliers />} />
               <Route path="customers" element={<Customers />} />

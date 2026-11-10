@@ -64,6 +64,8 @@ export interface SupplierPayment {
   notes?: string;
   /** Optional write-off sent with addPayment — creates a separate discount payment row */
   discount?: number;
+  /** Optional clientUuid for idempotency (prevents duplicate payment execution on rapid clicks) */
+  clientUuid?: string;
   shiftId?: number | null;
   shiftDate?: string | null;
   shiftStatus?: string | null;

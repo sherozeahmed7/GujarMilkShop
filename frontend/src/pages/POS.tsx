@@ -34,7 +34,7 @@ function qtyMoney(n: number): number {
 }
 
 function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number): SaleItemPayload[] {
-  const NAME_MAP: Record<string, 'milk' | 'yogurt' | 'lassi' | 'butter' | 'ghee'> = {
+  const NAME_MAP: Record<string, string> = {
     Milk: 'milk',
     Yogurt: 'yogurt',
     Lassi: 'lassi',
@@ -45,7 +45,8 @@ function buildSaleItems(cart: CartItem[], discount: number, finalTotal: number):
   const raw = cart
     .filter((c) => c.quantity > 0 && c.total > 0)
     .map((c) => {
-      const itemName = NAME_MAP[c.name];
+      // Map core products to their lowercase standard names, or use product name directly for custom inventory items
+      const itemName = NAME_MAP[c.name] || c.name.trim().toLowerCase();
       if (!itemName) throw new Error(`Unrecognised cart item name: "${c.name}"`);
       return { itemName, quantity: c.quantity, lineTotal: money(c.total), catalogRate: c.pricePerKg };
     });
@@ -263,8 +264,38 @@ export const POS: React.FC = () => {
     );
   }, [khataCustomers, khataFilter]);
 
-  const milkRatePerKg = prices?.milkRatePerKg ?? 0;
+  const defaultMilkRate = prices?.milkRatePerKg ?? 0;
+  const customCustomerRate =
+    paymentMethod === 'khata' &&
+    selectedKhataCustomer?.customMilkRate != null &&
+    Number(selectedKhataCustomer.customMilkRate) > 0
+      ? Number(selectedKhataCustomer.customMilkRate)
+      : null;
+
+  const effectiveMilkRate = customCustomerRate ?? defaultMilkRate;
+  const milkRatePerKg = effectiveMilkRate;
   const yogurtRatePerKg = prices?.yogurtRatePerKg ?? 0;
+
+  // When custom customer rate changes or customer selected, update Milk items currently in cart
+  useEffect(() => {
+    setCart((prev) => {
+      let changed = false;
+      const next = prev.map((item) => {
+        if (item.name === 'Milk' && item.pricePerKg !== effectiveMilkRate) {
+          changed = true;
+          const rate = effectiveMilkRate;
+          const total = money(item.quantity * rate);
+          return {
+            ...item,
+            pricePerKg: rate,
+            total,
+          };
+        }
+        return item;
+      });
+      return changed ? next : prev;
+    });
+  }, [effectiveMilkRate]);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.total, 0), [cart]);
   const finalTotal = useMemo(() => Math.max(0, money(subtotal - (discount || 0))), [subtotal, discount]);
@@ -831,7 +862,14 @@ export const POS: React.FC = () => {
               {/* Milk Terminal Card */}
               <div className="flex-1 w-full min-w-0 bg-[#F0FDF4] dark:bg-[#1a3d24]/60 border border-[#BBF7D0] dark:border-[#2d4a35] rounded-2xl p-3 sm:p-4 flex flex-col shadow-xs">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 sm:mb-6">
-                  <h2 className="text-xl font-black text-[#166534] dark:text-[#22c55e]">Milk</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-[#166534] dark:text-[#22c55e]">Milk</h2>
+                    {customCustomerRate != null && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-xs shadow-xs animate-pulse" title={`Special Khata rate for ${selectedKhataCustomer?.name}`}>
+                        Rs. {customCustomerRate}/kg (Special Rate)
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 bg-white dark:bg-[#142119] rounded-xl p-1.5 sm:p-2 border border-[#BBF7D0] dark:border-[#2d4a35] shadow-sm max-w-full overflow-x-auto">
                     <div className="flex bg-slate-100 dark:bg-[#1e3124] rounded-lg p-0.5 shrink-0">
                       <button
@@ -868,7 +906,12 @@ export const POS: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-3 gap-2 sm:gap-3">
                   {(() => {
-                    const milkPresets = prices?.milk ?? [];
+                    const standardMilkPresets = prices?.milk ?? [];
+                    // Compute dynamic prices using effectiveMilkRate (supports custom customer rates!)
+                    const milkPresets = standardMilkPresets.map(p => ({
+                      ...p,
+                      price: Math.round(p.weight * milkRatePerKg),
+                    }));
                     const amtPresets = prices?.milkByAmount ?? [];
                     const items: Array<{ type: 'weight' | 'amount' | 'empty'; preset?: any }> = [];
                     const rows = Math.max(Math.ceil(milkPresets.length / 2), amtPresets.length);
@@ -900,14 +943,17 @@ export const POS: React.FC = () => {
                         <button
                           key={`milk-rs-${item.preset.amount}`}
                           type="button"
-                          onClick={() => addToCart('Milk', item.preset.weight, 'rs', item.preset.amount, milkRatePerKg)}
+                          onClick={() => {
+                            const calculatedWeight = milkRatePerKg > 0 ? parseFloat((item.preset.amount / milkRatePerKg).toFixed(2)) : item.preset.weight;
+                            addToCart('Milk', calculatedWeight, 'rs', item.preset.amount, milkRatePerKg);
+                          }}
                           className="rounded-xl border border-[#FDE68A] dark:border-[#3d2f12] bg-[#FEF3C7]/40 dark:bg-[#2a1f0a] hover:bg-[#FEF3C7] dark:hover:bg-[#3d2f12] hover:border-[#FDE68A] p-2.5 sm:p-3 flex flex-col items-center justify-center transition-colors group shadow-sm min-w-0"
                         >
                           <span className="font-black text-[#166534] dark:text-[#fcd34d] text-base sm:text-lg truncate max-w-full">
                             {item.preset.amount}
                           </span>
                           <span className="text-[10px] sm:text-xs text-[#78350F] dark:text-[#fcd34d]/80 font-bold mt-0.5 truncate max-w-full">
-                            {item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs'}
+                            {milkRatePerKg > 0 ? `${parseFloat((item.preset.amount / milkRatePerKg).toFixed(2))} kg` : (item.preset.weight > 0 ? `${item.preset.weight} kg` : 'Rs')}
                           </span>
                         </button>
                       );
@@ -1092,6 +1138,11 @@ export const POS: React.FC = () => {
                             </div>
                             {isInactive && (
                               <div className="text-[10px] text-red-500 font-semibold">Khata Ended / Inactive</div>
+                            )}
+                            {c.customMilkRate != null && Number(c.customMilkRate) > 0 && (
+                              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                Special Rate: Rs. {c.customMilkRate}/kg
+                              </div>
                             )}
                           </div>
                           <div className="flex-shrink-0 flex flex-col items-end gap-1">
@@ -1410,6 +1461,7 @@ export const POS: React.FC = () => {
                         {selectedKhataCustomer.phone?.trim() || 'Not Available'}
                         {' · '}
                         {selectedKhataCustomer.customerType === 'monthly_ledger' ? 'Monthly' : 'Daily'}
+                        {customCustomerRate != null ? ` · Custom Rate: Rs. ${customCustomerRate}/kg` : ''}
                       </div>
                     </div>
                     <button

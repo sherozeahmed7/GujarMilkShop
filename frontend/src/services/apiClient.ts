@@ -3,7 +3,15 @@
  * Connects to the Express backend running on localhost:5000.
  */
 
-export const API_BASE_URL = 'http://127.0.0.1:5000/api';
+const resolveApiBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.endsWith('/api') ? envUrl : (envUrl.replace(/\/+$/, '') + '/api');
+  }
+  return 'http://127.0.0.1:5000/api';
+};
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 /**
  * Called whenever any API response returns 401 Unauthorized (except login).

@@ -127,26 +127,26 @@ export const ReceiptContent: React.FC<{
   const isSample = !sale;
   const billId = sale?.id ?? 28432;
   const billNo = `BILL-${billId}`;
-  
+
   const tokenNum = sale?.tokenNumber !== undefined && sale?.tokenNumber !== null ? Number(sale.tokenNumber) : 1;
   const tokenFormatted = tokenNum < 10 ? `0${tokenNum}` : `${tokenNum}`;
 
   const formattedDate = formatReceiptDate(sale?.createdAt);
   const paymentMethod = (sale?.paymentMethod || config?.defaultPaymentMethod || 'CASH').toUpperCase();
 
-  const items: Array<{ name: string; qty: number; price: number; total: number }> = 
+  const items: Array<{ name: string; qty: number; price: number; total: number }> =
     sale?.items && sale.items.length > 0
       ? sale.items.map((i) => {
-          const name = (i.itemName || i.name || 'ITEM').toUpperCase();
-          const qty = Number(i.quantity ?? i.qty ?? 1);
-          const price = Number(i.unitPrice ?? i.price ?? 0);
-          const total = Number(i.totalPrice ?? i.lineTotal ?? i.total ?? (qty * price));
-          return { name, qty, price, total };
-        })
+        const name = (i.itemName || i.name || 'ITEM').toUpperCase();
+        const qty = Number(i.quantity ?? i.qty ?? 1);
+        const price = Number(i.unitPrice ?? i.price ?? 0);
+        const total = Number(i.totalPrice ?? i.lineTotal ?? i.total ?? (qty * price));
+        return { name, qty, price, total };
+      })
       : [
-          { name: 'FRESH MILK', qty: 3.5, price: 240, total: 840 },
-          { name: 'FRESH YOGURT', qty: 1, price: 270, total: 270 },
-        ];
+        { name: 'FRESH MILK', qty: 3.5, price: 240, total: 840 },
+        { name: 'FRESH YOGURT', qty: 1, price: 270, total: 270 },
+      ];
 
   const total = isSample ? 1110 : Number(sale?.totalAmount ?? sale?.total ?? items.reduce((acc, i) => acc + i.total, 0));
   const discount = Number(sale?.discountAmount ?? sale?.discount ?? 0);
@@ -237,7 +237,7 @@ export const ReceiptContent: React.FC<{
         <div className="font-bold text-[9px] mt-1 tracking-[0.12em] uppercase text-black text-center">
           SCAN FOR RETURN / AUDIT
         </div>
-        <div className="font-bold text-[12px] mt-1 text-center whitespace-pre-wrap text-black leading-snug">
+        <div className="font-bold text-[12px] mt-0 mb-[0px] text-center whitespace-pre-wrap text-black leading-snug">
           {config?.receiptFooterText || 'Thank you for your visit!'}
         </div>
       </div>

@@ -96,10 +96,29 @@ export const KhataReceiptModal: React.FC<KhataReceiptModalProps> = ({
 
             {/* Balances */}
             <div className="space-y-1.5 py-1">
-              <div className="flex justify-between font-bold text-slate-800">
-                <span>Previous Balance</span>
-                <span>{currency} {Math.round(receipt.previousBalance).toLocaleString()}</span>
-              </div>
+              {receipt.customerType === 'Monthly' && receipt.previousMonthBalance !== undefined ? (
+                <>
+                  <div className="flex justify-between font-bold text-slate-800">
+                    <span>Prev Month Balance</span>
+                    <span>{currency} {Math.round(receipt.previousMonthBalance).toLocaleString()}</span>
+                  </div>
+                  {receipt.currentMonthDue !== undefined && receipt.currentMonthDue > 0 ? (
+                    <div className="flex justify-between font-bold text-slate-800">
+                      <span>This Month Due</span>
+                      <span>{currency} {Math.round(receipt.currentMonthDue).toLocaleString()}</span>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between font-black text-slate-900 border-t border-dashed border-slate-300 pt-1">
+                    <span>Total Due</span>
+                    <span>{currency} {Math.round(receipt.previousBalance).toLocaleString()}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between font-bold text-slate-800">
+                  <span>Previous Balance</span>
+                  <span>{currency} {Math.round(receipt.previousBalance).toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between font-black text-slate-900">
                 <span>Amount Paid</span>
                 <span>{currency} {Math.round(receipt.paidAmount).toLocaleString()}</span>

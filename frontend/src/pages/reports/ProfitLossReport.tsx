@@ -617,7 +617,7 @@ export const ProfitLossReport: React.FC = () => {
                   </p>
                   <p className="text-xs text-slate-500 dark:text-[#8ba895] mt-1">
                     {data.summary.milkCostAvailable
-                      ? `Current milk Inventory Cost: ${fmt(data.summary.milkInventoryUnitCost)}/kg. F2 uses the milk cost recorded up to each production day. Lassi recovers that day's milk cost first; butter carries the remainder.`
+                      ? `Supplier purchase rate (weighted avg for selected period): ${fmt(data.summary.milkInventoryUnitCost)}/kg. F2 uses the milk cost recorded up to each production day. Lassi recovers that day's milk cost first; butter carries the remainder.`
                       : 'Milk Inventory Cost is unavailable. Milk-based product cost is currently zero until a cost is recorded in Inventory.'}
                   </p>
                 </div>
@@ -715,7 +715,7 @@ export const ProfitLossReport: React.FC = () => {
                                 <summary className="cursor-pointer font-semibold">{p.displayName} calculation</summary>
                                 <div className="mt-3 space-y-3 rounded-lg bg-slate-50 dark:bg-[#142119] p-3">
                                   {['milk', 'yogurt', 'yog'].includes(p.product) && (
-                                    <p>Cost uses the current milk Inventory Cost: {fmt(data.summary.milkInventoryUnitCost)}/kg.
+                                    <p>Cost uses the supplier purchase rate ({filter.label || 'selected period'} weighted average): {fmt(data.summary.milkInventoryUnitCost)}/kg.
                                       {p.product !== 'milk' && ' Assumption: 1 kg of this product uses 1 kg of milk.'}
                                     </p>
                                   )}

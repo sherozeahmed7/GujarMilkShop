@@ -97,6 +97,7 @@ async function inventoryDaySnapshot(
     } else if (q < 0 && type === 'CONVERSION') {
       converted = money(converted + Math.abs(q));
     } else if (q > 0) {
+      // Stock added in inventory (adjustment, production, stock in)
       added = money(added + q);
     }
   }

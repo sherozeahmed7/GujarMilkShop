@@ -36,6 +36,21 @@ export interface MilkProductsDailyStock {
   gheeProduced: number;
   gheeSold: number;
   gheeClosing: number;
+  gheeRatePerKg?: number;
+
+  // Enhanced F2 Financial Metrics & Cards
+  butterPriceValue?: number;
+  lassiPriceValue?: number;
+  totalButterLassiPrice?: number;
+  butterLassiProfitLoss?: number;
+  butterCostPerKg?: number;
+  lassiCostPerKg?: number;
+  remainingButterCost?: number;
+  gheeTotalCost?: number;
+  gheeCostPerKg?: number;
+  gheeTotalSellValue?: number;
+  gheeClosingSellValue?: number;
+  gheeClosingCostValue?: number;
 }
 
 export type TransactionType = 

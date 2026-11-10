@@ -6,6 +6,7 @@ import { prisma } from '../config/database';
 import { isRestoreInProgress, setRestoreInProgress } from '../utils/restoreLock';
 import { exec } from 'child_process';
 import { getBackupConfig, saveBackupConfig, BackupConfig } from '../utils/backupConfig';
+import { handleRetention } from '../workers/autoBackupWorker';
 
 /**
  * Helper to get the correct backup directory for both dev and production.
@@ -415,6 +416,17 @@ export async function updateSettings(req: Request, res: Response): Promise<void>
     const currentConfig = getBackupConfig();
     const updatedConfig = { ...currentConfig, ...newConfig, autoBackupSettings: { ...currentConfig.autoBackupSettings, ...(newConfig.autoBackupSettings || {}) } };
     saveBackupConfig(updatedConfig);
+
+    // Apply retention immediately whenever user changes retention setting or saves
+    try {
+      if (updatedConfig.autoBackupSettings?.retention) {
+        const backupDir = getBackupDirectory();
+        handleRetention(backupDir, updatedConfig.autoBackupSettings.retention);
+      }
+    } catch (e: any) {
+      console.warn('[Backup] Error applying retention on settings update:', e?.message);
+    }
+
     res.json(updatedConfig);
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to update backup settings' });
