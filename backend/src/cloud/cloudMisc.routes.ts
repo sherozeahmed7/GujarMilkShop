@@ -437,18 +437,18 @@ router.patch('/notifications/read-all', async (req: CloudAuthRequest, res: Respo
 router.get('/users', requireCloudScreen('Users & Roles'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await queryWithRetry(`
-      SELECT id, local_id, email, full_name, full_name AS name, role, role AS "assignedRole", is_active, assigned_screens AS "assignedScreens", created_at AS "createdAt", updated_at AS "updatedAt"
+      SELECT id, local_id, email, name, role, status, assigned_screens AS "assignedScreens", created_at AS "createdAt", updated_at AS "updatedAt"
       FROM users
-      ORDER BY full_name ASC
+      ORDER BY name ASC
     `);
     const users = result.rows.map((u: any) => ({
       id: String(u.local_id || u.id),
-      name: u.name || u.full_name || 'User',
+      name: u.name || 'User',
       email: u.email || '',
       role: u.role || 'cashier',
       assignedRole: u.role || 'cashier',
       assignedScreens: Array.isArray(u.assignedScreens) ? u.assignedScreens : (typeof u.assignedScreens === 'string' ? JSON.parse(u.assignedScreens || '[]') : []),
-      status: u.is_active ? 'Active' : 'Inactive',
+      status: u.status === 'active' || u.status === 'Active' ? 'Active' : 'Inactive',
       createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : '',
     }));
     return ApiResponse.success(res, 'Users fetched from Neon', users, 200);
