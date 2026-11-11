@@ -25,6 +25,47 @@ router.get('/', requireCloudScreen('Customers'), async (req: CloudAuthRequest, r
   }
 });
 
+// GET /api/customers/summary
+router.get('/summary', requireCloudScreen('Customers'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const scope = req.query.scope as string;
+
+    const [activeCustomersRes, activeSalesDuesRes] = await Promise.all([
+      queryWithRetry("SELECT COUNT(*)::int AS count FROM customers WHERE LOWER(status) = 'active'"),
+      queryWithRetry(`
+        SELECT 
+          COALESCE(SUM(remaining_balance), 0)::float AS total_outstanding,
+          COUNT(DISTINCT customer_uuid)::int AS customers_with_dues
+        FROM sales
+        WHERE remaining_balance > 0 AND customer_uuid IS NOT NULL
+      `),
+    ]);
+
+    const totalCustomers = activeCustomersRes.rows[0]?.count || 0;
+    const dues = activeSalesDuesRes.rows[0] || {};
+    const totalOutstanding = dues.total_outstanding || 0;
+    const withDues = dues.customers_with_dues || 0;
+
+    if (scope === 'ledger') {
+      return ApiResponse.success(res, 'Ledger summary fetched', {
+        totalCustomers,
+        totalOutstanding,
+        withDues,
+        withoutDues: Math.max(0, totalCustomers - withDues),
+      }, 200);
+    }
+
+    return ApiResponse.success(res, 'Customer summary fetched', {
+      totalCustomers,
+      totalOutstanding,
+      withDues,
+      withoutDues: Math.max(0, totalCustomers - withDues),
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/customers/:id
 router.get('/:id', requireCloudScreen('Customers'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {

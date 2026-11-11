@@ -25,6 +25,39 @@ router.get('/', requireCloudScreen('Suppliers'), async (req: CloudAuthRequest, r
   }
 });
 
+// GET /api/suppliers/:id/entries
+router.get('/:id/entries', requireCloudScreen('Suppliers'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const whereField = isUuid ? 'id' : 'local_id';
+
+    const supRes = await queryWithRetry(`SELECT * FROM suppliers WHERE ${whereField} = $1`, [id]);
+    if (supRes.rows.length === 0) {
+      return ApiResponse.error(res, 'Supplier not found', 404);
+    }
+    const supplier = supRes.rows[0];
+
+    const [collectionsRes, paymentsRes] = await Promise.all([
+      queryWithRetry('SELECT * FROM supplier_collections WHERE supplier_uuid = $1 ORDER BY date DESC', [supplier.id]),
+      queryWithRetry(`
+        SELECT sp.*, s.shift_date AS "shiftDate", s.status AS "shiftStatus"
+        FROM supplier_payments sp
+        LEFT JOIN shifts s ON sp.shift_uuid = s.id
+        WHERE sp.supplier_uuid = $1
+        ORDER BY sp.date DESC
+      `, [supplier.id]),
+    ]);
+
+    return ApiResponse.success(res, 'Supplier entries fetched', {
+      collections: collectionsRes.rows,
+      payments: paymentsRes.rows,
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/suppliers/:id
 router.get('/:id', requireCloudScreen('Suppliers'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {

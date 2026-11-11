@@ -138,6 +138,18 @@ router.get('/users/roles', requireCloudScreen('Users & Roles'), async (req: Clou
   return ApiResponse.success(res, 'User roles fetched', ['super_admin', 'cashier', 'store cash'], 200);
 });
 
+// GET /api/pos-config
+router.get('/pos-config', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'POS Config fetched', {
+    receiptHeader: 'Gujar Milk Shop',
+    receiptFooter: 'Thank you for your business!',
+    phone: '',
+    address: '',
+    taxRate: 0,
+    printerType: 'none',
+  }, 200);
+});
+
 // GET /api/sync/status
 router.get('/sync/status', async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -163,6 +175,18 @@ router.get('/sync/status', async (req: CloudAuthRequest, res: Response, next: Ne
 // GET /api/sync/queue
 router.get('/sync/queue', async (req: CloudAuthRequest, res: Response) => {
   return ApiResponse.success(res, 'Sync queue is clear in cloud mode', [], 200);
+});
+
+// GET /api/pos-config
+router.get('/pos-config', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'POS Config fetched', {
+    receiptHeader: 'Gujar Milk Shop',
+    receiptFooter: 'Thank you for your business!',
+    phone: '',
+    address: '',
+    taxRate: 0,
+    printerType: 'none',
+  }, 200);
 });
 
 // GET /api/sync/status
