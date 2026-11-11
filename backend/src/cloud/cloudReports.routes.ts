@@ -277,24 +277,342 @@ router.get('/f2-item-summary', requireCloudScreen('F2 Sales Report'), async (req
   }
 });
 
+// GET /api/reports/expenses
+router.get('/expenses', requireCloudScreen('Expenses Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const from = (req.query.from as string) || '2020-01-01';
+    const to = (req.query.to as string) || new Date().toISOString().split('T')[0];
+    const typeParam = req.query.type ? String(req.query.type).toUpperCase() : undefined;
+
+    let query = 'SELECT * FROM expenses WHERE date >= $1 AND date <= $2';
+    const params: any[] = [from, to];
+    if (typeParam && typeParam !== 'COMBINED') {
+      query += ' AND expense_type = $3';
+      params.push(typeParam);
+    }
+    query += ' ORDER BY date DESC';
+
+    const result = await queryWithRetry(query, params);
+    const periodExp = result.rows;
+
+    const totalAmount = periodExp.reduce((s: number, e: any) => s + (Number(e.amount || e.net_expense) || 0), 0);
+    const totalPaid = periodExp.reduce((s: number, e: any) => s + (Number(e.paid_amount) || 0), 0);
+    const totalRemaining = periodExp.reduce((s: number, e: any) => s + (Number(e.remaining) || 0), 0);
+
+    const catTotals: Record<string, number> = {};
+    for (const e of periodExp) {
+      const amt = Number(e.amount || e.net_expense) || 0;
+      catTotals[e.category] = (catTotals[e.category] || 0) + amt;
+    }
+    const byCategory = Object.entries(catTotals).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+
+    const periodShop = periodExp.filter((e: any) => (e.expense_type || 'SHOP') === 'SHOP');
+    const periodPersonal = periodExp.filter((e: any) => e.expense_type === 'PERSONAL');
+
+    const shopExpenses = periodShop.reduce((s: number, e: any) => s + (Number(e.amount || e.net_expense) || 0), 0);
+    const shopPaid = periodShop.reduce((s: number, e: any) => s + (Number(e.paid_amount) || 0), 0);
+    const shopRemaining = periodShop.reduce((s: number, e: any) => s + (Number(e.remaining) || 0), 0);
+
+    const personalExpenses = periodPersonal.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+    const personalReceived = periodPersonal.reduce((s: number, e: any) => s + (Number(e.paid_amount) || 0), 0);
+    const personalRemaining = periodPersonal.reduce((s: number, e: any) => s + (Number(e.remaining) || 0), 0);
+
+    return ApiResponse.success(res, 'Expenses report fetched', {
+      summary: {
+        totalExpenses: periodExp.length,
+        totalAmount,
+        totalPaid,
+        totalRemaining,
+        avgExpense: periodExp.length ? Math.round(totalAmount / periodExp.length) : 0,
+        todayAmount: 0,
+        thisWeekAmount: 0,
+        thisMonthAmount: 0,
+        cashExpenses: totalPaid,
+        topCategory: byCategory[0]?.label || '—',
+        shopExpenses,
+        shopPaid,
+        shopRemaining,
+        personalExpenses,
+        personalReceived,
+        personalRemaining,
+      },
+      expenses: periodExp.map((e: any) => ({
+        id: String(e.local_id || e.id),
+        date: e.date,
+        category: e.category,
+        description: e.description || e.category,
+        amount: Number(e.amount || e.net_expense || 0),
+        paidAmount: Number(e.paid_amount || 0),
+        remaining: Number(e.remaining || 0),
+        paymentMethod: 'Cash',
+        addedBy: e.added_by || 'Admin',
+        expenseType: e.expense_type || 'SHOP',
+        status: Number(e.remaining || 0) <= 0 ? 'Settled' : Number(e.paid_amount || 0) > 0 ? 'Partial' : 'Pending',
+      })),
+      byCategory,
+      dailyTrend: [],
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reports/returns
+router.get('/returns', requireCloudScreen('Returns Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const from = (req.query.from as string) || '2020-01-01';
+    const to = (req.query.to as string) || new Date().toISOString().split('T')[0];
+
+    const result = await queryWithRetry('SELECT * FROM returns WHERE date >= $1 AND date <= $2 ORDER BY created_at DESC', [from, to]);
+    const returns = result.rows;
+    const returnAmount = returns.reduce((s: number, r: any) => s + (Number(r.refund_amount) || 0), 0);
+    const cashRefunds = returns.filter((r: any) => r.payment_method === 'Cash').reduce((s: number, r: any) => s + (Number(r.refund_amount) || 0), 0);
+
+    return ApiResponse.success(res, 'Returns report fetched', {
+      summary: {
+        totalReturns: returns.length,
+        returnAmount,
+        cashRefunds,
+        creditRefunds: Math.max(0, returnAmount - cashRefunds),
+        returnedBills: returns.length,
+        returnedItems: 0,
+      },
+      returns: returns.map((r: any) => ({
+        id: `RET-${String(r.local_id || r.id).padStart(4, '0')}`,
+        originalSaleId: r.bill_number,
+        date: r.date,
+        customer: r.customer,
+        items: 0,
+        amount: Number(r.refund_amount || 0),
+        refundMethod: r.payment_method === 'Cash' ? 'Cash' : 'Credit Adjustment',
+        reason: r.reason || '',
+        createdBy: r.processed_by || 'Admin',
+        status: r.status,
+      })),
+      dailyTrend: [],
+      byCategory: [],
+      byReason: [],
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reports/shifts
+router.get('/shifts', requireCloudScreen('Shifts Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const from = (req.query.from as string) || '2020-01-01';
+    const to = (req.query.to as string) || new Date().toISOString().split('T')[0];
+
+    const result = await queryWithRetry(`
+      SELECT s.*, u_open.name AS opened_by_name, u_close.name AS closed_by_name
+      FROM shifts s
+      LEFT JOIN users u_open ON s.opened_by_uuid = u_open.id
+      LEFT JOIN users u_close ON s.closed_by_uuid = u_close.id
+      WHERE s.shift_date >= $1 AND s.shift_date <= $2
+      ORDER BY s.opened_at DESC
+    `, [from, to]);
+
+    const shifts = result.rows.map((s: any) => ({
+      id: String(s.local_id || s.id),
+      date: s.shift_date,
+      openedBy: s.opened_by_name || 'System',
+      openedAt: s.opened_at ? new Date(s.opened_at).toISOString() : '',
+      closedBy: s.closed_by_name || null,
+      closedAt: s.closed_at ? new Date(s.closed_at).toISOString() : null,
+      openingCash: Number(s.opening_cash || 0),
+      expectedCash: Number(s.expected_cash || 0),
+      countedCash: s.counted_cash !== null ? Number(s.counted_cash) : 0,
+      difference: s.difference !== null ? Number(s.difference) : 0,
+      differenceStatus: s.difference_status || 'Balanced',
+      status: s.status,
+      billsCount: 0,
+      grossSales: 0,
+      cashSales: 0,
+      onlineSales: 0,
+      khataSales: 0,
+    }));
+
+    return ApiResponse.success(res, 'Shifts report fetched', {
+      summary: {
+        totalShifts: shifts.length,
+        openShifts: shifts.filter((s: any) => s.status === 'Open').length,
+        closedShifts: shifts.filter((s: any) => s.status === 'Closed').length,
+        totalHours: 0,
+        openingCash: shifts.reduce((s: number, sh: any) => s + sh.openingCash, 0),
+        expectedCash: shifts.reduce((s: number, sh: any) => s + sh.expectedCash, 0),
+        countedCash: shifts.reduce((s: number, sh: any) => s + (sh.countedCash || 0), 0),
+        totalVariance: shifts.reduce((s: number, sh: any) => s + (sh.difference || 0), 0),
+      },
+      shifts,
+      salesByShift: [],
+      byCashier: [],
+      varianceByShift: [],
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reports/cash-register
+router.get('/cash-register', requireCloudScreen('Cash Register Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const from = (req.query.from as string) || '2020-01-01';
+    const to = (req.query.to as string) || new Date().toISOString().split('T')[0];
+
+    const result = await queryWithRetry(`
+      SELECT s.*, u_open.name AS opened_by_name
+      FROM shifts s
+      LEFT JOIN users u_open ON s.opened_by_uuid = u_open.id
+      WHERE s.shift_date >= $1 AND s.shift_date <= $2
+      ORDER BY s.opened_at ASC
+    `, [from, to]);
+
+    const history = result.rows.map((s: any) => ({
+      shiftId: String(s.local_id || s.id),
+      date: s.shift_date,
+      cashier: s.opened_by_name || 'System',
+      openingBalance: Number(s.opening_cash || 0),
+      cashSales: 0,
+      cashReceived: 0,
+      cashOut: 0,
+      expectedCash: Number(s.expected_cash || 0),
+      actualCash: Number(s.counted_cash || s.expected_cash || 0),
+      difference: Number(s.difference || 0),
+      status: s.difference_status || 'Balanced',
+      closingNotes: s.closing_notes || '',
+    }));
+
+    return ApiResponse.success(res, 'Cash register report fetched', {
+      summary: {},
+      history,
+      movementData: [],
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/reports/inventory
+router.get('/inventory', requireCloudScreen('Inventory Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const [productsRes, collectionsRes] = await Promise.all([
+      queryWithRetry('SELECT * FROM inventory_products ORDER BY name ASC'),
+      queryWithRetry(`
+        SELECT sc.*, s.name AS supplier_name, s.code AS supplier_code
+        FROM supplier_collections sc
+        LEFT JOIN suppliers s ON sc.supplier_uuid = s.id
+        ORDER BY sc.date DESC
+        LIMIT 100
+      `),
+    ]);
+
+    const rows = productsRes.rows.map((p: any) => ({
+      sku: p.code,
+      name: p.name,
+      category: p.category,
+      stock: 0,
+      costPrice: 0,
+      salePrice: 0,
+      inventoryValue: 0,
+      retailValue: 0,
+      stockStatus: 'In Stock',
+      supplier: 'All',
+    }));
+
+    const supplierMilkReceipts = collectionsRes.rows.map((sc: any) => ({
+      id: String(sc.local_id || sc.id),
+      date: sc.date,
+      supplierId: String(sc.supplier_uuid),
+      supplierName: sc.supplier_name || 'Unknown',
+      supplierCode: sc.supplier_code || '',
+      shift: sc.shift,
+      milkType: sc.milk_type,
+      quantity: Number(sc.quantity),
+      rate: Number(sc.rate),
+      purchaseCost: Number(sc.amount),
+    }));
+
+    const totalMilkReceived = supplierMilkReceipts.reduce((s: number, r: any) => s + r.quantity, 0);
+    const totalMilkCost = supplierMilkReceipts.reduce((s: number, r: any) => s + r.purchaseCost, 0);
+
+    return ApiResponse.success(res, 'Inventory report fetched', {
+      summary: {
+        totalProducts: rows.length,
+        totalStock: 0,
+        lowStockItems: 0,
+        outOfStockItems: 0,
+        inventoryValue: 0,
+        costValue: 0,
+        estimatedRetailValue: 0,
+        totalMilkReceived,
+        totalMilkCost,
+        averageMilkRate: totalMilkReceived > 0 ? Math.round((totalMilkCost / totalMilkReceived) * 100) / 100 : 0,
+        supplierReceiptCount: supplierMilkReceipts.length,
+      },
+      products: rows,
+      categories: ['Dairy'],
+      suppliers: [],
+      supplierOptions: [],
+      supplierMilkReceipts,
+      stockByCategory: [],
+      valueByCategory: [],
+      lowStockProducts: [],
+      topSellingProducts: [],
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/reports/customers
 router.get('/customers', requireCloudScreen('Customer Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
+    const from = (req.query.from as string) || '2020-01-01';
+    const to = (req.query.to as string) || new Date().toISOString().split('T')[0];
+
     const resCust = await queryWithRetry(`
       SELECT 
-        c.name, c.phone, c.customer_type,
+        c.id, c.local_id, c.name, c.phone, c.customer_type, c.status, c.updated_at,
         COUNT(s.id)::int as total_orders,
         COALESCE(SUM(s.total_amount), 0)::float as total_billed,
         COALESCE(SUM(s.paid_amount), 0)::float as total_paid,
         COALESCE(SUM(s.remaining_balance), 0)::float as total_due
       FROM customers c
-      LEFT JOIN sales s ON c.id = s.customer_uuid
-      GROUP BY c.id, c.name, c.phone, c.customer_type
+      LEFT JOIN sales s ON c.id = s.customer_uuid AND s.created_at::date >= $1::date AND s.created_at::date <= $2::date
+      GROUP BY c.id, c.local_id, c.name, c.phone, c.customer_type, c.status, c.updated_at
       ORDER BY total_billed DESC
-      LIMIT 100
-    `);
+    `, [from, to]);
 
-    return ApiResponse.success(res, 'Customer report fetched', resCust.rows, 200);
+    const rows = resCust.rows.map((c: any) => ({
+      id: c.local_id || c.id,
+      name: c.name,
+      phone: c.phone || '',
+      totalSales: Number(c.total_billed || 0),
+      paid: Number(c.total_paid || 0),
+      credit: Number(c.total_billed || 0),
+      outstanding: Number(c.total_due || 0),
+      lastPurchase: c.updated_at ? new Date(c.updated_at).toISOString() : new Date().toISOString(),
+      isActive: c.status === 'active',
+    }));
+
+    const summary = {
+      totalCustomers: rows.length,
+      activeCustomers: rows.filter((c: any) => c.isActive).length,
+      totalCustomerSales: rows.reduce((s: number, c: any) => s + c.totalSales, 0),
+      totalCollected: rows.reduce((s: number, c: any) => s + c.paid, 0),
+      totalOutstanding: rows.reduce((s: number, c: any) => s + c.outstanding, 0),
+      creditSales: rows.reduce((s: number, c: any) => s + c.credit, 0),
+      customerReturns: 0,
+    };
+
+    return ApiResponse.success(res, 'Customer report fetched', {
+      summary,
+      customers: rows,
+      trendData: [],
+      topCustomers: rows.slice(0, 5).map((c: any) => ({ label: c.name.split(' ')[0], value: c.totalSales })),
+      outstandingChart: rows.filter((c: any) => c.outstanding > 0).map((c: any) => ({ label: c.name.split(' ')[0], value: c.outstanding })),
+    }, 200);
   } catch (err) {
     next(err);
   }

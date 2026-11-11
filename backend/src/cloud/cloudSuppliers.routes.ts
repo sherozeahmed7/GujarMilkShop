@@ -6,6 +6,25 @@ import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen } from './cl
 const router = Router();
 router.use(authenticateCloudJWT);
 
+// GET /api/suppliers/next-code
+router.get('/next-code', requireCloudScreen('Suppliers'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await queryWithRetry('SELECT code FROM suppliers WHERE code ILIKE \'SUP-%\'');
+    let maxNum = 0;
+    for (const row of result.rows) {
+      const match = String(row.code).trim().match(/^SUP-(\d+)$/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    }
+    const candidate = `SUP-${String(maxNum + 1).padStart(4, '0')}`;
+    return ApiResponse.success(res, 'Next supplier code generated', candidate, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/suppliers
 router.get('/', requireCloudScreen('Suppliers'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
