@@ -164,9 +164,15 @@ router.get('/', requireCloudScreen('Sales Report'), async (req: CloudAuthRequest
       tokenNumber: s.token_number || undefined,
       createdAt: s.created_at ? new Date(s.created_at).toISOString() : '',
       updatedAt: s.updated_at ? new Date(s.updated_at).toISOString() : '',
+      items: [],
+      payments: [],
     }));
 
-    return ApiResponse.success(res, 'Sales fetched', {
+    // If client asks for limit=0 or listSales without pagination wrapper expectation, support both direct array in data or wrapped
+    return res.status(200).json({
+      status: 'success',
+      message: 'Sales fetched',
+      data: formattedSales,
       sales: formattedSales,
       pagination: {
         page,
@@ -174,7 +180,7 @@ router.get('/', requireCloudScreen('Sales Report'), async (req: CloudAuthRequest
         total,
         totalPages: Math.ceil(total / limit),
       },
-    }, 200);
+    });
   } catch (err) {
     next(err);
   }
