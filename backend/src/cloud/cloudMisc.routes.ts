@@ -119,6 +119,52 @@ router.patch('/notifications/read-all', async (req: CloudAuthRequest, res: Respo
   return ApiResponse.success(res, 'All notifications marked as read', {}, 200);
 });
 
+// GET /api/users
+router.get('/users', requireCloudScreen('Users & Roles'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await queryWithRetry(`
+      SELECT id, local_id, email, full_name, role, is_active, assigned_screens, created_at, updated_at
+      FROM users
+      ORDER BY full_name ASC
+    `);
+    return ApiResponse.success(res, 'Users fetched from Neon', result.rows, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/users/roles
+router.get('/users/roles', requireCloudScreen('Users & Roles'), async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'User roles fetched', ['super_admin', 'cashier', 'store cash'], 200);
+});
+
+// GET /api/sync/status
+router.get('/sync/status', async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const [salesCount, custCount, supCount] = await Promise.all([
+      queryWithRetry('SELECT count(*)::int as count FROM sales'),
+      queryWithRetry('SELECT count(*)::int as count FROM customers'),
+      queryWithRetry('SELECT count(*)::int as count FROM suppliers'),
+    ]);
+    return ApiResponse.success(res, 'Neon Sync mirror status', {
+      connected: true,
+      mode: 'cloud',
+      syncedSales: salesCount.rows[0].count,
+      syncedCustomers: custCount.rows[0].count,
+      syncedSuppliers: supCount.rows[0].count,
+      pendingQueue: 0,
+      serverTime: new Date().toISOString(),
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/sync/queue
+router.get('/sync/queue', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'Sync queue is clear in cloud mode', [], 200);
+});
+
 // GET /api/sync/status
 router.get('/sync-status', async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
