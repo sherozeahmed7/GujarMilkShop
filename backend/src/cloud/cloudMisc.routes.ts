@@ -483,6 +483,15 @@ router.get('/sync/status', async (req: CloudAuthRequest, res: Response, next: Ne
       queryWithRetry('SELECT count(*)::int as count FROM suppliers'),
     ]);
     return ApiResponse.success(res, 'Neon Sync mirror status', {
+      cloudConnected: true,
+      syncEnabled: true,
+      downstreamEnabled: true,
+      syncing: 0,
+      pending: 0,
+      failed: 0,
+      deviceId: 'web-portal',
+      lastChecked: new Date().toISOString(),
+      lastSuccessfulSync: new Date().toISOString(),
       connected: true,
       mode: 'cloud',
       syncedSales: salesCount.rows[0].count,
@@ -498,7 +507,59 @@ router.get('/sync/status', async (req: CloudAuthRequest, res: Response, next: Ne
 
 // GET /api/sync/queue
 router.get('/sync/queue', async (req: CloudAuthRequest, res: Response) => {
-  return ApiResponse.success(res, 'Sync queue is clear in cloud mode', [], 200);
+  return ApiResponse.success(res, 'Sync queue is clear in cloud mode', {
+    items: [],
+    total: 0,
+  }, 200);
+});
+
+// POST /api/sync/toggle (handles reconnect and disconnect buttons)
+router.post('/sync/toggle', async (req: CloudAuthRequest, res: Response) => {
+  const { syncEnabled, downstreamEnabled } = req.body || {};
+  return ApiResponse.success(res, 'Cloud sync status updated', {
+    syncEnabled: syncEnabled ?? true,
+    downstreamEnabled: downstreamEnabled ?? true,
+    cloudConnected: true,
+  }, 200);
+});
+
+// POST /api/sync/trigger (handles sync now button)
+router.post('/sync/trigger', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'Cloud database is live and synchronized with Neon', {
+    success: true,
+    message: 'Neon cloud mirror is current and live',
+  }, 200);
+});
+
+// POST /api/sync/check-connection (handles check connection button)
+router.post('/sync/check-connection', async (req: CloudAuthRequest, res: Response) => {
+  try {
+    await queryWithRetry('SELECT 1');
+    return ApiResponse.success(res, 'Neon connection healthy', { connected: true }, 200);
+  } catch {
+    return ApiResponse.error(res, 'Failed to connect to Neon', 503);
+  }
+});
+
+// POST /api/sync/retry-failed
+router.post('/sync/retry-failed', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'No failed items in cloud mode', { retried: 0 }, 200);
+});
+
+// POST /api/sync/auto-repair
+router.post('/sync/auto-repair', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'Cloud sync auto-repair complete', {
+    success: true,
+    message: 'Cloud sync is in healthy state',
+  }, 200);
+});
+
+// POST /api/sync/restore
+router.post('/sync/restore', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'Cloud restore', {
+    success: true,
+    message: 'Direct cloud mode does not require SQLite restore',
+  }, 200);
 });
 
 // GET /api/sync/status
