@@ -79,10 +79,10 @@ router.get('/metrics', requireCloudScreen('Dashboard'), async (req: CloudAuthReq
       `, [from, to]),
       queryWithRetry(`
         SELECT 
-          COALESCE(SUM(current_balance), 0)::float AS total_dues,
-          COUNT(*)::int AS khata_customers
-        FROM customers
-        WHERE LOWER(status) = 'active' AND current_balance > 0
+          COALESCE(SUM(s.remaining_balance), 0)::float AS total_dues,
+          COUNT(DISTINCT s.customer_uuid)::int AS khata_customers
+        FROM sales s
+        WHERE s.remaining_balance > 0 AND s.customer_uuid IS NOT NULL
       `),
     ]);
 
@@ -137,7 +137,7 @@ router.get('/recent-sales', requireCloudScreen('Dashboard'), async (req: CloudAu
         s.created_at,
         c.name AS c_name
       FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.id
+      LEFT JOIN customers c ON s.customer_uuid = c.id
       ORDER BY s.created_at DESC
       LIMIT 8
     `);
@@ -180,15 +180,17 @@ router.get('/khata-customers', requireCloudScreen('Dashboard'), async (req: Clou
   try {
     const result = await queryWithRetry(`
       SELECT 
-        id,
-        name,
-        phone,
-        current_balance,
-        customer_type,
-        updated_at
-      FROM customers
-      WHERE LOWER(status) = 'active' AND current_balance > 0
-      ORDER BY current_balance DESC
+        c.id,
+        c.name,
+        c.phone,
+        COALESCE(SUM(s.remaining_balance), 0)::float AS amount,
+        c.customer_type,
+        MAX(s.updated_at) AS last_sale_date
+      FROM customers c
+      JOIN sales s ON s.customer_uuid = c.id
+      WHERE LOWER(c.status) = 'active' AND s.remaining_balance > 0
+      GROUP BY c.id, c.name, c.phone, c.customer_type
+      ORDER BY amount DESC
       LIMIT 8
     `);
 
@@ -196,9 +198,9 @@ router.get('/khata-customers', requireCloudScreen('Dashboard'), async (req: Clou
       id: c.id,
       name: c.name,
       phone: c.phone || '',
-      amount: Number(c.current_balance),
+      amount: Number(c.amount),
       type: c.customer_type === 'monthly_ledger' ? 'Wholesale' : 'Retail',
-      lastSaleDate: c.updated_at ? new Date(c.updated_at).toISOString() : null,
+      lastSaleDate: c.last_sale_date ? new Date(c.last_sale_date).toISOString() : null,
     }));
 
     return ApiResponse.success(res, 'Khata customers fetched from Neon', rows, 200);
