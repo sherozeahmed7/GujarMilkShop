@@ -29,16 +29,82 @@ router.get('/next-code', requireCloudScreen('Suppliers'), async (req: CloudAuthR
 router.get('/', requireCloudScreen('Suppliers'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const search = req.query.search as string;
-    let query = 'SELECT * FROM suppliers';
+    const cycleType = req.query.cycleType as string;
+    const isActive = req.query.isActive;
+
+    let query = `
+      SELECT 
+        s.id, s.local_id, s.name, s.code, s.phone,
+        s.default_rate, s.cow_rate, s.buffalo_rate, s.cycle_type,
+        s.is_active, s.guaranteed_advance, s.created_at, s.updated_at,
+        COALESCE(SUM(sc.amount), 0)::float AS total_purchased,
+        COALESCE(SUM(sp.amount), 0)::float AS total_paid
+      FROM suppliers s
+      LEFT JOIN supplier_collections sc ON s.id = sc.supplier_uuid
+      LEFT JOIN supplier_payments sp ON s.id = sp.supplier_uuid
+    `;
+    const conditions: string[] = [];
     const params: any[] = [];
+    let pIdx = 1;
+
     if (search) {
-      query += ' WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1';
+      conditions.push(`(LOWER(s.name) LIKE $${pIdx} OR LOWER(s.code) LIKE $${pIdx})`);
       params.push(`%${search.toLowerCase()}%`);
+      pIdx++;
     }
-    query += ' ORDER BY name ASC';
+    if (cycleType && cycleType !== 'All') {
+      conditions.push(`s.cycle_type = $${pIdx++}`);
+      params.push(cycleType);
+    }
+    if (isActive !== undefined && isActive !== '') {
+      conditions.push(`s.is_active = $${pIdx++}`);
+      params.push(String(isActive) === 'true');
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
+    query += `
+      GROUP BY s.id, s.local_id, s.name, s.code, s.phone,
+               s.default_rate, s.cow_rate, s.buffalo_rate, s.cycle_type,
+               s.is_active, s.guaranteed_advance, s.created_at, s.updated_at
+      ORDER BY s.name ASC
+    `;
 
     const result = await queryWithRetry(query, params);
-    return ApiResponse.success(res, 'Suppliers fetched from Neon', result.rows, 200);
+    const shaped = result.rows.map((row: any) => {
+      const purchased = Number(row.total_purchased || 0);
+      const paid = Number(row.total_paid || 0);
+      const advance = Number(row.guaranteed_advance || 0);
+      const remainingBalance = Math.round((purchased - paid - advance) * 100) / 100;
+
+      return {
+        id: String(row.local_id || row.id),
+        name: row.name,
+        code: row.code,
+        phone: row.phone || '',
+        defaultRate: Number(row.default_rate || 0),
+        cowRate: Number(row.cow_rate || 0),
+        buffaloRate: Number(row.buffalo_rate || 0),
+        cycleType: row.cycle_type || 'Monthly Cycle',
+        isActive: Boolean(row.is_active),
+        guaranteedAdvance: advance,
+        openingBalance: 0,
+        grossPayable: Math.round((purchased - paid) * 100) / 100,
+        currentAmount: purchased,
+        previousAmount: 0,
+        totalAmount: purchased,
+        paidAmount: paid,
+        remainingBalance,
+        payableBalance: remainingBalance,
+        nextCycleCredit: advance,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : '',
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : '',
+      };
+    });
+
+    return ApiResponse.success(res, 'Suppliers fetched from Neon', shaped, 200);
   } catch (err) {
     next(err);
   }
