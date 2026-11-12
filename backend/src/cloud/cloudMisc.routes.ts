@@ -50,13 +50,51 @@ router.get('/expenses/summary', requireCloudScreen('Expenses'), async (req: Clou
 // GET /api/expenses/breakdown
 router.get('/expenses/breakdown', requireCloudScreen('Expenses'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await queryWithRetry(`
-      SELECT category, COALESCE(SUM(amount), 0)::float AS total
+    const typeParam = req.query.expenseType ? String(req.query.expenseType).toUpperCase() : undefined;
+    const now = new Date();
+    const yyyyMM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    let query = `
+      SELECT category, COALESCE(SUM(amount), 0)::float AS amount
       FROM expenses
-      GROUP BY category
-      ORDER BY total DESC
-    `);
-    return ApiResponse.success(res, 'Expense breakdown fetched', result.rows, 200);
+      WHERE date LIKE $1
+    `;
+    const params: any[] = [`${yyyyMM}%`];
+    if (typeParam) {
+      query += ` AND UPPER(expense_type) = $2`;
+      params.push(typeParam);
+    }
+    query += ` GROUP BY category ORDER BY amount DESC`;
+
+    let result = await queryWithRetry(query, params);
+    
+    // If no records in current month, fallback to all-time breakdown so chart is not empty
+    if (result.rows.length === 0) {
+      let fallbackQuery = `
+        SELECT category, COALESCE(SUM(amount), 0)::float AS amount
+        FROM expenses
+      `;
+      const fallbackParams: any[] = [];
+      if (typeParam) {
+        fallbackQuery += ` WHERE UPPER(expense_type) = $1`;
+        fallbackParams.push(typeParam);
+      }
+      fallbackQuery += ` GROUP BY category ORDER BY amount DESC`;
+      result = await queryWithRetry(fallbackQuery, fallbackParams);
+    }
+
+    const totalAmount = result.rows.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
+    const rows = result.rows.map((r: any) => {
+      const amount = Number(r.amount || 0);
+      return {
+        category: r.category || 'Other',
+        amount,
+        total: amount,
+        percentage: totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0,
+      };
+    });
+
+    return ApiResponse.success(res, 'Expense breakdown fetched', rows, 200);
   } catch (err) {
     next(err);
   }
