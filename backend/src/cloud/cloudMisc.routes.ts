@@ -1,7 +1,9 @@
 import { Router, Response, NextFunction } from 'express';
 import { queryWithRetry } from '../config/neonDb';
 import { ApiResponse } from '../utils/apiResponse';
-import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen } from './cloudAuth.middleware';
+import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen, requireCloudSuperAdmin } from './cloudAuth.middleware';
+import { hashPassword, comparePassword } from '../utils/auth';
+import crypto from 'crypto';
 
 const router = Router();
 router.use(authenticateCloudJWT);
@@ -496,8 +498,145 @@ router.get('/users', requireCloudScreen('Users & Roles'), async (req: CloudAuthR
 });
 
 // GET /api/users/roles
-router.get('/users/roles', requireCloudScreen('Users & Roles'), async (req: CloudAuthRequest, res: Response) => {
-  return ApiResponse.success(res, 'User roles fetched', ['super_admin', 'cashier', 'store cash'], 200);
+router.get('/users/roles', requireCloudScreen('Users & Roles'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const rolesRes = await queryWithRetry('SELECT DISTINCT role FROM users WHERE role IS NOT NULL');
+    const existingRoles = rolesRes.rows.map((r: any) => r.role);
+    const defaults = ['super_admin', 'cashier', 'store cash', 'finance manager'];
+    const merged = Array.from(new Set([...defaults, ...existingRoles]));
+    return ApiResponse.success(res, 'User roles fetched', merged, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/users - create new user in Neon
+router.post('/users', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name, email, password, assignedRole, role, assignedScreens } = req.body;
+    if (!name || !name.trim()) {
+      return ApiResponse.error(res, 'Name is required and cannot be empty.', 400);
+    }
+    const userEmail = (email || '').trim().toLowerCase();
+    if (!userEmail || !password) {
+      return ApiResponse.error(res, 'Email and password are required fields.', 400);
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+      return ApiResponse.error(res, 'Please provide a valid email address.', 400);
+    }
+
+    const finalRole = (assignedRole || role || 'cashier').trim();
+    const existing = await queryWithRetry('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [userEmail]);
+    if (existing.rows.length > 0) {
+      return ApiResponse.error(res, 'A user with this email address already exists.', 400);
+    }
+
+    const hashedPassword = await hashPassword(password);
+    const screensArray = Array.isArray(assignedScreens) ? assignedScreens : [];
+    const screensJson = JSON.stringify(screensArray);
+    const cloudUuid = crypto.randomUUID();
+
+    const insertRes = await queryWithRetry(
+      `INSERT INTO users (id, name, email, password, role, status, assigned_screens, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 'active', $6, NOW(), NOW())
+       RETURNING id, name, email, role, status, assigned_screens, created_at, updated_at`,
+      [cloudUuid, name.trim(), userEmail, hashedPassword, finalRole, screensJson]
+    );
+
+    const newUser = insertRes.rows[0];
+    return ApiResponse.success(res, 'User created successfully', {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      assignedRole: newUser.role,
+      assignedScreens: screensArray,
+      status: 'Active',
+      createdAt: newUser.created_at,
+    }, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/users/:id - update user in Neon
+router.put('/users/:id', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const targetId = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    const whereCol = isUuid ? 'id' : 'local_id::text';
+
+    const existingRes = await queryWithRetry(`SELECT * FROM users WHERE ${whereCol} = $1`, [targetId]);
+    if (existingRes.rows.length === 0) {
+      return ApiResponse.error(res, 'User not found.', 404);
+    }
+    const existingUser = existingRes.rows[0];
+
+    const { name, email, role, assignedScreens, password } = req.body;
+    const updateName = name !== undefined ? name.trim() : existingUser.name;
+    const updateEmail = email !== undefined ? email.trim().toLowerCase() : existingUser.email;
+    const updateRole = role !== undefined ? role.trim() : existingUser.role;
+
+    let updatePassword = existingUser.password;
+    if (password && typeof password === 'string' && password.trim()) {
+      updatePassword = await hashPassword(password.trim());
+    }
+
+    const screensJson = assignedScreens !== undefined
+      ? JSON.stringify(Array.isArray(assignedScreens) ? assignedScreens : [])
+      : (typeof existingUser.assigned_screens === 'string' ? existingUser.assigned_screens : JSON.stringify(existingUser.assigned_screens || []));
+
+    const updateRes = await queryWithRetry(
+      `UPDATE users
+       SET name = $1, email = $2, role = $3, password = $4, assigned_screens = $5, updated_at = NOW()
+       WHERE id = $6
+       RETURNING id, name, email, role, status, assigned_screens, created_at, updated_at`,
+      [updateName, updateEmail, updateRole, updatePassword, screensJson, existingUser.id]
+    );
+
+    const updated = updateRes.rows[0];
+    return ApiResponse.success(res, 'User updated successfully', {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role,
+      assignedRole: updated.role,
+      assignedScreens: Array.isArray(assignedScreens) ? assignedScreens : [],
+      status: updated.status === 'active' ? 'Active' : 'Inactive',
+      createdAt: updated.created_at,
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/users/:id/status - toggle active/inactive in Neon
+router.patch('/users/:id/status', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const targetId = req.params.id;
+    const status = (req.body?.status || 'active').toLowerCase();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    const whereCol = isUuid ? 'id' : 'local_id::text';
+
+    await queryWithRetry(`UPDATE users SET status = $1, updated_at = NOW() WHERE ${whereCol} = $2`, [status, targetId]);
+    return ApiResponse.success(res, `User status updated to ${status}`, { status }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/users/:id - delete user in Neon
+router.delete('/users/:id', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const targetId = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    const whereCol = isUuid ? 'id' : 'local_id::text';
+
+    await queryWithRetry(`DELETE FROM users WHERE ${whereCol} = $1`, [targetId]);
+    return ApiResponse.success(res, 'User deleted successfully', null, 200);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/pos-config
