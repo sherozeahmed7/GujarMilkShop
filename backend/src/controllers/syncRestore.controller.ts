@@ -114,9 +114,17 @@ export async function restoreCloudData(req: Request, res: Response): Promise<voi
     try {
       await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
 
-      // Capture cursor at exact snapshot time
-      const cursorRes = await client.query('SELECT COALESCE(MAX(change_sequence), 0) AS max_seq FROM cloud_sync_events');
-      maxSequence = BigInt(cursorRes.rows[0]?.max_seq || '0');
+      // Capture cursor at exact snapshot time (gracefully handle if cloud_sync_events table is empty or missing)
+      try {
+        const cursorRes = await client.query('SELECT COALESCE(MAX(change_sequence), 0) AS max_seq FROM cloud_sync_events');
+        maxSequence = BigInt(cursorRes.rows[0]?.max_seq || '0');
+      } catch (cursorErr: any) {
+        if (cursorErr?.code === '42P01' || cursorErr?.message?.includes('cloud_sync_events')) {
+          maxSequence = BigInt(0);
+        } else {
+          throw cursorErr;
+        }
+      }
 
       // Layer 0: Master records
       const usersRes = await client.query('SELECT * FROM users ORDER BY created_at ASC');
