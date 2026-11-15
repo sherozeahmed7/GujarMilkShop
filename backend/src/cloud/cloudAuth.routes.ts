@@ -54,13 +54,30 @@ router.post('/login', loginLimiter, async (req: Request, res: Response, next: Ne
       return ApiResponse.error(res, 'Your account is inactive. Please contact admin.', 403);
     }
 
+    // All 30 canonical screens - super_admin and admin always get full access
+    const ALL_CANONICAL_SCREENS = [
+      'Dashboard', 'Point of Sale', 'Inventory', 'Suppliers', 'Customers',
+      'Khata / Ledger', 'Returns', 'Receipt Audit', 'Shifts', 'Cash Register',
+      'Cashbook', 'Expenses', 'Reports', 'Sales Report', 'F2 Sales Report',
+      'Supplier Report', 'Customer Report', 'Inventory Report', 'Returns Report',
+      'Cash Register Report', 'Shifts Report', 'Expenses Report', 'Backup Report',
+      'Profit & Loss', 'Activity Logs', 'Daily Rates', 'Settings', 'Shop Info',
+      'POS Config', 'Users & Roles', 'Cloud & Sync', 'Local Backup'
+    ];
+
     let assignedScreens: string[] = [];
-    try {
-      assignedScreens = typeof user.assigned_screens === 'string'
-        ? JSON.parse(user.assigned_screens)
-        : (Array.isArray(user.assigned_screens) ? user.assigned_screens : []);
-    } catch {
-      assignedScreens = [];
+    const isAdminRole = ['super_admin', 'admin'].includes((user.role || '').toLowerCase());
+    if (isAdminRole) {
+      // Admins always get all screens so they can assign any screen to new users
+      assignedScreens = ALL_CANONICAL_SCREENS;
+    } else {
+      try {
+        assignedScreens = typeof user.assigned_screens === 'string'
+          ? JSON.parse(user.assigned_screens)
+          : (Array.isArray(user.assigned_screens) ? user.assigned_screens : []);
+      } catch {
+        assignedScreens = [];
+      }
     }
 
     const accessToken = generateAccessToken({

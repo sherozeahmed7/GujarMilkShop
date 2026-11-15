@@ -114,3 +114,12 @@ export const requireCloudSuperAdmin = (req: CloudAuthRequest, res: express.Respo
   }
   next();
 };
+
+// Allow super_admin OR admin role (for user management operations)
+export const requireCloudAdminOrSuperAdmin = (req: CloudAuthRequest, res: express.Response, next: express.NextFunction) => {
+  const role = (req.user?.role || '').toLowerCase();
+  if (role !== 'super_admin' && role !== 'admin') {
+    return ApiResponse.error(res, 'Forbidden: Only admin or super_admin can perform this action.', 403);
+  }
+  next();
+};

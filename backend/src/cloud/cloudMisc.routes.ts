@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { queryWithRetry } from '../config/neonDb';
 import { ApiResponse } from '../utils/apiResponse';
-import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen, requireCloudSuperAdmin } from './cloudAuth.middleware';
+import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen, requireCloudSuperAdmin, requireCloudAdminOrSuperAdmin } from './cloudAuth.middleware';
 import { hashPassword, comparePassword } from '../utils/auth';
 import crypto from 'crypto';
 
@@ -421,7 +421,7 @@ router.get('/users/roles', requireCloudScreen('Users & Roles'), async (req: Clou
 });
 
 // POST /api/users - create new user in Neon
-router.post('/users', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+router.post('/users', requireCloudAdminOrSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const { name, email, password, assignedRole, role, assignedScreens } = req.body;
     if (!name || !name.trim()) {
@@ -470,7 +470,7 @@ router.post('/users', requireCloudSuperAdmin, async (req: CloudAuthRequest, res:
 });
 
 // PUT /api/users/:id - update user in Neon
-router.put('/users/:id', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+router.put('/users/:id', requireCloudAdminOrSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const targetId = req.params.id;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
@@ -521,7 +521,7 @@ router.put('/users/:id', requireCloudSuperAdmin, async (req: CloudAuthRequest, r
 });
 
 // PATCH /api/users/:id/status - toggle active/inactive in Neon
-router.patch('/users/:id/status', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+router.patch('/users/:id/status', requireCloudAdminOrSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const targetId = req.params.id;
     const status = (req.body?.status || 'active').toLowerCase();
@@ -536,7 +536,7 @@ router.patch('/users/:id/status', requireCloudSuperAdmin, async (req: CloudAuthR
 });
 
 // DELETE /api/users/:id - delete user in Neon
-router.delete('/users/:id', requireCloudSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+router.delete('/users/:id', requireCloudAdminOrSuperAdmin, async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const targetId = req.params.id;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
@@ -766,18 +766,32 @@ router.post('/sync/auto-repair', async (req: CloudAuthRequest, res: Response) =>
 // POST /api/sync/restore
 router.post('/sync/restore', async (req: CloudAuthRequest, res: Response) => {
   try {
-    const [salesCount, custCount, supCount, ratesCount] = await Promise.all([
-      queryWithRetry('SELECT count(*)::int as count FROM sales'),
-      queryWithRetry('SELECT count(*)::int as count FROM customers'),
-      queryWithRetry('SELECT count(*)::int as count FROM suppliers'),
-      queryWithRetry('SELECT count(*)::int as count FROM daily_rates'),
+    // Count records from each core Neon table with graceful fallback for missing tables
+    const safeCount = async (table: string): Promise<number> => {
+      try {
+        const r = await queryWithRetry(`SELECT count(*)::int as count FROM ${table}`);
+        return r.rows[0].count || 0;
+      } catch {
+        return 0;
+      }
+    };
+
+    const [salesCount, custCount, supCount, ratesCount, expCount, invCount] = await Promise.all([
+      safeCount('sales'),
+      safeCount('customers'),
+      safeCount('suppliers'),
+      safeCount('daily_rates'),
+      safeCount('expenses'),
+      safeCount('inventory'),
     ]);
 
     const restoredCounts: Record<string, number> = {
-      Sales: salesCount.rows[0].count,
-      Customers: custCount.rows[0].count,
-      Suppliers: supCount.rows[0].count,
-      DailyRates: ratesCount.rows[0].count,
+      Sales: salesCount,
+      Customers: custCount,
+      Suppliers: supCount,
+      DailyRates: ratesCount,
+      Expenses: expCount,
+      Inventory: invCount,
     };
 
     const totalRestored = Object.values(restoredCounts).reduce((a, b) => a + b, 0);
