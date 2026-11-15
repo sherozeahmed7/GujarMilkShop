@@ -3,7 +3,6 @@ import { X, Eye, EyeOff } from 'lucide-react';
 import { User, CreateUserPayload } from '../../types/user';
 import { PermissionSelector } from './PermissionSelector';
 import { useUserStore } from '../../store/userStore';
-import { ALL_SCREENS } from '../../config/screenPermissions';
 import toast from 'react-hot-toast';
 
 interface UserFormModalProps {
@@ -41,12 +40,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ user, onClose }) =
     setShowConfirmPassword(false);
   }, [user]);
 
-  const currentRole = (localStorage.getItem('role') || '').toLowerCase();
-  const isSuperAdmin = currentRole === 'super_admin' || currentRole === 'admin';
   const adminScreensStr = localStorage.getItem('assignedScreens');
-  const allowedScreens: string[] = isSuperAdmin
-    ? ALL_SCREENS
-    : (adminScreensStr ? JSON.parse(adminScreensStr) : ALL_SCREENS);
+  const allowedScreens = adminScreensStr ? JSON.parse(adminScreensStr) : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
