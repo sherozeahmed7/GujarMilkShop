@@ -91,6 +91,23 @@ export const requireCloudScreen = (screenName: string) => {
   };
 };
 
+export const requireAnyCloudScreen = (screenNames: string[]) => {
+  return (req: CloudAuthRequest, res: express.Response, next: express.NextFunction) => {
+    if (!req.user) {
+      return ApiResponse.error(res, 'Authentication required.', 401);
+    }
+    if (req.user.role === SUPER_ADMIN_ROLE) {
+      return next();
+    }
+    const screens = req.user.assignedScreens || [];
+    const hasAny = screenNames.some(name => screens.includes(name));
+    if (hasAny) {
+      return next();
+    }
+    return ApiResponse.error(res, `Forbidden: Insufficient privileges. Requires one of: ${screenNames.join(', ')}.`, 403);
+  };
+};
+
 export const requireCloudSuperAdmin = (req: CloudAuthRequest, res: express.Response, next: express.NextFunction) => {
   if (req.user?.role !== SUPER_ADMIN_ROLE) {
     return ApiResponse.error(res, 'Forbidden: Only super_admin can perform this action.', 403);

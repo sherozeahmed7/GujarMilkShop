@@ -10,6 +10,7 @@ import cloudSuppliersRoutes from './cloudSuppliers.routes';
 import cloudInventoryRoutes from './cloudInventory.routes';
 import cloudReportsRoutes from './cloudReports.routes';
 import cloudCashbookRoutes from './cloudCashbook.routes';
+import cloudExpensesRoutes from './cloudExpenses.routes';
 import cloudMiscRoutes from './cloudMisc.routes';
 import { errorHandler } from '../middleware/errorHandler';
 
@@ -76,7 +77,7 @@ export function createCloudApp(): Application {
   app.use('/api/inventory', cloudInventoryRoutes);
   app.use('/api/reports', cloudReportsRoutes);
   app.use('/api/cashbook', cloudCashbookRoutes);
-  app.use('/api/expenses', cloudMiscRoutes);
+  app.use('/api/expenses', cloudExpensesRoutes);
   app.use('/api', cloudMiscRoutes);
 
   // Error handling

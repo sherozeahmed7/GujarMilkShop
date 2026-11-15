@@ -8,144 +8,9 @@ import crypto from 'crypto';
 const router = Router();
 router.use(authenticateCloudJWT);
 
-// GET /api/expenses/summary
-router.get('/expenses/summary', requireCloudScreen('Expenses'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const from = req.query.from as string;
-    const to = req.query.to as string;
-    let query = 'SELECT * FROM expenses';
-    const params: any[] = [];
-    if (from && to) {
-      query += ' WHERE date >= $1 AND date <= $2';
-      params.push(from, to);
-    }
-    const result = await queryWithRetry(query, params);
-
-    const rows = result.rows;
-    const grossLoss = rows.reduce((s: number, r: any) => s + (Number(r.gross_loss || r.amount) || 0), 0);
-    const netExpense = rows.reduce((s: number, r: any) => s + (Number(r.net_expense || r.amount) || 0), 0);
-    const paid = rows.reduce((s: number, r: any) => s + (Number(r.paid_amount) || 0), 0);
-    const remaining = rows.reduce((s: number, r: any) => s + (Number(r.remaining) || 0), 0);
-
-    const personal = rows.filter((r: any) => r.expense_type === 'PERSONAL');
-    const totalPersonalExpense = personal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
-    const totalCashReceived = personal.reduce((s: number, r: any) => s + (Number(r.paid_amount) || 0), 0);
-    const personalRemaining = personal.reduce((s: number, r: any) => s + (Number(r.remaining) || 0), 0);
-
-    return ApiResponse.success(res, 'Expense summary fetched', {
-      stock: 0,
-      avgCost: 0,
-      grossLoss,
-      netExpense,
-      paid,
-      remaining,
-      totalPersonalExpense,
-      totalCashReceived,
-      remainingBalance: personalRemaining,
-      personalCount: personal.length,
-    }, 200);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET /api/expenses/breakdown
-router.get('/expenses/breakdown', requireCloudScreen('Expenses'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const typeParam = req.query.expenseType ? String(req.query.expenseType).toUpperCase() : undefined;
-    const now = new Date();
-    const yyyyMM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
-    let query = `
-      SELECT category, COALESCE(SUM(amount), 0)::float AS amount
-      FROM expenses
-      WHERE date LIKE $1
-    `;
-    const params: any[] = [`${yyyyMM}%`];
-    if (typeParam) {
-      query += ` AND UPPER(expense_type) = $2`;
-      params.push(typeParam);
-    }
-    query += ` GROUP BY category ORDER BY amount DESC`;
-
-    let result = await queryWithRetry(query, params);
-    
-    // If no records in current month, fallback to all-time breakdown so chart is not empty
-    if (result.rows.length === 0) {
-      let fallbackQuery = `
-        SELECT category, COALESCE(SUM(amount), 0)::float AS amount
-        FROM expenses
-      `;
-      const fallbackParams: any[] = [];
-      if (typeParam) {
-        fallbackQuery += ` WHERE UPPER(expense_type) = $1`;
-        fallbackParams.push(typeParam);
-      }
-      fallbackQuery += ` GROUP BY category ORDER BY amount DESC`;
-      result = await queryWithRetry(fallbackQuery, fallbackParams);
-    }
-
-    const totalAmount = result.rows.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0);
-    const rows = result.rows.map((r: any) => {
-      const amount = Number(r.amount || 0);
-      return {
-        category: r.category || 'Other',
-        amount,
-        total: amount,
-        percentage: totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0,
-      };
-    });
-
-    return ApiResponse.success(res, 'Expense breakdown fetched', rows, 200);
-  } catch (err) {
-    next(err);
-  }
-});
-
 // GET /api/expense-customers
 router.get('/expense-customers', requireCloudScreen('Expenses'), async (req: CloudAuthRequest, res: Response) => {
   return ApiResponse.success(res, 'Expense customers fetched', [], 200);
-});
-
-// GET /api/expenses
-router.get('/', requireCloudScreen('Expenses'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const from = req.query.from as string;
-    const to = req.query.to as string;
-
-    let query = 'SELECT * FROM expenses';
-    const params: any[] = [];
-    if (from && to) {
-      query += ' WHERE date >= $1 AND date <= $2';
-      params.push(from, to);
-    }
-    query += ' ORDER BY date DESC';
-
-    const result = await queryWithRetry(query, params);
-    const rows = result.rows.map((row: any) => ({
-      id: String(row.local_id || row.id),
-      date: row.date,
-      category: row.category,
-      description: row.description || '',
-      quantity: Number(row.quantity || 0),
-      unitCost: Number(row.unit_cost || 0),
-      grossLoss: Number(row.gross_loss || row.amount || 0),
-      soldRecovery: Number(row.sold_recovery || 0),
-      netExpense: Number(row.net_expense || row.amount || 0),
-      amount: Number(row.amount || 0),
-      paidAmount: Number(row.paid_amount || 0),
-      remaining: Number(row.remaining || 0),
-      reason: row.reason || '',
-      addedBy: row.added_by || 'Admin',
-      expenseType: row.expense_type || 'SHOP',
-      createdAt: row.created_at ? new Date(row.created_at).toISOString() : '',
-      payments: [],
-    }));
-
-    return ApiResponse.success(res, 'Expenses fetched', rows, 200);
-  } catch (err) {
-    next(err);
-  }
 });
 
 // GET /api/shifts/:id/ledger
@@ -307,6 +172,51 @@ router.get('/rates', requireCloudScreen('Daily Rates'), async (req: CloudAuthReq
       currentGheeRate: latest.gheeRate || 0,
       lastUpdated: latest.createdAt || null,
     }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/rates - Record daily rates in Neon
+router.post('/rates', requireCloudScreen('Daily Rates'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { milkRate, yogurtRate, lassiRate, butterRate, gheeRate, date } = req.body;
+    if (milkRate === undefined || yogurtRate === undefined) {
+      return ApiResponse.error(res, 'milkRate and yogurtRate are required', 400);
+    }
+
+    const cloudUuid = crypto.randomUUID();
+    const maxIdRes = await queryWithRetry('SELECT COALESCE(MAX(local_id), 0) + 1 AS next_id FROM daily_rates');
+    const nextLocalId = maxIdRes.rows[0]?.next_id || 1;
+
+    const rateDate = date ? new Date(date) : new Date();
+    const updatedByRole = req.user?.role || 'Admin';
+
+    const insertRes = await queryWithRetry(`
+      INSERT INTO daily_rates (
+        id, local_id, device_id, milk_rate, yogurt_rate, lassi_rate,
+        butter_rate, ghee_rate, updated_by_role, date, created_at, updated_at
+      ) VALUES ($1, $2, 'web-portal', $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      RETURNING *
+    `, [
+      cloudUuid, nextLocalId,
+      Number(milkRate), Number(yogurtRate), Number(lassiRate || 0),
+      Number(butterRate || 0), Number(gheeRate || 0),
+      updatedByRole, rateDate
+    ]);
+
+    const row = insertRes.rows[0];
+    return ApiResponse.success(res, 'Daily rates saved successfully', {
+      id: row.local_id || row.id,
+      milkRate: Number(row.milk_rate),
+      yogurtRate: Number(row.yogurt_rate),
+      lassiRate: Number(row.lassi_rate),
+      butterRate: Number(row.butter_rate),
+      gheeRate: Number(row.ghee_rate),
+      updatedByRole: row.updated_by_role,
+      date: row.date ? new Date(row.date).toISOString().split('T')[0] : '',
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : '',
+    }, 201);
   } catch (err) {
     next(err);
   }
@@ -639,16 +549,65 @@ router.delete('/users/:id', requireCloudSuperAdmin, async (req: CloudAuthRequest
   }
 });
 
+let cloudPOSConfig = {
+  shopName: 'Gujar Milk Shop',
+  taxRate: 0,
+  currencySymbol: 'Rs.',
+  lowStockAlertThreshold: 10,
+  printReceiptAutomatically: false,
+  showLogoOnReceipt: false,
+  receiptFooterText: 'Thank you for your business!',
+  receiptWidth: '80mm',
+  printerEnabled: false,
+  printerName: '',
+  autoCutter: true,
+  cashDrawer: false,
+  printMode: 'raster',
+  requireCustomerName: false,
+  allowDiscount: true,
+  maxDiscountPercent: 10,
+  defaultPaymentMethod: 'cash',
+  showDailyRateOnPOS: true,
+  showCartSubtotal: true,
+  confirmBeforeSale: false,
+  autoClearCartAfterSale: true,
+};
+
+let cloudShopInfo = {
+  businessName: 'Gujar Milk Shop',
+  tagline: 'Fresh & Pure Daily',
+  ownerName: 'Ali Raza',
+  businessType: 'Retail',
+  primaryPhone: '0300-1234567',
+  secondaryPhone: '',
+  emailAddress: 'info@gujarmilk.com',
+  website: '',
+  addressLine1: 'Main Market, Block C',
+  addressLine2: 'Near Central Park',
+  city: 'Lahore',
+  zipCode: '54000',
+};
+
 // GET /api/pos-config
 router.get('/pos-config', async (req: CloudAuthRequest, res: Response) => {
-  return ApiResponse.success(res, 'POS Config fetched', {
-    receiptHeader: 'Gujar Milk Shop',
-    receiptFooter: 'Thank you for your business!',
-    phone: '',
-    address: '',
-    taxRate: 0,
-    printerType: 'none',
-  }, 200);
+  return ApiResponse.success(res, 'POS Config fetched', cloudPOSConfig, 200);
+});
+
+// PUT /api/pos-config
+router.put('/pos-config', requireCloudScreen('POS Config'), async (req: CloudAuthRequest, res: Response) => {
+  cloudPOSConfig = { ...cloudPOSConfig, ...req.body };
+  return ApiResponse.success(res, 'POS Config updated', cloudPOSConfig, 200);
+});
+
+// GET /api/settings/shop-info
+router.get('/settings/shop-info', async (req: CloudAuthRequest, res: Response) => {
+  return ApiResponse.success(res, 'Shop info fetched', cloudShopInfo, 200);
+});
+
+// PUT /api/settings/shop-info
+router.put('/settings/shop-info', requireCloudScreen('Shop Info'), async (req: CloudAuthRequest, res: Response) => {
+  cloudShopInfo = { ...cloudShopInfo, ...req.body };
+  return ApiResponse.success(res, 'Shop info updated', cloudShopInfo, 200);
 });
 
 // In-memory sync state for web cloud portal

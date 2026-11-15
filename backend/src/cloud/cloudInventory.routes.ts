@@ -2,6 +2,7 @@ import { Router, Response, NextFunction } from 'express';
 import { queryWithRetry } from '../config/neonDb';
 import { ApiResponse } from '../utils/apiResponse';
 import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen } from './cloudAuth.middleware';
+import crypto from 'crypto';
 
 const router = Router();
 router.use(authenticateCloudJWT);
@@ -89,16 +90,13 @@ router.get('/stock-in', requireCloudScreen('Inventory'), async (req: CloudAuthRe
 // GET /api/inventory/pricing
 router.get('/pricing', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
-    const name = (req.query.name as string || '').trim();
-    if (!name) return ApiResponse.error(res, 'Product name is required', 400);
-
+    const name = (req.query.name as string || 'milk').trim();
     const rateRes = await queryWithRetry('SELECT * FROM daily_rates ORDER BY date DESC LIMIT 1');
     const rate = rateRes.rows[0] || {};
 
     const lname = name.toLowerCase();
-    let sellingPrice = 0;
-    if (lname.includes('milk')) sellingPrice = Number(rate.milk_rate || 0);
-    else if (lname.includes('yogurt') || lname.includes('dahi')) sellingPrice = Number(rate.yogurt_rate || rate.milk_rate || 0);
+    let sellingPrice = Number(rate.milk_rate || 0);
+    if (lname.includes('yogurt') || lname.includes('dahi')) sellingPrice = Number(rate.yogurt_rate || rate.milk_rate || 0);
     else if (lname.includes('lassi')) sellingPrice = Number(rate.lassi_rate || 0);
     else if (lname.includes('butter')) sellingPrice = Number(rate.butter_rate || 0);
     else if (lname.includes('ghee')) sellingPrice = Number(rate.ghee_rate || 0);
@@ -120,7 +118,21 @@ router.get('/pricing', requireCloudScreen('Inventory'), async (req: CloudAuthReq
 router.get('/products', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const productsRes = await queryWithRetry('SELECT * FROM inventory_products ORDER BY name ASC');
-    return ApiResponse.success(res, 'Inventory products fetched', productsRes.rows, 200);
+    const rows = productsRes.rows.map((p: any) => ({
+      id: String(p.local_id || p.id),
+      code: p.code,
+      name: p.name,
+      description: p.description || '',
+      category: p.category || 'General',
+      unit: p.unit || 'kg',
+      stock: 0,
+      sellPrice: 0,
+      cost: 0,
+      lowStockThreshold: Number(p.low_stock_threshold || 10),
+      status: p.is_active ? 'In Stock' : 'Out of Stock',
+      isLocked: Boolean(p.is_locked),
+    }));
+    return ApiResponse.success(res, 'Inventory products fetched', rows, 200);
   } catch (err) {
     next(err);
   }
@@ -144,11 +156,174 @@ router.get('/movements', requireCloudScreen('Inventory'), async (req: CloudAuthR
   }
 });
 
-// Fallback for /api/inventory
+// POST /api/inventory/movements (Stock Adjustment)
+router.post('/movements', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { productId, quantity, movementType, source, reference } = req.body;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(productId));
+    const whereField = isUuid ? 'id' : 'local_id::text';
+
+    const prodRes = await queryWithRetry(`SELECT id FROM inventory_products WHERE ${whereField} = $1`, [String(productId)]);
+    const prodUuid = prodRes.rows[0]?.id || null;
+    const cloudUuid = crypto.randomUUID();
+
+    const maxIdRes = await queryWithRetry('SELECT COALESCE(MAX(local_id), 0) + 1 AS next_id FROM inventory_movements');
+    const nextLocalId = maxIdRes.rows[0]?.next_id || 1;
+
+    await queryWithRetry(`
+      INSERT INTO inventory_movements (id, local_id, device_id, product_uuid, quantity, movement_type, source, reference, date, created_at, updated_at)
+      VALUES ($1, $2, 'web-portal', $3, $4, $5, $6, $7, NOW(), NOW(), NOW())
+    `, [cloudUuid, nextLocalId, prodUuid, Number(quantity || 0), movementType || 'ADJUSTMENT', source || 'Manual Adjustment', reference || `adj-${Date.now()}`]);
+
+    return ApiResponse.success(res, 'Stock movement recorded successfully', { id: nextLocalId }, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/inventory - Create Product
+router.post('/', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name, code, category, unit, description, lowStockThreshold } = req.body;
+    if (!name || !name.trim()) return ApiResponse.error(res, 'Product name is required', 400);
+    const prodCode = (code || name.slice(0, 4)).toUpperCase().trim();
+    const cloudUuid = crypto.randomUUID();
+
+    const maxIdRes = await queryWithRetry('SELECT COALESCE(MAX(local_id), 0) + 1 AS next_id FROM inventory_products');
+    const nextLocalId = maxIdRes.rows[0]?.next_id || 1;
+
+    const insertRes = await queryWithRetry(`
+      INSERT INTO inventory_products (id, local_id, device_id, code, name, description, category, unit, tax, low_stock_threshold, is_active, is_locked, created_at, updated_at)
+      VALUES ($1, $2, 'web-portal', $3, $4, $5, $6, $7, '0', $8, true, false, NOW(), NOW())
+      RETURNING *
+    `, [cloudUuid, nextLocalId, prodCode, name.trim(), description || '', category || 'Dairy', unit || 'kg', Number(lowStockThreshold || 10)]);
+
+    const p = insertRes.rows[0];
+    return ApiResponse.success(res, 'Product created successfully', {
+      id: String(p.local_id || p.id),
+      code: p.code,
+      name: p.name,
+      description: p.description || '',
+      category: p.category,
+      unit: p.unit,
+      stock: 0,
+      sellPrice: 0,
+      cost: 0,
+      lowStockThreshold: Number(p.low_stock_threshold || 10),
+      status: 'In Stock',
+      isLocked: false,
+    }, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/inventory/:id
+router.get('/:id', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const whereField = isUuid ? 'id' : 'local_id::text';
+
+    const prodRes = await queryWithRetry(`SELECT * FROM inventory_products WHERE ${whereField} = $1`, [id]);
+    if (prodRes.rows.length === 0) return ApiResponse.error(res, 'Product not found', 404);
+    const p = prodRes.rows[0];
+    return ApiResponse.success(res, 'Product fetched', {
+      id: String(p.local_id || p.id),
+      code: p.code,
+      name: p.name,
+      description: p.description || '',
+      category: p.category,
+      unit: p.unit,
+      stock: 0,
+      sellPrice: 0,
+      cost: 0,
+      lowStockThreshold: Number(p.low_stock_threshold || 10),
+      status: p.is_active ? 'In Stock' : 'Out of Stock',
+      isLocked: Boolean(p.is_locked),
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/inventory/:id - Update Product
+router.put('/:id', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const whereField = isUuid ? 'id' : 'local_id::text';
+
+    const { name, category, unit, description, lowStockThreshold } = req.body;
+    const updateRes = await queryWithRetry(`
+      UPDATE inventory_products
+      SET name = COALESCE($1, name),
+          category = COALESCE($2, category),
+          unit = COALESCE($3, unit),
+          description = COALESCE($4, description),
+          low_stock_threshold = COALESCE($5, low_stock_threshold),
+          updated_at = NOW()
+      WHERE ${whereField} = $6
+      RETURNING *
+    `, [name, category, unit, description, lowStockThreshold, id]);
+
+    if (updateRes.rows.length === 0) return ApiResponse.error(res, 'Product not found', 404);
+    const p = updateRes.rows[0];
+    return ApiResponse.success(res, 'Product updated successfully', {
+      id: String(p.local_id || p.id),
+      code: p.code,
+      name: p.name,
+      description: p.description || '',
+      category: p.category,
+      unit: p.unit,
+      lowStockThreshold: Number(p.low_stock_threshold || 10),
+    }, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/inventory/:id - Soft Delete Product
+router.delete('/:id', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const whereField = isUuid ? 'id' : 'local_id::text';
+
+    await queryWithRetry(`UPDATE inventory_products SET is_active = false, updated_at = NOW() WHERE ${whereField} = $1`, [id]);
+    return ApiResponse.success(res, 'Product deleted successfully', null, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/inventory
 router.get('/', requireCloudScreen('Inventory'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
-    const productsRes = await queryWithRetry('SELECT * FROM inventory_products ORDER BY name ASC');
-    return ApiResponse.success(res, 'Inventory fetched', productsRes.rows, 200);
+    const search = (req.query.search as string || '').toLowerCase().trim();
+    let query = 'SELECT * FROM inventory_products WHERE is_active = true';
+    const params: any[] = [];
+    if (search) {
+      query += ' AND (LOWER(name) LIKE $1 OR LOWER(code) LIKE $1 OR LOWER(category) LIKE $1)';
+      params.push(`%${search}%`);
+    }
+    query += ' ORDER BY name ASC';
+    const productsRes = await queryWithRetry(query, params);
+    const rows = productsRes.rows.map((p: any) => ({
+      id: String(p.local_id || p.id),
+      code: p.code,
+      name: p.name,
+      description: p.description || '',
+      category: p.category || 'General',
+      unit: p.unit || 'kg',
+      stock: 0,
+      sellPrice: 0,
+      cost: 0,
+      lowStockThreshold: Number(p.low_stock_threshold || 10),
+      status: p.is_active ? 'In Stock' : 'Out of Stock',
+      isLocked: Boolean(p.is_locked),
+    }));
+    return ApiResponse.success(res, 'Inventory fetched', rows, 200);
   } catch (err) {
     next(err);
   }

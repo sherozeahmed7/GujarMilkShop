@@ -1,13 +1,19 @@
 import { Router, Response, NextFunction } from 'express';
 import { queryWithRetry } from '../config/neonDb';
 import { ApiResponse } from '../utils/apiResponse';
-import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen } from './cloudAuth.middleware';
+import { authenticateCloudJWT, CloudAuthRequest, requireCloudScreen, requireAnyCloudScreen } from './cloudAuth.middleware';
+import crypto from 'crypto';
 
 const router = Router();
 router.use(authenticateCloudJWT);
 
+const ALLOWED_SALES_SCREENS = [
+  'Sales Report', 'Point of Sale', 'Customers', 'Khata / Ledger',
+  'Returns', 'Receipt Audit', 'Dashboard', 'F2 Sales Report'
+];
+
 // GET /api/sales - List sales with pagination and filters OR return analytics report
-router.get('/', requireCloudScreen('Sales Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+router.get('/', requireAnyCloudScreen(ALLOWED_SALES_SCREENS), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const includeAnalytics = req.query.includeAnalytics === 'true' || String(req.query.includeAnalytics) === 'true';
 
@@ -187,12 +193,12 @@ router.get('/', requireCloudScreen('Sales Report'), async (req: CloudAuthRequest
 });
 
 // GET /api/sales/:id - Sale details with items and payments
-router.get('/:id', requireCloudScreen('Sales Report'), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+router.get('/:id', requireAnyCloudScreen(ALLOWED_SALES_SCREENS), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
   try {
     const saleId = req.params.id;
     // Support lookup by UUID or local_id
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(saleId);
-    const whereField = isUuid ? 'id' : 'local_id';
+    const whereField = isUuid ? 'id' : 'local_id::text';
 
     const saleRes = await queryWithRetry(`SELECT * FROM sales WHERE ${whereField} = $1`, [saleId]);
     if (saleRes.rows.length === 0) {
@@ -209,6 +215,53 @@ router.get('/:id', requireCloudScreen('Sales Report'), async (req: CloudAuthRequ
     sale.payments = paymentsRes.rows;
 
     return ApiResponse.success(res, 'Sale details fetched', sale, 200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/sales/:id/settle - Settle split sale remaining dues in Neon
+router.post('/:id/settle', requireAnyCloudScreen(ALLOWED_SALES_SCREENS), async (req: CloudAuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const saleId = req.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(saleId);
+    const whereField = isUuid ? 'id' : 'local_id::text';
+
+    const saleRes = await queryWithRetry(`SELECT * FROM sales WHERE ${whereField} = $1`, [saleId]);
+    if (saleRes.rows.length === 0) return ApiResponse.error(res, 'Sale not found', 404);
+
+    const sale = saleRes.rows[0];
+    const currentDue = Number(sale.remaining_balance || 0);
+    const payAmt = req.body?.amount !== undefined ? Math.min(currentDue, Number(req.body.amount)) : currentDue;
+    const paymentMethod = req.body?.paymentMethod || 'cash';
+
+    if (payAmt <= 0) return ApiResponse.error(res, 'Invalid settlement amount', 400);
+
+    const newPaid = Number(sale.paid_amount || 0) + payAmt;
+    const newRemaining = Math.max(0, currentDue - payAmt);
+    const newStatus = newRemaining === 0 ? 'completed' : 'partial';
+
+    await queryWithRetry(`
+      UPDATE sales
+      SET paid_amount = $1, remaining_balance = $2, status = $3, updated_at = NOW()
+      WHERE id = $4
+    `, [newPaid, newRemaining, newStatus, sale.id]);
+
+    const pId = crypto.randomUUID();
+    const pMaxIdRes = await queryWithRetry('SELECT COALESCE(MAX(local_id), 0) + 1 AS next_id FROM payments');
+    const nextLocalId = pMaxIdRes.rows[0]?.next_id || 1;
+
+    await queryWithRetry(`
+      INSERT INTO payments (id, local_id, device_id, sale_uuid, method, amount, status, created_at, updated_at)
+      VALUES ($1, $2, 'web-portal', $3, $4, $5, 'completed', NOW(), NOW())
+    `, [pId, nextLocalId, sale.id, paymentMethod, payAmt]);
+
+    return ApiResponse.success(res, 'Sale dues settled successfully', {
+      id: sale.local_id || sale.id,
+      paidAmount: newPaid,
+      remainingBalance: newRemaining,
+      status: newStatus,
+    }, 200);
   } catch (err) {
     next(err);
   }
